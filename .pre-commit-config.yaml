@@ -1,4 +1,0 @@
-- repo: https://github.com/EmbarkStudios/cargo-deny
-  hooks:
-    - id: cargo-deny
-      args: ["--all-features", "check"]
