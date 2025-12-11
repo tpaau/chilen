@@ -23,6 +23,12 @@
 # dependencies not shared by any other crates, would be ignored, as the target
 # list here is effectively saying which targets you are building for.
 targets = [
+	"aarch64-apple-darwin",
+	"aarch64-pc-windows-msvc",
+	"aarch64-unknown-linux-gnu",
+	"x86_64-pc-windows-gnu",
+	"x86_64-pc-windows-msvc",
+	"x86_64-unknown-linux-gnu"
     # The triple can be any string, but only the target triples built in to
     # rustc (as of 1.40) can be checked against actual config expressions
     #"x86_64-unknown-linux-musl",
@@ -72,6 +78,7 @@ feature-depth = 1
 ignore = [
     #"RUSTSEC-0000-0000",
     #{ id = "RUSTSEC-0000-0000", reason = "you can specify a reason the advisory is ignored" },
+    { id = "RUSTSEC-2024-0436", reason = "Library dependency" },
     #"a-crate-that-is-yanked@0.1.1", # you can also ignore yanked crate versions if you wish
     #{ crate = "a-crate-that-is-yanked@0.1.1", reason = "you can specify why you are ignoring the yanked crate" },
 ]

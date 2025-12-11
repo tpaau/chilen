@@ -19,6 +19,7 @@ cxx-qt = "0.7.3"
 mpipc = { path = "mpipc" }
 
 [features]
-default = ["mpris", "gui"]
+default = ["mpris", "cli", "gui"]
 mpris = []
+cli = []
 gui = []

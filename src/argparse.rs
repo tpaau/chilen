@@ -49,7 +49,9 @@ pub enum DaemonCommand {
     /// Stop the daemon process
     Stop,
     /// Restart the daemon process
-    Restart
+    Restart,
+    /// Show daemon status
+    Status
 }
 
 #[derive(Subcommand)]
@@ -59,7 +61,9 @@ pub enum GuiCommand {
     /// Stop the GUI process
     Stop,
     /// Restart the GUI process
-    Restart
+    Restart,
+    /// Show GUI status
+    Status
 }
 
 fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> {
