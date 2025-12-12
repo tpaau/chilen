@@ -4,7 +4,7 @@ use bincode::{config::standard, decode_from_std_read};
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{ClientCommand, DaemonExitStatus, SOCKET_NAME, get_daemon_socket};
+use mpipc::{ClientCommand, DaemonError, DaemonExitStatus, SOCKET_NAME, get_daemon_socket};
 
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     match conn {
@@ -48,14 +48,16 @@ fn handle_connection(conn: Stream) {
     });
 }
 
-pub fn start() -> Result<DaemonExitStatus, DaemonExitStatus> {
+pub fn start() -> Result<DaemonExitStatus, DaemonError> {
     debug!("Starting daemon on '{SOCKET_NAME}'");
 
     let socket = match get_daemon_socket() {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
-            return Err(DaemonExitStatus::SocketError);
+            return Err(DaemonError::SocketError {
+                error: e.to_string(),
+            });
         }
     };
 
@@ -66,7 +68,9 @@ pub fn start() -> Result<DaemonExitStatus, DaemonExitStatus> {
         Ok(listener) => listener,
         Err(e) => {
             error!("Failed creating a listener for the daemon socket: '{e}'");
-            return Err(DaemonExitStatus::SocketTaken);
+            return Err(DaemonError::SocketError {
+                error: e.to_string(),
+            });
         }
     };
 
@@ -76,5 +80,6 @@ pub fn start() -> Result<DaemonExitStatus, DaemonExitStatus> {
         handle_connection(conn);
     }
 
-    Err(DaemonExitStatus::StoppedUnexpectedly)
+    error!("Daemon stopped unexpectedly");
+    Err(DaemonError::StoppedUnexpectedly)
 }

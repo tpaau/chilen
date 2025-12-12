@@ -52,6 +52,17 @@ pub enum DaemonCommand {
     Status,
 }
 
+impl From<DaemonCommand> for mpipc::DaemonCommand {
+    fn from(value: DaemonCommand) -> Self {
+        match value {
+            DaemonCommand::Start => mpipc::DaemonCommand::Start,
+            DaemonCommand::Stop => mpipc::DaemonCommand::Stop,
+            DaemonCommand::Restart => mpipc::DaemonCommand::Restart,
+            DaemonCommand::Status => mpipc::DaemonCommand::Status,
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum GuiCommand {
     /// Start the GUI process

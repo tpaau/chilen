@@ -21,11 +21,18 @@ fn main() {
                         error!("Daemon failed: {e}");
                     }
                 },
-                DaemonCommand::Stop => {}
-                DaemonCommand::Restart => {}
-                DaemonCommand::Status => {}
+                _ => {
+                    mpipc::exec_daemon_command(command.into());
+                }
             },
-            Command::Gui { command } => {}
+            Command::Gui { command } => match gui::start(command) {
+                Ok(status) => {
+                    info!("GUI exited: {status}");
+                }
+                Err(e) => {
+                    error!("GUI failed: {e}");
+                }
+            },
         }
     } else {
     }
