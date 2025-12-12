@@ -12,4 +12,4 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Check format
-      run: cargo fmt --check
+      run: cargo fmt --all --check
