@@ -12,35 +12,21 @@ fn main() {
 
     if let Some(command) = args.command {
         match command {
-            Command::Daemon { command } => {
-                match command {
-                    DaemonCommand::Start => {
-                        match daemon::start() {
-                            Ok(status) => {
-                                info!("Daemon exited: {status}");
-                            }
-                            Err(e) => {
-                                error!("Daemon failed to start: {e}");
-                            }
-                        }
+            Command::Daemon { command } => match command {
+                DaemonCommand::Start => match daemon::start() {
+                    Ok(status) => {
+                        info!("Daemon exited: {status}");
                     }
-                    DaemonCommand::Stop => {
-
+                    Err(e) => {
+                        error!("Daemon failed: {e}");
                     }
-                    DaemonCommand::Restart => {
-
-                    }
-                    DaemonCommand::Status => {
-
-                    }
-                }
-            }
-            Command::Gui { command } => {
-
-            }
+                },
+                DaemonCommand::Stop => {}
+                DaemonCommand::Restart => {}
+                DaemonCommand::Status => {}
+            },
+            Command::Gui { command } => {}
         }
-    }
-    else {
-
+    } else {
     }
 }

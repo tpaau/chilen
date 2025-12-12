@@ -1,20 +1,18 @@
-use clap::{
-    Parser,
-    Subcommand
-};
+use clap::{Parser, Subcommand};
 
 use env_logger::Builder;
-use log::{trace, error, LevelFilter};
+use log::{LevelFilter, error, trace};
 
 #[derive(Parser)]
-#[command(version,
+#[command(
+    version,
     author = "tpaau <tpaau-17DB@tutamail.com>",
-    help_template =
-"{before-help}{name} {version}
+    help_template = "{before-help}{name} {version}
 {author-with-newline}{about-with-newline}
 {usage-heading} {usage}
 {all-args}{after-help}
-")]
+"
+)]
 pub struct Args {
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -38,7 +36,7 @@ pub enum Command {
     Gui {
         #[command(subcommand)]
         /// Command for the GUI
-        command: GuiCommand
+        command: GuiCommand,
     },
 }
 
@@ -51,7 +49,7 @@ pub enum DaemonCommand {
     /// Restart the daemon process
     Restart,
     /// Show daemon status
-    Status
+    Status,
 }
 
 #[derive(Subcommand)]
@@ -63,32 +61,20 @@ pub enum GuiCommand {
     /// Restart the GUI process
     Restart,
     /// Show GUI status
-    Status
+    Status,
 }
 
 fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> {
     match filter_string.to_lowercase().as_str() {
-        "0" | "off" => {
-            Ok(LevelFilter::Off)
-        }
-        "1" | "error" => {
-            Ok(LevelFilter::Error)
-        }
-        "2" | "warn" => {
-            Ok(LevelFilter::Warn)
-        }
-        "3" | "info" => {
-            Ok(LevelFilter::Info)
-        }
-        "4" | "debug" => {
-            Ok(LevelFilter::Debug)
-        }
-        "5" | "trace" => {
-            Ok(LevelFilter::Trace)
-        }
-        _ => {
-            Err(format!("No log level for the provided string: '{filter_string}'"))
-        }
+        "0" | "off" => Ok(LevelFilter::Off),
+        "1" | "error" => Ok(LevelFilter::Error),
+        "2" | "warn" => Ok(LevelFilter::Warn),
+        "3" | "info" => Ok(LevelFilter::Info),
+        "4" | "debug" => Ok(LevelFilter::Debug),
+        "5" | "trace" => Ok(LevelFilter::Trace),
+        _ => Err(format!(
+            "No log level for the provided string: '{filter_string}'"
+        )),
     }
 }
 

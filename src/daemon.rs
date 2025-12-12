@@ -1,17 +1,10 @@
 use std::{io::BufReader, thread};
 
 use bincode::{config::standard, decode_from_std_read};
-use interprocess::local_socket::{
-    traits::ListenerExt, ListenerOptions, Stream
-};
+use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{
-    get_daemon_socket,
-    DaemonExitStatus,
-    ClientCommand,
-    SOCKET_NAME,
-};
+use mpipc::{ClientCommand, DaemonExitStatus, SOCKET_NAME, get_daemon_socket};
 
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     match conn {

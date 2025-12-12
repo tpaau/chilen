@@ -37,7 +37,7 @@ impl Display for DaemonExitStatus {
                 write!(f, "Daemonm stopped unexpectedly for an unknown reason")
             }
             DaemonExitStatus::SocketTaken => {
-                write!(f, "The daemon socket is taken, likely by another daemon instance")
+                write!(f, "The socket is taken, likely by another daemon instance")
             }
             DaemonExitStatus::SocketError => {
                 write!(f, "A socket could not be created")
