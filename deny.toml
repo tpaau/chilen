@@ -102,7 +102,6 @@ allow = [
 	"Unicode-3.0",
 	"MPL-2.0",
 	"0BSD",
-	"AGPL-3.0-or-later",
 	"Zlib",
 	"BSD-3-Clause",
 	"AGPL-3.0-only"

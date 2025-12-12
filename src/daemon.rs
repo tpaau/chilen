@@ -1,16 +1,16 @@
-use std::io::BufReader;
+use std::{io::BufReader, thread};
 
 use bincode::{config::standard, decode_from_std_read};
 use interprocess::local_socket::{
     traits::ListenerExt, ListenerOptions, Stream
 };
-use log::{trace, debug, warn, error};
+use log::{debug, error, info, trace, warn};
 
 use mpipc::{
+    get_daemon_socket,
     DaemonExitStatus,
     ClientCommand,
     SOCKET_NAME,
-    SOCKET,
 };
 
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
@@ -23,21 +23,52 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
+fn handle_connection(conn: Stream) {
+    trace!("New connection to the daemon: {conn:?}");
+
+    thread::spawn(|| {
+        trace!("New thread spawned for the connection");
+
+        let mut conn = BufReader::new(conn);
+
+        let command = match decode_from_std_read(&mut conn, standard()) {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                error!("Faild to decode a client command: {e}");
+                return;
+            }
+        };
+
+        match command {
+            ClientCommand::Stop => {
+                info!("Shutting down (client request)");
+                panic!("Shutdown not implemented!")
+            }
+            ClientCommand::Restart => {
+                info!("Restarting down (client request)");
+                panic!("Daemon restart is not implemented!");
+            }
+            ClientCommand::Status => {
+                panic!("Daemon status is not implemented!");
+            }
+        }
+    });
+}
+
 pub fn start() -> Result<DaemonExitStatus, DaemonExitStatus> {
     debug!("Starting daemon on '{SOCKET_NAME}'");
 
-    trace!("Obtaining a namespaced socket for '{SOCKET_NAME}'");
-    let socket = match &*SOCKET {
-        Ok(socket) => socket,
+    let socket = match get_daemon_socket() {
+        Ok(sock) => sock,
         Err(e) => {
-            error!("Could not create a socket: {e}");
+            error!("Could not obtain a socket: {e}");
             return Err(DaemonExitStatus::SocketError);
         }
     };
 
+    trace!("Creating a listener on '{SOCKET_NAME}'");
     let opts = ListenerOptions::new().name(socket.clone());
 
-    trace!("Creating a namespaced listener on '{SOCKET_NAME}'");
     let listener = match opts.create_sync() {
         Ok(listener) => listener,
         Err(e) => {
@@ -49,24 +80,8 @@ pub fn start() -> Result<DaemonExitStatus, DaemonExitStatus> {
     debug!("Daemon listening on '{SOCKET_NAME}'");
 
     for conn in listener.incoming().filter_map(handle_error) {
-        trace!("New connection to the daemon: {conn:?}");
-
-        let mut conn = BufReader::new(conn);
-
-        let command = match decode_from_std_read(&mut conn, standard()) {
-            Ok(cmd) => cmd,
-            Err(e) => {
-                error!("Faild to decode a client command: {e}");
-                continue;
-            }
-        };
-
-        match command {
-            ClientCommand::Shutdown => {
-                return Ok(DaemonExitStatus::ExitRequested);
-            }
-        }
+        handle_connection(conn);
     }
 
-    Err(DaemonExitStatus::ExitedUnexpectedly)
+    Err(DaemonExitStatus::StoppedUnexpectedly)
 }

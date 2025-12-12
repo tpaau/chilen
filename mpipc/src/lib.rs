@@ -1,25 +1,30 @@
 use std::{
-    sync::LazyLock,
-    fmt::Display
+    fmt::Display, io::BufReader, sync::LazyLock
 };
 
-use bincode::Decode;
+use bincode::{config::standard, encode_to_vec, Decode, Encode};
 use serde::{Deserialize, Serialize};
 use interprocess::local_socket::{
-    GenericNamespaced, Name, ToNsName
+    GenericNamespaced, Name, Stream, ToNsName
 };
+use log::{trace, error};
 
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 pub static SOCKET: LazyLock<Result<Name<'_>, std::io::Error>> = LazyLock::new(|| {
     SOCKET_NAME.to_ns_name::<GenericNamespaced>()
 });
 
-#[derive(Serialize, Deserialize, Decode, Debug, Clone)]
+#[derive(Serialize, Deserialize, Decode)]
 pub enum DaemonExitStatus {
     ExitRequested,
-    ExitedUnexpectedly,
+    StoppedUnexpectedly,
     SocketTaken,
     SocketError,
+}
+
+#[derive(Serialize, Deserialize, Encode, Decode)]
+pub enum CommandError {
+    EncodingError { error: String }
 }
 
 impl Display for DaemonExitStatus {
@@ -28,7 +33,7 @@ impl Display for DaemonExitStatus {
             DaemonExitStatus::ExitRequested => {
                 write!(f, "Daemon stopped because another process requested it to exit")
             }
-            DaemonExitStatus::ExitedUnexpectedly => {
+            DaemonExitStatus::StoppedUnexpectedly => {
                 write!(f, "Daemonm stopped unexpectedly for an unknown reason")
             }
             DaemonExitStatus::SocketTaken => {
@@ -41,7 +46,38 @@ impl Display for DaemonExitStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Decode, Debug, Clone)]
+#[derive(Serialize, Deserialize, Encode, Decode)]
 pub enum ClientCommand {
-    Shutdown
+    Stop,
+    Restart,
+    Status
+}
+
+pub fn get_daemon_socket<'a>() -> Result<Name<'a>, &'a std::io::Error> {
+    trace!("Obtaining a namespaced socket for '{SOCKET_NAME}'");
+
+    match &*SOCKET {
+        Ok(socket) => Ok(socket.clone()),
+        Err(e) => {
+            error!("Could not obtain a socket: {e}");
+            Err(e)
+        }
+    }
+}
+
+pub fn serialize_command(cmd: ClientCommand) -> Result<Vec<u8>, CommandError> {
+    let cmd = match encode_to_vec(cmd, standard()) {
+        Ok(v) => v,
+        Err(e) => {
+            error!("Failed serializing command: {e}");
+            return Err(CommandError::EncodingError{error: e.to_string()});
+        }
+    };
+
+    Ok(cmd)
+}
+
+pub fn connect_to_daemon() -> Result<BufReader<Stream>, String> {
+
+    Err(String::from("Not implemented"))
 }
