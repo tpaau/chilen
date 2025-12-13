@@ -6,6 +6,30 @@ use log::{debug, error, info, trace, warn};
 
 use mpipc::{ClientCommand, DaemonError, DaemonExitStatus, SOCKET_NAME, get_daemon_socket};
 
+#[derive(Debug)]
+/// Parsed CLI arguments for the daemon.
+pub enum DaemonCommand {
+    /// Start the daemon. This is not to be sent over the daemon socket.
+    Start,
+    /// Command for the daemon instance.
+    Message {
+        /// The command content meant to be sent over the daemon socket.
+        command: ClientCommand,
+    },
+}
+
+impl TryFrom<DaemonCommand> for ClientCommand {
+    type Error = String;
+    fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
+        match value {
+            DaemonCommand::Start => Err(String::from(
+                "Daemon start command cannot be converted to a client command",
+            )),
+            DaemonCommand::Message { command } => Ok(command),
+        }
+    }
+}
+
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     match conn {
         Ok(c) => Some(c),

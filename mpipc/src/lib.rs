@@ -1,15 +1,23 @@
-use std::{fmt::Display, sync::LazyLock};
+use std::{
+    fmt::Display,
+    io::{BufReader, Write},
+    sync::LazyLock,
+};
 
-use bincode::{Decode, Encode, config::standard, encode_to_vec};
+use bincode::{Decode, Encode, config::standard, decode_from_reader, encode_to_vec};
 use interprocess::local_socket::{GenericNamespaced, Name, Stream, ToNsName, prelude::*};
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
 
+/// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
+
+/// The namespaced daemon socket address.
 pub static SOCKET: LazyLock<Result<Name<'_>, std::io::Error>> =
     LazyLock::new(|| SOCKET_NAME.to_ns_name::<GenericNamespaced>());
 
 #[derive(Serialize, Deserialize, Decode, Debug)]
+/// The exit status of the daemon.
 pub enum DaemonExitStatus {
     ExitRequested,
 }
@@ -28,11 +36,14 @@ impl Display for DaemonExitStatus {
 }
 
 #[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+/// Error related to the daemon.
 pub enum DaemonError {
     StoppedUnexpectedly,
     EncodingError { error: String },
+    DecodingError { error: String },
     SocketError { error: String },
     ConnectionError { error: String },
+    SendingError { error: String },
 }
 
 impl Display for DaemonError {
@@ -44,34 +55,60 @@ impl Display for DaemonError {
             DaemonError::EncodingError { error } => {
                 write!(f, "Failed encoding daemon command: {error}")
             }
+            DaemonError::DecodingError { error } => {
+                write!(f, "Could not decode the response from the daemon: {error}")
+            }
             DaemonError::SocketError { error } => {
                 write!(f, "Socket error: {error}")
             }
             DaemonError::ConnectionError { error } => {
-                write!(f, "Connection error: {error}")
+                write!(f, "Could not connect to the daemon: {error}")
+            }
+            DaemonError::SendingError { error } => {
+                write!(f, "Could not send the commadnd to the daemon: {error}")
             }
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Decode, Debug)]
+/// Response to a client command sent to the daemon.
 pub enum DaemonResponse {
     Ok,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+impl Display for DaemonResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DaemonResponse::Ok => write!(f, "Command executed successfully"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub enum DaemonCommand {
     Start,
+    Message { command: ClientCommand },
+}
+
+#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+/// Command that can be sent to the daemon over a socket.
+pub enum ClientCommand {
     Stop,
     Restart,
     Status,
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode)]
-pub enum ClientCommand {
-    Stop,
-    Restart,
-    Status,
+impl TryFrom<DaemonCommand> for ClientCommand {
+    type Error = String;
+    fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
+        match value {
+            DaemonCommand::Start => Err(String::from(
+                "Daemon start command cannot be converted to a client command",
+            )),
+            DaemonCommand::Message { command } => Ok(command),
+        }
+    }
 }
 
 pub fn get_daemon_socket<'a>() -> Result<Name<'a>, &'a std::io::Error> {
@@ -126,7 +163,7 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
     Ok(conn)
 }
 
-pub fn exec_daemon_command(cmd: DaemonCommand) -> Result<DaemonResponse, DaemonError> {
+pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonError> {
     trace!("Executing daemon command: {cmd:?}");
 
     let conn = match connect_to_daemon() {
@@ -137,5 +174,32 @@ pub fn exec_daemon_command(cmd: DaemonCommand) -> Result<DaemonResponse, DaemonE
         }
     };
 
-    panic!("Not implemented!")
+    let cmd = match serialize_command(cmd) {
+        Ok(cmd) => cmd,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+
+    let mut buf = BufReader::new(conn);
+
+    match buf.get_mut().write_all(&cmd) {
+        Ok(_) => {}
+        Err(e) => {
+            return Err(DaemonError::SendingError {
+                error: e.to_string(),
+            });
+        }
+    }
+
+    let response: DaemonResponse = match decode_from_reader(buf, standard()) {
+        Ok(response) => response,
+        Err(e) => {
+            return Err(DaemonError::DecodingError {
+                error: e.to_string(),
+            });
+        }
+    };
+
+    Ok(response)
 }

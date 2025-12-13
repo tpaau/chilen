@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 use env_logger::Builder;
 use log::{LevelFilter, error, trace};
+use mpipc::ClientCommand;
 
 #[derive(Parser)]
 #[command(
@@ -56,9 +57,15 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
     fn from(value: DaemonCommand) -> Self {
         match value {
             DaemonCommand::Start => mpipc::DaemonCommand::Start,
-            DaemonCommand::Stop => mpipc::DaemonCommand::Stop,
-            DaemonCommand::Restart => mpipc::DaemonCommand::Restart,
-            DaemonCommand::Status => mpipc::DaemonCommand::Status,
+            DaemonCommand::Stop => mpipc::DaemonCommand::Message {
+                command: ClientCommand::Stop,
+            },
+            DaemonCommand::Restart => mpipc::DaemonCommand::Message {
+                command: ClientCommand::Restart,
+            },
+            DaemonCommand::Status => mpipc::DaemonCommand::Message {
+                command: ClientCommand::Status,
+            },
         }
     }
 }

@@ -7,7 +7,7 @@ use log::{error, info};
 
 use crate::argparse::{Command, DaemonCommand, GuiCommand};
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args();
 
     if let Some(command) = args.command {
@@ -17,16 +17,32 @@ fn main() {
                     match daemon::start() {
                         Ok(status) => {
                             info!("Daemon exited: {status}");
+                            Ok(())
                         }
                         Err(e) => {
                             error!("Daemon failed: {e}");
+                            Err(format!("Daemon failed: {e}").into())
                         }
                     }
                 } else {
-                    match mpipc::exec_daemon_command(command.into()) {
-                        Ok(response) => {}
+                    let cmd: mpipc::DaemonCommand = command.into();
+                    let cmd = match cmd.try_into() {
+                        Ok(cmd) => cmd,
                         Err(e) => {
-                            error!("Failed executing daemon command: {e}")
+                            return Err(
+                                format!("Could not send the command to the daemon: {e}").into()
+                            );
+                        }
+                    };
+
+                    match mpipc::exec_client_command(cmd) {
+                        Ok(response) => {
+                            info!("Got a response from daemon: {response}");
+                            Ok(())
+                        }
+                        Err(e) => {
+                            error!("Failed executing daemon command: {e}");
+                            Err(format!("Failed executing daemon command: {e}").into())
                         }
                     }
                 }
@@ -36,9 +52,11 @@ fn main() {
                     match gui::start() {
                         Ok(status) => {
                             info!("GUI exited: {status}");
+                            Ok(())
                         }
                         Err(e) => {
                             error!("GUI failed: {e}");
+                            Err(format!("GUI failed: {e}").into())
                         }
                     }
                 } else {
