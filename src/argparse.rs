@@ -18,7 +18,7 @@ pub struct Args {
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    #[arg(long, short = 'v', default_value_t = String::from("Info"))]
+    #[arg(long, short = 'v', default_value_t = String::from("Warn"))]
     /// Set the log filter level
     pub logger_verbosity: String,
 }

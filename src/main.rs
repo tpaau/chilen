@@ -7,14 +7,15 @@ use log::{error, info};
 
 use crate::argparse::{Command, DaemonCommand, GuiCommand};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args();
 
     if let Some(command) = args.command {
         match command {
             Command::Daemon { command } => {
                 if let DaemonCommand::Start = command {
-                    match daemon::start() {
+                    match daemon::start().await {
                         Ok(status) => {
                             info!("Daemon exited: {status}");
                             Ok(())
@@ -38,6 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match mpipc::exec_client_command(cmd) {
                         Ok(response) => {
                             info!("Got a response from daemon: {response}");
+                            eprintln!("{response}");
                             Ok(())
                         }
                         Err(e) => {

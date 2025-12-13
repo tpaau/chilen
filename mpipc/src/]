@@ -71,18 +71,16 @@ impl Display for DaemonError {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Serialize, Deserialize, Decode, Debug)]
 /// Response to a client command sent to the daemon.
 pub enum DaemonResponse {
     Ok,
-    Status {},
 }
 
 impl Display for DaemonResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DaemonResponse::Ok => write!(f, "Command executed successfully"),
-            DaemonResponse::Status {} => write!(f, "Daemon status response"),
         }
     }
 }
@@ -106,7 +104,7 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
         match value {
             DaemonCommand::Start => Err(String::from(
-                "The start command is not meant to be sent to the daemon",
+                "Daemon start command cannot be converted to a client command",
             )),
             DaemonCommand::Message { command } => Ok(command),
         }
@@ -123,6 +121,20 @@ pub fn get_daemon_socket<'a>() -> Result<Name<'a>, &'a std::io::Error> {
             Err(e)
         }
     }
+}
+
+pub fn serialize_command(cmd: ClientCommand) -> Result<Vec<u8>, DaemonError> {
+    let cmd = match encode_to_vec(cmd, standard()) {
+        Ok(v) => v,
+        Err(e) => {
+            error!("Failed serializing command: {e}");
+            return Err(DaemonError::EncodingError {
+                error: e.to_string(),
+            });
+        }
+    };
+
+    Ok(cmd)
 }
 
 pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
@@ -162,12 +174,10 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
         }
     };
 
-    let cmd = match encode_to_vec(cmd, standard()) {
+    let cmd = match serialize_command(cmd) {
         Ok(cmd) => cmd,
         Err(e) => {
-            return Err(DaemonError::EncodingError {
-                error: e.to_string(),
-            });
+            return Err(e);
         }
     };
 

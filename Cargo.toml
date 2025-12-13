@@ -17,6 +17,7 @@ rusqlite = "0.37.0"
 mpris-server = { version = "0.9.0" }
 cxx-qt = "0.7.3"
 mpipc = { path = "mpipc" }
+tokio = { version = "1.48.0", features = ["full"] }
 
 [features]
 default = ["mpris", "cli", "gui"]
