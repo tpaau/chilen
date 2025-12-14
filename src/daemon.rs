@@ -1,6 +1,7 @@
 use std::{
     io::{BufReader, Write},
-    sync::mpsc::{Receiver, Sender, channel},
+    process::exit,
+    sync::mpsc::{Sender, channel},
     thread::{self, JoinHandle},
 };
 
@@ -14,14 +15,7 @@ use mpipc::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-/// Command sent from the daemon to its threads.
 enum ThreadCommand {
-    Quit,
-    Test,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-enum ThreadMessage {
     Shutdown,
     Restart,
 }
@@ -60,87 +54,61 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-fn spawn_daemon_thread(
-    conn: Stream,
-    ttx: Sender<ThreadMessage>,
-    trx: Receiver<ThreadCommand>,
-) -> JoinHandle<()> {
+fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
 
     thread::spawn(move || {
         trace!("thread: Handling client connection");
 
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            trace!("thread: New runtime spawned!");
+        loop {
+            let mut conn = BufReader::new(&conn);
 
-            async move {
-                trace!("thread: Listening for commands from the daemon");
-                while let Ok(msg) = trx.recv() {
-                    match msg {
-                        ThreadCommand::Quit => {
-                            trace!("thread: Shutdown command recieved");
-                            return;
-                        }
-                        ThreadCommand::Test => {
-                            trace!("thread: Test command recieved")
-                        }
-                    }
+            let command = match decode_from_std_read(&mut conn, standard()) {
+                Ok(cmd) => cmd,
+                Err(e) => {
+                    error!("thread: Failed decoding a client command: {e}");
+                    return;
                 }
-            }
-            .await;
+            };
 
-            async {
-                loop {
-                    trace!("thread: Ready to recieve the command");
+            trace!("thread: Ready to recieve the command from the client");
 
-                    let mut conn = BufReader::new(&conn);
+            match command {
+                ClientCommand::Stop => {
+                    info!("thread: Recieved shutdown command from the client");
 
-                    let command = match decode_from_std_read(&mut conn, standard()) {
-                        Ok(cmd) => cmd,
-                        Err(e) => {
-                            error!("thread: Failed decoding a client command: {e}");
-                            return;
-                        }
-                    };
-
-                    match command {
-                        ClientCommand::Stop => {
-                            info!("thread: Shutting down (client request)");
-
-                            if let Err(e) = ttx.send(ThreadMessage::Shutdown) {
-                                error!("thread: Failed sending message to the daemon: {e}");
-                            } else {
-                                let msg = match encode_to_vec(DaemonResponse::Ok, standard()) {
-                                    Ok(msg) => msg,
-                                    Err(e) => {
-                                        error!("thread: Could not serialize the response: {e}");
-                                        return;
-                                    }
-                                };
-
-                                match conn.get_mut().write_all(&msg) {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        error!("thread: Failed sending response message: {e}");
-                                    }
-                                };
+                    if let Err(e) = ttx.send(ThreadCommand::Shutdown) {
+                        error!("thread: Failed sending message to the daemon: {e}");
+                    } else {
+                        let msg = match encode_to_vec(DaemonResponse::Ok, standard()) {
+                            Ok(msg) => msg,
+                            Err(e) => {
+                                error!("thread: Could not serialize the response: {e}");
+                                return;
                             }
+                        };
 
-                            // panic!("Shutdown not implemented!");
-                        }
-                        ClientCommand::Restart => {
-                            info!("thread: Restarting (client request)");
-                            panic!("Daemon restart is not implemented!");
-                        }
-                        ClientCommand::Status => {
-                            panic!("Daemon status is not implemented!");
-                        }
+                        match conn.get_mut().write_all(&msg) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                error!("thread: Failed sending response message: {e}");
+                            }
+                        };
                     }
+
+                    return;
+
+                    // panic!("Shutdown not implemented!");
+                }
+                ClientCommand::Restart => {
+                    info!("thread: Recieved restart command from the client");
+                    panic!("Daemon restart is not implemented!");
+                }
+                ClientCommand::Status => {
+                    // panic!("Daemon status is not implemented!");
                 }
             }
-            .await;
-        });
+        }
     })
 }
 
@@ -172,42 +140,25 @@ pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
 
     debug!("Daemon listening on '{SOCKET_NAME}'");
 
-    let mut threads = Vec::new();
     for conn in listener.incoming().filter_map(handle_error) {
-        let (dtx, trx) = channel();
         let (ttx, drx) = channel();
 
-        threads.push((spawn_daemon_thread(conn, ttx, trx), dtx));
+        spawn_daemon_thread(conn, ttx);
 
         async {
             while let Ok(msg) = drx.recv() {
                 match msg {
-                    ThreadMessage::Shutdown => {
-                        for (thread, dtx) in &threads {
-                            trace!("Sending quit command to thread: {thread:?}");
-                            if let Err(e) = dtx.send(ThreadCommand::Quit) {
-                                error!("Failed sending command to the thread: {e}");
-                            }
-                        }
+                    ThreadCommand::Shutdown => {
+                        trace!("Recieved shutdown command from a thread");
+                        exit(0);
                     }
-                    ThreadMessage::Restart => {
-                        for (thread, dtx) in &threads {
-                            trace!("Sending quit command to thread: {thread:?}");
-                            if let Err(e) = dtx.send(ThreadCommand::Quit) {
-                                error!("Failed sending command to the thread: {e}");
-                            }
-                        }
+                    ThreadCommand::Restart => {
+                        trace!("Recieved restart command from a thread");
                     }
                 }
             }
         }
         .await;
-    }
-
-    for (thread, _) in threads {
-        if let Err(e) = thread.join() {
-            error!("Failed joining a thread handle: {e:?}");
-        }
     }
 
     Ok(DaemonExitStatus::ExitRequested)
