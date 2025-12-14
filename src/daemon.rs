@@ -138,7 +138,7 @@ pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
         }
     };
 
-    debug!("Daemon listening on '{SOCKET_NAME}'");
+    info!("Daemon listening on '{SOCKET_NAME}'");
 
     for conn in listener.incoming().filter_map(handle_error) {
         let (ttx, drx) = channel();
