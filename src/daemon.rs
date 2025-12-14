@@ -60,85 +60,88 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-async fn handle_client_connection(
-    conn: Stream,
-    ttx: Sender<ThreadMessage>,
-    trx: Receiver<ThreadCommand>,
-) {
-    trace!("Handling client connection");
-
-    async move {
-        while let Ok(msg) = trx.recv() {
-            match msg {
-                ThreadCommand::Quit => {
-                    trace!("Shutdown command recieved");
-                    return;
-                }
-                ThreadCommand::Test => {
-                    trace!("Test command recieved")
-                }
-            }
-        }
-    }
-    .await;
-
-    loop {
-        async {
-            let mut conn = BufReader::new(&conn);
-
-            let command = match decode_from_std_read(&mut conn, standard()) {
-                Ok(cmd) => cmd,
-                Err(e) => {
-                    error!("Failed to decode a client command: {e}");
-                    return;
-                }
-            };
-
-            match command {
-                ClientCommand::Stop => {
-                    info!("Shutting down (client request)");
-
-                    if let Err(e) = ttx.send(ThreadMessage::Shutdown) {
-                        error!("Failed sending message to the daemon: {e}");
-                    } else {
-                        let msg = match encode_to_vec(DaemonResponse::Ok, standard()) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                error!("Could not serialize the response: {e}");
-                                return;
-                            }
-                        };
-
-                        match conn.get_mut().write_all(&msg) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!("Failed sending response message: {e}");
-                            }
-                        };
-                    }
-
-                    // panic!("Shutdown not implemented!");
-                }
-                ClientCommand::Restart => {
-                    info!("Restarting (client request)");
-                    panic!("Daemon restart is not implemented!");
-                }
-                ClientCommand::Status => {
-                    panic!("Daemon status is not implemented!");
-                }
-            }
-        }
-        .await;
-    }
-}
-
 fn spawn_daemon_thread(
     conn: Stream,
     ttx: Sender<ThreadMessage>,
     trx: Receiver<ThreadCommand>,
-) -> JoinHandle<impl Future> {
+) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
-    thread::spawn(move || handle_client_connection(conn, ttx, trx))
+
+    thread::spawn(move || {
+        trace!("thread: Handling client connection");
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            trace!("thread: New runtime spawned!");
+
+            async move {
+                trace!("thread: Listening for commands from the daemon");
+                while let Ok(msg) = trx.recv() {
+                    match msg {
+                        ThreadCommand::Quit => {
+                            trace!("thread: Shutdown command recieved");
+                            return;
+                        }
+                        ThreadCommand::Test => {
+                            trace!("thread: Test command recieved")
+                        }
+                    }
+                }
+            }
+            .await;
+
+            async {
+                loop {
+                    trace!("thread: Ready to recieve the command");
+
+                    let mut conn = BufReader::new(&conn);
+
+                    let command = match decode_from_std_read(&mut conn, standard()) {
+                        Ok(cmd) => cmd,
+                        Err(e) => {
+                            error!("thread: Failed decoding a client command: {e}");
+                            return;
+                        }
+                    };
+
+                    match command {
+                        ClientCommand::Stop => {
+                            info!("thread: Shutting down (client request)");
+
+                            if let Err(e) = ttx.send(ThreadMessage::Shutdown) {
+                                error!("thread: Failed sending message to the daemon: {e}");
+                            } else {
+                                let msg = match encode_to_vec(DaemonResponse::Ok, standard()) {
+                                    Ok(msg) => msg,
+                                    Err(e) => {
+                                        error!("thread: Could not serialize the response: {e}");
+                                        return;
+                                    }
+                                };
+
+                                match conn.get_mut().write_all(&msg) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        error!("thread: Failed sending response message: {e}");
+                                    }
+                                };
+                            }
+
+                            // panic!("Shutdown not implemented!");
+                        }
+                        ClientCommand::Restart => {
+                            info!("thread: Restarting (client request)");
+                            panic!("Daemon restart is not implemented!");
+                        }
+                        ClientCommand::Status => {
+                            panic!("Daemon status is not implemented!");
+                        }
+                    }
+                }
+            }
+            .await;
+        });
+    })
 }
 
 pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
