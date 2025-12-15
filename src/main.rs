@@ -1,14 +1,12 @@
 mod argparse;
 mod daemon;
 mod gui;
+pub mod cxxqt_object;
 
-use std::{
-    thread::{self, sleep},
-    time::Duration,
-};
+use std::thread;
 
 use argparse::parse_args;
-use log::{error, info, trace};
+use log::{trace, info, error};
 
 use crate::argparse::{Command, DaemonCommand, GuiCommand};
 
@@ -72,9 +70,6 @@ async fn main() {
                 Err(e) => error!("Daemon failed: {e}"),
             }
         });
-
-        // For testing purposes only to give the daemon time
-        sleep(Duration::from_secs(1));
 
         trace!("Starting GUI");
         match gui::start() {
