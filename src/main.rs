@@ -1,12 +1,12 @@
 mod argparse;
+pub mod cxxqt_object;
 mod daemon;
 mod gui;
-pub mod cxxqt_object;
 
 use std::thread;
 
 use argparse::parse_args;
-use log::{trace, info, error};
+use log::{error, info, trace};
 
 use crate::argparse::{Command, DaemonCommand, GuiCommand};
 
@@ -19,10 +19,7 @@ async fn main() {
             Command::Daemon { command } => {
                 if let DaemonCommand::Start = command {
                     match daemon::start().await {
-                        Ok(status) => {
-                            info!("Daemon exited: {status}");
-                            eprintln!("Daemon exited: {status}");
-                        }
+                        Ok(status) => info!("Daemon exited: {status}"),
                         Err(e) => error!("Daemon failed: {e}"),
                     }
                 } else {
@@ -35,10 +32,7 @@ async fn main() {
                         }
                     };
                     match mpipc::exec_client_command(cmd) {
-                        Ok(response) => {
-                            info!("Got a response from the daemon: {response}");
-                            eprintln!("Got a response from the daemon: {response}");
-                        }
+                        Ok(response) => info!("Got a response from the daemon: {response}"),
                         Err(e) => error!("Failed executing the daemon command: {e}"),
                     }
                 }
@@ -46,10 +40,7 @@ async fn main() {
             Command::Gui { command } => {
                 if let GuiCommand::Start = command {
                     match gui::start() {
-                        Ok(status) => {
-                            info!("GUI exited: {status}");
-                            eprintln!("GUI exited: {status}")
-                        }
+                        Ok(status) => info!("GUI exited: {status}"),
                         Err(e) => error!("GUI failed: {e}"),
                     }
                 } else {
@@ -63,20 +54,14 @@ async fn main() {
         let handle = thread::spawn(|| {
             let rt = tokio::runtime::Runtime::new().unwrap();
             match rt.block_on(daemon::start()) {
-                Ok(status) => {
-                    info!("Daemon exited: {status}");
-                    eprintln!("Daemon exited: {status}");
-                }
+                Ok(status) => info!("Daemon exited: {status}"),
                 Err(e) => error!("Daemon failed: {e}"),
             }
         });
 
         trace!("Starting GUI");
         match gui::start() {
-            Ok(status) => {
-                info!("GUI exited: {status}");
-                eprintln!("GUI exited: {status}")
-            }
+            Ok(status) => info!("GUI exited: {status}"),
             Err(e) => error!("GUI failed: {e}"),
         };
 

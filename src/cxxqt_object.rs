@@ -54,4 +54,3 @@ impl qobject::MyObject {
         println!("Hi from Rust! String is '{string}' and number is {number}");
     }
 }
-

@@ -75,7 +75,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
 
             match command {
                 ClientCommand::Stop => {
-                    info!("thread: Recieved shutdown command from the client");
+                    info!("thread: Received shutdown command from the client");
 
                     if let Err(e) = ttx.send(ThreadCommand::Shutdown) {
                         error!("thread: Failed sending message to the daemon: {e}");
@@ -101,7 +101,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                     // panic!("Shutdown not implemented!");
                 }
                 ClientCommand::Restart => {
-                    info!("thread: Recieved restart command from the client");
+                    info!("thread: Received restart command from the client");
                     panic!("Daemon restart is not implemented!");
                 }
                 ClientCommand::Status => {
@@ -149,11 +149,11 @@ pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
             while let Ok(msg) = drx.recv() {
                 match msg {
                     ThreadCommand::Shutdown => {
-                        trace!("Recieved shutdown command from a thread");
+                        trace!("Received shutdown command from a thread");
                         exit(0);
                     }
                     ThreadCommand::Restart => {
-                        trace!("Recieved restart command from a thread");
+                        trace!("Received restart command from a thread");
                     }
                 }
             }
