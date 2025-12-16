@@ -20,7 +20,20 @@ pub struct Args {
 
     #[arg(long, short = 'v', default_value_t = String::from("Warn"))]
     /// Set the log filter level
+    ///
+    /// Used to configure the logger to filter certain log messages. Useful when debugging
+    /// the program.
+    ///
+    /// Possible values are: `off`, `error`, `warn`, `info`, `debug`, and `trace`.
+    /// Alternatively, you can use numbers from 0 to 5 to set the log filtering level.
     pub logger_verbosity: String,
+
+    #[arg(long, short)]
+    /// The directory with your audio files
+    ///
+    /// By default, only `~/Music/` will be searched. Use this option if you store your music
+    /// outside this directory.
+    pub music_dir: Option<String>,
 }
 
 #[derive(Subcommand)]

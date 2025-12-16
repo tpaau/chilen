@@ -1,14 +1,14 @@
-import QtQuick 2.12
-import QtQuick.Controls 2.12
-import QtQuick.Window 2.12
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Window
 
 // This must match the uri and version
 // specified in the qml_module in the build.rs script.
-import com.kdab.cxx_qt.demo 1.0
+import player
 
 ApplicationWindow {
     height: 480
-    title: qsTr("Hello World")
+    title: qsTr("Prototype Music Player")
     visible: true
     width: 640
     color: palette.window

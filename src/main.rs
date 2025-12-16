@@ -1,5 +1,5 @@
 mod argparse;
-pub mod cxxqt_object;
+mod cxxqt_object;
 mod daemon;
 mod gui;
 

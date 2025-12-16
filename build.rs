@@ -9,7 +9,7 @@ fn main() {
         // - Qt Qml requires linking Qt Network on macOS
         .qt_module("Network")
         .qml_module(QmlModule {
-            uri: "com.kdab.cxx_qt.demo",
+            uri: "player",
             rust_files: &["src/cxxqt_object.rs"],
             qml_files: &["qml/main.qml"],
             ..Default::default()
