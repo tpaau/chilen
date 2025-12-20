@@ -1,7 +1,6 @@
 /// The bridge definition for our QObject
 #[cxx_qt::bridge]
-pub mod qobject {
-
+mod qobject {
     unsafe extern "C++" {
         include!("cxx-qt-lib/qstring.h");
         /// An alias to the QString type

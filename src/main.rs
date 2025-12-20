@@ -2,6 +2,8 @@ mod argparse;
 mod cxxqt_object;
 mod daemon;
 mod gui;
+mod indexer;
+mod track;
 
 use std::thread;
 

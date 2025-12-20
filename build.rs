@@ -10,7 +10,7 @@ fn main() {
         .qt_module("Network")
         .qml_module(QmlModule {
             uri: "player",
-            rust_files: &["src/cxxqt_object.rs"],
+            rust_files: &["src/cxxqt_object.rs", "src/track.rs"],
             qml_files: &["qml/main.qml"],
             ..Default::default()
         })

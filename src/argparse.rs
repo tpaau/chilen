@@ -112,15 +112,18 @@ fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> 
 pub fn parse_args() -> Args {
     let args = Args::parse();
 
-    match level_filter_from_string(&args.logger_verbosity) {
-        Ok(log_level) => {
-            Builder::new().filter_level(log_level).init();
-        }
+    let filter = match level_filter_from_string(&args.logger_verbosity) {
+        Ok(log_level) => log_level,
         Err(e) => {
-            Builder::new().filter_level(LevelFilter::Info).init();
             error!("Failed parsing log level from arguments: {e}");
+            LevelFilter::Info
         }
-    }
+    };
+
+    Builder::new()
+        .filter_level(filter)
+        .filter_module("lofty", LevelFilter::Warn)
+        .init();
 
     trace!("Finished parsing command line arguments");
 
