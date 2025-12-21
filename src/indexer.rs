@@ -1,14 +1,17 @@
 use std::{
+    path::PathBuf,
     sync::{Arc, Mutex},
     thread,
     time::{Duration, SystemTime},
 };
 
-use lofty::read_from_path;
+use lofty::{file::TaggedFileExt, read_from_path};
 use log::{info, trace, warn};
 use walkdir::WalkDir;
 
-pub fn index() {
+use crate::track::Track;
+
+pub fn index(music_dir: Option<PathBuf>) {
     trace!("Indexing the music directory");
 
     let tracks = Arc::new(Mutex::new(Vec::new()));
@@ -16,30 +19,48 @@ pub fn index() {
     let time_start = SystemTime::now();
 
     for result in WalkDir::new("/var/home/mikolaj/Music/").into_iter() {
-        if let Ok(entry) = result {
-            if let Ok(meta) = entry.metadata() {
-                if meta.is_file() {
-                    let lock = Arc::clone(&tracks);
-                    handles.push(thread::spawn(move || match read_from_path(entry.path()) {
-                        Ok(file) => {
+        let entry = match result {
+            Ok(entry) => entry,
+            Err(e) => {
+                warn!("Error while trying to access the file: {e}");
+                continue;
+            }
+        };
+
+        let meta = match entry.metadata() {
+            Ok(meta) => meta,
+            Err(e) => {
+                warn!("Could not get `DirEntry` metadata: {e}");
+                continue;
+            }
+        };
+
+        if meta.is_file() {
+            let lock = Arc::clone(&tracks);
+            handles.push(thread::spawn(move || match read_from_path(entry.path()) {
+                Ok(file) => {
+                    match file.primary_tag() {
+                        Some(tag) => {
+                            let track = Track::from(tag);
                             lock.lock().unwrap().push(file);
                         }
-                        Err(e) => match e.kind() {
-                            lofty::error::ErrorKind::UnknownFormat => {
-                                info!("Likely not an audio file: {:?}", entry.path());
-                            }
-                            _ => {
-                                warn!("Could not get tags from file {:?}: {e}", entry.path());
-                            }
-                        },
-                    }));
+                        None => {
+                            warn!(
+                                "Found an audio file with no tags: {:?}. Ignoring",
+                                entry.path()
+                            );
+                        }
+                    };
                 }
-            }
-        } else {
-            warn!(
-                "Error while trying to access the file: {}",
-                result.unwrap_err()
-            );
+                Err(e) => match e.kind() {
+                    lofty::error::ErrorKind::UnknownFormat => {
+                        info!("Likely not an audio file: {:?}", entry.path());
+                    }
+                    _ => {
+                        warn!("Could not get tags from file {:?}: {e}", entry.path());
+                    }
+                },
+            }));
         }
     }
 

@@ -142,7 +142,7 @@ pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
 
     info!("Daemon listening on '{SOCKET_NAME}'");
 
-    thread::spawn(indexer::index);
+    thread::spawn(|| indexer::index(None));
 
     for conn in listener.incoming().filter_map(handle_error) {
         let (ttx, drx) = channel();
