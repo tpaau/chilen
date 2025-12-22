@@ -72,35 +72,41 @@ where
 
         if meta.is_file() {
             let lock = Arc::clone(&tracks);
-            handles.push(thread::spawn(move || match read_from_path(entry.path()) {
-                Ok(file) => {
-                    match file.primary_tag() {
-                        Some(tag) => {
-                            let track = match Track::with_cover_from_tag(tag) {
-                                Ok(track) => track,
-                                Err(e) => {
-                                    trace!("{:?}", e.error);
-                                    e.track
-                                }
-                            };
-                            lock.lock().unwrap().push(track)
+            handles.push(thread::spawn(move || {
+                let file = match read_from_path(entry.path()) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        match e.kind() {
+                            lofty::error::ErrorKind::UnknownFormat => {
+                                info!("Likely not an audio file: {:?}", entry.path());
+                            }
+                            _ => {
+                                warn!("Could not get tags from file {:?}: {e}", entry.path());
+                            }
                         }
-                        None => {
-                            warn!(
-                                "Found an audio file with no tags: {:?}. Ignoring",
-                                entry.path()
-                            );
-                        }
-                    };
-                }
-                Err(e) => match e.kind() {
-                    lofty::error::ErrorKind::UnknownFormat => {
-                        info!("Likely not an audio file: {:?}", entry.path());
+                        return;
                     }
-                    _ => {
-                        warn!("Could not get tags from file {:?}: {e}", entry.path());
+                };
+
+                let tag = match file.primary_tag() {
+                    Some(tag) => tag,
+                    None => {
+                        warn!(
+                            "Found an audio file with no tags: {:?}. Ignoring",
+                            entry.path()
+                        );
+                        return;
                     }
-                },
+                };
+
+                let track = match Track::with_cover_from_tag(tag) {
+                    Ok(track) => track,
+                    Err(e) => {
+                        trace!("{:?}", e.error);
+                        e.track
+                    }
+                };
+                lock.lock().unwrap().push(track)
             }));
         }
     }
