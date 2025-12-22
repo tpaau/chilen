@@ -21,6 +21,7 @@ mod qobject {
         #[qproperty(QString, title)]
         #[qproperty(QString, album)]
         #[qproperty(QString, genre)]
+        #[qproperty(QString, comment)]
         #[qproperty(i32, track)]
         #[qproperty(i32, track_total)]
         #[qproperty(i32, disk)]
@@ -40,6 +41,7 @@ pub struct RQTrack {
     pub title: QString,
     pub album: QString,
     pub genre: QString,
+    pub comment: QString,
     pub track: i32,
     pub track_total: i32,
     pub disk: i32,
@@ -47,7 +49,7 @@ pub struct RQTrack {
     pub year: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,
@@ -56,6 +58,7 @@ pub struct Track {
     pub title: Option<String>,
     pub album: Option<String>,
     pub genre: Option<String>,
+    pub comment: Option<String>,
     pub track: Option<u32>,
     pub track_total: Option<u32>,
     pub disk: Option<u32>,
@@ -94,6 +97,11 @@ impl From<RQTrack> for Track {
             },
             genre: if !v.genre.is_empty() && !v.genre.is_null() {
                 Some(String::from(v.genre))
+            } else {
+                None
+            },
+            comment: if !v.comment.is_empty() && !v.comment.is_null() {
+                Some(String::from(v.comment))
             } else {
                 None
             },
@@ -136,6 +144,7 @@ impl From<&Tag> for Track {
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
             genre: tag.genre().map(|genre| genre.into()),
+            comment: tag.comment().map(|comment| comment.into()),
             track: tag.track(),
             track_total: tag.track_total(),
             disk: tag.disk(),
@@ -159,7 +168,7 @@ impl Track {
         let mut track = Track::from(tag);
         match track.get_cover(tag) {
             Ok(_) => Ok(track),
-            Err(e) => Err(TrackConstructionError { track, error: e })
+            Err(e) => Err(TrackConstructionError { track, error: e }),
         }
     }
 }

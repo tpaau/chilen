@@ -99,13 +99,16 @@ where
                     }
                 };
 
-                let track = match Track::with_cover_from_tag(tag) {
+                let mut track = match Track::with_cover_from_tag(tag) {
                     Ok(track) => track,
                     Err(e) => {
                         trace!("{:?}", e.error);
                         e.track
                     }
                 };
+                let mut path = PathBuf::new();
+                path.push(entry.path());
+                track.path = path;
                 lock.lock().unwrap().push(track)
             }));
         }

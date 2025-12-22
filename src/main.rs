@@ -1,8 +1,11 @@
 mod argparse;
+mod cache;
 mod cxxqt_object;
 mod daemon;
 mod gui;
 mod indexer;
+#[cfg(test)]
+mod tests;
 mod track;
 
 use std::thread;

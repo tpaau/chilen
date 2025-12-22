@@ -1,20 +1,17 @@
 use std::{
     fmt::Display,
     io::{BufReader, Write},
-    sync::LazyLock,
 };
 
 use bincode::{Decode, Encode, config::standard, decode_from_reader, encode_to_vec};
-use interprocess::local_socket::{GenericNamespaced, Name, Stream, ToNsName, prelude::*};
-use log::{error, trace};
+use interprocess::local_socket::{
+    GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
+};
+use log::{error, trace, warn};
 use serde::{Deserialize, Serialize};
 
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
-
-/// The namespaced daemon socket address.
-pub static SOCKET: LazyLock<Result<Name<'_>, std::io::Error>> =
-    LazyLock::new(|| SOCKET_NAME.to_ns_name::<GenericNamespaced>());
 
 #[derive(Serialize, Deserialize, Decode, Debug)]
 /// The exit status of the daemon.
@@ -88,8 +85,12 @@ impl Display for DaemonResponse {
 }
 
 #[derive(Debug)]
+/// A parsed CLI command that can either be an init command for the daemon, or a message to be
+/// sent to a deamon.
 pub enum DaemonCommand {
+    /// Init command to start the daemon.
     Start,
+    /// Message to be sent to an already running daemon.
     Message { command: ClientCommand },
 }
 
@@ -113,14 +114,32 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-pub fn get_daemon_socket<'a>() -> Result<Name<'a>, &'a std::io::Error> {
+/// Try to get a namespaced socket or a filesystem socket for daemon IPC.
+///
+/// # Examples
+///
+/// ```
+/// use mpipc::get_daemon_socket;
+///
+/// match get_daemon_socket() {
+///     Ok(socket) => eprintln!("Got a socket: {socket:?}"),
+///     Err(e) => panic!("Could not obtain a socket: {e}"),
+/// }
+/// ```
+pub fn get_daemon_socket<'a>() -> Result<Name<'a>, std::io::Error> {
     trace!("Obtaining a namespaced socket for '{SOCKET_NAME}'");
 
-    match &*SOCKET {
-        Ok(socket) => Ok(socket.clone()),
+    match SOCKET_NAME.to_ns_name::<GenericNamespaced>() {
+        Ok(socket) => Ok(socket),
         Err(e) => {
-            error!("Could not obtain a socket: {e}");
-            Err(e)
+            warn!("Could not obtain a namespaced socket (is your system supported?): {e}");
+            match SOCKET_NAME.to_fs_name::<GenericFilePath>() {
+                Ok(socket) => Ok(socket),
+                Err(e) => {
+                    error!("Could not obtain both a namespaced and a filesystem socket: {e}");
+                    Err(e)
+                }
+            }
         }
     }
 }

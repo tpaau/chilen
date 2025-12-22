@@ -1,5 +1,5 @@
 check:
-	cargo fmt --check --all && cargo build && cargo test && cargo deny check
+	cargo fmt --check --all && cargo test --workspace && cargo deny check
 
 fmt:
 	cargo fmt --all
