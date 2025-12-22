@@ -76,8 +76,14 @@ where
                 Ok(file) => {
                     match file.primary_tag() {
                         Some(tag) => {
-                            let track = Track::from(tag);
-                            lock.lock().unwrap().push(track);
+                            let track = match Track::with_cover_from_tag(tag) {
+                                Ok(track) => track,
+                                Err(e) => {
+                                    trace!("{:?}", e.error);
+                                    e.track
+                                }
+                            };
+                            lock.lock().unwrap().push(track)
                         }
                         None => {
                             warn!(
@@ -103,16 +109,17 @@ where
         handle.join().unwrap();
     }
 
-    let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));
-
-    trace!(
-        "Finished indexing the music directory in {:.3}s, found {} audio files",
-        time_elapsed.as_secs_f64(),
-        tracks.lock().unwrap().len()
-    );
-
     match Arc::into_inner(tracks) {
-        Some(lock) => Ok(lock.into_inner().unwrap()),
+        Some(lock) => {
+            let vec = lock.into_inner().unwrap();
+            let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));
+            trace!(
+                "Finished indexing the music directory in {:.3}s, found {} audio files",
+                time_elapsed.as_secs_f64(),
+                vec.len()
+            );
+            Ok(vec)
+        }
         None => Err(IndexingError::ArcInnerError),
     }
 }

@@ -144,3 +144,22 @@ impl From<&Tag> for Track {
         }
     }
 }
+
+pub struct TrackConstructionError {
+    pub track: Track,
+    pub error: String,
+}
+
+impl Track {
+    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), String> {
+        Ok(())
+    }
+
+    pub fn with_cover_from_tag(tag: &Tag) -> Result<Track, TrackConstructionError> {
+        let mut track = Track::from(tag);
+        match track.get_cover(tag) {
+            Ok(_) => Ok(track),
+            Err(e) => Err(TrackConstructionError { track, error: e })
+        }
+    }
+}
