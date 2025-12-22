@@ -1,4 +1,5 @@
 use std::{
+    env::home_dir,
     path::PathBuf,
     sync::{Arc, Mutex},
     thread,
@@ -11,14 +12,48 @@ use walkdir::WalkDir;
 
 use crate::track::Track;
 
-pub fn index(music_dir: Option<PathBuf>) {
-    trace!("Indexing the music directory");
+pub enum IndexingError {
+    HomeDirNotFound,
+    ArcInnerError,
+}
+
+impl std::fmt::Display for IndexingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::HomeDirNotFound => {
+                write!(f, "Could not obtain the home directory to index.")
+            }
+            Self::ArcInnerError => {
+                write!(f, "Could not get the underlying `Arc` data.")
+            }
+        }
+    }
+}
+
+pub fn index<T: Into<PathBuf>>(music_dir: Option<T>) -> Result<Vec<Track>, IndexingError>
+where
+    PathBuf: From<T>,
+{
+    let music_dir = match music_dir {
+        Some(dir) => PathBuf::from(dir),
+        None => match home_dir() {
+            Some(mut dir) => {
+                dir.push("Music/");
+                dir
+            }
+            None => {
+                return Err(IndexingError::HomeDirNotFound);
+            }
+        },
+    };
+
+    trace!("Indexing directory: {music_dir:?}");
 
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
     let time_start = SystemTime::now();
 
-    for result in WalkDir::new("/var/home/mikolaj/Music/").into_iter() {
+    for result in WalkDir::new(music_dir).into_iter() {
         let entry = match result {
             Ok(entry) => entry,
             Err(e) => {
@@ -42,7 +77,7 @@ pub fn index(music_dir: Option<PathBuf>) {
                     match file.primary_tag() {
                         Some(tag) => {
                             let track = Track::from(tag);
-                            lock.lock().unwrap().push(file);
+                            lock.lock().unwrap().push(track);
                         }
                         None => {
                             warn!(
@@ -75,4 +110,9 @@ pub fn index(music_dir: Option<PathBuf>) {
         time_elapsed.as_secs_f64(),
         tracks.lock().unwrap().len()
     );
+
+    match Arc::into_inner(tracks) {
+        Some(lock) => Ok(lock.into_inner().unwrap()),
+        None => Err(IndexingError::ArcInnerError),
+    }
 }
