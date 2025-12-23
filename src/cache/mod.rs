@@ -21,6 +21,7 @@ pub static CACHE_DIR: LazyLock<Result<PathBuf, CacheError>> = LazyLock::new(|| {
 pub enum CacheError {
     HomeError,
     DirError { error: String },
+    RusqliteError { error: String },
 }
 
 impl std::fmt::Display for CacheError {
@@ -29,6 +30,9 @@ impl std::fmt::Display for CacheError {
             Self::HomeError => write!(f, "Could not get the home directory"),
             Self::DirError { error } => {
                 write!(f, "The cache directory could not be created: {error}")
+            }
+            Self::RusqliteError { error } => {
+                write!(f, "Ruslite failed opening the database: {error}")
             }
         }
     }
