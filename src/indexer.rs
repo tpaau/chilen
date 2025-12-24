@@ -102,8 +102,12 @@ where
                 let mut track = match Track::with_cover_from_tag(tag) {
                     Ok(track) => track,
                     Err(e) => {
-                        trace!("{:?}", e.error);
-                        e.track
+                        trace!(
+                            "Could not extract a cover from file {:?}: {}",
+                            entry.path(),
+                            e.1
+                        );
+                        e.0
                     }
                 };
                 let mut path = PathBuf::new();
@@ -123,7 +127,7 @@ where
             let vec = lock.into_inner().unwrap();
             let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));
             trace!(
-                "Finished indexing the music directory in {:.3}s, found {} audio files",
+                "Finished indexing the music directory in {:.2}s, found {} audio files",
                 time_elapsed.as_secs_f64(),
                 vec.len()
             );

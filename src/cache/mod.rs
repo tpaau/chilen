@@ -1,4 +1,4 @@
-mod coversdb;
+pub mod coversdb;
 
 use clap::crate_name;
 use std::{env::home_dir, fs::create_dir_all, path::PathBuf, sync::LazyLock};
@@ -22,18 +22,27 @@ pub enum CacheError {
     HomeError,
     DirError { error: String },
     RusqliteError { error: String },
+    NoPicturesInTag,
+    NoSuitablePicturesInTag,
+    CoverWriteError,
 }
 
 impl std::fmt::Display for CacheError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::HomeError => write!(f, "Could not get the home directory"),
+            Self::HomeError => write!(f, "Could not get the path to the home directory"),
             Self::DirError { error } => {
                 write!(f, "The cache directory could not be created: {error}")
             }
             Self::RusqliteError { error } => {
                 write!(f, "Ruslite failed opening the database: {error}")
             }
+            Self::NoPicturesInTag => write!(f, "The provided tag did not contain any pictures"),
+            Self::NoSuitablePicturesInTag => write!(
+                f,
+                "The provided tag contained some pictures, but none of them were suitable"
+            ),
+            Self::CoverWriteError => write!(f, "Could not write the cover image to the cache"),
         }
     }
 }

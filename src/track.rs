@@ -1,8 +1,10 @@
-use std::path::PathBuf;
+use std::{hash::Hash, path::PathBuf};
 
 use cxx_qt_lib::QString;
 use lofty::tag::{Accessor, Tag};
 use serde::{Deserialize, Serialize};
+
+use crate::cache::{CacheError, coversdb::get_track_cover};
 
 #[cxx_qt::bridge]
 mod qobject {
@@ -154,21 +156,35 @@ impl From<&Tag> for Track {
     }
 }
 
-pub struct TrackConstructionError {
-    pub track: Track,
-    pub error: String,
+impl Hash for Track {
+    /// Hashes everything but the paths, ie. only the metadata.
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.artist.hash(state);
+        self.title.hash(state);
+        self.album.hash(state);
+        self.genre.hash(state);
+        self.comment.hash(state);
+        self.track.hash(state);
+        self.track_total.hash(state);
+        self.disk.hash(state);
+        self.disk_total.hash(state);
+        self.year.hash(state);
+    }
 }
 
 impl Track {
-    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), String> {
-        Ok(())
+    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CacheError> {
+        match get_track_cover(self, tag) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
-    pub fn with_cover_from_tag(tag: &Tag) -> Result<Track, TrackConstructionError> {
+    pub fn with_cover_from_tag(tag: &Tag) -> Result<Track, Box<(Track, CacheError)>> {
         let mut track = Track::from(tag);
         match track.get_cover(tag) {
             Ok(_) => Ok(track),
-            Err(e) => Err(TrackConstructionError { track, error: e }),
+            Err(e) => Err(Box::new((track, e))),
         }
     }
 }
