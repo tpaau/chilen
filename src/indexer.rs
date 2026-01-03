@@ -99,17 +99,13 @@ where
                     }
                 };
 
-                let mut track = match Track::with_cover_from_tag(tag) {
-                    Ok(track) => track,
-                    Err(e) => {
-                        trace!(
-                            "Could not extract a cover from file {:?}: {}",
-                            entry.path(),
-                            e.1
-                        );
-                        e.0
-                    }
-                };
+                let mut track = Track::from(tag);
+                if let Err(e) = track.get_cover(tag) {
+                    trace!(
+                        "Could not extract a cover from file {:?}: {e}",
+                        entry.path()
+                    )
+                }
                 let mut path = PathBuf::new();
                 path.push(entry.path());
                 track.path = path;

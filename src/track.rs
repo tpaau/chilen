@@ -174,17 +174,6 @@ impl Hash for Track {
 
 impl Track {
     pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CacheError> {
-        match get_track_cover(self, tag) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
-        }
-    }
-
-    pub fn with_cover_from_tag(tag: &Tag) -> Result<Track, Box<(Track, CacheError)>> {
-        let mut track = Track::from(tag);
-        match track.get_cover(tag) {
-            Ok(_) => Ok(track),
-            Err(e) => Err(Box::new((track, e))),
-        }
+        get_track_cover(self, tag)
     }
 }

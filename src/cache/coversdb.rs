@@ -3,7 +3,7 @@ use std::{
     hash::{DefaultHasher, Hash, Hasher},
     io::Write,
     path::PathBuf,
-    sync::LazyLock,
+    sync::{LazyLock, RwLock},
 };
 
 use lofty::{
@@ -18,7 +18,7 @@ use crate::{
     track::Track,
 };
 
-pub static COVERS_DB: LazyLock<Result<PathBuf, CacheError>> =
+static COVERS_DB_PATH: LazyLock<Result<PathBuf, CacheError>> =
     LazyLock::new(|| match CACHE_DIR.clone() {
         Ok(mut cache) => {
             cache.push("coversdb.sqlite");
@@ -65,20 +65,59 @@ const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::OtherIcon,
 ];
 
+static DB_INITIALIZED: RwLock<bool> = RwLock::new(false);
+
+fn init_db(conn: Connection) -> Result<Connection, CacheError> {
+    if !*DB_INITIALIZED.read().unwrap() {
+        let exists = match conn.table_exists(Some("main"), "covers") {
+            Ok(exists) => exists,
+            Err(e) => {
+                return Err(CacheError::RusqliteError {
+                    error: e.to_string(),
+                });
+            }
+        };
+
+        if exists {
+            Ok(conn)
+        } else {
+            match conn.execute(
+                "CREATE TABLE covers (
+                    id INTEGER PRIMARY KEY,
+                    hash INTEGER NOT NULL,
+                    path TEXT NOT NULL
+                )",
+                (),
+            ) {
+                Ok(_) => Ok(conn),
+                Err(e) => Err(CacheError::RusqliteError {
+                    error: e.to_string(),
+                }),
+            }
+        }
+    } else {
+        Ok(conn)
+    }
+}
+
 fn open_db() -> Result<Connection, CacheError> {
-    let path = match COVERS_DB.clone() {
+    let path = match COVERS_DB_PATH.clone() {
         Ok(path) => path,
         Err(e) => {
             return Err(e);
         }
     };
 
-    match Connection::open(path) {
-        Ok(conn) => Ok(conn),
-        Err(e) => Err(CacheError::RusqliteError {
-            error: e.to_string(),
-        }),
-    }
+    let conn = match Connection::open(path) {
+        Ok(conn) => conn,
+        Err(e) => {
+            return Err(CacheError::RusqliteError {
+                error: e.to_string(),
+            });
+        }
+    };
+
+    init_db(conn)
 }
 
 fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, CacheError> {
