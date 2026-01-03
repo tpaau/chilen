@@ -4,7 +4,7 @@ use cxx_qt_lib::QString;
 use lofty::tag::{Accessor, Tag};
 use serde::{Deserialize, Serialize};
 
-use crate::cache::{CacheError, coversdb::get_track_cover};
+use crate::cache::{CacheError, covers::get_track_cover};
 
 #[cxx_qt::bridge]
 mod qobject {

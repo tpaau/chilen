@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 
 use env_logger::Builder;
@@ -52,6 +54,10 @@ pub enum Command {
         /// Command for the GUI
         command: GuiCommand,
     },
+    Playlist {
+        #[command(subcommand)]
+        command: PlaylistCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -93,6 +99,33 @@ pub enum GuiCommand {
     Restart,
     /// Show GUI status
     Status,
+}
+
+#[derive(Subcommand)]
+pub enum PlaylistCommand {
+    New {
+        name: String,
+        tracks: Option<Vec<PathBuf>>,
+    },
+    FromM3U8 {
+        name: String,
+        m3u8_file: PathBuf,
+    },
+    Delete {
+        name: String,
+    },
+}
+
+impl From<PlaylistCommand> for mpipc::PlaylistCommand {
+    fn from(value: PlaylistCommand) -> Self {
+        match value {
+            PlaylistCommand::New { name, tracks } => mpipc::PlaylistCommand::New { name, tracks },
+            PlaylistCommand::FromM3U8 { name, m3u8_file } => {
+                mpipc::PlaylistCommand::FromM3U8 { name, m3u8_file }
+            }
+            PlaylistCommand::Delete { name } => mpipc::PlaylistCommand::Delete { name },
+        }
+    }
 }
 
 fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> {

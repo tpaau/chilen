@@ -12,6 +12,7 @@ use std::thread;
 
 use argparse::parse_args;
 use log::{error, info, trace};
+use mpipc::DaemonResponse;
 
 use crate::argparse::{Command, DaemonCommand, GuiCommand};
 
@@ -50,6 +51,26 @@ async fn main() {
                     }
                 } else {
                     panic!("GUI command execution not supported!");
+                }
+            }
+            Command::Playlist { command } => {
+                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist {
+                    cmd: command.into(),
+                }) {
+                    Ok(response) => match response {
+                        DaemonResponse::Ok => {
+                            println!("Ok");
+                        }
+                        DaemonResponse::Error { error } => {
+                            error!("{error}");
+                        }
+                        _ => {
+                            info!("Got a response from the daemon: {response}");
+                        }
+                    },
+                    Err(e) => {
+                        error!("Failed executing the daemon command: {e}");
+                    }
                 }
             }
         }

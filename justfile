@@ -4,8 +4,5 @@ check:
 fmt:
 	cargo fmt --all
 
-loc:
-	echo "$(cat src/* mpipc/src/* qml/* | wc -l) lines of code"
-
 release:
 	cargo build --release

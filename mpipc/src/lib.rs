@@ -1,6 +1,7 @@
 use std::{
     fmt::Display,
     io::{BufReader, Write},
+    path::PathBuf,
 };
 
 use bincode::{Decode, Encode, config::standard, decode_from_reader, encode_to_vec};
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
-#[derive(Serialize, Deserialize, Decode, Debug)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Decode)]
 /// The exit status of the daemon.
 pub enum DaemonExitStatus {
     ExitRequested,
@@ -32,7 +33,7 @@ impl Display for DaemonExitStatus {
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 /// Error related to the daemon.
 pub enum DaemonError {
     StoppedUnexpectedly,
@@ -41,6 +42,7 @@ pub enum DaemonError {
     SocketError { error: String },
     ConnectionError { error: String },
     SendingError { error: String },
+    PlaylistError { error: PlaylistError },
 }
 
 impl Display for DaemonError {
@@ -64,15 +66,36 @@ impl Display for DaemonError {
             DaemonError::SendingError { error } => {
                 write!(f, "Could not send the commadnd to the daemon: {error}")
             }
+            DaemonError::PlaylistError { error } => {
+                write!(f, "{error}")
+            }
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
-/// Response to a client command sent to the daemon.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Encode, Decode)]
+pub enum PlaylistError {
+    PlaylistExists,
+    LibraryNotInitialized,
+    NoSuchPlaylist,
+}
+
+impl Display for PlaylistError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
+            Self::LibraryNotInitialized => write!(f, "The music library is not yet initialized"),
+            Self::NoSuchPlaylist => write!(f, "There are no playlists with this name"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+/// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     Ok,
     Status {},
+    Error { error: DaemonError },
 }
 
 impl Display for DaemonResponse {
@@ -80,11 +103,12 @@ impl Display for DaemonResponse {
         match self {
             DaemonResponse::Ok => write!(f, "Command executed successfully"),
             DaemonResponse::Status {} => write!(f, "Daemon status response"),
+            DaemonResponse::Error { error } => write!(f, "An error occured in the daemon: {error}"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 /// A parsed CLI command that can either be an init command for the daemon, or a message to be
 /// sent to a deamon.
 pub enum DaemonCommand {
@@ -94,12 +118,13 @@ pub enum DaemonCommand {
     Message { command: ClientCommand },
 }
 
-#[derive(Serialize, Deserialize, Encode, Decode, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
 /// Command that can be sent to the daemon over a socket.
 pub enum ClientCommand {
     Stop,
     Restart,
     Status,
+    Playlist { cmd: PlaylistCommand },
 }
 
 impl TryFrom<DaemonCommand> for ClientCommand {
@@ -112,6 +137,21 @@ impl TryFrom<DaemonCommand> for ClientCommand {
             DaemonCommand::Message { command } => Ok(command),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+pub enum PlaylistCommand {
+    New {
+        name: String,
+        tracks: Option<Vec<PathBuf>>,
+    },
+    FromM3U8 {
+        name: String,
+        m3u8_file: PathBuf,
+    },
+    Delete {
+        name: String,
+    },
 }
 
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.

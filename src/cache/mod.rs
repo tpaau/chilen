@@ -1,4 +1,5 @@
-pub mod coversdb;
+pub mod covers;
+pub mod playlists;
 
 use clap::crate_name;
 use std::{env::home_dir, fs::create_dir_all, path::PathBuf, sync::LazyLock};
@@ -21,7 +22,6 @@ pub static CACHE_DIR: LazyLock<Result<PathBuf, CacheError>> = LazyLock::new(|| {
 pub enum CacheError {
     HomeError,
     DirError { error: String },
-    RusqliteError { error: String },
     NoPicturesInTag,
     NoSuitablePicturesInTag,
     CoverWriteError,
@@ -33,9 +33,6 @@ impl std::fmt::Display for CacheError {
             Self::HomeError => write!(f, "Could not get the path to the home directory"),
             Self::DirError { error } => {
                 write!(f, "The cache directory could not be created: {error}")
-            }
-            Self::RusqliteError { error } => {
-                write!(f, "Ruslite failed opening the database: {error}")
             }
             Self::NoPicturesInTag => write!(f, "The provided tag did not contain any pictures"),
             Self::NoSuitablePicturesInTag => write!(

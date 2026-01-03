@@ -10,11 +10,12 @@ use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
 use mpipc::{
-    ClientCommand, DaemonError, DaemonExitStatus, DaemonResponse, SOCKET_NAME, get_daemon_socket,
+    ClientCommand, DaemonError, DaemonExitStatus, DaemonResponse, PlaylistCommand, SOCKET_NAME,
+    get_daemon_socket,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::indexer;
+use crate::cache::playlists;
 
 #[derive(Serialize, Deserialize, Debug)]
 enum ThreadCommand {
@@ -56,11 +57,28 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
+fn respond(mut conn: BufReader<&Stream>, msg: &DaemonResponse) {
+    let msg = match encode_to_vec(msg, standard()) {
+        Ok(msg) => msg,
+        Err(e) => {
+            error!("Could not prepare the command for the client: {e}");
+            return;
+        }
+    };
+
+    match conn.get_mut().write_all(&msg) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("Failed sending response message: {e}");
+        }
+    };
+}
+
 fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
 
     thread::spawn(move || {
-        trace!("thread: Handling client connection");
+        trace!("Handling client connection");
 
         loop {
             let mut conn = BufReader::new(&conn);
@@ -68,49 +86,70 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
             let command = match decode_from_std_read(&mut conn, standard()) {
                 Ok(cmd) => cmd,
                 Err(e) => {
-                    error!("thread: Failed decoding a client command: {e}");
-                    return;
+                    error!("Failed decoding a client command: {e}");
+                    break;
                 }
             };
 
-            trace!("thread: Ready to recieve the command from the client");
-
             match command {
                 ClientCommand::Stop => {
-                    info!("thread: Received shutdown command from the client");
+                    info!("Received shutdown command from the client");
 
                     if let Err(e) = ttx.send(ThreadCommand::Shutdown) {
-                        error!("thread: Failed sending message to the daemon: {e}");
+                        error!("Failed sending message to the daemon: {e}");
                     } else {
-                        let msg = match encode_to_vec(DaemonResponse::Ok, standard()) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                error!("thread: Could not serialize the response: {e}");
-                                return;
-                            }
-                        };
-
-                        match conn.get_mut().write_all(&msg) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!("thread: Failed sending response message: {e}");
-                            }
-                        };
+                        respond(conn, &DaemonResponse::Ok);
                     }
 
-                    return;
-
-                    // panic!("Shutdown not implemented!");
+                    break;
                 }
                 ClientCommand::Restart => {
-                    info!("thread: Received restart command from the client");
+                    info!("Received restart command from the client");
                     panic!("Daemon restart is not implemented!");
                 }
-                ClientCommand::Status => {
-                    // panic!("Daemon status is not implemented!");
-                }
-            }
+                ClientCommand::Status => todo!(),
+                ClientCommand::Playlist { cmd } => match cmd {
+                    PlaylistCommand::New { name, tracks } => {
+                        if let Err(e) = playlists::create_playlist(&name, &tracks) {
+                            respond(
+                                conn,
+                                &DaemonResponse::Error {
+                                    error: DaemonError::PlaylistError { error: e },
+                                },
+                            );
+                            break;
+                        }
+                        respond(conn, &DaemonResponse::Ok);
+                    }
+                    PlaylistCommand::FromM3U8 { name, m3u8_file } => {
+                        if let Err(e) = playlists::create_playlist_from_m3u8(&name, &m3u8_file) {
+                            respond(
+                                conn,
+                                &DaemonResponse::Error {
+                                    error: DaemonError::PlaylistError { error: e },
+                                },
+                            );
+                            break;
+                        }
+                        respond(conn, &DaemonResponse::Ok);
+                    }
+                    PlaylistCommand::Delete { name } => {
+                        if let Err(e) = playlists::delete_playlist(&name) {
+                            respond(
+                                conn,
+                                &DaemonResponse::Error {
+                                    error: DaemonError::PlaylistError { error: e },
+                                },
+                            );
+                            break;
+                        }
+                        respond(conn, &DaemonResponse::Ok);
+                    }
+                },
+            };
         }
+
+        trace!("Client connection closed");
     })
 }
 
@@ -140,17 +179,9 @@ pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
         }
     };
 
-    info!("Daemon listening on '{SOCKET_NAME}'");
+    info!("Listening for incomming connections");
 
-    let (tx, rx) = channel();
-    thread::spawn(move || tx.send(indexer::index::<String>(None)));
-
-    let mut tracks = None;
-    async {
-        tracks = Some(rx.recv().unwrap());
-        trace!("Received track list from the indexing thread");
-    }
-    .await;
+    thread::spawn(playlists::load);
 
     for conn in listener.incoming().filter_map(handle_error) {
         let (ttx, drx) = channel();
