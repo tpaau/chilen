@@ -110,11 +110,11 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                 ClientCommand::Status => todo!(),
                 ClientCommand::Playlist { cmd } => match cmd {
                     PlaylistCommand::New { name, tracks } => {
-                        if let Err(e) = playlists::create_playlist(&name, &tracks) {
+                        if let Err(e) = playlists::create_playlist(name, &tracks) {
                             respond(
                                 conn,
                                 &DaemonResponse::Error {
-                                    error: DaemonError::PlaylistError { error: e },
+                                    error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
                             break;
@@ -126,7 +126,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                             respond(
                                 conn,
                                 &DaemonResponse::Error {
-                                    error: DaemonError::PlaylistError { error: e },
+                                    error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
                             break;
@@ -138,7 +138,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                             respond(
                                 conn,
                                 &DaemonResponse::Error {
-                                    error: DaemonError::PlaylistError { error: e },
+                                    error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
                             break;
@@ -149,7 +149,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
             };
         }
 
-        trace!("Client connection closed");
+        trace!("Closing client connection");
     })
 }
 

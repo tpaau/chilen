@@ -42,7 +42,7 @@ pub enum DaemonError {
     SocketError { error: String },
     ConnectionError { error: String },
     SendingError { error: String },
-    PlaylistError { error: PlaylistError },
+    MusicLibraryError { error: MusicLibraryError },
 }
 
 impl Display for DaemonError {
@@ -66,7 +66,7 @@ impl Display for DaemonError {
             DaemonError::SendingError { error } => {
                 write!(f, "Could not send the commadnd to the daemon: {error}")
             }
-            DaemonError::PlaylistError { error } => {
+            DaemonError::MusicLibraryError { error } => {
                 write!(f, "{error}")
             }
         }
@@ -74,18 +74,22 @@ impl Display for DaemonError {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Encode, Decode)]
-pub enum PlaylistError {
+pub enum MusicLibraryError {
     PlaylistExists,
     LibraryNotInitialized,
     NoSuchPlaylist,
+    HomeDirNotFound,
+    ArcInnerError,
 }
 
-impl Display for PlaylistError {
+impl Display for MusicLibraryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not yet initialized"),
-            Self::NoSuchPlaylist => write!(f, "There are no playlists with this name"),
+            Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
+            Self::HomeDirNotFound => write!(f, "Could not get the path to the home directory, or the home directory does not exist"),
+            Self::ArcInnerError => write!(f, "Could not get the underlying arc data")
         }
     }
 }
