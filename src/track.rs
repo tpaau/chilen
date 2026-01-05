@@ -17,7 +17,6 @@ mod qobject {
         #[qml_element]
         #[qproperty(QString, path)]
         #[qproperty(QString, cover_path)]
-        #[qproperty(QString, thumbnail_path)]
         #[qproperty(QString, artist)]
         #[qproperty(QString, title)]
         #[qproperty(QString, album)]
@@ -37,7 +36,6 @@ mod qobject {
 pub struct RQTrack {
     pub path: QString,
     pub cover_path: QString,
-    pub thumbnail_path: QString,
     pub artist: QString,
     pub title: QString,
     pub album: QString,
@@ -54,7 +52,6 @@ pub struct RQTrack {
 pub struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,
-    pub thumbnail_path: Option<PathBuf>,
     pub artist: Option<String>,
     pub title: Option<String>,
     pub album: Option<String>,
@@ -73,11 +70,6 @@ impl From<RQTrack> for Track {
             path: PathBuf::from(String::from(&v.path)),
             cover_path: if !v.path.is_empty() && !v.path.is_null() {
                 Some(PathBuf::from(String::from(v.cover_path)))
-            } else {
-                None
-            },
-            thumbnail_path: if !v.path.is_empty() && !v.path.is_null() {
-                Some(PathBuf::from(String::from(v.thumbnail_path)))
             } else {
                 None
             },
@@ -135,12 +127,41 @@ impl From<RQTrack> for Track {
     }
 }
 
+impl Into<mpipc::Track> for Track {
+    fn into(self) -> mpipc::Track {
+        mpipc::Track {
+            path: self.path,
+            cover_path: self.cover_path,
+            artist: self.artist,
+            title: self.title,
+            album: self.album,
+            genre: self.genre,
+            comment: self.comment,
+            track: self.track,
+            track_total: self.track_total,
+            disk: self.disk,
+            disk_total: self.disk_total,
+            year: self.year,
+        }
+    }
+}
+
+impl std::fmt::Display for Track {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} - {}",
+            self.artist.clone().unwrap_or(String::from("Unknown")),
+            self.title.clone().unwrap_or(String::from("Unknown")),
+        )
+    }
+}
+
 impl From<&Tag> for Track {
     fn from(tag: &Tag) -> Self {
         Track {
             path: PathBuf::new(),
             cover_path: None,
-            thumbnail_path: None,
             artist: tag.artist().map(|artist| artist.into()),
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),

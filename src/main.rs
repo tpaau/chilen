@@ -1,5 +1,6 @@
 mod argparse;
 mod cache;
+mod cli;
 mod cxxqt_object;
 mod daemon;
 mod gui;
@@ -8,89 +9,11 @@ mod indexer;
 mod tests;
 mod track;
 
-use std::thread;
-
 use argparse::parse_args;
-use log::{error, info, trace};
-use mpipc::DaemonResponse;
 
-use crate::argparse::{Command, DaemonCommand, GuiCommand};
+use crate::cli::run_cli_command;
 
 #[tokio::main]
-async fn main() {
-    let args = parse_args();
-
-    if let Some(command) = args.command {
-        match command {
-            Command::Daemon { command } => {
-                if let DaemonCommand::Start = command {
-                    match daemon::start().await {
-                        Ok(status) => info!("Daemon exited: {status}"),
-                        Err(e) => error!("Daemon failed: {e}"),
-                    }
-                } else {
-                    let cmd: mpipc::DaemonCommand = command.into();
-                    let cmd = match cmd.try_into() {
-                        Ok(cmd) => cmd,
-                        Err(e) => {
-                            error!("Could not send the command to the daemon: {e}");
-                            return;
-                        }
-                    };
-                    match mpipc::exec_client_command(cmd) {
-                        Ok(response) => info!("Got a response from the daemon: {response}"),
-                        Err(e) => error!("Failed executing the daemon command: {e}"),
-                    }
-                }
-            }
-            Command::Gui { command } => {
-                if let GuiCommand::Start = command {
-                    match gui::start() {
-                        Ok(status) => info!("GUI exited: {status}"),
-                        Err(e) => error!("GUI failed: {e}"),
-                    }
-                } else {
-                    panic!("GUI command execution not supported!");
-                }
-            }
-            Command::Playlist { command } => {
-                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist {
-                    cmd: command.into(),
-                }) {
-                    Ok(response) => match response {
-                        DaemonResponse::Ok => {
-                            println!("Ok");
-                        }
-                        DaemonResponse::Error { error } => {
-                            error!("{error}");
-                        }
-                        _ => {
-                            info!("Got a response from the daemon: {response}");
-                        }
-                    },
-                    Err(e) => {
-                        error!("Failed executing the daemon command: {e}");
-                    }
-                }
-            }
-        }
-    } else {
-        trace!("No command specified, starting a deamon with GUI");
-
-        let handle = thread::spawn(|| {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            match rt.block_on(daemon::start()) {
-                Ok(status) => info!("Daemon exited: {status}"),
-                Err(e) => error!("Daemon failed: {e}"),
-            }
-        });
-
-        trace!("Starting GUI");
-        match gui::start() {
-            Ok(status) => info!("GUI exited: {status}"),
-            Err(e) => error!("GUI failed: {e}"),
-        };
-
-        handle.join().unwrap();
-    }
+async fn main() -> Result<(), ()> {
+    run_cli_command(parse_args().command).await
 }

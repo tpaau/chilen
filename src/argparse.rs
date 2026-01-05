@@ -103,18 +103,21 @@ pub enum GuiCommand {
 
 #[derive(Subcommand)]
 pub enum PlaylistCommand {
+    /// Create a new playlist
     New {
         name: String,
         tracks: Option<Vec<PathBuf>>,
     },
-    FromM3U8 {
-        name: String,
-        m3u8_file: PathBuf,
+    /// Import a playlist from an m3u8 file
+    FromM3U8 { name: String, m3u8_file: PathBuf },
+    /// Delete playlists from the library
+    Delete { names: Vec<String> },
+    /// List all playlists from the library
+    List {
+        #[arg(long, short, default_value_t = false)]
+        /// Also list all the tracks in the playlists
+        full: bool,
     },
-    Delete {
-        name: String,
-    },
-    List,
 }
 
 impl From<PlaylistCommand> for mpipc::PlaylistCommand {
@@ -124,8 +127,8 @@ impl From<PlaylistCommand> for mpipc::PlaylistCommand {
             PlaylistCommand::FromM3U8 { name, m3u8_file } => {
                 mpipc::PlaylistCommand::FromM3U8 { name, m3u8_file }
             }
-            PlaylistCommand::Delete { name } => mpipc::PlaylistCommand::Delete { name },
-            PlaylistCommand::List => mpipc::PlaylistCommand::List,
+            PlaylistCommand::Delete { names } => mpipc::PlaylistCommand::Delete { names },
+            PlaylistCommand::List { full: _ } => mpipc::PlaylistCommand::List,
         }
     }
 }

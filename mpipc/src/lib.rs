@@ -13,7 +13,7 @@ use log::{error, trace, warn};
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
-#[derive(Debug, Clone, Copy, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
 /// The exit status of the daemon.
 pub enum DaemonExitStatus {
     ExitRequested,
@@ -32,7 +32,7 @@ impl Display for DaemonExitStatus {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Error related to the daemon.
 pub enum DaemonError {
     StoppedUnexpectedly,
@@ -72,7 +72,7 @@ impl Display for DaemonError {
     }
 }
 
-#[derive(Debug, Clone, Copy, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum MusicLibraryError {
     PlaylistExists,
     LibraryNotInitialized,
@@ -98,11 +98,12 @@ impl Display for MusicLibraryError {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     Ok,
     Status {},
+    Playlists { playlists: Vec<Playlist> },
     Error { error: DaemonError },
 }
 
@@ -111,12 +112,15 @@ impl Display for DaemonResponse {
         match self {
             DaemonResponse::Ok => write!(f, "Command executed successfully"),
             DaemonResponse::Status {} => write!(f, "Daemon status response"),
+            DaemonResponse::Playlists { playlists } => {
+                write!(f, "List of playlists from the daemon: {playlists:?}")
+            }
             DaemonResponse::Error { error } => write!(f, "An error occured in the daemon: {error}"),
         }
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// A parsed CLI command that can either be an init command for the daemon, or a message to be
 /// sent to a deamon.
 pub enum DaemonCommand {
@@ -126,7 +130,7 @@ pub enum DaemonCommand {
     Message { command: ClientCommand },
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Command that can be sent to the daemon over a socket.
 pub enum ClientCommand {
     Stop,
@@ -147,7 +151,7 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-#[derive(Debug, Clone, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 pub enum PlaylistCommand {
     New {
         name: String,
@@ -158,9 +162,42 @@ pub enum PlaylistCommand {
         m3u8_file: PathBuf,
     },
     Delete {
-        name: String,
+        names: Vec<String>,
     },
     List,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Track {
+    pub path: PathBuf,
+    pub cover_path: Option<PathBuf>,
+    pub artist: Option<String>,
+    pub title: Option<String>,
+    pub album: Option<String>,
+    pub genre: Option<String>,
+    pub comment: Option<String>,
+    pub track: Option<u32>,
+    pub track_total: Option<u32>,
+    pub disk: Option<u32>,
+    pub disk_total: Option<u32>,
+    pub year: Option<u32>,
+}
+
+impl std::fmt::Display for Track {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} - {}",
+            self.artist.clone().unwrap_or(String::from("Unknown")),
+            self.title.clone().unwrap_or(String::from("Unknown")),
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct Playlist {
+    pub name: String,
+    pub tracks: Vec<Track>,
 }
 
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.

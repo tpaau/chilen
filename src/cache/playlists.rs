@@ -54,20 +54,31 @@ impl From<MusicLibrary> for ConfMusicLibrary {
     }
 }
 
-pub trait Playable {}
-
 #[derive(Clone, Debug)]
 pub struct Playlist {
     pub name: String,
     pub tracks: Vec<Track>,
 }
 
+impl Into<mpipc::Playlist> for Playlist {
+    fn into(self) -> mpipc::Playlist {
+        let mut tracks = Vec::new();
+        for track in self.tracks {
+            tracks.push(track.into());
+        }
+        mpipc::Playlist {
+            name: self.name,
+            tracks,
+        }
+    }
+}
+
 impl Playlist {
-    fn from_loaded_playlist(loaded: ConfPlaylist, tracks: &Vec<Track>) -> Self {
+    fn from_loaded_playlist(loaded: ConfPlaylist, tracks: &[Track]) -> Self {
         let wanted: HashSet<u64> = loaded.track_hashes.into_iter().collect();
 
         let tracks = tracks
-            .into_iter()
+            .iter()
             .filter_map(|track| {
                 let mut hasher = DefaultHasher::new();
                 track.hash(&mut hasher);
@@ -121,7 +132,7 @@ static LIBRARY_CACHE_FILE: LazyLock<Result<PathBuf, CacheError>> =
 static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
 
 /// Save the library state to a file.
-fn save_library() -> Result<(), MusicLibraryError> {
+pub fn save_library() -> Result<(), MusicLibraryError> {
     trace!("Saving the library state to library cache");
 
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
@@ -191,7 +202,7 @@ pub fn load() -> Result<(), MusicLibraryError> {
         tracks.len()
     );
 
-    trace!("Received tracks from the indexing thread, loading the library");
+    trace!("Loading the library cache");
 
     let library_cache = match LIBRARY_CACHE_FILE.clone() {
         Ok(cache) => cache,
@@ -249,6 +260,15 @@ pub fn load() -> Result<(), MusicLibraryError> {
     );
 
     Ok(())
+}
+
+pub fn get_library() -> Result<MusicLibrary, MusicLibraryError> {
+    if let Some(lib) = MUSIC_LIBRARY.read().unwrap().clone() {
+        Ok(lib)
+    } else {
+        error!("Tried to get the music library, but it was uninitialized!");
+        Err(MusicLibraryError::LibraryNotInitialized)
+    }
 }
 
 pub fn create_playlist(
@@ -314,13 +334,26 @@ pub fn create_playlist_from_m3u8<T: Into<PathBuf>>(
     }
 }
 
-pub fn delete_playlist(name: &str) -> Result<(), MusicLibraryError> {
-    let lib = &*MUSIC_LIBRARY.write().unwrap();
-    if let Some(lib) = lib {
-        if lib.get_playlist_with_name(name).is_some() {
-            todo!()
-        } else {
-            Err(MusicLibraryError::NoSuchPlaylist)
+pub fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicLibraryError> {
+    trace!("Deleting playlist with name \"{name}\"");
+
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    if let Some(lib) = guard.as_mut() {
+        match lib
+            .playlists
+            .iter()
+            .position(|playlist| playlist.name == name)
+        {
+            Some(pos) => {
+                lib.playlists.remove(pos);
+                if save_state {
+                    drop(guard);
+                    save_library()?;
+                }
+                trace!("Deleted playlist with name \"{name}\"");
+                Ok(())
+            }
+            None => Err(MusicLibraryError::NoSuchPlaylist),
         }
     } else {
         Err(MusicLibraryError::LibraryNotInitialized)
