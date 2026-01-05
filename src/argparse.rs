@@ -54,6 +54,7 @@ pub enum Command {
         /// Command for the GUI
         command: GuiCommand,
     },
+    /// Manage playlists
     Playlist {
         #[command(subcommand)]
         command: PlaylistCommand,
@@ -105,12 +106,22 @@ pub enum GuiCommand {
 pub enum PlaylistCommand {
     /// Create a new playlist
     New {
+        /// The name of the playlist
         name: String,
+        /// The list of tracks to add to the new playlist
         tracks: Option<Vec<PathBuf>>,
     },
-    /// Import a playlist from an m3u8 file
-    FromM3U8 { name: String, m3u8_file: PathBuf },
-    /// Delete playlists from the library
+    /// Import a playlist from an M3U8 file
+    FromM3U8 {
+        // The path to the M3U8 file to import the playlist from
+        m3u8_file: PathBuf,
+        /// The name of the playlist
+        ///
+        /// If this is not specified, the name of the playlist will be derived from the
+        /// name of the M3U8 file.
+        name: Option<String>,
+    },
+    /// Delete playlist(s) from the library
     Delete { names: Vec<String> },
     /// List all playlists from the library
     List {

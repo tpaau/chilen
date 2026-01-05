@@ -318,13 +318,26 @@ pub fn create_playlist(
     }
 }
 
-pub fn create_playlist_from_m3u8<T: Into<PathBuf>>(
-    name: &str,
-    m3u8_file: &T,
+pub fn import_playlist_from_m3u8(
+    name: Option<String>,
+    m3u8_file: &PathBuf,
 ) -> Result<(), MusicLibraryError> {
+    let name = {
+        if let Some(name) = name {
+            name
+        } else {
+            match m3u8_file.file_name() {
+                Some(name) => name.to_string_lossy().to_string(),
+                None => {
+                    error!("Could not determine the name for the imported playlist, the M3U8 file path had no final component!");
+                    return Err(MusicLibraryError::CacheError);
+                }
+            }
+        }
+    };
     let lib = &*MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = lib {
-        if lib.get_playlist_with_name(name).is_none() {
+        if lib.get_playlist_with_name(&name).is_none() {
             todo!()
         } else {
             Err(MusicLibraryError::PlaylistExists)

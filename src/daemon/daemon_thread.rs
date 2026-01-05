@@ -11,7 +11,7 @@ use log::{error, info, trace};
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 
 use crate::cache::playlists::{
-    create_playlist, create_playlist_from_m3u8, delete_playlist, get_library, save_library,
+    create_playlist, import_playlist_from_m3u8, delete_playlist, get_library, save_library,
 };
 
 #[derive(Debug)]
@@ -108,7 +108,7 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                         return;
                     }
                     PlaylistCommand::FromM3U8 { name, m3u8_file } => {
-                        if let Err(e) = create_playlist_from_m3u8(&name, &m3u8_file) {
+                        if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
                             respond(
                                 conn,
                                 &DaemonResponse::Error {

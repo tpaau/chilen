@@ -158,7 +158,7 @@ pub enum PlaylistCommand {
         tracks: Option<Vec<PathBuf>>,
     },
     FromM3U8 {
-        name: String,
+        name: Option<String>,
         m3u8_file: PathBuf,
     },
     Delete {
