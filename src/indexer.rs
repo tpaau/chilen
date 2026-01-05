@@ -13,7 +13,9 @@ use walkdir::WalkDir;
 
 use crate::track::Track;
 
-pub fn index_files<T: Into<PathBuf> + Debug>(files: Vec<T>) -> Result<Vec<Track>, MusicLibraryError> {
+pub fn index_files<T: Into<PathBuf> + Debug>(
+    files: Vec<T>,
+) -> Result<Vec<Track>, MusicLibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
 

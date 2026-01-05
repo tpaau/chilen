@@ -80,6 +80,7 @@ pub enum MusicLibraryError {
     NoSuchPlaylist,
     HomeDirNotFound,
     ArcInnerError,
+    CacheError,
 }
 
 impl Display for MusicLibraryError {
@@ -88,8 +89,12 @@ impl Display for MusicLibraryError {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not yet initialized"),
             Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
-            Self::HomeDirNotFound => write!(f, "Could not get the path to the home directory, or the home directory does not exist"),
-            Self::ArcInnerError => write!(f, "Could not get the underlying arc data")
+            Self::HomeDirNotFound => write!(
+                f,
+                "Could not get the path to the home directory, or the home directory does not exist"
+            ),
+            Self::ArcInnerError => write!(f, "Could not get the underlying arc data"),
+            Self::CacheError => write!(f, "Cache is unusable"),
         }
     }
 }

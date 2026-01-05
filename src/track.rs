@@ -51,7 +51,7 @@ pub struct RQTrack {
     pub year: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,
@@ -153,22 +153,6 @@ impl From<&Tag> for Track {
             disk_total: tag.disk_total(),
             year: tag.year(),
         }
-    }
-}
-
-impl Hash for Track {
-    /// Hashes everything but the paths, ie. only the metadata.
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.artist.hash(state);
-        self.title.hash(state);
-        self.album.hash(state);
-        self.genre.hash(state);
-        self.comment.hash(state);
-        self.track.hash(state);
-        self.track_total.hash(state);
-        self.disk.hash(state);
-        self.disk_total.hash(state);
-        self.year.hash(state);
     }
 }
 
