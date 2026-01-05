@@ -2,7 +2,6 @@ use std::{hash::Hash, path::PathBuf};
 
 use cxx_qt_lib::QString;
 use lofty::tag::{Accessor, Tag};
-use serde::{Deserialize, Serialize};
 
 use crate::cache::{CacheError, covers::get_track_cover};
 
@@ -51,7 +50,7 @@ pub struct RQTrack {
     pub year: i32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,

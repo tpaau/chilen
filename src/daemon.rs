@@ -13,11 +13,10 @@ use mpipc::{
     ClientCommand, DaemonError, DaemonExitStatus, DaemonResponse, PlaylistCommand, SOCKET_NAME,
     get_daemon_socket,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::cache::playlists;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 enum ThreadCommand {
     Shutdown,
     Restart,
@@ -87,7 +86,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                 Ok(cmd) => cmd,
                 Err(e) => {
                     error!("Failed decoding a client command: {e}");
-                    break;
+                    return;
                 }
             };
 
@@ -101,7 +100,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                         respond(conn, &DaemonResponse::Ok);
                     }
 
-                    break;
+                    return;
                 }
                 ClientCommand::Restart => {
                     info!("Received restart command from the client");
@@ -117,7 +116,7 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                                     error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
-                            break;
+                            return;
                         }
                         respond(conn, &DaemonResponse::Ok);
                     }
@@ -129,7 +128,8 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                                     error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
-                            break;
+                            trace!("Closing client connection");
+                            return;
                         }
                         respond(conn, &DaemonResponse::Ok);
                     }
@@ -141,15 +141,14 @@ fn spawn_daemon_thread(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<(
                                     error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
-                            break;
+                            return;
                         }
                         respond(conn, &DaemonResponse::Ok);
                     }
+                    PlaylistCommand::List => todo!(),
                 },
             };
         }
-
-        trace!("Closing client connection");
     })
 }
 

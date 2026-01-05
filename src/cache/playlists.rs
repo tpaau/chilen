@@ -1,11 +1,16 @@
 use std::{
-    collections::HashSet, fs::{read, File}, hash::{DefaultHasher, Hash, Hasher}, io::Write, path::PathBuf, sync::{LazyLock, RwLock}, time::{Duration, SystemTime}
+    collections::HashSet,
+    fs::{File, read},
+    hash::{DefaultHasher, Hash, Hasher},
+    io::Write,
+    path::PathBuf,
+    sync::{LazyLock, RwLock},
+    time::{Duration, SystemTime},
 };
 
-use bincode::{config::standard, encode_to_vec, Decode, Encode};
+use bincode::{Decode, Encode, config::standard, encode_to_vec};
 use log::{error, trace};
 use mpipc::MusicLibraryError;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     cache::{CACHE_DIR, CacheError},
@@ -13,7 +18,7 @@ use crate::{
     track::Track,
 };
 
-#[derive(Clone, Debug, Encode, Decode, Serialize, Deserialize)]
+#[derive(Clone, Debug, Encode, Decode)]
 struct ConfPlaylist {
     pub name: String,
     pub track_hashes: Vec<u64>,
@@ -34,7 +39,7 @@ impl From<Playlist> for ConfPlaylist {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode, Serialize, Deserialize)]
+#[derive(Clone, Debug, Encode, Decode)]
 struct ConfMusicLibrary {
     pub playlists: Vec<ConfPlaylist>,
 }
@@ -104,7 +109,7 @@ impl MusicLibrary {
     }
 }
 
-static PLAYLIST_CACHE_FILE: LazyLock<Result<PathBuf, CacheError>> =
+static LIBRARY_CACHE_FILE: LazyLock<Result<PathBuf, CacheError>> =
     LazyLock::new(|| match CACHE_DIR.clone() {
         Ok(mut cache) => {
             cache.push("playlists");
@@ -117,12 +122,14 @@ static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
 
 /// Save the library state to a file.
 fn save_library() -> Result<(), MusicLibraryError> {
+    trace!("Saving the library state to library cache");
+
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
 
     if let Some(lib) = lib {
         let lib = ConfMusicLibrary::from(lib);
 
-        let playlist_cache = match PLAYLIST_CACHE_FILE.clone() {
+        let library_cache = match LIBRARY_CACHE_FILE.clone() {
             Ok(cache) => cache,
             Err(e) => {
                 error!("Could not get the path to the library cache: {e}");
@@ -138,7 +145,7 @@ fn save_library() -> Result<(), MusicLibraryError> {
             }
         };
 
-        let mut file = match File::create(playlist_cache) {
+        let mut file = match File::create(library_cache) {
             Ok(file) => file,
             Err(e) => {
                 error!("Could not open the library cache in write-only mode: {e}");
@@ -153,8 +160,7 @@ fn save_library() -> Result<(), MusicLibraryError> {
                 Err(MusicLibraryError::CacheError)
             }
         }
-    }
-    else {
+    } else {
         error!("Cannot save the library since it is uninitialized!");
         Err(MusicLibraryError::CacheError)
     }
@@ -187,7 +193,7 @@ pub fn load() -> Result<(), MusicLibraryError> {
 
     trace!("Received tracks from the indexing thread, loading the library");
 
-    let playlist_cache = match PLAYLIST_CACHE_FILE.clone() {
+    let library_cache = match LIBRARY_CACHE_FILE.clone() {
         Ok(cache) => cache,
         Err(e) => {
             error!("Could not get the path to the library cache: {e}");
@@ -195,7 +201,7 @@ pub fn load() -> Result<(), MusicLibraryError> {
         }
     };
 
-    let exists = match playlist_cache.try_exists() {
+    let exists = match library_cache.try_exists() {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library cache exists: {e}");
@@ -204,12 +210,12 @@ pub fn load() -> Result<(), MusicLibraryError> {
     };
 
     if exists {
-        if !playlist_cache.is_dir() {
-            error!("The library cache at {playlist_cache:?} must not be a directory!");
+        if library_cache.is_dir() {
+            error!("The library cache at {library_cache:?} must not be a directory!");
             return Err(MusicLibraryError::CacheError);
         }
 
-        let data = match read(playlist_cache) {
+        let data = match read(library_cache) {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library cache: {e}");
@@ -229,7 +235,6 @@ pub fn load() -> Result<(), MusicLibraryError> {
         let mut guard = MUSIC_LIBRARY.write().unwrap();
         *guard = Some(lib);
         drop(guard);
-        save_library()?;
     } else {
         let mut guard = MUSIC_LIBRARY.write().unwrap();
         *guard = Some(MusicLibrary::default());
@@ -250,7 +255,7 @@ pub fn create_playlist(
     name: String,
     tracks: &Option<Vec<PathBuf>>,
 ) -> Result<(), MusicLibraryError> {
-    trace!("Creating a new playlist with name {name} from a list tracks");
+    trace!("Creating a new playlist with name \"{name}\" from a list tracks");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {
@@ -275,17 +280,20 @@ pub fn create_playlist(
                 .collect();
 
             lib.playlists.push(Playlist {
-                name,
+                name: name.clone(),
                 tracks: intersecting_tracks,
             });
 
             drop(guard);
             save_library()?;
+            trace!("Created a new playlist with the name \"{name}\"");
             Ok(())
         } else {
+            error!("A playlist with the name \"{name}\" already exists");
             Err(MusicLibraryError::PlaylistExists)
         }
     } else {
+        error!("Cannot modify an uninitialized library");
         Err(MusicLibraryError::LibraryNotInitialized)
     }
 }

@@ -9,12 +9,11 @@ use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
 };
 use log::{error, trace, warn};
-use serde::{Deserialize, Serialize};
 
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Decode)]
+#[derive(Debug, Clone, Copy, Decode)]
 /// The exit status of the daemon.
 pub enum DaemonExitStatus {
     ExitRequested,
@@ -33,7 +32,7 @@ impl Display for DaemonExitStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 /// Error related to the daemon.
 pub enum DaemonError {
     StoppedUnexpectedly,
@@ -73,7 +72,7 @@ impl Display for DaemonError {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, Copy, Encode, Decode)]
 pub enum MusicLibraryError {
     PlaylistExists,
     LibraryNotInitialized,
@@ -99,7 +98,7 @@ impl Display for MusicLibraryError {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     Ok,
@@ -117,7 +116,7 @@ impl Display for DaemonResponse {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 /// A parsed CLI command that can either be an init command for the daemon, or a message to be
 /// sent to a deamon.
 pub enum DaemonCommand {
@@ -127,7 +126,7 @@ pub enum DaemonCommand {
     Message { command: ClientCommand },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 /// Command that can be sent to the daemon over a socket.
 pub enum ClientCommand {
     Stop,
@@ -148,7 +147,7 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum PlaylistCommand {
     New {
         name: String,
@@ -161,6 +160,7 @@ pub enum PlaylistCommand {
     Delete {
         name: String,
     },
+    List,
 }
 
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.

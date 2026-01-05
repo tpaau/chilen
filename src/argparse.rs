@@ -114,6 +114,7 @@ pub enum PlaylistCommand {
     Delete {
         name: String,
     },
+    List,
 }
 
 impl From<PlaylistCommand> for mpipc::PlaylistCommand {
@@ -124,6 +125,7 @@ impl From<PlaylistCommand> for mpipc::PlaylistCommand {
                 mpipc::PlaylistCommand::FromM3U8 { name, m3u8_file }
             }
             PlaylistCommand::Delete { name } => mpipc::PlaylistCommand::Delete { name },
+            PlaylistCommand::List => mpipc::PlaylistCommand::List,
         }
     }
 }
