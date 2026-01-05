@@ -4,5 +4,8 @@ check:
 fmt:
 	cargo fmt --all
 
+loc:
+	cloc build.rs src/ qml/
+
 release:
 	cargo build --release

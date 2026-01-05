@@ -14,7 +14,7 @@ use mpipc::MusicLibraryError;
 
 use crate::{
     cache::{CACHE_DIR, CacheError},
-    indexer::{index, index_files},
+    cache::indexer::{index, index_files},
     track::Track,
 };
 

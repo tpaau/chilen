@@ -4,7 +4,6 @@ mod cli;
 mod cxxqt_object;
 mod daemon;
 mod gui;
-mod indexer;
 #[cfg(test)]
 mod tests;
 mod track;
