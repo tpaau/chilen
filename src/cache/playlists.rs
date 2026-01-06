@@ -13,8 +13,8 @@ use log::{error, trace};
 use mpipc::MusicLibraryError;
 
 use crate::{
-    cache::{CACHE_DIR, CacheError},
     cache::indexer::{index, index_files},
+    cache::{CACHE_DIR, CacheError},
     track::Track,
 };
 
@@ -329,7 +329,9 @@ pub fn import_playlist_from_m3u8(
             match m3u8_file.file_name() {
                 Some(name) => name.to_string_lossy().to_string(),
                 None => {
-                    error!("Could not determine the name for the imported playlist, the M3U8 file path had no final component!");
+                    error!(
+                        "Could not determine the name for the imported playlist, the M3U8 file path had no final component!"
+                    );
                     return Err(MusicLibraryError::CacheError);
                 }
             }

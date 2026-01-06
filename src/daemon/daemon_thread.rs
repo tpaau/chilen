@@ -6,12 +6,12 @@ use std::{
 
 use bincode::{config::standard, decode_from_std_read, encode_to_vec};
 use interprocess::local_socket::Stream;
-use log::{error, info, trace};
+use log::{debug, error, info, trace};
 
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 
 use crate::cache::playlists::{
-    create_playlist, import_playlist_from_m3u8, delete_playlist, get_library, save_library,
+    create_playlist, delete_playlist, get_library, import_playlist_from_m3u8, save_library,
 };
 
 #[derive(Debug)]
@@ -57,39 +57,20 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
             };
 
             match command {
-                ClientCommand::Stop => {
-                    info!("Received shutdown command from the client");
-
-                    if let Err(e) = ttx.send(ThreadCommand::Shutdown) {
-                        error!("Failed sending message to the daemon: {e}");
-                        respond(
-                            conn,
-                            &DaemonResponse::Error {
-                                error: DaemonError::DecodingError {
-                                    error: e.to_string(),
-                                },
-                            },
-                        );
+                ClientCommand::Stop | ClientCommand::Restart => {
+                    let thread_command = if command == ClientCommand::Stop {
+                        info!("Received shutdown command from the client");
+                        ThreadCommand::Shutdown
                     } else {
-                        respond(conn, &DaemonResponse::Ok);
-                    }
-                    return;
-                }
-                ClientCommand::Restart => {
-                    info!("Received restart command from the client");
-                    if let Err(e) = ttx.send(ThreadCommand::Restart) {
+                        info!("Received restart command from the client");
+                        ThreadCommand::Restart
+                    };
+                    respond(conn, &DaemonResponse::Ok);
+                    if let Err(e) = ttx.send(thread_command) {
                         error!("Failed sending message to the daemon: {e}");
-                        respond(
-                            conn,
-                            &DaemonResponse::Error {
-                                error: DaemonError::DecodingError {
-                                    error: e.to_string(),
-                                },
-                            },
-                        );
-                    } else {
-                        respond(conn, &DaemonResponse::Ok);
+                        debug!("The connection will be closed anyway due to client expectation");
                     }
+                    trace!("Closing client connection (implicit)");
                     return;
                 }
                 ClientCommand::Status => todo!(),

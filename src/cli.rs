@@ -1,10 +1,6 @@
 use std::{
-    io::{
-        stdin,
-        stdout,
-        Write
-    },
-    thread
+    io::{Write, stdin, stdout},
+    thread,
 };
 
 use log::{error, info, trace};
@@ -49,8 +45,7 @@ fn ask_user_yn(prompt: &str, default: bool) -> Result<bool, std::io::Error> {
 
     if default {
         print!("{prompt} [Yes/no]: ");
-    }
-    else {
+    } else {
         print!("{prompt} [No/yes]: ");
     }
 
@@ -58,24 +53,19 @@ fn ask_user_yn(prompt: &str, default: bool) -> Result<bool, std::io::Error> {
 
     match stdin().read_line(&mut input) {
         Ok(_) => {
-            let il = input
-                .trim()
-                .to_lowercase();
+            let il = input.trim().to_lowercase();
             if il.is_empty() {
                 Ok(default)
-            }
-            else if il == "y" || il == "yes"  {
+            } else if il == "y" || il == "yes" {
                 Ok(true)
-            }
-            else if il == "n" || il == "no" {
+            } else if il == "n" || il == "no" {
                 Ok(false)
-            }
-            else {
+            } else {
                 error!("Invalid input: '{}'", input.trim());
                 ask_user_yn(prompt, default)
             }
-        },
-        Err(e) => Err(e)
+        }
+        Err(e) => Err(e),
     }
 }
 
