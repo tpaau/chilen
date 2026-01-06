@@ -1,7 +1,14 @@
-use std::thread;
+use std::{
+    io::{
+        stdin,
+        stdout,
+        Write
+    },
+    thread
+};
 
 use log::{error, info, trace};
-use mpipc::{DaemonResponse, Playlist};
+use mpipc::{DaemonError, DaemonResponse, Playlist};
 
 use crate::{
     argparse::{Command, DaemonCommand, GuiCommand, PlaylistCommand},
@@ -9,7 +16,9 @@ use crate::{
 };
 
 fn display_playlists(playlists: &Vec<Playlist>, full: bool) {
-    if full {
+    if playlists.is_empty() {
+        println!("There are no playlists in the library");
+    } else if full {
         for playlist in playlists {
             println!("Playlist \"{}\":", playlist.name);
             for (i, track) in playlist.tracks.iter().enumerate() {
@@ -20,6 +29,60 @@ fn display_playlists(playlists: &Vec<Playlist>, full: bool) {
         for playlist in playlists {
             println!("{} ({} tracks)", playlist.name, playlist.tracks.len());
         }
+    }
+}
+
+/// Asks the user the given question and returns their response:
+/// - `true` -> Users' answer was positive (y/yes)
+/// - `false` -> Users' answer was negative (n/no)
+///
+/// Returns an error if the users' input was invalid.
+///
+/// Valid input is either 'y' or 'yes' for yes and 'n' or 'no' for no.
+///
+/// Users' input is converted to lowercase internally so it doesn't matter
+/// whether they respond with all uppercase, all lowercase, or mixed letters.
+fn ask_user_yn(prompt: &str, default: bool) -> Result<bool, std::io::Error> {
+    // TODO: Prompt timeout
+
+    let mut input = String::new();
+
+    if default {
+        print!("{prompt} [Yes/no]: ");
+    }
+    else {
+        print!("{prompt} [No/yes]: ");
+    }
+
+    let _ = stdout().flush();
+
+    match stdin().read_line(&mut input) {
+        Ok(_) => {
+            let il = input
+                .trim()
+                .to_lowercase();
+            if il.is_empty() {
+                Ok(default)
+            }
+            else if il == "y" || il == "yes"  {
+                Ok(true)
+            }
+            else if il == "n" || il == "no" {
+                Ok(false)
+            }
+            else {
+                error!("Invalid input: '{}'", input.trim());
+                ask_user_yn(prompt, default)
+            }
+        },
+        Err(e) => Err(e)
+    }
+}
+
+fn print_daemon_error(error: DaemonError) {
+    error!("Could not connect to the daemon: {error}");
+    if let DaemonError::ConnectionError { error: _ } = error {
+        eprintln!("You must first start the daemon to run this command!");
     }
 }
 
@@ -43,7 +106,7 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     };
                     match mpipc::exec_client_command(cmd) {
                         Ok(response) => info!("Got a response from the daemon: {response}"),
-                        Err(e) => error!("Failed executing the daemon command: {e}"),
+                        Err(e) => print_daemon_error(e),
                     }
                 }
             }
@@ -80,7 +143,7 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         }
                     },
                     Err(e) => {
-                        error!("Failed executing the daemon command: {e}");
+                        print_daemon_error(e);
                     }
                 }
             }

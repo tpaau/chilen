@@ -178,6 +178,10 @@ impl From<&Tag> for Track {
 
 impl Track {
     pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CacheError> {
-        get_track_cover(self, tag)
+        get_track_cover(self, tag, false)
+    }
+
+    pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), CacheError> {
+        get_track_cover(self, tag, true)
     }
 }

@@ -71,7 +71,7 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cac
     Err(CacheError::NoSuitablePicturesInTag)
 }
 
-pub fn get_track_cover(track: &mut Track, tag: &Tag) -> Result<(), CacheError> {
+pub fn get_track_cover(track: &mut Track, tag: &Tag, ignore_cache: bool) -> Result<(), CacheError> {
     let front = pick_front_cover_or_replacement(tag.pictures())?;
 
     let mut hasher = DefaultHasher::new();
@@ -88,6 +88,11 @@ pub fn get_track_cover(track: &mut Track, tag: &Tag) -> Result<(), CacheError> {
         }
     };
 
+    if !ignore_cache && cover_path.is_file() {
+        track.cover_path = Some(cover_path);
+        return Ok(());
+    }
+
     let mut file = match File::create(&cover_path) {
         Ok(file) => file,
         Err(e) => {
@@ -100,6 +105,8 @@ pub fn get_track_cover(track: &mut Track, tag: &Tag) -> Result<(), CacheError> {
         error!("Could not write the cover image to the cache directory: {e}");
         return Err(CacheError::CoverWriteError);
     }
+
+    track.cover_path = Some(cover_path);
 
     Ok(())
 }

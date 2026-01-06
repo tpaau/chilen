@@ -275,7 +275,7 @@ pub fn create_playlist(
     name: String,
     tracks: &Option<Vec<PathBuf>>,
 ) -> Result<(), MusicLibraryError> {
-    trace!("Creating a new playlist with name \"{name}\" from a list tracks");
+    trace!("Creating a new playlist with name \"{name}\" from a list of tracks");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {
