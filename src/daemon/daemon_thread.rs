@@ -6,7 +6,7 @@ use std::{
 
 use bincode::{config::standard, decode_from_std_read, encode_to_vec};
 use interprocess::local_socket::Stream;
-use log::{debug, error, info, trace};
+use log::{error, info, trace};
 
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 
@@ -20,7 +20,7 @@ pub enum ThreadCommand {
     Restart,
 }
 
-fn respond(mut conn: BufReader<&Stream>, msg: &DaemonResponse) {
+fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
     let msg = match encode_to_vec(msg, standard()) {
         Ok(msg) => msg,
         Err(e) => {
@@ -57,20 +57,21 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
             };
 
             match command {
-                ClientCommand::Stop | ClientCommand::Restart => {
-                    let thread_command = if command == ClientCommand::Stop {
+                ClientCommand::Shutdown | ClientCommand::Restart => {
+                    let thread_command = if command == ClientCommand::Shutdown {
                         info!("Received shutdown command from the client");
+                        trace!("Closing client connection (shutdown)");
                         ThreadCommand::Shutdown
                     } else {
                         info!("Received restart command from the client");
+                        trace!("Closing client connection (restart)");
                         ThreadCommand::Restart
                     };
-                    respond(conn, &DaemonResponse::Ok);
+                    respond(&mut conn, &DaemonResponse::Ok);
                     if let Err(e) = ttx.send(thread_command) {
                         error!("Failed sending message to the daemon: {e}");
-                        debug!("The connection will be closed anyway due to client expectation");
+                        info!("The connection will be closed anyway due to client expectation");
                     }
-                    trace!("Closing client connection (implicit)");
                     return;
                 }
                 ClientCommand::Status => todo!(),
@@ -78,74 +79,72 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                     PlaylistCommand::New { name, tracks } => {
                         if let Err(e) = create_playlist(name, &tracks) {
                             respond(
-                                conn,
+                                &mut conn,
                                 &DaemonResponse::Error {
                                     error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
-                            return;
+                            continue;
                         }
-                        respond(conn, &DaemonResponse::Ok);
-                        return;
+                        respond(&mut conn, &DaemonResponse::Ok);
                     }
                     PlaylistCommand::FromM3U8 { name, m3u8_file } => {
                         if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
                             respond(
-                                conn,
+                                &mut conn,
                                 &DaemonResponse::Error {
                                     error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
-                            return;
+                            continue;
                         }
-                        respond(conn, &DaemonResponse::Ok);
-                        return;
+                        respond(&mut conn, &DaemonResponse::Ok);
                     }
                     PlaylistCommand::Delete { names } => {
                         for name in names {
                             if let Err(e) = delete_playlist(&name, false) {
                                 respond(
-                                    conn,
+                                    &mut conn,
                                     &DaemonResponse::Error {
                                         error: DaemonError::MusicLibraryError { error: e },
                                     },
                                 );
-                                return;
                             }
                         }
                         if let Err(e) = save_library() {
                             respond(
-                                conn,
+                                &mut conn,
                                 &DaemonResponse::Error {
                                     error: DaemonError::MusicLibraryError { error: e },
                                 },
                             );
-                            return;
+                            continue;
                         }
-                        respond(conn, &DaemonResponse::Ok);
-                        return;
+                        respond(&mut conn, &DaemonResponse::Ok);
                     }
-                    PlaylistCommand::List => {
-                        match get_library() {
-                            Ok(lib) => {
-                                let mut playlists = Vec::new();
-                                for playlist in lib.playlists {
-                                    playlists.push(playlist.into());
-                                }
-                                respond(conn, &DaemonResponse::Playlists { playlists });
+                    PlaylistCommand::List => match get_library() {
+                        Ok(lib) => {
+                            let mut playlists = Vec::new();
+                            for playlist in lib.playlists {
+                                playlists.push(playlist.into());
                             }
-                            Err(e) => {
-                                respond(
-                                    conn,
-                                    &DaemonResponse::Error {
-                                        error: DaemonError::MusicLibraryError { error: e },
-                                    },
-                                );
-                            }
+                            respond(&mut conn, &DaemonResponse::Playlists { playlists });
                         }
-                        return;
-                    }
+                        Err(e) => {
+                            respond(
+                                &mut conn,
+                                &DaemonResponse::Error {
+                                    error: DaemonError::MusicLibraryError { error: e },
+                                },
+                            );
+                        }
+                    },
                 },
+                ClientCommand::Disconnect => {
+                    respond(&mut conn, &DaemonResponse::Ok);
+                    trace!("Closing client connection (client request)");
+                    return;
+                }
             };
         }
     })

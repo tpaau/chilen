@@ -78,7 +78,7 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
         match value {
             DaemonCommand::Start => mpipc::DaemonCommand::Start,
             DaemonCommand::Stop => mpipc::DaemonCommand::Message {
-                command: ClientCommand::Stop,
+                command: ClientCommand::Shutdown,
             },
             DaemonCommand::Restart => mpipc::DaemonCommand::Message {
                 command: ClientCommand::Restart,

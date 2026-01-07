@@ -128,9 +128,6 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         DaemonResponse::Error { error } => {
                             error!("{error}");
                         }
-                        _ => {
-                            info!("Got a response from the daemon: {response}");
-                        }
                     },
                     Err(e) => {
                         print_daemon_error(e);

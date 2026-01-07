@@ -8,6 +8,7 @@ use bincode::{Decode, Encode, config::standard, decode_from_reader, encode_to_ve
 use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
 };
+use lofty::tag::{Accessor, Tag};
 use log::{error, trace, warn};
 
 /// The name of the socket the daemon listens on.
@@ -42,32 +43,34 @@ pub enum DaemonError {
     ConnectionError { error: String },
     SendingError { error: String },
     MusicLibraryError { error: MusicLibraryError },
+    UnknownError,
 }
 
 impl Display for DaemonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DaemonError::StoppedUnexpectedly => {
+            Self::StoppedUnexpectedly => {
                 write!(f, "Daemonm stopped unexpectedly for an unknown reason")
             }
-            DaemonError::EncodingError { error } => {
+            Self::EncodingError { error } => {
                 write!(f, "Failed encoding daemon command: {error}")
             }
-            DaemonError::DecodingError { error } => {
+            Self::DecodingError { error } => {
                 write!(f, "Could not decode the response from the daemon: {error}")
             }
-            DaemonError::SocketError { error } => {
+            Self::SocketError { error } => {
                 write!(f, "Socket error: {error}")
             }
-            DaemonError::ConnectionError { error } => {
+            Self::ConnectionError { error } => {
                 write!(f, "Could not connect to the daemon: {error}")
             }
-            DaemonError::SendingError { error } => {
+            Self::SendingError { error } => {
                 write!(f, "Could not send the commadnd to the daemon: {error}")
             }
-            DaemonError::MusicLibraryError { error } => {
+            Self::MusicLibraryError { error } => {
                 write!(f, "{error}")
             }
+            Self::UnknownError => write!(f, "An unknown error occurred in the daemon"),
         }
     }
 }
@@ -101,19 +104,23 @@ impl Display for MusicLibraryError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
+    /// The client command was executed successfully.
     Ok,
-    Status {},
+    /// List of some playlists returned by the daemon.
     Playlists { playlists: Vec<Playlist> },
+    /// An internal error occurred.
     Error { error: DaemonError },
 }
 
 impl Display for DaemonResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DaemonResponse::Ok => write!(f, "Command executed successfully"),
-            DaemonResponse::Status {} => write!(f, "Daemon status response"),
+            DaemonResponse::Ok => write!(f, "The client command executed successfully"),
             DaemonResponse::Playlists { playlists } => {
-                write!(f, "List of playlists from the daemon: {playlists:?}")
+                write!(
+                    f,
+                    "List of some playlists returned by the daemon: {playlists:?}"
+                )
             }
             DaemonResponse::Error { error } => write!(f, "An error occured in the daemon: {error}"),
         }
@@ -121,10 +128,10 @@ impl Display for DaemonResponse {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
-/// A parsed CLI command that can either be an init command for the daemon, or a message to be
-/// sent to a deamon.
+/// A parsed CLI command that can either be a daemon start command, or a message to be sent to
+/// an already running deamon.
 pub enum DaemonCommand {
-    /// Init command to start the daemon.
+    /// Start the daemon.
     Start,
     /// Message to be sent to an already running daemon.
     Message { command: ClientCommand },
@@ -133,9 +140,10 @@ pub enum DaemonCommand {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Command that can be sent to the daemon over a socket.
 pub enum ClientCommand {
-    Stop,
+    Shutdown,
     Restart,
     Status,
+    Disconnect,
     Playlist { cmd: PlaylistCommand },
 }
 
@@ -194,6 +202,25 @@ impl std::fmt::Display for Track {
     }
 }
 
+impl From<&Tag> for Track {
+    fn from(tag: &Tag) -> Self {
+        Track {
+            path: PathBuf::new(),
+            cover_path: None,
+            artist: tag.artist().map(|artist| artist.into()),
+            title: tag.title().map(|title| title.into()),
+            album: tag.album().map(|album| album.into()),
+            genre: tag.genre().map(|genre| genre.into()),
+            comment: tag.comment().map(|comment| comment.into()),
+            track: tag.track(),
+            track_total: tag.track_total(),
+            disk: tag.disk(),
+            disk_total: tag.disk_total(),
+            year: tag.year(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct Playlist {
     pub name: String,
@@ -203,10 +230,8 @@ pub struct Playlist {
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.
 ///
 /// # Examples
-///
 /// ```
-/// use mpipc::get_daemon_socket;
-///
+/// # use mpipc::get_daemon_socket;
 /// match get_daemon_socket() {
 ///     Ok(socket) => eprintln!("Got a socket: {socket:?}"),
 ///     Err(e) => panic!("Could not obtain a socket: {e}"),
@@ -230,6 +255,63 @@ pub fn get_daemon_socket<'a>() -> Result<Name<'a>, std::io::Error> {
     }
 }
 
+pub fn disconnect(conn: &mut BufReader<&Stream>) -> Result<(), DaemonError> {
+    trace!("Closing connection with the daemon");
+
+    let cmd = match encode_to_vec(ClientCommand::Disconnect, standard()) {
+        Ok(cmd) => cmd,
+        Err(e) => {
+            return Err(DaemonError::EncodingError {
+                error: e.to_string(),
+            });
+        }
+    };
+
+    match conn.get_mut().write_all(&cmd) {
+        Ok(_) => {}
+        Err(e) => {
+            return Err(DaemonError::SendingError {
+                error: e.to_string(),
+            });
+        }
+    }
+
+    let response: DaemonResponse = match decode_from_reader(conn, standard()) {
+        Ok(response) => response,
+        Err(e) => {
+            return Err(DaemonError::DecodingError {
+                error: e.to_string(),
+            });
+        }
+    };
+
+    match response {
+        DaemonResponse::Error { error } => {
+            error!("Could not close the connection to the daemon: {error}");
+            return Err(error);
+        }
+        DaemonResponse::Ok => {
+            trace!("Connection with the daemon closed.");
+        }
+        _ => {
+            error!("Got an unexpected response from the daemon: {response}");
+            return Err(DaemonError::UnknownError);
+        }
+    }
+
+    Ok(())
+}
+
+/// Connects to the daemon via a local socket and returns the stream connection.
+///
+/// # Examples
+/// ```no_run
+/// # use mpipc::connect_to_daemon;
+/// match connect_to_daemon() {
+///     Ok(stream) => eprintln!("Connected to the daemon: {stream:?}"),
+///     Err(error) => panic!("Could not connect to the daemon: {error}"),
+/// }
+/// ```
 pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
     trace!("Connecting to daemon on socket '{SOCKET_NAME}'");
 
@@ -256,6 +338,16 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
     Ok(conn)
 }
 
+/// Executes a single daemon command and ends the connection.
+///
+/// # Examples
+/// ```no_run
+/// # use mpipc::{exec_client_command, ClientCommand};
+/// match exec_client_command(ClientCommand::Stop) {
+///     Ok(response) => eprintln!("Got a response from the daemon: {response}"),
+///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
+/// }
+/// ```
 pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonError> {
     trace!("Executing daemon command: {cmd:?}");
 
@@ -276,7 +368,7 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
         }
     };
 
-    let mut buf = BufReader::new(conn);
+    let mut buf = BufReader::new(&conn);
 
     match buf.get_mut().write_all(&cmd) {
         Ok(_) => {}
@@ -287,7 +379,7 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
         }
     }
 
-    let response = match decode_from_reader(buf, standard()) {
+    let response = match decode_from_reader(&mut buf, standard()) {
         Ok(response) => response,
         Err(e) => {
             return Err(DaemonError::DecodingError {
@@ -295,6 +387,10 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
             });
         }
     };
+
+    if let Err(e) = disconnect(&mut buf) {
+        error!("Could not close the connection to the daemon: {e}");
+    }
 
     Ok(response)
 }
