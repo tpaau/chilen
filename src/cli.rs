@@ -11,8 +11,12 @@ use crate::{
     daemon, gui,
 };
 
-fn display_playlists(playlists: &Vec<Playlist>, full: bool) {
-    if playlists.is_empty() {
+fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
+    if debug {
+        for playlist in playlists {
+            println!("{playlist:?}");
+        }
+    } else if playlists.is_empty() {
         println!("There are no playlists in the library");
     } else if full {
         for playlist in playlists {
@@ -82,7 +86,7 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             Command::Daemon { command } => {
                 if let DaemonCommand::Start = command {
                     match daemon::start().await {
-                        Ok(status) => info!("Daemon exited: {status}"),
+                        Ok(_) => info!("Daemon exited"),
                         Err(e) => error!("Daemon failed: {e}"),
                     }
                 } else {
@@ -111,21 +115,19 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 }
             }
             Command::Playlist { command } => {
-                let full = match command {
-                    PlaylistCommand::List { full } => full,
-                    _ => false,
+                let (full, debug) = match command {
+                    PlaylistCommand::List { full, debug } => (full, debug),
+                    _ => (false, false),
                 };
-                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist {
-                    cmd: command.into(),
-                }) {
+                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist(command.into())) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => {
                             println!("Ok");
                         }
-                        DaemonResponse::Playlists { playlists } => {
-                            display_playlists(&playlists, full);
+                        DaemonResponse::Playlists(playlists) => {
+                            display_playlists(&playlists, full, debug);
                         }
-                        DaemonResponse::Error { error } => {
+                        DaemonResponse::Error(error) => {
                             error!("{error}");
                         }
                     },
@@ -141,7 +143,7 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         let handle = thread::spawn(|| {
             let rt = tokio::runtime::Runtime::new().unwrap();
             match rt.block_on(daemon::start()) {
-                Ok(status) => info!("Daemon exited: {status}"),
+                Ok(_) => info!("Daemon exited"),
                 Err(e) => error!("Daemon failed: {e}"),
             }
         });

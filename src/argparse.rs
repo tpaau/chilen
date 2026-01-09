@@ -69,23 +69,14 @@ pub enum DaemonCommand {
     Stop,
     /// Restart the daemon process
     Restart,
-    /// Show daemon status
-    Status,
 }
 
 impl From<DaemonCommand> for mpipc::DaemonCommand {
     fn from(value: DaemonCommand) -> Self {
         match value {
             DaemonCommand::Start => mpipc::DaemonCommand::Start,
-            DaemonCommand::Stop => mpipc::DaemonCommand::Message {
-                command: ClientCommand::Shutdown,
-            },
-            DaemonCommand::Restart => mpipc::DaemonCommand::Message {
-                command: ClientCommand::Restart,
-            },
-            DaemonCommand::Status => mpipc::DaemonCommand::Message {
-                command: ClientCommand::Status,
-            },
+            DaemonCommand::Stop => mpipc::DaemonCommand::ClientCommand(ClientCommand::Shutdown),
+            DaemonCommand::Restart => mpipc::DaemonCommand::ClientCommand(ClientCommand::Restart),
         }
     }
 }
@@ -98,8 +89,6 @@ pub enum GuiCommand {
     Stop,
     /// Restart the GUI process
     Restart,
-    /// Show GUI status
-    Status,
 }
 
 #[derive(Subcommand)]
@@ -125,9 +114,13 @@ pub enum PlaylistCommand {
     Delete { names: Vec<String> },
     /// List all playlists from the library
     List {
-        #[arg(long, short, default_value_t = false)]
+        #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
         /// Also list all the tracks in the playlists
         full: bool,
+
+        #[arg(long, short, default_value_t = false, conflicts_with = "full")]
+        /// Print all the info about the playlists. Will look messy.
+        debug: bool,
     },
 }
 
@@ -139,7 +132,7 @@ impl From<PlaylistCommand> for mpipc::PlaylistCommand {
                 mpipc::PlaylistCommand::FromM3U8 { name, m3u8_file }
             }
             PlaylistCommand::Delete { names } => mpipc::PlaylistCommand::Delete { names },
-            PlaylistCommand::List { full: _ } => mpipc::PlaylistCommand::List,
+            PlaylistCommand::List { full: _, debug: _ } => mpipc::PlaylistCommand::List,
         }
     }
 }

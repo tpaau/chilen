@@ -63,13 +63,7 @@ pub fn index_files<T: Into<PathBuf> + Debug>(
         handle.join().unwrap();
     }
 
-    match Arc::into_inner(tracks) {
-        Some(lock) => {
-            let vec = lock.into_inner().unwrap();
-            Ok(vec)
-        }
-        None => Err(MusicLibraryError::ArcInnerError),
-    }
+    Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
 pub fn index(music_dir: Option<PathBuf>) -> Result<Vec<Track>, MusicLibraryError> {

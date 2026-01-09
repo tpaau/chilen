@@ -5,7 +5,7 @@ use std::{process::exit, sync::mpsc::channel, thread};
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{ClientCommand, DaemonError, DaemonExitStatus, SOCKET_NAME, get_daemon_socket};
+use mpipc::{ClientCommand, DaemonError, SOCKET_NAME, get_daemon_socket};
 
 use crate::{cache::playlists, daemon::daemon_thread::ThreadCommand};
 
@@ -43,7 +43,7 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
+pub async fn start() -> Result<(), DaemonError> {
     debug!("Starting daemon on '{SOCKET_NAME}'");
 
     let socket = match get_daemon_socket() {
@@ -95,5 +95,5 @@ pub async fn start() -> Result<DaemonExitStatus, DaemonError> {
         .await;
     }
 
-    Ok(DaemonExitStatus::ExitRequested)
+    Ok(())
 }

@@ -14,44 +14,30 @@ use log::{error, trace, warn};
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
-/// The exit status of the daemon.
-pub enum DaemonExitStatus {
-    ExitRequested,
-}
-
-impl Display for DaemonExitStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DaemonExitStatus::ExitRequested => {
-                write!(
-                    f,
-                    "Daemon stopped because another process requested it to exit"
-                )
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Error related to the daemon.
+///
+/// Can either originate from the daemon itself or while connecting to the daemon.
 pub enum DaemonError {
-    StoppedUnexpectedly,
+    /// The value could not be encoded before sending it.
     EncodingError { error: String },
+    /// The encoded value could not be decoded back into usable form.
     DecodingError { error: String },
+    /// Could not obtain the daemon socket address.
     SocketError { error: String },
+    /// Could not connect to the daemon.
     ConnectionError { error: String },
+    /// Could not send the command to the daemon.
     SendingError { error: String },
-    MusicLibraryError { error: MusicLibraryError },
-    UnknownError,
+    /// An error occurred in the music library module.
+    MusicLibraryError(MusicLibraryError),
+    /// The response received from the daemon was unexpected or invalid.
+    InvalidResponse,
 }
 
 impl Display for DaemonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::StoppedUnexpectedly => {
-                write!(f, "Daemonm stopped unexpectedly for an unknown reason")
-            }
             Self::EncodingError { error } => {
                 write!(f, "Failed encoding daemon command: {error}")
             }
@@ -67,21 +53,31 @@ impl Display for DaemonError {
             Self::SendingError { error } => {
                 write!(f, "Could not send the commadnd to the daemon: {error}")
             }
-            Self::MusicLibraryError { error } => {
-                write!(f, "{error}")
+            Self::MusicLibraryError(e) => {
+                write!(f, "{e}")
             }
-            Self::UnknownError => write!(f, "An unknown error occurred in the daemon"),
+            Self::InvalidResponse => {
+                write!(f, "The response from the daemon was invalid or malformed")
+            }
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+/// An error originating from the music library module of the daemon.
 pub enum MusicLibraryError {
+    /// Cannot complete the operation because a playlist with this name already exists.
     PlaylistExists,
+    /// The operation could not be completed because the music library is not initialized.
+    ///
+    /// This either means that the command was sent too early, or that the music library is
+    /// currently being rebuilt.
     LibraryNotInitialized,
+    /// Cannot perform an operation on a nonexistent playlist.
     NoSuchPlaylist,
+    /// Could not get the path to the home directory, or the home directory does not exist.
     HomeDirNotFound,
-    ArcInnerError,
+    /// Could not get the path to the cache or the cache is unusable.
     CacheError,
 }
 
@@ -95,7 +91,6 @@ impl Display for MusicLibraryError {
                 f,
                 "Could not get the path to the home directory, or the home directory does not exist"
             ),
-            Self::ArcInnerError => write!(f, "Could not get the underlying arc data"),
             Self::CacheError => write!(f, "Cache is unusable"),
         }
     }
@@ -107,44 +102,47 @@ pub enum DaemonResponse {
     /// The client command was executed successfully.
     Ok,
     /// List of some playlists returned by the daemon.
-    Playlists { playlists: Vec<Playlist> },
+    Playlists(Vec<Playlist>),
     /// An internal error occurred.
-    Error { error: DaemonError },
+    Error(DaemonError),
 }
 
 impl Display for DaemonResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DaemonResponse::Ok => write!(f, "The client command executed successfully"),
-            DaemonResponse::Playlists { playlists } => {
+            DaemonResponse::Playlists(playlists) => {
                 write!(
                     f,
                     "List of some playlists returned by the daemon: {playlists:?}"
                 )
             }
-            DaemonResponse::Error { error } => write!(f, "An error occured in the daemon: {error}"),
+            DaemonResponse::Error(error) => write!(f, "An error occurred in the daemon: {error}"),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// A parsed CLI command that can either be a daemon start command, or a message to be sent to
-/// an already running deamon.
+/// an already running deamon instance.
 pub enum DaemonCommand {
     /// Start the daemon.
     Start,
-    /// Message to be sent to an already running daemon.
-    Message { command: ClientCommand },
+    /// Command to be sent to an already running daemon instance.
+    ClientCommand(ClientCommand),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
-/// Command that can be sent to the daemon over a socket.
+/// Command that can be executed by a daemon instance.
 pub enum ClientCommand {
+    /// Stop the daemon instance.
     Shutdown,
+    /// Restart the daemon instance.
     Restart,
-    Status,
+    /// Manage the music library.
+    Playlist(PlaylistCommand),
+    /// Close the connection to the daemon.
     Disconnect,
-    Playlist { cmd: PlaylistCommand },
 }
 
 impl TryFrom<DaemonCommand> for ClientCommand {
@@ -154,30 +152,49 @@ impl TryFrom<DaemonCommand> for ClientCommand {
             DaemonCommand::Start => Err(String::from(
                 "The start command is not meant to be sent to the daemon",
             )),
-            DaemonCommand::Message { command } => Ok(command),
+            DaemonCommand::ClientCommand(command) => Ok(command),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+/// Command for managing the music library, can be sent to a deamon instance by wrapping it in a
+/// `ClientCommand`.
 pub enum PlaylistCommand {
+    /// Create a new playlist, optionally with some tracks in it.
     New {
+        /// The name for the new playlist, must not already exist in the music library.
         name: String,
+        /// The optional list of tracks that will be added to the playlist.
+        ///
+        /// Tracks that are outside of the music library (usually the `~/Music/` directory)
+        /// will be ignored.
         tracks: Option<Vec<PathBuf>>,
     },
+    /// Import a playlist from an M3U8 file.
     FromM3U8 {
+        /// The name for the imported playlist, must not already exist in the music library.
+        ///
+        /// If left unspecified, it will be derived from the name of the imported file.
         name: Option<String>,
+        /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
     },
+    /// Delete playlists from the music library.
     Delete {
+        /// List of the playlists to delete.
         names: Vec<String>,
     },
+    /// Get a list of the playlists from the music library.
     List,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+/// Struct representing a track from the music library.
 pub struct Track {
+    /// The path to the audio file.
     pub path: PathBuf,
+    /// The path to the extracted cover file, if exists.
     pub cover_path: Option<PathBuf>,
     pub artist: Option<String>,
     pub title: Option<String>,
@@ -195,9 +212,10 @@ impl std::fmt::Display for Track {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} - {}",
+            "{} - {} ({:?})",
             self.artist.clone().unwrap_or(String::from("Unknown")),
             self.title.clone().unwrap_or(String::from("Unknown")),
+            self.path
         )
     }
 }
@@ -222,8 +240,11 @@ impl From<&Tag> for Track {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+/// Struct representing a playlist from the music library.
 pub struct Playlist {
+    /// The name of the playlist. Playlist names are unique.
     pub name: String,
+    /// The tracks added to the playlist.
     pub tracks: Vec<Track>,
 }
 
@@ -255,6 +276,20 @@ pub fn get_daemon_socket<'a>() -> Result<Name<'a>, std::io::Error> {
     }
 }
 
+/// Disconnect from the daemon (send the disconnect client command).
+///
+/// # Examples
+/// ```no_run
+/// # use std::io::BufReader;
+/// # use mpipc::{connect_to_daemon, disconnect};
+/// let conn = connect_to_daemon().unwrap();
+/// let mut conn = BufReader::new(&conn);
+/// // Do some stuff with the connection here...
+/// match disconnect(&mut conn) {
+///     Ok(_) => eprintln!("Disconnected from the deamon!"),
+///     Err(e) => panic!("Could not terminate the daemon connection: {e}"),
+/// }
+/// ```
 pub fn disconnect(conn: &mut BufReader<&Stream>) -> Result<(), DaemonError> {
     trace!("Closing connection with the daemon");
 
@@ -286,16 +321,16 @@ pub fn disconnect(conn: &mut BufReader<&Stream>) -> Result<(), DaemonError> {
     };
 
     match response {
-        DaemonResponse::Error { error } => {
-            error!("Could not close the connection to the daemon: {error}");
-            return Err(error);
+        DaemonResponse::Error(e) => {
+            error!("Could not close the connection to the daemon: {e}");
+            return Err(e);
         }
         DaemonResponse::Ok => {
             trace!("Connection with the daemon closed.");
         }
         _ => {
             error!("Got an unexpected response from the daemon: {response}");
-            return Err(DaemonError::UnknownError);
+            return Err(DaemonError::InvalidResponse);
         }
     }
 
@@ -343,7 +378,7 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
 /// # Examples
 /// ```no_run
 /// # use mpipc::{exec_client_command, ClientCommand};
-/// match exec_client_command(ClientCommand::Stop) {
+/// match exec_client_command(ClientCommand::Shutdown) {
 ///     Ok(response) => eprintln!("Got a response from the daemon: {response}"),
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }

@@ -74,15 +74,12 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                     }
                     return;
                 }
-                ClientCommand::Status => todo!(),
-                ClientCommand::Playlist { cmd } => match cmd {
+                ClientCommand::Playlist(cmd) => match cmd {
                     PlaylistCommand::New { name, tracks } => {
                         if let Err(e) = create_playlist(name, &tracks) {
                             respond(
                                 &mut conn,
-                                &DaemonResponse::Error {
-                                    error: DaemonError::MusicLibraryError { error: e },
-                                },
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                             );
                             continue;
                         }
@@ -92,9 +89,7 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                         if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
                             respond(
                                 &mut conn,
-                                &DaemonResponse::Error {
-                                    error: DaemonError::MusicLibraryError { error: e },
-                                },
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                             );
                             continue;
                         }
@@ -105,18 +100,14 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                             if let Err(e) = delete_playlist(&name, false) {
                                 respond(
                                     &mut conn,
-                                    &DaemonResponse::Error {
-                                        error: DaemonError::MusicLibraryError { error: e },
-                                    },
+                                    &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                                 );
                             }
                         }
                         if let Err(e) = save_library() {
                             respond(
                                 &mut conn,
-                                &DaemonResponse::Error {
-                                    error: DaemonError::MusicLibraryError { error: e },
-                                },
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                             );
                             continue;
                         }
@@ -128,14 +119,12 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                             for playlist in lib.playlists {
                                 playlists.push(playlist.into());
                             }
-                            respond(&mut conn, &DaemonResponse::Playlists { playlists });
+                            respond(&mut conn, &DaemonResponse::Playlists(playlists));
                         }
                         Err(e) => {
                             respond(
                                 &mut conn,
-                                &DaemonResponse::Error {
-                                    error: DaemonError::MusicLibraryError { error: e },
-                                },
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                             );
                         }
                     },
