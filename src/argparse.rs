@@ -6,6 +6,8 @@ use env_logger::Builder;
 use log::{LevelFilter, error, trace};
 use mpipc::ClientCommand;
 
+use crate::cache::music_lib;
+
 #[derive(Parser)]
 #[command(
     version,
@@ -29,36 +31,6 @@ pub struct Args {
     ///
     /// Alternatively, you can use numbers from 0 to 5 to set the log filtering level.
     pub logger_verbosity: String,
-
-    #[arg(long, short)]
-    /// The directory with your audio files
-    ///
-    /// By default, only `~/Music/` will be searched. Use this option if you store your
-    /// music outside this directory.
-    pub music_dir: Option<String>,
-}
-
-#[derive(Subcommand)]
-pub enum Command {
-    #[command()]
-    /// Manage the daemon
-    Daemon {
-        #[command(subcommand)]
-        /// Command for the daemon
-        command: DaemonCommand,
-    },
-    #[command()]
-    /// Manage the GUI
-    Gui {
-        #[command(subcommand)]
-        /// Command for the GUI
-        command: GuiCommand,
-    },
-    /// Manage playlists
-    Playlist {
-        #[command(subcommand)]
-        command: PlaylistCommand,
-    },
 }
 
 #[derive(Subcommand)]
@@ -119,7 +91,7 @@ pub enum PlaylistCommand {
         full: bool,
 
         #[arg(long, short, default_value_t = false, conflicts_with = "full")]
-        /// Print all the info about the playlists. Will look messy.
+        /// Print all the info about the playlists
         debug: bool,
     },
 }
@@ -135,6 +107,47 @@ impl From<PlaylistCommand> for mpipc::PlaylistCommand {
             PlaylistCommand::List { full: _, debug: _ } => mpipc::PlaylistCommand::List,
         }
     }
+}
+
+#[derive(Subcommand)]
+pub enum CacheCommand {
+    /// Reinitialize the music library to find newly added tracks.
+    Reload,
+    /// Rebuild the cache. May resolve some issues with badly extracted covers.
+    Rebuild,
+}
+
+impl From<CacheCommand> for mpipc::CacheCommand {
+    fn from(value: CacheCommand) -> Self {
+        match value {
+            CacheCommand::Reload => mpipc::CacheCommand::Reload,
+            CacheCommand::Rebuild => mpipc::CacheCommand::Rebuild,
+        }
+    }
+}
+
+#[derive(Subcommand)]
+pub enum Command {
+    /// Manage the daemon
+    Daemon {
+        #[command(subcommand)]
+        command: DaemonCommand,
+    },
+    /// Manage the GUI
+    Gui {
+        #[command(subcommand)]
+        command: GuiCommand,
+    },
+    /// Manage playlists
+    Playlist {
+        #[command(subcommand)]
+        command: PlaylistCommand,
+    },
+    /// Manage cache
+    Cache {
+        #[command(subcommand)]
+        command: CacheCommand,
+    },
 }
 
 fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> {

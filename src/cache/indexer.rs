@@ -15,6 +15,7 @@ use crate::track::Track;
 
 pub fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
+    rebuild_covers: bool,
 ) -> Result<Vec<Track>, MusicLibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
@@ -51,8 +52,14 @@ pub fn index_files<T: Into<PathBuf> + Debug>(
             };
 
             let mut track = Track::from(tag);
-            if let Err(e) = track.get_cover(tag) {
-                trace!("Could not extract a cover from file {file:?}: {e}")
+            if rebuild_covers {
+                if let Err(e) = track.extract_cover(tag) {
+                    trace!("Could not extract a cover from file {file:?}: {e}")
+                }
+            } else {
+                if let Err(e) = track.get_cover(tag) {
+                    trace!("Could not obtain a cover from file {file:?}: {e}")
+                }
             }
             track.path = file;
             lock.lock().unwrap().push(track)
@@ -66,7 +73,10 @@ pub fn index_files<T: Into<PathBuf> + Debug>(
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-pub fn index(music_dir: Option<PathBuf>) -> Result<Vec<Track>, MusicLibraryError> {
+pub fn index(
+    music_dir: Option<PathBuf>,
+    rebuild_covers: bool,
+) -> Result<Vec<Track>, MusicLibraryError> {
     let music_dir = match music_dir {
         Some(dir) => dir,
         None => match home_dir() {
@@ -106,5 +116,5 @@ pub fn index(music_dir: Option<PathBuf>) -> Result<Vec<Track>, MusicLibraryError
         };
     }
 
-    index_files(files)
+    index_files(files, rebuild_covers)
 }

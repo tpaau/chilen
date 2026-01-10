@@ -8,10 +8,13 @@ use bincode::{config::standard, decode_from_std_read, encode_to_vec};
 use interprocess::local_socket::Stream;
 use log::{error, info, trace};
 
-use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
+use mpipc::{CacheCommand, ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 
-use crate::cache::playlists::{
-    create_playlist, delete_playlist, get_library, import_playlist_from_m3u8, save_library,
+use crate::cache::{
+    music_lib,
+    music_lib::{
+        create_playlist, delete_playlist, get_library, import_playlist_from_m3u8, save_library,
+    },
 };
 
 #[derive(Debug)]
@@ -129,6 +132,15 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                         }
                     },
                 },
+                ClientCommand::Cache(cmd) => {
+                    match music_lib::load(music_lib::LoadMode::from_cache_command(cmd)) {
+                        Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
+                        Err(e) => respond(
+                            &mut conn,
+                            &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
+                        ),
+                    }
+                }
                 ClientCommand::Disconnect => {
                     respond(&mut conn, &DaemonResponse::Ok);
                     trace!("Closing client connection (client request)");

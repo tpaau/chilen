@@ -3,7 +3,7 @@ use std::{
     fs::{File, read},
     hash::{DefaultHasher, Hash, Hasher},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{LazyLock, RwLock},
     time::{Duration, SystemTime},
 };
@@ -60,14 +60,14 @@ pub struct Playlist {
     pub tracks: Vec<Track>,
 }
 
-impl Into<mpipc::Playlist> for Playlist {
-    fn into(self) -> mpipc::Playlist {
+impl From<Playlist> for mpipc::Playlist {
+    fn from(value: Playlist) -> Self {
         let mut tracks = Vec::new();
-        for track in self.tracks {
+        for track in value.tracks {
             tracks.push(track.into());
         }
         mpipc::Playlist {
-            name: self.name,
+            name: value.name,
             tracks,
         }
     }
@@ -117,6 +117,26 @@ impl MusicLibrary {
         self.playlists
             .iter()
             .find(|&playlist| playlist.name == name)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+/// The mode in which to load the music library.
+pub enum LoadMode {
+    /// Initialize the library.
+    Initialize,
+    /// Reinitialize the library.
+    Reinitialize,
+    /// Reinitialize the library and rebuild the cover cache.
+    Rebuild,
+}
+
+impl LoadMode {
+    pub fn from_cache_command(cmd: mpipc::CacheCommand) -> Self {
+        match cmd {
+            mpipc::CacheCommand::Reload => Self::Reinitialize,
+            mpipc::CacheCommand::Rebuild => Self::Rebuild,
+        }
     }
 }
 
@@ -178,17 +198,18 @@ pub fn save_library() -> Result<(), MusicLibraryError> {
 }
 
 /// Load the music library from the playlists file.
-pub fn load() -> Result<(), MusicLibraryError> {
+pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     trace!("Loading the music library");
 
-    if MUSIC_LIBRARY.read().unwrap().is_some() {
+    if mode == LoadMode::Initialize && MUSIC_LIBRARY.read().unwrap().is_some() {
         error!("Cannot load the music library, it is already initialized!");
         return Err(MusicLibraryError::CacheError);
     }
 
     let time_start = SystemTime::now();
 
-    let tracks = match index(None) {
+    let rebuild_covers = mode == LoadMode::Rebuild;
+    let tracks = match index(None, rebuild_covers) {
         Ok(tracks) => tracks,
         Err(e) => {
             return Err(e);
@@ -281,7 +302,7 @@ pub fn create_playlist(
     if let Some(lib) = guard.as_mut() {
         if lib.get_playlist_with_name(&name).is_none() {
             let tracks = if let Some(tracks) = tracks {
-                match index_files(tracks.to_vec()) {
+                match index_files(tracks.to_vec(), false) {
                     Ok(tracks) => tracks,
                     Err(e) => {
                         error!("Got an error while indexing the provided files: {e}");
@@ -320,7 +341,7 @@ pub fn create_playlist(
 
 pub fn import_playlist_from_m3u8(
     name: Option<String>,
-    m3u8_file: &PathBuf,
+    m3u8_file: &Path,
 ) -> Result<(), MusicLibraryError> {
     let name = {
         if let Some(name) = name {

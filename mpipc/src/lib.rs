@@ -132,6 +132,15 @@ pub enum DaemonCommand {
     ClientCommand(ClientCommand),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+/// Manage the cache.
+pub enum CacheCommand {
+    /// Rebuild the cache. May resolve some issues with badly extracted covers.
+    Rebuild,
+    /// Reinitialize the music library to find newly added tracks.
+    Reload,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
 /// Command that can be executed by a daemon instance.
 pub enum ClientCommand {
@@ -141,6 +150,8 @@ pub enum ClientCommand {
     Restart,
     /// Manage the music library.
     Playlist(PlaylistCommand),
+    /// Manage the music library cache.
+    Cache(CacheCommand),
     /// Close the connection to the daemon.
     Disconnect,
 }
@@ -374,6 +385,10 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
 }
 
 /// Executes a single daemon command and ends the connection.
+///
+/// > [!WARNING]
+/// > The `Ok` variant only means that the command was sent and received, and that the connection
+/// > was successfully closed. It does not mean that it was properly executed by the daemon!
 ///
 /// # Examples
 /// ```no_run

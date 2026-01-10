@@ -1,6 +1,6 @@
 pub mod covers;
 mod indexer;
-pub mod playlists;
+pub mod music_lib;
 
 use clap::crate_name;
 use std::{env::home_dir, fs::create_dir_all, path::PathBuf, sync::LazyLock};

@@ -7,7 +7,7 @@ use log::{debug, error, info, trace, warn};
 
 use mpipc::{ClientCommand, DaemonError, SOCKET_NAME, get_daemon_socket};
 
-use crate::{cache::playlists, daemon::daemon_thread::ThreadCommand};
+use crate::{cache::music_lib, daemon::daemon_thread::ThreadCommand};
 
 #[derive(Debug)]
 /// Parsed CLI arguments for the daemon.
@@ -71,7 +71,7 @@ pub async fn start() -> Result<(), DaemonError> {
 
     info!("Listening for incomming connections");
 
-    thread::spawn(playlists::load);
+    thread::spawn(|| music_lib::load(music_lib::LoadMode::Initialize));
 
     for conn in listener.incoming().filter_map(handle_error) {
         let (ttx, drx) = channel();

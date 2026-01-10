@@ -4,7 +4,7 @@ use std::{
 };
 
 use log::{error, info, trace};
-use mpipc::{DaemonError, DaemonResponse, Playlist};
+use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist};
 
 use crate::{
     argparse::{Command, DaemonCommand, GuiCommand, PlaylistCommand},
@@ -127,8 +127,8 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         DaemonResponse::Playlists(playlists) => {
                             display_playlists(&playlists, full, debug);
                         }
-                        DaemonResponse::Error(error) => {
-                            error!("{error}");
+                        DaemonResponse::Error(e) => {
+                            error!("{e}");
                         }
                     },
                     Err(e) => {
@@ -136,15 +136,30 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     }
                 }
             }
+            Command::Cache { command } => {
+                let cmd = ClientCommand::Cache(command.into());
+                match mpipc::exec_client_command(cmd) {
+                    Ok(response) => match response {
+                        DaemonResponse::Ok => {
+                            println!("Ok");
+                        }
+                        DaemonResponse::Error(e) => {
+                            error!("{e}");
+                        }
+                        _ => {
+                            error!("Got an unexpected response from the daemon: {response}");
+                        }
+                    },
+                    Err(e) => print_daemon_error(e),
+                }
+            }
         }
     } else {
         trace!("No command specified, starting a deamon with GUI");
 
-        let handle = thread::spawn(|| {
-            match smol::block_on(daemon::start()) {
-                Ok(_) => info!("Daemon exited"),
-                Err(e) => error!("Daemon failed: {e}"),
-            }
+        let handle = thread::spawn(|| match smol::block_on(daemon::start()) {
+            Ok(_) => info!("Daemon exited"),
+            Err(e) => error!("Daemon failed: {e}"),
         });
 
         trace!("Starting GUI");
