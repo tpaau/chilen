@@ -8,13 +8,11 @@ use bincode::{config::standard, decode_from_std_read, encode_to_vec};
 use interprocess::local_socket::Stream;
 use log::{error, info, trace};
 
-use mpipc::{CacheCommand, ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
+use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 
-use crate::cache::{
-    music_lib,
-    music_lib::{
-        create_playlist, delete_playlist, get_library, import_playlist_from_m3u8, save_library,
-    },
+use crate::cache::music_lib::{
+    self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8,
+    remove_tracks, save_library,
 };
 
 #[derive(Debug)]
@@ -115,6 +113,24 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
                             continue;
                         }
                         respond(&mut conn, &DaemonResponse::Ok);
+                    }
+                    PlaylistCommand::AddTracks { name, tracks } => {
+                        match add_tracks(&name, tracks) {
+                            Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
+                            Err(e) => respond(
+                                &mut conn,
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
+                            ),
+                        }
+                    }
+                    PlaylistCommand::RemoveTracks { name, ids } => {
+                        match remove_tracks(&name, ids) {
+                            Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
+                            Err(e) => respond(
+                                &mut conn,
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
+                            ),
+                        }
                     }
                     PlaylistCommand::List => match get_library() {
                         Ok(lib) => {

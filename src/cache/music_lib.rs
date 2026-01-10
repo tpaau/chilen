@@ -395,3 +395,65 @@ pub fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicLibraryE
         Err(MusicLibraryError::LibraryNotInitialized)
     }
 }
+
+pub fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryError> {
+    trace!("Appending tracks to playlist \"{name}\"");
+
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    if let Some(lib) = guard.as_mut() {
+        let playlist = match lib
+            .playlists
+            .iter()
+            .position(|playlist| playlist.name == name)
+        {
+            Some(pos) => &mut lib.playlists[pos],
+            None => return Err(MusicLibraryError::NoSuchPlaylist),
+        };
+        let tracks = match index_files(tracks, false) {
+            Ok(tracks) => tracks,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+        let lib_set: HashSet<_> = lib.tracks.iter().collect();
+        let mut intersecting_tracks: Vec<Track> = tracks
+            .iter()
+            .filter(|t| lib_set.contains(t))
+            .cloned()
+            .collect();
+        playlist.tracks.append(&mut intersecting_tracks);
+        drop(guard);
+        save_library()?;
+        Ok(())
+    } else {
+        Err(MusicLibraryError::LibraryNotInitialized)
+    }
+}
+
+pub fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibraryError> {
+    trace!("Removing tracks from playlist \"{name}\"");
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    if let Some(lib) = guard.as_mut() {
+        let playlist = match lib
+            .playlists
+            .iter()
+            .position(|playlist| playlist.name == name)
+        {
+            Some(pos) => &mut lib.playlists[pos],
+            None => return Err(MusicLibraryError::NoSuchPlaylist),
+        };
+        for id in &ids {
+            if *id >= playlist.tracks.len() {
+                return Err(MusicLibraryError::IndexOutOutBounds);
+            }
+        }
+        for id in &ids {
+            playlist.tracks.remove(*id);
+        }
+        drop(guard);
+        save_library()?;
+        Ok(())
+    } else {
+        Err(MusicLibraryError::LibraryNotInitialized)
+    }
+}

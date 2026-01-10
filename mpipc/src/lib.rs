@@ -79,6 +79,7 @@ pub enum MusicLibraryError {
     HomeDirNotFound,
     /// Could not get the path to the cache or the cache is unusable.
     CacheError,
+    IndexOutOutBounds,
 }
 
 impl Display for MusicLibraryError {
@@ -92,6 +93,7 @@ impl Display for MusicLibraryError {
                 "Could not get the path to the home directory, or the home directory does not exist"
             ),
             Self::CacheError => write!(f, "Cache is unusable"),
+            Self::IndexOutOutBounds => write!(f, "The provided item index was out of bounds"),
         }
     }
 }
@@ -132,6 +134,52 @@ pub enum DaemonCommand {
     ClientCommand(ClientCommand),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+/// Command for managing the music library, can be sent to a deamon instance by wrapping it in a
+/// `ClientCommand`.
+pub enum PlaylistCommand {
+    /// Create a new playlist, optionally with some tracks in it.
+    New {
+        /// The name for the new playlist, must not already exist in the music library.
+        name: String,
+        /// The optional list of tracks that will be added to the playlist.
+        ///
+        /// Tracks that are outside of the music library (usually the `~/Music/` directory)
+        /// will be ignored.
+        tracks: Option<Vec<PathBuf>>,
+    },
+    /// Import a playlist from an M3U8 file.
+    FromM3U8 {
+        /// The name for the imported playlist, must not already exist in the music library.
+        ///
+        /// If left unspecified, it will be derived from the name of the imported file.
+        name: Option<String>,
+        /// The path to the M3U8 file to import.
+        m3u8_file: PathBuf,
+    },
+    /// Delete playlists from the music library.
+    Delete {
+        /// List of the playlists to delete.
+        names: Vec<String>,
+    },
+    /// Add tracks to an already existing playlist.
+    AddTracks {
+        /// The name of the playlist to operate on.
+        name: String,
+        /// The list of tracks to add.
+        tracks: Vec<PathBuf>,
+    },
+    /// Remove tracks from an already existing playlist.
+    RemoveTracks {
+        /// The name of the playlist to operate on.
+        name: String,
+        /// The list of IDs of tracks to remove.
+        ids: Vec<usize>,
+    },
+    /// Get a list of the playlists from the music library.
+    List,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
 /// Manage the cache.
 pub enum CacheCommand {
@@ -166,38 +214,6 @@ impl TryFrom<DaemonCommand> for ClientCommand {
             DaemonCommand::ClientCommand(command) => Ok(command),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
-/// Command for managing the music library, can be sent to a deamon instance by wrapping it in a
-/// `ClientCommand`.
-pub enum PlaylistCommand {
-    /// Create a new playlist, optionally with some tracks in it.
-    New {
-        /// The name for the new playlist, must not already exist in the music library.
-        name: String,
-        /// The optional list of tracks that will be added to the playlist.
-        ///
-        /// Tracks that are outside of the music library (usually the `~/Music/` directory)
-        /// will be ignored.
-        tracks: Option<Vec<PathBuf>>,
-    },
-    /// Import a playlist from an M3U8 file.
-    FromM3U8 {
-        /// The name for the imported playlist, must not already exist in the music library.
-        ///
-        /// If left unspecified, it will be derived from the name of the imported file.
-        name: Option<String>,
-        /// The path to the M3U8 file to import.
-        m3u8_file: PathBuf,
-    },
-    /// Delete playlists from the music library.
-    Delete {
-        /// List of the playlists to delete.
-        names: Vec<String>,
-    },
-    /// Get a list of the playlists from the music library.
-    List,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]

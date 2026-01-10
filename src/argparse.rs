@@ -1,37 +1,10 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueHint};
 
 use env_logger::Builder;
 use log::{LevelFilter, error, trace};
 use mpipc::ClientCommand;
-
-use crate::cache::music_lib;
-
-#[derive(Parser)]
-#[command(
-    version,
-    author = "tpaau <tpaau-17DB@tutamail.com>",
-    help_template = "{before-help}{name} {version}
-{author-with-newline}{about-with-newline}
-{usage-heading} {usage}
-{all-args}{after-help}
-"
-)]
-pub struct Args {
-    #[command(subcommand)]
-    pub command: Option<Command>,
-
-    #[arg(long, short = 'v', default_value_t = String::from("Warn"))]
-    /// The log filter level
-    ///
-    /// Used to configure the logger to filter certain log messages. Useful for debugging.
-    ///
-    /// Possible values are: `off`, `error`, `warn`, `info`, `debug`, and `trace`.
-    ///
-    /// Alternatively, you can use numbers from 0 to 5 to set the log filtering level.
-    pub logger_verbosity: String,
-}
 
 #[derive(Subcommand)]
 pub enum DaemonCommand {
@@ -70,20 +43,38 @@ pub enum PlaylistCommand {
         /// The name of the playlist
         name: String,
         /// The list of tracks to add to the new playlist
+        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file
     FromM3U8 {
         // The path to the M3U8 file to import the playlist from
+        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         m3u8_file: PathBuf,
         /// The name of the playlist
         ///
         /// If this is not specified, the name of the playlist will be derived from the
         /// name of the M3U8 file.
+        ///
         name: Option<String>,
     },
     /// Delete playlist(s) from the library
     Delete { names: Vec<String> },
+    /// Add tracks to an already existing playlist.
+    AddTracks {
+        /// The name of the playlist to operate on.
+        name: String,
+        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
+        /// The list of tracks to add.
+        tracks: Vec<PathBuf>,
+    },
+    /// Remove tracks from an already existing playlist.
+    RemoveTracks {
+        /// The name of the playlist to operate on.
+        name: String,
+        /// The list of IDs of tracks to remove.
+        ids: Vec<usize>,
+    },
     /// List all playlists from the library
     List {
         #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
@@ -105,6 +96,12 @@ impl From<PlaylistCommand> for mpipc::PlaylistCommand {
             }
             PlaylistCommand::Delete { names } => mpipc::PlaylistCommand::Delete { names },
             PlaylistCommand::List { full: _, debug: _ } => mpipc::PlaylistCommand::List,
+            PlaylistCommand::AddTracks { name, tracks } => {
+                mpipc::PlaylistCommand::AddTracks { name, tracks }
+            }
+            PlaylistCommand::RemoveTracks { name, ids } => {
+                mpipc::PlaylistCommand::RemoveTracks { name, ids }
+            }
         }
     }
 }
@@ -148,6 +145,39 @@ pub enum Command {
         #[command(subcommand)]
         command: CacheCommand,
     },
+}
+
+#[derive(Parser)]
+#[command(
+    version,
+    author = "tpaau <tpaau-17DB@tutamail.com>",
+    help_template = "{before-help}{name} {version}
+{author-with-newline}{about-with-newline}
+{usage-heading} {usage}
+{all-args}{after-help}
+"
+)]
+pub struct Args {
+    #[command(subcommand)]
+    pub command: Option<Command>,
+
+    #[arg(long, short = 'v', default_value_t = String::from("Warn"))]
+    /// The log filter level
+    ///
+    /// Used to configure the logger to filter certain log messages. Useful for debugging.
+    ///
+    /// Possible values are: `off`, `error`, `warn`, `info`, `debug`, and `trace`.
+    ///
+    /// Alternatively, you can use numbers from 0 to 5 to set the log filtering level.
+    pub logger_verbosity: String,
+}
+
+fn is_file(path: &str) -> Result<PathBuf, String> {
+    let track = PathBuf::from(path);
+    if !track.is_file() {
+        return Err(format!("Not a file: {path}"));
+    }
+    Ok(track)
 }
 
 fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> {
