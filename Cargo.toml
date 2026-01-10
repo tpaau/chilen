@@ -9,17 +9,17 @@ license = "GPL-3.0-only"
 env_logger = "0.11.8"
 log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
-bincode = "2.0.1"
+bincode = "2.0.1" # Might replace it with bincode2 at some point
 interprocess = "2.2.3"
 lofty = "0.22.4"
 # rodio = "0.21.1"
 # mpris-server = "0.9.0"
 mpipc = { path = "mpipc" }
-tokio = { version = "1.48.0", features = [ "full" ] }
 cxx = "1.0.191"
 cxx-qt = "0.7.3"
 cxx-qt-lib = { version = "0.7.3", features = ["qt_full"] }
 walkdir = "2.5.0"
+smol = "2.0.2"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"] }

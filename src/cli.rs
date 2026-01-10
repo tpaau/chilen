@@ -141,8 +141,7 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         trace!("No command specified, starting a deamon with GUI");
 
         let handle = thread::spawn(|| {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-            match rt.block_on(daemon::start()) {
+            match smol::block_on(daemon::start()) {
                 Ok(_) => info!("Daemon exited"),
                 Err(e) => error!("Daemon failed: {e}"),
             }
