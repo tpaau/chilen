@@ -13,9 +13,7 @@ use crate::{
 
 fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
     if debug {
-        for playlist in playlists {
-            println!("{playlist:?}");
-        }
+        println!("{playlists:?}");
     } else if playlists.is_empty() {
         println!("There are no playlists in the library");
     } else if full {

@@ -3,7 +3,7 @@ name = "music-player"
 version = "0.1.0"
 authors = [ "tpaau <tpaau17db@tutamail.com" ]
 edition = "2024"
-license = "GPL-3.0-only"
+license = "LGPL-3.0-or-later"
 
 [dependencies]
 env_logger = "0.11.8"
