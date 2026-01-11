@@ -1,7 +1,7 @@
 use std::{hash::Hash, path::PathBuf};
 
 use cxx_qt_lib::QString;
-use lofty::tag::{Accessor, Tag};
+use lofty::tag::{Accessor, ItemValue, Tag};
 
 use crate::cache::{CacheError, covers::get_track_cover};
 
@@ -21,6 +21,7 @@ mod qobject {
         #[qproperty(QString, title)]
         #[qproperty(QString, album)]
         #[qproperty(QString, genre)]
+        #[qproperty(QString, lyrics)]
         #[qproperty(QString, comment)]
         #[qproperty(i32, track)]
         #[qproperty(i32, track_total)]
@@ -40,6 +41,7 @@ pub struct RQTrack {
     pub title: QString,
     pub album: QString,
     pub genre: QString,
+    pub lyrics: QString,
     pub comment: QString,
     pub track: i32,
     pub track_total: i32,
@@ -56,6 +58,7 @@ pub struct Track {
     pub title: Option<String>,
     pub album: Option<String>,
     pub genre: Option<String>,
+    pub lyrics: Option<String>,
     pub comment: Option<String>,
     pub track: Option<u32>,
     pub track_total: Option<u32>,
@@ -90,6 +93,11 @@ impl From<RQTrack> for Track {
             },
             genre: if !v.genre.is_empty() && !v.genre.is_null() {
                 Some(String::from(v.genre))
+            } else {
+                None
+            },
+            lyrics: if !v.lyrics.is_empty() && !v.comment.is_null() {
+                Some(String::from(v.lyrics))
             } else {
                 None
             },
@@ -142,6 +150,7 @@ impl Into<mpipc::Track> for Track {
             disk: self.disk,
             disk_total: self.disk_total,
             year: self.year,
+            lyrics: self.lyrics,
         }
     }
 }
@@ -159,6 +168,18 @@ impl std::fmt::Display for Track {
 
 impl From<&Tag> for Track {
     fn from(tag: &Tag) -> Self {
+        let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
+            Some(tag_item) => {
+                match tag_item.value() {
+                    ItemValue::Text(lyrics) => {
+                        Some(lyrics.clone())
+                    }
+                    _ => None,
+                }
+            }
+            None => None,
+        };
+
         Track {
             path: PathBuf::new(),
             cover_path: None,
@@ -166,6 +187,7 @@ impl From<&Tag> for Track {
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
             genre: tag.genre().map(|genre| genre.into()),
+            lyrics,
             comment: tag.comment().map(|comment| comment.into()),
             track: tag.track(),
             track_total: tag.track_total(),

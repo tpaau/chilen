@@ -8,7 +8,7 @@ use bincode::{Decode, Encode, config::standard, decode_from_reader, encode_to_ve
 use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
 };
-use lofty::tag::{Accessor, Tag};
+use lofty::tag::{Accessor, ItemValue, Tag};
 use log::{error, trace, warn};
 
 /// The name of the socket the daemon listens on.
@@ -227,6 +227,7 @@ pub struct Track {
     pub title: Option<String>,
     pub album: Option<String>,
     pub genre: Option<String>,
+    pub lyrics: Option<String>,
     pub comment: Option<String>,
     pub track: Option<u32>,
     pub track_total: Option<u32>,
@@ -249,6 +250,18 @@ impl std::fmt::Display for Track {
 
 impl From<&Tag> for Track {
     fn from(tag: &Tag) -> Self {
+        let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
+            Some(tag_item) => {
+                match tag_item.value() {
+                    ItemValue::Text(lyrics) => {
+                        Some(lyrics.clone())
+                    }
+                    _ => None,
+                }
+            }
+            None => None,
+        };
+
         Track {
             path: PathBuf::new(),
             cover_path: None,
@@ -256,6 +269,7 @@ impl From<&Tag> for Track {
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
             genre: tag.genre().map(|genre| genre.into()),
+            lyrics,
             comment: tag.comment().map(|comment| comment.into()),
             track: tag.track(),
             track_total: tag.track_total(),

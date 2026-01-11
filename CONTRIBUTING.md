@@ -3,7 +3,7 @@
 ### Prerequisites
 You will need Rust and `cargo` to build the project.
 
-Additionally, if you are on Linux, you will need the `alsa-libs-devel` library
+Additionally, if you are on Linux, the `alsa-libs-devel` is required.
 installed.
 
 Consider installing [`just`](https://github.com/casey/just) for running some of
@@ -89,7 +89,7 @@ guidelines. Content clearly generated with an LLM, with little to no human
 intervention, that is of low quality or does not follow the guidelines will be
 rejected.
 
-Submitting other media created with generative AI is strictly prohibited. This
+Submitting other content created with generative AI is strictly prohibited. This
 includes, but is not limited to:
 - Images
 - Audio
