@@ -1,13 +1,23 @@
 mod daemon_thread;
 
-use std::{process::exit, sync::mpsc::channel, thread};
+use std::{
+    process::exit,
+    sync::{
+        Arc, LazyLock, RwLock,
+        mpsc::{Sender, channel},
+    },
+    thread,
+};
 
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
 use mpipc::{ClientCommand, DaemonError, SOCKET_NAME, get_daemon_socket};
 
-use crate::{cache::music_lib, daemon::daemon_thread::ThreadCommand};
+use crate::cache::music_lib;
+
+static EVENT_SENDER: LazyLock<Arc<RwLock<Option<Sender<DaemonEvent>>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 #[derive(Debug)]
 /// Parsed CLI arguments for the daemon.
@@ -33,6 +43,12 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
+#[derive(Debug)]
+pub enum DaemonEvent {
+    Shutdown,
+    Restart,
+}
+
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     match conn {
         Ok(c) => Some(c),
@@ -43,7 +59,18 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-pub async fn start() -> Result<(), DaemonError> {
+pub fn send_event(event: DaemonEvent) -> Result<(), String> {
+    trace!("Sending an event to the daemon: {event:?}");
+    match EVENT_SENDER.read().as_mut() {
+        Ok(guard) => match guard.clone().unwrap().send(event) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.to_string()),
+        },
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+pub fn start() -> Result<(), DaemonError> {
     debug!("Starting daemon on '{SOCKET_NAME}'");
 
     let socket = match get_daemon_socket() {
@@ -69,31 +96,27 @@ pub async fn start() -> Result<(), DaemonError> {
         }
     };
 
-    info!("Listening for incomming connections");
-
     thread::spawn(|| music_lib::load(music_lib::LoadMode::Initialize));
 
-    for conn in listener.incoming().filter_map(handle_error) {
-        let (ttx, drx) = channel();
-
-        daemon_thread::spawn(conn, ttx);
-
-        async {
-            while let Ok(msg) = drx.recv() {
-                match msg {
-                    ThreadCommand::Shutdown => {
-                        trace!("Received shutdown command from a thread");
-                        exit(0);
-                    }
-                    ThreadCommand::Restart => {
-                        trace!("Received restart command from a thread");
-                        todo!();
-                    }
-                }
-            }
+    thread::spawn(move || {
+        info!("Listening for incomming connections");
+        for conn in listener.incoming().filter_map(handle_error) {
+            daemon_thread::spawn(conn);
         }
-        .await;
-    }
+    });
 
-    Ok(())
+    let (event_sender, event_receiver) = channel();
+    let mut guard = EVENT_SENDER.write().unwrap();
+    *guard = Some(event_sender);
+    drop(guard);
+
+    loop {
+        match event_receiver.recv().unwrap() {
+            DaemonEvent::Shutdown => {
+                trace!("Received shutdown event");
+                exit(0);
+            }
+            DaemonEvent::Restart => {}
+        }
+    }
 }

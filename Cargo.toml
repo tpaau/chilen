@@ -19,7 +19,7 @@ cxx = "1.0.191"
 cxx-qt = "0.7.3"
 cxx-qt-lib = { version = "0.7.3", features = ["qt_full"] }
 walkdir = "2.5.0"
-smol = "2.0.2"
+# smol = "2.0.2"
 
 [build-dependencies]
 cxx-qt-build = { version = "0.7.3", features = ["link_qt_object_files"] }

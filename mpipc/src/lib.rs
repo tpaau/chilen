@@ -251,14 +251,10 @@ impl std::fmt::Display for Track {
 impl From<&Tag> for Track {
     fn from(tag: &Tag) -> Self {
         let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
-            Some(tag_item) => {
-                match tag_item.value() {
-                    ItemValue::Text(lyrics) => {
-                        Some(lyrics.clone())
-                    }
-                    _ => None,
-                }
-            }
+            Some(tag_item) => match tag_item.value() {
+                ItemValue::Text(lyrics) => Some(lyrics.clone()),
+                _ => None,
+            },
             None => None,
         };
 

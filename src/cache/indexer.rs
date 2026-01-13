@@ -56,10 +56,8 @@ pub fn index_files<T: Into<PathBuf> + Debug>(
                 if let Err(e) = track.extract_cover(tag) {
                     trace!("Could not extract a cover from file {file:?}: {e}")
                 }
-            } else {
-                if let Err(e) = track.get_cover(tag) {
-                    trace!("Could not obtain a cover from file {file:?}: {e}")
-                }
+            } else if let Err(e) = track.get_cover(tag) {
+                trace!("Could not obtain a cover from file {file:?}: {e}")
             }
             track.path = file;
             lock.lock().unwrap().push(track)

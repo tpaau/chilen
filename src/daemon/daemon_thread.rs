@@ -1,6 +1,5 @@
 use std::{
     io::{BufReader, Write},
-    sync::mpsc::Sender,
     thread::{self, JoinHandle},
 };
 
@@ -10,16 +9,13 @@ use log::{error, info, trace};
 
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 
-use crate::cache::music_lib::{
-    self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8,
-    remove_tracks, save_library,
+use crate::{
+    cache::music_lib::{
+        self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8,
+        remove_tracks, save_library,
+    },
+    daemon::{DaemonEvent, send_event},
 };
-
-#[derive(Debug)]
-pub enum ThreadCommand {
-    Shutdown,
-    Restart,
-}
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
     let msg = match encode_to_vec(msg, standard()) {
@@ -38,7 +34,7 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
     };
 }
 
-pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
+pub fn spawn(conn: Stream) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
 
     thread::spawn(move || {
@@ -59,19 +55,22 @@ pub fn spawn(conn: Stream, ttx: Sender<ThreadCommand>) -> JoinHandle<()> {
 
             match command {
                 ClientCommand::Shutdown | ClientCommand::Restart => {
-                    let thread_command = if command == ClientCommand::Shutdown {
+                    let event = if command == ClientCommand::Shutdown {
                         info!("Received shutdown command from the client");
                         trace!("Closing client connection (shutdown)");
-                        ThreadCommand::Shutdown
+                        DaemonEvent::Shutdown
                     } else {
                         info!("Received restart command from the client");
                         trace!("Closing client connection (restart)");
-                        ThreadCommand::Restart
+                        DaemonEvent::Restart
                     };
                     respond(&mut conn, &DaemonResponse::Ok);
-                    if let Err(e) = ttx.send(thread_command) {
-                        error!("Failed sending message to the daemon: {e}");
-                        info!("The connection will be closed anyway due to client expectation");
+                    // TODO: Error handling
+                    if let Err(e) = send_event(event) {
+                        error!("Could not send the command to the daemon: {e}");
+                        trace!(
+                            "The connection will be closed regardles due to client expectations"
+                        );
                     }
                     return;
                 }

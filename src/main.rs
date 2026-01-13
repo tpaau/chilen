@@ -13,5 +13,5 @@ use argparse::parse_args;
 use crate::cli::run_cli_command;
 
 fn main() -> Result<(), ()> {
-    smol::block_on(async { run_cli_command(parse_args().command).await })
+    run_cli_command(parse_args().command)
 }

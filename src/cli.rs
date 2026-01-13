@@ -78,12 +78,12 @@ fn print_daemon_error(error: DaemonError) {
     }
 }
 
-pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
+pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
     if let Some(command) = command {
         match command {
             Command::Daemon { command } => {
                 if let DaemonCommand::Start = command {
-                    match daemon::start().await {
+                    match daemon::start() {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => error!("Daemon failed: {e}"),
                     }
@@ -155,7 +155,7 @@ pub async fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
     } else {
         trace!("No command specified, starting a deamon with GUI");
 
-        let handle = thread::spawn(|| match smol::block_on(daemon::start()) {
+        let handle = thread::spawn(|| match daemon::start() {
             Ok(_) => info!("Daemon exited"),
             Err(e) => error!("Daemon failed: {e}"),
         });
