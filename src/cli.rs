@@ -6,10 +6,10 @@ use std::{
 use log::{error, info, trace};
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist};
 
-use crate::{
-    argparse::{Command, DaemonCommand, GuiCommand, PlaylistCommand},
-    daemon, gui,
-};
+use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
+
+#[cfg(feature = "gui")]
+use crate::{gui, argparse::GuiCommand};
 
 fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
     if debug {
@@ -102,6 +102,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     }
                 }
             }
+            #[cfg(feature = "gui")]
             Command::Gui { command } => {
                 if let GuiCommand::Start = command {
                     match gui::start() {
@@ -160,11 +161,14 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             Err(e) => error!("Daemon failed: {e}"),
         });
 
-        trace!("Starting GUI");
-        match gui::start() {
-            Ok(status) => info!("GUI exited: {status}"),
-            Err(e) => error!("GUI failed: {e}"),
-        };
+        #[cfg(feature = "gui")]
+        {
+            trace!("Starting GUI");
+            match gui::start() {
+                Ok(status) => info!("GUI exited: {status}"),
+                Err(e) => error!("GUI failed: {e}"),
+            };
+        }
 
         handle.join().unwrap();
     }

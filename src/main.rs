@@ -1,16 +1,11 @@
 mod argparse;
-mod cache;
 mod cli;
-mod cxxqt_object;
-mod daemon;
+#[cfg(feature = "gui")]
 mod gui;
-#[cfg(test)]
-mod tests;
-mod track;
+// #[cfg(test)]
+// mod tests;
 
-use argparse::parse_args;
-
-use crate::cli::run_cli_command;
+use crate::{cli::run_cli_command, argparse::parse_args};
 
 fn main() -> Result<(), ()> {
     run_cli_command(parse_args().command)

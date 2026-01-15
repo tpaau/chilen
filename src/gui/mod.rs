@@ -1,3 +1,5 @@
+mod cxxqt_object;
+
 use std::{fmt::Display, thread::sleep, time::Duration};
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QUrl};

@@ -1,10 +1,11 @@
 mod daemon_thread;
+mod cache;
+pub mod track;
 
 use std::{
     process::exit,
     sync::{
-        Arc, LazyLock, RwLock,
-        mpsc::{Sender, channel},
+        mpsc, Arc, LazyLock, RwLock
     },
     thread,
 };
@@ -13,10 +14,11 @@ use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
 use mpipc::{ClientCommand, DaemonError, SOCKET_NAME, get_daemon_socket};
+use smol::channel::unbounded;
 
 use crate::cache::music_lib;
 
-static EVENT_SENDER: LazyLock<Arc<RwLock<Option<Sender<DaemonEvent>>>>> =
+static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 #[derive(Debug)]
@@ -100,12 +102,15 @@ pub fn start() -> Result<(), DaemonError> {
 
     thread::spawn(move || {
         info!("Listening for incomming connections");
+        let mut senders = Vec::new();
         for conn in listener.incoming().filter_map(handle_error) {
-            daemon_thread::spawn(conn);
+            let (ttx, trx) = unbounded();
+            senders.push(ttx);
+            daemon_thread::spawn(conn, trx);
         }
     });
 
-    let (event_sender, event_receiver) = channel();
+    let (event_sender, event_receiver) = mpsc::channel();
     let mut guard = EVENT_SENDER.write().unwrap();
     *guard = Some(event_sender);
     drop(guard);

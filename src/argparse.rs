@@ -26,6 +26,7 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
     }
 }
 
+#[cfg(feature = "gui")]
 #[derive(Subcommand)]
 pub enum GuiCommand {
     /// Start the GUI process
@@ -131,6 +132,7 @@ pub enum Command {
         command: DaemonCommand,
     },
     /// Manage the GUI
+    #[cfg(feature = "gui")]
     Gui {
         #[command(subcommand)]
         command: GuiCommand,
