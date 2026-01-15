@@ -9,7 +9,7 @@ use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist};
 use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 
 #[cfg(feature = "gui")]
-use crate::{gui, argparse::GuiCommand};
+use crate::{argparse::GuiCommand, gui};
 
 fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
     if debug {

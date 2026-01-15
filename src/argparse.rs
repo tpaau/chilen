@@ -164,14 +164,17 @@ pub struct Args {
     pub command: Option<Command>,
 
     #[arg(long, short = 'v', default_value_t = String::from("Warn"))]
-    /// The log filter level
-    ///
-    /// Used to configure the logger to filter certain log messages. Useful for debugging.
+    /// Set the log filter level
     ///
     /// Possible values are: `off`, `error`, `warn`, `info`, `debug`, and `trace`.
     ///
-    /// Alternatively, you can use numbers from 0 to 5 to set the log filtering level.
+    /// You can also use numbers from 0 to 5 to set the log filtering level.
     pub logger_verbosity: String,
+
+    #[cfg(feature = "landlock")]
+    #[arg(long, short, default_value_t = false)]
+    /// Disable landlock sandboxing
+    pub no_landlock: bool,
 }
 
 fn is_file(path: &str) -> Result<PathBuf, String> {

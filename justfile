@@ -5,7 +5,7 @@ fmt:
 	cargo fmt --all
 
 loc:
-	cloc build.rs src/ qml/
+	cloc build.rs src/ mpipc/src/ daemon/src/ qml/
 
 release:
 	cargo build --release

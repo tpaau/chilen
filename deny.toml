@@ -102,7 +102,8 @@ allow = [
 	"Unicode-3.0",
 	"0BSD",
 	"Zlib",
-	"LGPL-3.0-or-later"
+	"LGPL-3.0-or-later",
+	"GPL-3.0-or-later"
 ]
 # The confidence threshold for detecting a license from license text.
 # The higher the value, the more closely the license text must be to the

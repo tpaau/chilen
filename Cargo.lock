@@ -991,7 +991,6 @@ dependencies = [
 name = "music-player"
 version = "0.1.0"
 dependencies = [
- "bincode",
  "clap",
  "cxx",
  "cxx-qt",
@@ -999,13 +998,9 @@ dependencies = [
  "cxx-qt-lib",
  "daemon",
  "env_logger",
- "interprocess",
  "landlock",
- "lofty",
  "log",
  "mpipc",
- "smol",
- "walkdir",
 ]
 
 [[package]]

@@ -1,12 +1,10 @@
-mod daemon_thread;
 mod cache;
+mod daemon_thread;
 pub mod track;
 
 use std::{
     process::exit,
-    sync::{
-        mpsc, Arc, LazyLock, RwLock
-    },
+    sync::{Arc, LazyLock, RwLock, mpsc},
     thread,
 };
 
