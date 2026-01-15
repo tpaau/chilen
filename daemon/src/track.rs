@@ -5,7 +5,7 @@ use lofty::tag::{Accessor, ItemValue, Tag};
 use crate::cache::{CacheError, covers::get_track_cover};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Track {
+pub(crate) struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,
     pub artist: Option<String>,

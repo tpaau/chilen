@@ -17,20 +17,6 @@ use crate::{
     track::Track,
 };
 
-pub static COVERS_CACHE_DIR: LazyLock<Result<PathBuf, CacheError>> =
-    LazyLock::new(|| match CACHE_DIR.clone() {
-        Ok(mut cache) => {
-            cache.push("covers/");
-            match create_dir_all(&cache) {
-                Ok(_) => Ok(cache),
-                Err(e) => Err(CacheError::DirError {
-                    error: e.to_string(),
-                }),
-            }
-        }
-        Err(e) => Err(e),
-    });
-
 const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::CoverFront,
     PictureType::CoverBack,
@@ -55,6 +41,20 @@ const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::OtherIcon,
 ];
 
+pub(crate) static COVERS_CACHE_DIR: LazyLock<Result<PathBuf, CacheError>> =
+    LazyLock::new(|| match CACHE_DIR.clone() {
+        Ok(mut cache) => {
+            cache.push("covers/");
+            match create_dir_all(&cache) {
+                Ok(_) => Ok(cache),
+                Err(e) => Err(CacheError::DirError {
+                    error: e.to_string(),
+                }),
+            }
+        }
+        Err(e) => Err(e),
+    });
+
 fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, CacheError> {
     if pictures.is_empty() {
         return Err(CacheError::NoPicturesInTag);
@@ -71,7 +71,7 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cac
     Err(CacheError::NoSuitablePicturesInTag)
 }
 
-pub fn get_track_cover(track: &mut Track, tag: &Tag, ignore_cache: bool) -> Result<(), CacheError> {
+pub(crate) fn get_track_cover(track: &mut Track, tag: &Tag, ignore_cache: bool) -> Result<(), CacheError> {
     let front = pick_front_cover_or_replacement(tag.pictures())?;
 
     let mut hasher = DefaultHasher::new();

@@ -13,7 +13,7 @@ use walkdir::WalkDir;
 
 use crate::track::Track;
 
-pub fn index_files<T: Into<PathBuf> + Debug>(
+pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
     rebuild_covers: bool,
 ) -> Result<Vec<Track>, MusicLibraryError> {

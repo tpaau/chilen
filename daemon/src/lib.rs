@@ -59,7 +59,7 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-pub fn send_event(event: DaemonEvent) -> Result<(), String> {
+pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
     trace!("Sending an event to the daemon: {event:?}");
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone().unwrap().send(event) {

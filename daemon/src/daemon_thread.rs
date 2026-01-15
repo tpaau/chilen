@@ -36,7 +36,7 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
     };
 }
 
-pub fn spawn(conn: Stream, trx: Receiver<bool>) -> JoinHandle<()> {
+pub(crate) fn spawn(conn: Stream, trx: Receiver<bool>) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
 
     thread::spawn(move || {
