@@ -1,8 +1,12 @@
 mod cache;
 mod daemon_thread;
+#[cfg(test)]
+mod tests;
 pub mod track;
 
 use std::{
+    env::home_dir,
+    path::PathBuf,
     process::exit,
     sync::{
         Arc, LazyLock, RwLock,
@@ -15,13 +19,14 @@ use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
 use mpipc::{ClientCommand, DaemonError, DaemonEvent, SOCKET_NAME, get_daemon_socket};
+use serde::{Deserialize, Serialize};
 
-use crate::cache::music_lib;
+use crate::cache::{CACHE_DIR, CacheError, music_lib};
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Parsed CLI arguments for the daemon.
 pub enum DaemonCommand {
     /// Start the daemon. This is not to be sent over the daemon socket.
@@ -31,6 +36,42 @@ pub enum DaemonCommand {
         /// The command content meant to be sent over the daemon socket.
         command: ClientCommand,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Daemon config that can be passed to the `start` function.
+pub struct Config {
+    /// The directory containing daemon cache.
+    cache_dir: PathBuf,
+    /// The directory containing the music library/audio files to load.
+    music_lib: PathBuf,
+    /// The directory containing the program data, eg. the playlist file.
+    data_dir: PathBuf,
+}
+
+impl Config {
+    /// Get the default daemon config when running headless.
+    ///
+    /// For a custom music player, you probably want to create your own config from
+    /// scratch.
+    pub fn try_default() -> Result<Config, CacheError> {
+        let cache_dir = CACHE_DIR.clone()?;
+        let music_lib = match home_dir() {
+            Some(mut dir) => {
+                dir.push("Music/");
+                dir
+            }
+            None => {
+                return Err(CacheError::HomeError);
+            }
+        };
+
+        Ok(Config {
+            cache_dir,
+            music_lib,
+            data_dir: PathBuf::new(), // TODO: Actually put something here.
+        })
+    }
 }
 
 impl TryFrom<DaemonCommand> for ClientCommand {
@@ -66,7 +107,16 @@ pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
     }
 }
 
-pub fn start() -> Result<(), DaemonError> {
+/// Start the daemon with the given config.
+///
+/// # Examples
+/// ```no_run
+/// # use daemon;
+/// // You probably want to create a custom config from scratch
+/// let config = daemon::Config::try_default().unwrap();
+/// daemon::start(config).unwrap();
+/// ```
+pub fn start(config: Config) -> Result<(), DaemonError> {
     debug!("Starting daemon on '{SOCKET_NAME}'");
 
     let socket = match get_daemon_socket() {

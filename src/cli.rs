@@ -43,8 +43,6 @@ fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
 /// Users' input is converted to lowercase internally so it doesn't matter
 /// whether they respond with all uppercase, all lowercase, or mixed letters.
 fn ask_user_yn(prompt: &str, default: bool) -> Result<bool, std::io::Error> {
-    // TODO: Prompt timeout
-
     let mut input = String::new();
 
     if default {
@@ -133,7 +131,9 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
     if let Some(command) = command {
         match command {
             Command::Daemon { command } => match command {
-                DaemonCommand::Start => match daemon::start() {
+                DaemonCommand::Start => match daemon::start(daemon::Config::try_default().unwrap())
+                {
+                    // TODO: Error handling and actual config
                     Ok(_) => info!("Daemon exited"),
                     Err(e) => {
                         error!("Daemon failed: {e}");
@@ -233,10 +233,14 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         #[cfg(not(feature = "gui"))]
         trace!("No command specified, starting a deamon");
 
-        let handle = thread::spawn(|| match daemon::start() {
-            Ok(_) => info!("Daemon exited"),
-            Err(e) => error!("Daemon failed: {e}"),
-        });
+        let handle =
+            thread::spawn(
+                || match daemon::start(daemon::Config::try_default().unwrap()) {
+                    // TODO: Error handling and actual config
+                    Ok(_) => info!("Daemon exited"),
+                    Err(e) => error!("Daemon failed: {e}"),
+                },
+            );
 
         #[cfg(feature = "gui")]
         {
