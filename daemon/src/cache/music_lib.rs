@@ -8,9 +8,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use bincode::{Decode, Encode, config::standard, encode_to_vec};
 use log::{error, trace};
 use mpipc::MusicLibraryError;
+use rmp_serde::{Deserializer, Serializer};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     cache::{
@@ -21,7 +22,7 @@ use crate::{
     track::Track,
 };
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct ConfPlaylist {
     pub name: String,
     pub track_hashes: Vec<u64>,
@@ -42,7 +43,7 @@ impl From<Playlist> for ConfPlaylist {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 struct ConfMusicLibrary {
     pub playlists: Vec<ConfPlaylist>,
 }
@@ -171,13 +172,11 @@ pub fn save_library() -> Result<(), MusicLibraryError> {
             }
         };
 
-        let data = match encode_to_vec(lib, standard()) {
-            Ok(data) => data,
-            Err(e) => {
-                error!("Could not serialize the library cache: {e}");
-                return Err(MusicLibraryError::CacheError);
-            }
-        };
+        let mut data = Vec::new();
+        if let Err(e) = lib.serialize(&mut Serializer::new(&mut data)) {
+            error!("Could not serialize the music library: {e}");
+            return Err(MusicLibraryError::CacheError);
+        }
 
         let mut file = match File::create(library_cache) {
             Ok(file) => file,
@@ -236,6 +235,8 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         }
     };
 
+    trace!("Library cache path: {library_cache:?}");
+
     let exists = match library_cache.try_exists() {
         Ok(exists) => exists,
         Err(e) => {
@@ -245,6 +246,8 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     };
 
     if exists {
+        trace!("The library cache exists, restoring the library state");
+
         if library_cache.is_dir() {
             error!("The library cache at {library_cache:?} must not be a directory!");
             return Err(MusicLibraryError::CacheError);
@@ -258,8 +261,9 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
             }
         };
 
-        let lib_conf: ConfMusicLibrary = match bincode::decode_from_slice(&data, standard()) {
-            Ok(data) => data.0,
+        let lib_conf = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data))
+        {
+            Ok(data) => data,
             Err(e) => {
                 error!("Could not decode the contents of the library cache: {e}");
                 return Err(MusicLibraryError::CacheError);
@@ -271,6 +275,7 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         *guard = Some(lib);
         drop(guard);
     } else {
+        trace!("The library cache does not exist, creating a new library");
         let mut guard = MUSIC_LIBRARY.write().unwrap();
         *guard = Some(MusicLibrary::default());
         drop(guard);

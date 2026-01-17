@@ -3,9 +3,10 @@ use std::{
     thread,
 };
 
-use bincode::{config::standard, decode_from_reader, encode_to_vec};
 use log::{error, info, trace};
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon};
+use rmp_serde::from_read;
+use serde::Serialize;
 
 use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 
@@ -80,34 +81,31 @@ fn print_daemon_error(error: DaemonError) {
 }
 
 fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
-    let conn = match connect_to_daemon() {
-        Ok(conn) => conn,
+    let mut conn = match connect_to_daemon() {
+        Ok(conn) => BufReader::new(conn),
         Err(e) => {
             trace!("{e}");
             return Err(());
         }
     };
 
-    let cmd = match encode_to_vec(ClientCommand::EventStream, standard()) {
-        Ok(command) => command,
-        Err(e) => {
-            error!("Could not encode the client command: {e}");
-            return Err(());
-        }
-    };
+    let mut data = Vec::new();
+    if let Err(e) = ClientCommand::EventStream.serialize(&mut rmp_serde::Serializer::new(&mut data))
+    {
+        error!("Could not encode the client command: {e}");
+        return Err(());
+    }
 
-    let mut buf = BufReader::new(&conn);
-
-    if let Err(e) = buf.get_mut().write_all(&cmd) {
+    if let Err(e) = conn.get_mut().write_all(&data) {
         error!("Could not send the command to the daemon: {e}");
         return Err(());
     }
 
     loop {
-        let response: DaemonResponse = match decode_from_reader(&mut buf, standard()) {
+        let response: DaemonResponse = match from_read(&mut conn) {
             Ok(response) => response,
             Err(e) => {
-                trace!("{e}");
+                error!("Failed decoding a daemon response: {e}");
                 return Err(());
             }
         };

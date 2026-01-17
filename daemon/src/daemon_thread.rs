@@ -4,11 +4,12 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use bincode::{config::standard, decode_from_std_read, encode_to_vec};
 use interprocess::local_socket::Stream;
 use log::{error, info, trace};
 
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
+use rmp_serde::{Serializer, from_read};
+use serde::Serialize;
 
 use crate::{
     DaemonEvent,
@@ -20,15 +21,13 @@ use crate::{
 };
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
-    let msg = match encode_to_vec(msg, standard()) {
-        Ok(msg) => msg,
-        Err(e) => {
-            error!("Could not prepare the command for the client: {e}");
-            return;
-        }
-    };
+    let mut data = Vec::new();
+    if let Err(e) = msg.serialize(&mut Serializer::new(&mut data)) {
+        error!("Could not prepare the command for the client: {e}");
+        return;
+    }
 
-    match conn.get_mut().write_all(&msg) {
+    match conn.get_mut().write_all(&data) {
         Ok(_) => {}
         Err(e) => {
             error!("Failed sending response message: {e}");
@@ -47,7 +46,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
 
             trace!("Awaiting client command");
 
-            let command = match decode_from_std_read(&mut conn, standard()) {
+            let command: ClientCommand = match from_read(&mut conn) {
                 Ok(cmd) => cmd,
                 Err(e) => {
                     error!("Failed decoding a client command: {e}");

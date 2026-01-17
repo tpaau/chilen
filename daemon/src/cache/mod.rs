@@ -2,12 +2,11 @@ pub mod covers;
 mod indexer;
 pub mod music_lib;
 
-use clap::crate_name;
 use std::{env::home_dir, fs::create_dir_all, path::PathBuf, sync::LazyLock};
 
 pub static CACHE_DIR: LazyLock<Result<PathBuf, CacheError>> = LazyLock::new(|| {
     if let Some(mut cache) = home_dir() {
-        cache.push(format!(".cache/{}/", crate_name!()));
+        cache.push(".cache/music-player/");
         match create_dir_all(&cache) {
             Ok(_) => Ok(cache),
             Err(e) => Err(CacheError::DirError {

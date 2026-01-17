@@ -1,19 +1,20 @@
 use std::{
-    io::{BufReader, Write},
+    io::{BufReader, Read, Write},
     path::PathBuf,
 };
 
-use bincode::{Decode, Encode, config::standard, decode_from_reader, encode_to_vec};
 use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
 };
 use lofty::tag::{Accessor, ItemValue, Tag};
 use log::{error, trace, warn};
+use rmp_serde::{Serializer, from_read};
+use serde::{Deserialize, Serialize};
 
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Error related to the daemon.
 ///
 /// Can either originate from the daemon itself or while connecting to the daemon.
@@ -62,7 +63,7 @@ impl std::fmt::Display for DaemonError {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// An error originating from the music library module of the daemon.
 pub enum MusicLibraryError {
     /// Cannot complete the operation because a playlist with this name already exists.
@@ -97,7 +98,7 @@ impl std::fmt::Display for MusicLibraryError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     /// The client command was executed successfully.
@@ -110,7 +111,7 @@ pub enum DaemonResponse {
     Error(DaemonError),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// A parsed CLI command that can either be a daemon start command, or a message to be sent to
 /// an already running deamon instance.
 pub enum DaemonCommand {
@@ -120,7 +121,7 @@ pub enum DaemonCommand {
     ClientCommand(ClientCommand),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Command for managing the music library, can be sent to a deamon instance by wrapping it in a
 /// `ClientCommand`.
 pub enum PlaylistCommand {
@@ -166,7 +167,7 @@ pub enum PlaylistCommand {
     List,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Manage the cache.
 pub enum CacheCommand {
     /// Rebuild the cache. May resolve some issues with badly extracted covers.
@@ -175,7 +176,7 @@ pub enum CacheCommand {
     Reload,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Command that can be executed by a daemon instance.
 pub enum ClientCommand {
     /// Stop the daemon instance.
@@ -204,7 +205,7 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Struct representing a track from the music library.
 pub struct Track {
     /// The path to the audio file.
@@ -264,7 +265,7 @@ impl From<&Tag> for Track {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Struct representing a playlist from the music library.
 pub struct Playlist {
     /// The name of the playlist. Playlist names are unique.
@@ -273,7 +274,7 @@ pub struct Playlist {
     pub tracks: Vec<Track>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DaemonEvent {
     Shutdown,
     Restart,
@@ -315,26 +316,24 @@ pub fn get_daemon_socket<'a>() -> Result<Name<'a>, std::io::Error> {
 /// # use std::io::BufReader;
 /// # use mpipc::{connect_to_daemon, disconnect};
 /// let conn = connect_to_daemon().unwrap();
-/// let mut conn = BufReader::new(&conn);
+/// let mut conn = BufReader::new(conn);
 /// // Do some stuff with the connection here...
 /// match disconnect(&mut conn) {
 ///     Ok(_) => eprintln!("Disconnected from the deamon!"),
 ///     Err(e) => panic!("Could not terminate the daemon connection: {e}"),
 /// }
 /// ```
-pub fn disconnect(conn: &mut BufReader<&Stream>) -> Result<(), DaemonError> {
+pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
     trace!("Closing connection with the daemon");
 
-    let cmd = match encode_to_vec(ClientCommand::Disconnect, standard()) {
-        Ok(cmd) => cmd,
-        Err(e) => {
-            return Err(DaemonError::EncodingError {
-                error: e.to_string(),
-            });
-        }
-    };
+    let mut data = Vec::new();
+    if let Err(e) = ClientCommand::Disconnect.serialize(&mut Serializer::new(&mut data)) {
+        return Err(DaemonError::EncodingError {
+            error: e.to_string(),
+        });
+    }
 
-    match conn.get_mut().write_all(&cmd) {
+    match conn.get_mut().write_all(&data) {
         Ok(_) => {}
         Err(e) => {
             return Err(DaemonError::SendingError {
@@ -343,9 +342,10 @@ pub fn disconnect(conn: &mut BufReader<&Stream>) -> Result<(), DaemonError> {
         }
     }
 
-    let response: DaemonResponse = match decode_from_reader(conn, standard()) {
+    let response: DaemonResponse = match from_read(conn) {
         Ok(response) => response,
         Err(e) => {
+            error!("Failed decoding a daemon response: {e}");
             return Err(DaemonError::DecodingError {
                 error: e.to_string(),
             });
@@ -422,41 +422,45 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
 pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonError> {
     trace!("Executing daemon command: {cmd:?}");
 
-    let conn = match connect_to_daemon() {
-        Ok(conn) => conn,
+    let mut conn = match connect_to_daemon() {
+        Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("Could not execute daemon command: {e:?}");
             return Err(e);
         }
     };
 
-    let cmd = match encode_to_vec(cmd, standard()) {
-        Ok(cmd) => cmd,
-        Err(e) => {
-            return Err(DaemonError::EncodingError {
-                error: e.to_string(),
-            });
-        }
-    };
+    let mut data = Vec::new();
+    if let Err(e) = cmd.serialize(&mut Serializer::new(&mut data)) {
+        return Err(DaemonError::EncodingError {
+            error: e.to_string(),
+        });
+    }
 
-    let mut buf = BufReader::new(&conn);
-
-    if let Err(e) = buf.get_mut().write_all(&cmd) {
+    if let Err(e) = conn.get_mut().write_all(&data) {
         return Err(DaemonError::SendingError {
             error: e.to_string(),
         });
     }
 
-    let response = match decode_from_reader(&mut buf, standard()) {
+    let mut data = Vec::new();
+    if let Err(e) = conn.get_ref().read(&mut data) {
+        return Err(DaemonError::ConnectionError {
+            error: e.to_string(),
+        });
+    }
+
+    let response: DaemonResponse = match from_read(&mut conn) {
         Ok(response) => response,
         Err(e) => {
+            error!("Failed decoding a daemon response: {e}");
             return Err(DaemonError::DecodingError {
                 error: e.to_string(),
             });
         }
     };
 
-    if let Err(e) = disconnect(&mut buf) {
+    if let Err(e) = disconnect(&mut conn) {
         error!("Could not close the connection to the daemon: {e}");
     }
 
