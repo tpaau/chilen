@@ -71,7 +71,11 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cac
     Err(CacheError::NoSuitablePicturesInTag)
 }
 
-pub(crate) fn get_track_cover(track: &mut Track, tag: &Tag, ignore_cache: bool) -> Result<(), CacheError> {
+pub(crate) fn get_track_cover(
+    track: &mut Track,
+    tag: &Tag,
+    ignore_cache: bool,
+) -> Result<(), CacheError> {
     let front = pick_front_cover_or_replacement(tag.pictures())?;
 
     let mut hasher = DefaultHasher::new();

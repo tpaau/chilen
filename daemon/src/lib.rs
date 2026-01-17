@@ -4,15 +4,17 @@ pub mod track;
 
 use std::{
     process::exit,
-    sync::{Arc, LazyLock, RwLock, mpsc},
+    sync::{
+        Arc, LazyLock, RwLock,
+        mpsc::{self, channel},
+    },
     thread,
 };
 
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{ClientCommand, DaemonError, SOCKET_NAME, get_daemon_socket};
-use smol::channel::unbounded;
+use mpipc::{ClientCommand, DaemonError, DaemonEvent, SOCKET_NAME, get_daemon_socket};
 
 use crate::cache::music_lib;
 
@@ -41,12 +43,6 @@ impl TryFrom<DaemonCommand> for ClientCommand {
             DaemonCommand::Message { command } => Ok(command),
         }
     }
-}
-
-#[derive(Debug)]
-pub enum DaemonEvent {
-    Shutdown,
-    Restart,
 }
 
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
@@ -98,13 +94,17 @@ pub fn start() -> Result<(), DaemonError> {
 
     thread::spawn(|| music_lib::load(music_lib::LoadMode::Initialize));
 
-    thread::spawn(move || {
+    let senders = Arc::new(RwLock::new(Vec::new()));
+
+    thread::spawn({
+        let senders_clone = senders.clone();
         info!("Listening for incomming connections");
-        let mut senders = Vec::new();
-        for conn in listener.incoming().filter_map(handle_error) {
-            let (ttx, trx) = unbounded();
-            senders.push(ttx);
-            daemon_thread::spawn(conn, trx);
+        move || {
+            for conn in listener.incoming().filter_map(handle_error) {
+                let (ttx, trx) = channel();
+                senders_clone.clone().write().unwrap().push(ttx);
+                daemon_thread::spawn(conn, trx);
+            }
         }
     });
 
@@ -114,12 +114,21 @@ pub fn start() -> Result<(), DaemonError> {
     drop(guard);
 
     loop {
-        match event_receiver.recv().unwrap() {
+        let event = event_receiver.recv().unwrap();
+        for sender in &*senders.write().unwrap() {
+            trace!("Sending daemon event to a thread: {sender:?}");
+            sender.send(event).unwrap();
+        }
+
+        match event {
             DaemonEvent::Shutdown => {
                 trace!("Received shutdown event");
                 exit(0);
             }
             DaemonEvent::Restart => {}
+            DaemonEvent::DummyEvent => {
+                trace!("Received a dummy event");
+            }
         }
     }
 }

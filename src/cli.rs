@@ -78,15 +78,24 @@ fn print_daemon_error(error: DaemonError) {
     }
 }
 
+fn event_stream() -> Result<(), ()> {
+    Ok(())
+}
+
 pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
     if let Some(command) = command {
         match command {
             Command::Daemon { command } => {
-                if let DaemonCommand::Start = command {
+                if command == DaemonCommand::Start {
                     match daemon::start() {
                         Ok(_) => info!("Daemon exited"),
-                        Err(e) => error!("Daemon failed: {e}"),
+                        Err(e) => {
+                            error!("Daemon failed: {e}");
+                            return Err(());
+                        }
                     }
+                } else if command == DaemonCommand::EventStream {
+                    return event_stream();
                 } else {
                     let cmd: mpipc::DaemonCommand = command.into();
                     let cmd = match cmd.try_into() {
@@ -97,8 +106,11 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         }
                     };
                     match mpipc::exec_client_command(cmd) {
-                        Ok(response) => info!("Got a response from the daemon: {response}"),
-                        Err(e) => print_daemon_error(e),
+                        Ok(response) => info!("Got a response from the daemon: {response:?}"),
+                        Err(e) => {
+                            print_daemon_error(e);
+                            return Err(());
+                        }
                     }
                 }
             }
@@ -107,7 +119,10 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 if let GuiCommand::Start = command {
                     match gui::start() {
                         Ok(status) => info!("GUI exited: {status}"),
-                        Err(e) => error!("GUI failed: {e}"),
+                        Err(e) => {
+                            error!("GUI failed: {e}");
+                            return Err(());
+                        }
                     }
                 } else {
                     panic!("GUI command execution not supported!");
@@ -120,18 +135,21 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 };
                 match mpipc::exec_client_command(mpipc::ClientCommand::Playlist(command.into())) {
                     Ok(response) => match response {
-                        DaemonResponse::Ok => {
-                            println!("Ok");
-                        }
                         DaemonResponse::Playlists(playlists) => {
                             display_playlists(&playlists, full, debug);
                         }
                         DaemonResponse::Error(e) => {
                             error!("{e}");
+                            return Err(());
+                        }
+                        _ => {
+                            error!("Got an unexpected response from the daemon: {response:?}");
+                            return Err(());
                         }
                     },
                     Err(e) => {
                         print_daemon_error(e);
+                        return Err(());
                     }
                 }
             }
@@ -144,17 +162,26 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         }
                         DaemonResponse::Error(e) => {
                             error!("{e}");
+                            return Err(());
                         }
                         _ => {
-                            error!("Got an unexpected response from the daemon: {response}");
+                            error!("Got an unexpected response from the daemon: {response:?}");
+                            return Err(());
                         }
                     },
-                    Err(e) => print_daemon_error(e),
+                    Err(e) => {
+                        print_daemon_error(e);
+                        return Err(());
+                    }
                 }
             }
         }
     } else {
+        #[cfg(feature = "gui")]
         trace!("No command specified, starting a deamon with GUI");
+
+        #[cfg(not(feature = "gui"))]
+        trace!("No command specified, starting a deamon");
 
         let handle = thread::spawn(|| match daemon::start() {
             Ok(_) => info!("Daemon exited"),
@@ -166,7 +193,10 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             trace!("Starting GUI");
             match gui::start() {
                 Ok(status) => info!("GUI exited: {status}"),
-                Err(e) => error!("GUI failed: {e}"),
+                Err(e) => {
+                    error!("GUI failed: {e}");
+                    return Err(());
+                }
             };
         }
 

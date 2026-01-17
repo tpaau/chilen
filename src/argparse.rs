@@ -6,12 +6,14 @@ use env_logger::Builder;
 use log::{LevelFilter, error, trace};
 use mpipc::ClientCommand;
 
-#[derive(Subcommand)]
+#[derive(Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
     /// Start the daemon process
     Start,
     /// Stop the daemon process
     Stop,
+    /// Stream events from the daemon. Causes the thread to stop accepting requests.
+    EventStream,
     /// Restart the daemon process
     Restart,
 }
@@ -21,6 +23,9 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
         match value {
             DaemonCommand::Start => mpipc::DaemonCommand::Start,
             DaemonCommand::Stop => mpipc::DaemonCommand::ClientCommand(ClientCommand::Shutdown),
+            DaemonCommand::EventStream => {
+                mpipc::DaemonCommand::ClientCommand(ClientCommand::EventStream)
+            }
             DaemonCommand::Restart => mpipc::DaemonCommand::ClientCommand(ClientCommand::Restart),
         }
     }

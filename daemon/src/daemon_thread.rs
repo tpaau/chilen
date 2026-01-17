@@ -1,5 +1,6 @@
 use std::{
     io::{BufReader, Write},
+    sync::mpsc::Receiver,
     thread::{self, JoinHandle},
 };
 
@@ -8,7 +9,6 @@ use interprocess::local_socket::Stream;
 use log::{error, info, trace};
 
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
-use smol::channel::Receiver;
 
 use crate::{
     DaemonEvent,
@@ -36,20 +36,10 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
     };
 }
 
-pub(crate) fn spawn(conn: Stream, trx: Receiver<bool>) -> JoinHandle<()> {
+pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
 
     thread::spawn(move || {
-        // trace!("Waiting for a message from the deamon");
-        // match trx.recv() {
-        //     Ok(message) => {
-        //         trace!("Got a message from the daemon: {message}");
-        //     }
-        //     Err(e) => {
-        //         trace!("Failed receiving message from the deamon: {e}");
-        //     }
-        // }
-
         trace!("Handling client connection");
 
         loop {
@@ -166,6 +156,21 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<bool>) -> JoinHandle<()> {
                             &mut conn,
                             &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                         ),
+                    }
+                }
+                ClientCommand::EventStream => {
+                    trace!("Streaming daemon events to the client");
+                    loop {
+                        match trx.recv() {
+                            Ok(event) => {
+                                trace!("Received an event from the daemon: {event:?}");
+                                respond(&mut conn, &DaemonResponse::Event(event));
+                            }
+                            Err(e) => {
+                                trace!("Could not receive an event from the daemon: {e}");
+                                return;
+                            }
+                        }
                     }
                 }
                 ClientCommand::Disconnect => {

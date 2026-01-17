@@ -13,8 +13,11 @@ use log::{error, trace};
 use mpipc::MusicLibraryError;
 
 use crate::{
-    cache::indexer::{index, index_files},
-    cache::{CACHE_DIR, CacheError},
+    cache::{
+        CACHE_DIR, CacheError,
+        indexer::{index, index_files},
+    },
+    send_event,
     track::Track,
 };
 
@@ -55,7 +58,7 @@ impl From<MusicLibrary> for ConfMusicLibrary {
 }
 
 #[derive(Clone, Debug)]
-pub struct Playlist {
+pub(crate) struct Playlist {
     pub name: String,
     pub tracks: Vec<Track>,
 }
@@ -99,7 +102,7 @@ impl Playlist {
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct MusicLibrary {
+pub(crate) struct MusicLibrary {
     pub playlists: Vec<Playlist>,
     pub tracks: Vec<Track>,
 }
@@ -424,6 +427,7 @@ pub fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryEr
         playlist.tracks.append(&mut intersecting_tracks);
         drop(guard);
         save_library()?;
+        send_event(crate::DaemonEvent::DummyEvent).unwrap();
         Ok(())
     } else {
         Err(MusicLibraryError::LibraryNotInitialized)

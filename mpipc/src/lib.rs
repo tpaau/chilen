@@ -1,5 +1,4 @@
 use std::{
-    fmt::Display,
     io::{BufReader, Write},
     path::PathBuf,
 };
@@ -35,7 +34,7 @@ pub enum DaemonError {
     InvalidResponse,
 }
 
-impl Display for DaemonError {
+impl std::fmt::Display for DaemonError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EncodingError { error } => {
@@ -82,7 +81,7 @@ pub enum MusicLibraryError {
     IndexOutOutBounds,
 }
 
-impl Display for MusicLibraryError {
+impl std::fmt::Display for MusicLibraryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
@@ -105,23 +104,10 @@ pub enum DaemonResponse {
     Ok,
     /// List of some playlists returned by the daemon.
     Playlists(Vec<Playlist>),
+    /// An event from the daemon.
+    Event(DaemonEvent),
     /// An internal error occurred.
     Error(DaemonError),
-}
-
-impl Display for DaemonResponse {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DaemonResponse::Ok => write!(f, "The client command executed successfully"),
-            DaemonResponse::Playlists(playlists) => {
-                write!(
-                    f,
-                    "List of some playlists returned by the daemon: {playlists:?}"
-                )
-            }
-            DaemonResponse::Error(error) => write!(f, "An error occurred in the daemon: {error}"),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encode, Decode)]
@@ -200,6 +186,8 @@ pub enum ClientCommand {
     Playlist(PlaylistCommand),
     /// Manage the music library cache.
     Cache(CacheCommand),
+    /// Stream events from the daemon. Causes the thread to stop accepting requests.
+    EventStream,
     /// Close the connection to the daemon.
     Disconnect,
 }
@@ -285,6 +273,13 @@ pub struct Playlist {
     pub tracks: Vec<Track>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Encode, Decode)]
+pub enum DaemonEvent {
+    Shutdown,
+    Restart,
+    DummyEvent,
+}
+
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.
 ///
 /// # Examples
@@ -366,7 +361,7 @@ pub fn disconnect(conn: &mut BufReader<&Stream>) -> Result<(), DaemonError> {
             trace!("Connection with the daemon closed.");
         }
         _ => {
-            error!("Got an unexpected response from the daemon: {response}");
+            error!("Got an unexpected response from the daemon: {response:?}");
             return Err(DaemonError::InvalidResponse);
         }
     }
@@ -420,7 +415,7 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
 /// ```no_run
 /// # use mpipc::{exec_client_command, ClientCommand};
 /// match exec_client_command(ClientCommand::Shutdown) {
-///     Ok(response) => eprintln!("Got a response from the daemon: {response}"),
+///     Ok(response) => eprintln!("Got a response from the daemon: {response:?}"),
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }
 /// ```
