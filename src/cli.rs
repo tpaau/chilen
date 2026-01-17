@@ -79,7 +79,7 @@ fn print_daemon_error(error: DaemonError) {
     }
 }
 
-fn event_stream() -> Result<(), ()> {
+fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
     let conn = match connect_to_daemon() {
         Ok(conn) => conn,
         Err(e) => {
@@ -119,18 +119,18 @@ fn event_stream() -> Result<(), ()> {
 pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
     if let Some(command) = command {
         match command {
-            Command::Daemon { command } => {
-                if command == DaemonCommand::Start {
-                    match daemon::start() {
-                        Ok(_) => info!("Daemon exited"),
-                        Err(e) => {
-                            error!("Daemon failed: {e}");
-                            return Err(());
-                        }
+            Command::Daemon { command } => match command {
+                DaemonCommand::Start => match daemon::start() {
+                    Ok(_) => info!("Daemon exited"),
+                    Err(e) => {
+                        error!("Daemon failed: {e}");
+                        return Err(());
                     }
-                } else if command == DaemonCommand::EventStream {
-                    return event_stream();
-                } else {
+                },
+                DaemonCommand::EventStream { json, pretty_json } => {
+                    return event_stream(json || pretty_json, pretty_json);
+                }
+                _ => {
                     let cmd: mpipc::DaemonCommand = command.into();
                     let cmd = match cmd.try_into() {
                         Ok(cmd) => cmd,
@@ -147,7 +147,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         }
                     }
                 }
-            }
+            },
             #[cfg(feature = "gui")]
             Command::Gui { command } => {
                 if let GuiCommand::Start = command {
