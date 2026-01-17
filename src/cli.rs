@@ -110,7 +110,22 @@ fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
             }
         };
 
-        println!("{response:?}");
+        if json {
+            let result = match pretty {
+                true => serde_json::to_string_pretty(&response),
+                false => serde_json::to_string(&response),
+            };
+            let data = match result {
+                Ok(data) => data,
+                Err(e) => {
+                    error!("Could not serialize the response to JSON: {e}");
+                    continue;
+                }
+            };
+            println!("{data}");
+        } else {
+            println!("{response:?}");
+        }
     }
 }
 

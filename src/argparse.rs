@@ -90,7 +90,7 @@ pub enum PlaylistCommand {
         /// The list of IDs of tracks to remove.
         ids: Vec<usize>,
     },
-    /// List all playlists from the library
+    /// List all playlists in the library
     List {
         #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
         /// Also list all the tracks in the playlists
