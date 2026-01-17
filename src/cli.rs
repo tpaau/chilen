@@ -1,10 +1,11 @@
 use std::{
-    io::{Write, stdin, stdout},
+    io::{BufReader, Write, stdin, stdout},
     thread,
 };
 
+use bincode::{config::standard, decode_from_reader, encode_to_vec};
 use log::{error, info, trace};
-use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist};
+use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon};
 
 use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 
@@ -79,7 +80,40 @@ fn print_daemon_error(error: DaemonError) {
 }
 
 fn event_stream() -> Result<(), ()> {
-    Ok(())
+    let conn = match connect_to_daemon() {
+        Ok(conn) => conn,
+        Err(e) => {
+            trace!("{e}");
+            return Err(());
+        }
+    };
+
+    let cmd = match encode_to_vec(ClientCommand::EventStream, standard()) {
+        Ok(command) => command,
+        Err(e) => {
+            error!("Could not encode the client command: {e}");
+            return Err(());
+        }
+    };
+
+    let mut buf = BufReader::new(&conn);
+
+    if let Err(e) = buf.get_mut().write_all(&cmd) {
+        error!("Could not send the command to the daemon: {e}");
+        return Err(());
+    }
+
+    loop {
+        let response: DaemonResponse = match decode_from_reader(&mut buf, standard()) {
+            Ok(response) => response,
+            Err(e) => {
+                trace!("{e}");
+                return Err(());
+            }
+        };
+
+        println!("{response:?}");
+    }
 }
 
 pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
@@ -135,6 +169,9 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 };
                 match mpipc::exec_client_command(mpipc::ClientCommand::Playlist(command.into())) {
                     Ok(response) => match response {
+                        DaemonResponse::Ok => {
+                            println!("Ok");
+                        }
                         DaemonResponse::Playlists(playlists) => {
                             display_playlists(&playlists, full, debug);
                         }

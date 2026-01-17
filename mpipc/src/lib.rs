@@ -441,13 +441,10 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
 
     let mut buf = BufReader::new(&conn);
 
-    match buf.get_mut().write_all(&cmd) {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(DaemonError::SendingError {
-                error: e.to_string(),
-            });
-        }
+    if let Err(e) = buf.get_mut().write_all(&cmd) {
+        return Err(DaemonError::SendingError {
+            error: e.to_string(),
+        });
     }
 
     let response = match decode_from_reader(&mut buf, standard()) {

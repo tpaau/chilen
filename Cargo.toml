@@ -11,6 +11,7 @@ log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
 mpipc = { path = "mpipc" }
 daemon = { path = "daemon" }
+bincode = "2.0.1"
 landlock = { version = "0.4.4", optional = true }
 cxx = { version = "1.0.191", optional = true }
 cxx-qt = { version = "0.7.3", optional = true }

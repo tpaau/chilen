@@ -163,7 +163,9 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     loop {
                         match trx.recv() {
                             Ok(event) => {
-                                trace!("Received an event from the daemon: {event:?}");
+                                trace!(
+                                    "Received an event from the daemon: {event:?}, realaying it to the client"
+                                );
                                 respond(&mut conn, &DaemonResponse::Event(event));
                             }
                             Err(e) => {
