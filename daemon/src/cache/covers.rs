@@ -12,10 +12,7 @@ use lofty::{
 };
 use log::error;
 
-use crate::{
-    cache::{CACHE_DIR, CacheError},
-    track::Track,
-};
+use crate::cache::{CACHE_DIR, CacheError, music_lib::Track};
 
 const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::CoverFront,

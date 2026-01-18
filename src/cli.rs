@@ -185,8 +185,8 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         DaemonResponse::Ok => {
                             println!("Ok");
                         }
-                        DaemonResponse::Playlists(playlists) => {
-                            display_playlists(&playlists, full, debug);
+                        DaemonResponse::Library(lib) => {
+                            display_playlists(&lib.playlists, full, debug);
                         }
                         DaemonResponse::Error(e) => {
                             error!("{e}");

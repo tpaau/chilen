@@ -2,7 +2,6 @@ mod cache;
 mod daemon_thread;
 #[cfg(test)]
 mod tests;
-pub mod track;
 
 use std::{
     env::home_dir,

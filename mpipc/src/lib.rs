@@ -99,12 +99,50 @@ impl std::fmt::Display for MusicLibraryError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Struct representing a track from the music library.
+pub struct Track {
+    /// The path to the audio file.
+    pub path: PathBuf,
+    /// The path to the extracted cover file, if exists.
+    pub cover_path: Option<PathBuf>,
+    pub artist: Option<String>,
+    pub title: Option<String>,
+    pub album: Option<String>,
+    pub genre: Option<String>,
+    pub lyrics: Option<String>,
+    pub comment: Option<String>,
+    pub track: Option<u32>,
+    pub track_total: Option<u32>,
+    pub disk: Option<u32>,
+    pub disk_total: Option<u32>,
+    pub year: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Struct representing a playlist from the music library.
+pub struct Playlist {
+    /// The name of the playlist. Playlist names are unique.
+    pub name: String,
+    /// The tracks added to the playlist.
+    pub tracks: Vec<Track>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Struct representing the contents of the music library.
+pub struct MusicLibrary {
+    /// The list of playlists in the music library.
+    pub playlists: Vec<Playlist>,
+    /// The list of all tracks in the music library.
+    pub tracks: Vec<Track>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     /// The client command was executed successfully.
     Ok,
     /// List of some playlists returned by the daemon.
-    Playlists(Vec<Playlist>),
+    Library(MusicLibrary),
     /// An event from the daemon.
     Event(DaemonEvent),
     /// An internal error occurred.
@@ -205,26 +243,6 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Struct representing a track from the music library.
-pub struct Track {
-    /// The path to the audio file.
-    pub path: PathBuf,
-    /// The path to the extracted cover file, if exists.
-    pub cover_path: Option<PathBuf>,
-    pub artist: Option<String>,
-    pub title: Option<String>,
-    pub album: Option<String>,
-    pub genre: Option<String>,
-    pub lyrics: Option<String>,
-    pub comment: Option<String>,
-    pub track: Option<u32>,
-    pub track_total: Option<u32>,
-    pub disk: Option<u32>,
-    pub disk_total: Option<u32>,
-    pub year: Option<u32>,
-}
-
 impl std::fmt::Display for Track {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -263,15 +281,6 @@ impl From<&Tag> for Track {
             year: tag.year(),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Struct representing a playlist from the music library.
-pub struct Playlist {
-    /// The name of the playlist. Playlist names are unique.
-    pub name: String,
-    /// The tracks added to the playlist.
-    pub tracks: Vec<Track>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

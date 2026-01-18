@@ -11,7 +11,7 @@ use log::{error, info, trace, warn};
 use mpipc::MusicLibraryError;
 use walkdir::WalkDir;
 
-use crate::track::Track;
+use crate::cache::music_lib::Track;
 
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,

@@ -134,11 +134,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     }
                     PlaylistCommand::List => match get_library() {
                         Ok(lib) => {
-                            let mut playlists = Vec::new();
-                            for playlist in lib.playlists {
-                                playlists.push(playlist.into());
-                            }
-                            respond(&mut conn, &DaemonResponse::Playlists(playlists));
+                            respond(&mut conn, &DaemonResponse::Library(lib.into()));
                         }
                         Err(e) => {
                             respond(
