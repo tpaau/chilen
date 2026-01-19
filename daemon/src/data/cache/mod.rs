@@ -1,2 +1,2 @@
-pub mod covers;
-pub mod indexer;
+pub(crate) mod covers;
+pub(crate) mod indexer;

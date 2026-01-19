@@ -12,7 +12,12 @@ use rmp_serde::{Serializer, from_read};
 use serde::Serialize;
 
 use crate::{
-    data::music_lib::{self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8, remove_tracks, save_library, LoadMode}, send_event, DaemonEvent
+    DaemonEvent,
+    data::music_lib::{
+        self, LoadMode, add_tracks, create_playlist, delete_playlist, get_library,
+        import_playlist_from_m3u8, remove_tracks, save_library,
+    },
+    send_event,
 };
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
@@ -149,12 +154,26 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     }
                 }
                 ClientCommand::EventStream => {
+                    trace!("Sending initial events to the client");
+                    match get_library() {
+                        Ok(lib) => {
+                            respond(
+                                &mut conn,
+                                &DaemonResponse::Event(DaemonEvent::MusicLibraryChanged(
+                                    lib.into(),
+                                )),
+                            );
+                        }
+                        Err(e) => {
+                            error!("Could not get the contents of the music library: {e}");
+                        }
+                    }
                     trace!("Streaming daemon events to the client");
                     loop {
                         match trx.recv() {
                             Ok(event) => {
                                 trace!(
-                                    "Received an event from the daemon: {event:?}, realaying it to the client"
+                                    "Received an event from the daemon, realaying it to the client"
                                 );
                                 respond(&mut conn, &DaemonResponse::Event(event));
                             }

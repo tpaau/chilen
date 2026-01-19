@@ -15,9 +15,13 @@ use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{cache::{
-        covers::get_track_cover, indexer::{index, index_files}
-    }, CACHE_DIR},
+    data::{
+        DATA_DIR,
+        cache::{
+            covers::get_track_cover,
+            indexer::{index, index_files},
+        },
+    },
     send_event,
 };
 
@@ -292,25 +296,24 @@ impl LoadMode {
     }
 }
 
-static LIBRARY_CACHE_FILE: LazyLock<PathBuf> =
-    LazyLock::new(|| {
-        let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
-        cache.push("playlists");
-        cache
-    });
+static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
+    let mut data = DATA_DIR.read().unwrap().clone().unwrap();
+    data.push("playlists");
+    data
+});
 
 static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
 
 /// Save the library state to a file.
-pub fn save_library() -> Result<(), MusicLibraryError> {
+pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
     trace!("Saving the library state to library cache");
 
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
 
-    if let Some(lib) = lib {
-        let lib = ConfMusicLibrary::from(lib);
+    if let Some(lib_data) = lib {
+        let lib = ConfMusicLibrary::from(lib_data.clone());
 
-        let library_cache = LIBRARY_CACHE_FILE.clone();
+        let library_cache = LIBRARY_FILE.clone();
 
         let mut data = Vec::new();
         if let Err(e) = lib.serialize(&mut Serializer::new(&mut data)) {
@@ -327,7 +330,13 @@ pub fn save_library() -> Result<(), MusicLibraryError> {
         };
 
         match file.write_all(&data) {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                if let Err(e) = send_event(mpipc::DaemonEvent::MusicLibraryChanged(lib_data.into()))
+                {
+                    error!("Could not emit the library changed event: {e}");
+                }
+                Ok(())
+            }
             Err(e) => {
                 error!("Could not write to the library cache: {e}");
                 Err(MusicLibraryError::CacheError)
@@ -340,7 +349,7 @@ pub fn save_library() -> Result<(), MusicLibraryError> {
 }
 
 /// Load the music library from the playlists file.
-pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
+pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     trace!("Loading the music library");
 
     if mode == LoadMode::Initialize && MUSIC_LIBRARY.read().unwrap().is_some() {
@@ -367,7 +376,7 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
 
     trace!("Loading the library cache");
 
-    let library_cache = LIBRARY_CACHE_FILE.clone();
+    let library_cache = LIBRARY_FILE.clone();
 
     trace!("Library cache path: {library_cache:?}");
 
@@ -566,7 +575,6 @@ pub fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryEr
         playlist.tracks.append(&mut intersecting_tracks);
         drop(guard);
         save_library()?;
-        send_event(crate::DaemonEvent::DummyEvent).unwrap();
         Ok(())
     } else {
         Err(MusicLibraryError::LibraryNotInitialized)
@@ -587,7 +595,7 @@ pub fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibraryErro
         };
         for id in &ids {
             if *id >= playlist.tracks.len() {
-                return Err(MusicLibraryError::IndexOutOutBounds);
+                return Err(MusicLibraryError::IndexOutOfBounds);
             }
         }
         for id in &ids {

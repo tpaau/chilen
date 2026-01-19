@@ -14,10 +14,44 @@ use serde::{Deserialize, Serialize};
 /// The name of the socket the daemon listens on.
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// An error originating from the music library module of the daemon.
+pub enum MusicLibraryError {
+    /// Could not complete the operation because a playlist with this name already exists.
+    PlaylistExists,
+    /// Could not perform the operation because the music library is not initialized.
+    ///
+    /// This either means that the command was sent too early, or that the music library is
+    /// currently being rebuilt.
+    LibraryNotInitialized,
+    /// Could not perform an operation on a nonexistent playlist.
+    NoSuchPlaylist,
+    /// Could not get the path to the cache or the cache is unusable.
+    CacheError,
+    /// The provided item index was out of bounds.
+    ///
+    /// Eg. there are 68 tracks in the playlist, so the maximum index is 67, but the index
+    /// 69 was provided.
+    IndexOutOfBounds,
+}
+
+impl std::fmt::Display for MusicLibraryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
+            Self::LibraryNotInitialized => write!(f, "The music library is not yet initialized"),
+            Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
+            Self::CacheError => write!(f, "Cache is unusable"),
+            Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataError {
     PermissionError,
-    NotDirectory,
+    CacheDirNotAvailable,
+    DataDirNotAvailable,
     NoMusicLibrary,
     HomeError,
     NoPicturesInTag,
@@ -28,99 +62,26 @@ pub enum DataError {
 impl std::fmt::Display for DataError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::PermissionError => write!(f, "Could not perform an operation due to a permission error"),
-            Self::NotDirectory => write!(f, "The path was not a directory where it should"),
+            Self::PermissionError => write!(
+                f,
+                "Could not perform an operation due to a permission error"
+            ),
+            Self::CacheDirNotAvailable => {
+                write!(f, "The cache directory is not readable and/or writable")
+            }
+            Self::DataDirNotAvailable => {
+                write!(f, "The data directory is not readable and/or writable")
+            }
             Self::NoMusicLibrary => write!(f, "The music library directory does not exist"),
             Self::HomeError => write!(f, "Could not get the home directory path"),
             Self::NoPicturesInTag => write!(f, "No pictures were found in the audio file tag"),
-            Self::NoSuitablePicturesInTag => write!(f, "Couldn't find any suitable images in the audio file tag"),
-            Self::CoverWriteError => write!(f, "Could not write the cover image contents to the covers cache"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Error related to the daemon.
-///
-/// Can either originate from the daemon itself or while connecting to the daemon.
-pub enum DaemonError {
-    /// The value could not be encoded before sending it.
-    EncodingError { error: String },
-    /// The encoded value could not be decoded back into usable form.
-    DecodingError { error: String },
-    /// Could not obtain the daemon socket address.
-    SocketError { error: String },
-    /// Could not connect to the daemon.
-    ConnectionError { error: String },
-    /// Could not send the command to the daemon.
-    SendingError { error: String },
-    /// An error occurred in the music library module.
-    MusicLibraryError(MusicLibraryError),
-    DataError(DataError),
-    /// The response received from the daemon was unexpected or invalid.
-    InvalidResponse,
-}
-
-impl std::fmt::Display for DaemonError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::EncodingError { error } => {
-                write!(f, "Failed encoding daemon command: {error}")
+            Self::NoSuitablePicturesInTag => {
+                write!(f, "Couldn't find any suitable images in the audio file tag")
             }
-            Self::DecodingError { error } => {
-                write!(f, "Could not decode the response from the daemon: {error}")
-            }
-            Self::SocketError { error } => {
-                write!(f, "Socket error: {error}")
-            }
-            Self::ConnectionError { error } => {
-                write!(f, "Could not connect to the daemon: {error}")
-            }
-            Self::SendingError { error } => {
-                write!(f, "Could not send the commadnd to the daemon: {error}")
-            }
-            Self::MusicLibraryError(e) => {
-                write!(f, "{e}")
-            }
-            Self::DataError(e) => write!(f, "Data error: {e}"),
-            Self::InvalidResponse => {
-                write!(f, "The response from the daemon was invalid or malformed")
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// An error originating from the music library module of the daemon.
-pub enum MusicLibraryError {
-    /// Cannot complete the operation because a playlist with this name already exists.
-    PlaylistExists,
-    /// The operation could not be completed because the music library is not initialized.
-    ///
-    /// This either means that the command was sent too early, or that the music library is
-    /// currently being rebuilt.
-    LibraryNotInitialized,
-    /// Cannot perform an operation on a nonexistent playlist.
-    NoSuchPlaylist,
-    /// Could not get the path to the home directory, or the home directory does not exist.
-    HomeDirNotFound,
-    /// Could not get the path to the cache or the cache is unusable.
-    CacheError,
-    IndexOutOutBounds,
-}
-
-impl std::fmt::Display for MusicLibraryError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
-            Self::LibraryNotInitialized => write!(f, "The music library is not yet initialized"),
-            Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
-            Self::HomeDirNotFound => write!(
+            Self::CoverWriteError => write!(
                 f,
-                "Could not get the path to the home directory, or the home directory does not exist"
+                "Could not write the cover image contents to the covers cache"
             ),
-            Self::CacheError => write!(f, "Cache is unusable"),
-            Self::IndexOutOutBounds => write!(f, "The provided item index was out of bounds"),
         }
     }
 }
@@ -204,6 +165,58 @@ pub struct MusicLibrary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DaemonEvent {
+    Shutdown,
+    Restart,
+    MusicLibraryChanged(MusicLibrary),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Error related to the daemon.
+///
+/// Can either originate from the daemon itself or while connecting to the daemon.
+pub enum DaemonError {
+    /// The value could not be encoded before sending it.
+    EncodingError,
+    /// The encoded value could not be decoded back into usable form.
+    DecodingError,
+    /// Could not obtain the daemon socket address.
+    SocketError,
+    /// Could not connect to the daemon.
+    ConnectionError,
+    /// Could not initialize the listener in the daemon.
+    ListenerError,
+    /// Could not send the command to the daemon.
+    SendingError,
+    /// Error related to the music library.
+    MusicLibraryError(MusicLibraryError),
+    /// Error related to the data and cache modules.
+    DataError(DataError),
+    /// The response received from the daemon was unexpected or invalid.
+    InvalidResponse,
+}
+
+impl std::fmt::Display for DaemonError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EncodingError => write!(f, "Could not encode the deamon conmmand"),
+            Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
+            Self::SocketError => write!(f, "Could not obtain the daemon socket"),
+            Self::ConnectionError => write!(f, "Could not connect to the daemon"),
+            Self::ListenerError => write!(f, "Could not initialize the listener in the daemon"),
+            Self::SendingError => write!(f, "Could not send the commadnd to the daemon"),
+            Self::MusicLibraryError(e) => {
+                write!(f, "{e}")
+            }
+            Self::DataError(e) => write!(f, "Data error: {e}"),
+            Self::InvalidResponse => {
+                write!(f, "The response from the daemon was invalid or malformed")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     /// The client command was executed successfully.
@@ -214,16 +227,6 @@ pub enum DaemonResponse {
     Event(DaemonEvent),
     /// An internal error occurred.
     Error(DaemonError),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// A parsed CLI command that can either be a daemon start command, or a message to be sent to
-/// an already running deamon instance.
-pub enum DaemonCommand {
-    /// Start the daemon.
-    Start,
-    /// Command to be sent to an already running daemon instance.
-    ClientCommand(ClientCommand),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -310,11 +313,14 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum DaemonEvent {
-    Shutdown,
-    Restart,
-    DummyEvent,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A parsed CLI command that can either be a daemon start command, or a message to be sent to
+/// an already running deamon instance.
+pub enum DaemonCommand {
+    /// Start the daemon.
+    Start,
+    /// Command to be sent to an already running daemon instance.
+    ClientCommand(ClientCommand),
 }
 
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.
@@ -364,17 +370,15 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
 
     let mut data = Vec::new();
     if let Err(e) = ClientCommand::Disconnect.serialize(&mut Serializer::new(&mut data)) {
-        return Err(DaemonError::EncodingError {
-            error: e.to_string(),
-        });
+        error!("Failed encoding the client command: {e}");
+        return Err(DaemonError::EncodingError);
     }
 
     match conn.get_mut().write_all(&data) {
         Ok(_) => {}
         Err(e) => {
-            return Err(DaemonError::SendingError {
-                error: e.to_string(),
-            });
+            error!("Failed sending the command to the daemon: {e}");
+            return Err(DaemonError::SendingError);
         }
     }
 
@@ -382,9 +386,7 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
         Ok(response) => response,
         Err(e) => {
             error!("Failed decoding a daemon response: {e}");
-            return Err(DaemonError::DecodingError {
-                error: e.to_string(),
-            });
+            return Err(DaemonError::DecodingError);
         }
     };
 
@@ -422,9 +424,7 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
-            return Err(DaemonError::SocketError {
-                error: e.to_string(),
-            });
+            return Err(DaemonError::SocketError);
         }
     };
 
@@ -432,9 +432,7 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
         Ok(conn) => conn,
         Err(e) => {
             error!("Could not initialize a connection to the daemon: {e}");
-            return Err(DaemonError::ConnectionError {
-                error: e.to_string(),
-            });
+            return Err(DaemonError::ConnectionError);
         }
     };
 
@@ -468,31 +466,26 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
 
     let mut data = Vec::new();
     if let Err(e) = cmd.serialize(&mut Serializer::new(&mut data)) {
-        return Err(DaemonError::EncodingError {
-            error: e.to_string(),
-        });
+        error!("Failed encoding the client command: {e}");
+        return Err(DaemonError::EncodingError);
     }
 
     if let Err(e) = conn.get_mut().write_all(&data) {
-        return Err(DaemonError::SendingError {
-            error: e.to_string(),
-        });
+        error!("Failed sending the daemon command: {e}");
+        return Err(DaemonError::SendingError);
     }
 
     let mut data = Vec::new();
     if let Err(e) = conn.get_ref().read(&mut data) {
-        return Err(DaemonError::ConnectionError {
-            error: e.to_string(),
-        });
+        error!("Failed connecting to the daemon: {e}");
+        return Err(DaemonError::ConnectionError);
     }
 
     let response: DaemonResponse = match from_read(&mut conn) {
         Ok(response) => response,
         Err(e) => {
             error!("Failed decoding a daemon response: {e}");
-            return Err(DaemonError::DecodingError {
-                error: e.to_string(),
-            });
+            return Err(DaemonError::DecodingError);
         }
     };
 

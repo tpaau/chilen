@@ -1,5 +1,4 @@
 use std::{
-    env::home_dir,
     fmt::Debug,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -11,7 +10,7 @@ use log::{error, info, trace, warn};
 use mpipc::MusicLibraryError;
 use walkdir::WalkDir;
 
-use crate::data::music_lib::Track;
+use crate::data::{MUSIC_DIR, music_lib::Track};
 
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
@@ -75,18 +74,7 @@ pub(crate) fn index(
     music_dir: Option<PathBuf>,
     rebuild_covers: bool,
 ) -> Result<Vec<Track>, MusicLibraryError> {
-    let music_dir = match music_dir {
-        Some(dir) => dir,
-        None => match home_dir() {
-            Some(mut dir) => {
-                dir.push("Music/");
-                dir
-            }
-            None => {
-                return Err(MusicLibraryError::HomeDirNotFound);
-            }
-        },
-    };
+    let music_dir = music_dir.unwrap_or(MUSIC_DIR.read().unwrap().clone().unwrap());
 
     trace!("Indexing directory: {music_dir:?}");
 

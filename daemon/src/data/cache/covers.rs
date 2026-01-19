@@ -13,7 +13,7 @@ use lofty::{
 use log::error;
 use mpipc::DataError;
 
-use crate::{data::music_lib::Track, CACHE_DIR};
+use crate::{CACHE_DIR, data::music_lib::Track};
 
 const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::CoverFront,
@@ -39,12 +39,11 @@ const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::OtherIcon,
 ];
 
-pub(crate) static COVERS_CACHE_DIR: LazyLock<PathBuf> =
-    LazyLock::new(|| {
-        let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
-        cache.push("covers/");
-        cache
-    });
+pub(crate) static COVERS_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
+    cache.push("covers/");
+    cache
+});
 
 fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, DataError> {
     if pictures.is_empty() {

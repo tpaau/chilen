@@ -17,10 +17,14 @@ use std::{
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{get_daemon_socket, ClientCommand, DaemonError, DaemonEvent, DataError, SOCKET_NAME};
+use mpipc::{ClientCommand, DaemonError, DaemonEvent, DataError, SOCKET_NAME, get_daemon_socket};
 use serde::{Deserialize, Serialize};
 
-use crate::data::{music_lib::{self, LoadMode}, set_data_dirs, CACHE_DIR};
+use crate::data::{
+    CACHE_DIR,
+    music_lib::{self, LoadMode},
+    set_data_dirs,
+};
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
@@ -107,7 +111,7 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
 }
 
 pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
-    trace!("Sending an event to the daemon: {event:?}");
+    trace!("Sending an event to the daemon");
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone().unwrap().send(event) {
             Ok(_) => Ok(()),
@@ -138,9 +142,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
-            return Err(DaemonError::SocketError {
-                error: e.to_string(),
-            });
+            return Err(DaemonError::SocketError);
         }
     };
 
@@ -151,9 +153,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         Ok(listener) => listener,
         Err(e) => {
             error!("Failed creating a listener for the daemon socket: '{e}'");
-            return Err(DaemonError::SocketError {
-                error: e.to_string(),
-            });
+            return Err(DaemonError::ListenerError);
         }
     };
 
@@ -180,9 +180,19 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
 
     loop {
         let event = event_receiver.recv().unwrap();
-        for sender in &*senders.write().unwrap() {
+        let mut guard = senders.write().unwrap();
+        let mut dead_connections = Vec::new();
+        for (i, sender) in guard.iter().enumerate() {
             trace!("Sending daemon event to a thread: {sender:?}");
-            sender.send(event).unwrap();
+            if sender.send(event.clone()).is_err() {
+                debug!(
+                    "Could not send data to a thread over mspc, removing it from the consumer list"
+                );
+                dead_connections.push(i);
+            }
+        }
+        for ded in dead_connections {
+            guard.remove(ded);
         }
 
         match event {
@@ -190,10 +200,8 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
                 trace!("Received shutdown event");
                 exit(0);
             }
-            DaemonEvent::Restart => {}
-            DaemonEvent::DummyEvent => {
-                trace!("Received a dummy event");
-            }
+            DaemonEvent::Restart => todo!(),
+            _ => {}
         }
     }
 }
