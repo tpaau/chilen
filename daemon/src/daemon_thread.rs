@@ -12,12 +12,7 @@ use rmp_serde::{Serializer, from_read};
 use serde::Serialize;
 
 use crate::{
-    DaemonEvent,
-    cache::music_lib::{
-        self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8,
-        remove_tracks, save_library,
-    },
-    send_event,
+    data::music_lib::{self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8, remove_tracks, save_library, LoadMode}, send_event, DaemonEvent
 };
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
@@ -145,7 +140,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     },
                 },
                 ClientCommand::Cache(cmd) => {
-                    match music_lib::load(music_lib::LoadMode::from_cache_command(cmd)) {
+                    match music_lib::load(LoadMode::from_cache_command(cmd)) {
                         Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
                         Err(e) => respond(
                             &mut conn,

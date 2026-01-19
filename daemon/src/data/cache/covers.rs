@@ -1,5 +1,5 @@
 use std::{
-    fs::{File, create_dir_all},
+    fs::File,
     hash::{DefaultHasher, Hash, Hasher},
     io::Write,
     path::PathBuf,
@@ -11,8 +11,9 @@ use lofty::{
     tag::Tag,
 };
 use log::error;
+use mpipc::DataError;
 
-use crate::cache::{CACHE_DIR, CacheError, music_lib::Track};
+use crate::{data::music_lib::Track, CACHE_DIR};
 
 const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::CoverFront,
@@ -38,23 +39,16 @@ const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::OtherIcon,
 ];
 
-pub(crate) static COVERS_CACHE_DIR: LazyLock<Result<PathBuf, CacheError>> =
-    LazyLock::new(|| match CACHE_DIR.clone() {
-        Ok(mut cache) => {
-            cache.push("covers/");
-            match create_dir_all(&cache) {
-                Ok(_) => Ok(cache),
-                Err(e) => Err(CacheError::DirError {
-                    error: e.to_string(),
-                }),
-            }
-        }
-        Err(e) => Err(e),
+pub(crate) static COVERS_CACHE_DIR: LazyLock<PathBuf> =
+    LazyLock::new(|| {
+        let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
+        cache.push("covers/");
+        cache
     });
 
-fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, CacheError> {
+fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, DataError> {
     if pictures.is_empty() {
-        return Err(CacheError::NoPicturesInTag);
+        return Err(DataError::NoPicturesInTag);
     }
 
     for pic_type in FRONT_COVER_PRIORITY {
@@ -65,29 +59,22 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cac
         }
     }
 
-    Err(CacheError::NoSuitablePicturesInTag)
+    Err(DataError::NoSuitablePicturesInTag)
 }
 
 pub(crate) fn get_track_cover(
     track: &mut Track,
     tag: &Tag,
     ignore_cache: bool,
-) -> Result<(), CacheError> {
+) -> Result<(), DataError> {
     let front = pick_front_cover_or_replacement(tag.pictures())?;
 
     let mut hasher = DefaultHasher::new();
     track.hash(&mut hasher);
     let hash = hasher.finish();
 
-    let cover_path = match COVERS_CACHE_DIR.clone() {
-        Ok(mut covers_cache) => {
-            covers_cache.push(hash.to_string());
-            covers_cache
-        }
-        Err(e) => {
-            return Err(e);
-        }
-    };
+    let mut cover_path = COVERS_CACHE_DIR.clone();
+    cover_path.push(hash.to_string());
 
     if !ignore_cache && cover_path.is_file() {
         track.cover_path = Some(cover_path);
@@ -98,13 +85,13 @@ pub(crate) fn get_track_cover(
         Ok(file) => file,
         Err(e) => {
             error!("Could not open the cover image file in the cache directory: {e}");
-            return Err(CacheError::CoverWriteError);
+            return Err(DataError::CoverWriteError);
         }
     };
 
     if let Err(e) = file.write_all(front.data()) {
         error!("Could not write the cover image to the cache directory: {e}");
-        return Err(CacheError::CoverWriteError);
+        return Err(DataError::CoverWriteError);
     }
 
     track.cover_path = Some(cover_path);

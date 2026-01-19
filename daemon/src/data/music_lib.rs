@@ -10,16 +10,14 @@ use std::{
 
 use lofty::tag::{Accessor, ItemValue, Tag};
 use log::{error, trace};
-use mpipc::MusicLibraryError;
+use mpipc::{DataError, MusicLibraryError};
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    cache::{
-        CACHE_DIR, CacheError,
-        covers::get_track_cover,
-        indexer::{index, index_files},
-    },
+    data::{cache::{
+        covers::get_track_cover, indexer::{index, index_files}
+    }, CACHE_DIR},
     send_event,
 };
 
@@ -156,11 +154,11 @@ impl From<&Tag> for Track {
 }
 
 impl Track {
-    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CacheError> {
+    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), DataError> {
         get_track_cover(self, tag, false)
     }
 
-    pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), CacheError> {
+    pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), DataError> {
         get_track_cover(self, tag, true)
     }
 }
@@ -294,13 +292,11 @@ impl LoadMode {
     }
 }
 
-static LIBRARY_CACHE_FILE: LazyLock<Result<PathBuf, CacheError>> =
-    LazyLock::new(|| match CACHE_DIR.clone() {
-        Ok(mut cache) => {
-            cache.push("playlists");
-            Ok(cache)
-        }
-        Err(e) => Err(e),
+static LIBRARY_CACHE_FILE: LazyLock<PathBuf> =
+    LazyLock::new(|| {
+        let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
+        cache.push("playlists");
+        cache
     });
 
 static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
@@ -314,13 +310,7 @@ pub fn save_library() -> Result<(), MusicLibraryError> {
     if let Some(lib) = lib {
         let lib = ConfMusicLibrary::from(lib);
 
-        let library_cache = match LIBRARY_CACHE_FILE.clone() {
-            Ok(cache) => cache,
-            Err(e) => {
-                error!("Could not get the path to the library cache: {e}");
-                return Err(MusicLibraryError::CacheError);
-            }
-        };
+        let library_cache = LIBRARY_CACHE_FILE.clone();
 
         let mut data = Vec::new();
         if let Err(e) = lib.serialize(&mut Serializer::new(&mut data)) {
@@ -377,13 +367,7 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
 
     trace!("Loading the library cache");
 
-    let library_cache = match LIBRARY_CACHE_FILE.clone() {
-        Ok(cache) => cache,
-        Err(e) => {
-            error!("Could not get the path to the library cache: {e}");
-            return Err(MusicLibraryError::CacheError);
-        }
-    };
+    let library_cache = LIBRARY_CACHE_FILE.clone();
 
     trace!("Library cache path: {library_cache:?}");
 
@@ -441,7 +425,7 @@ pub fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     Ok(())
 }
 
-pub fn get_library() -> Result<MusicLibrary, MusicLibraryError> {
+pub(crate) fn get_library() -> Result<MusicLibrary, MusicLibraryError> {
     if let Some(lib) = MUSIC_LIBRARY.read().unwrap().clone() {
         Ok(lib)
     } else {

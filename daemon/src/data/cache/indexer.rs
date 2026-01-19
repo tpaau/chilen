@@ -11,7 +11,7 @@ use log::{error, info, trace, warn};
 use mpipc::MusicLibraryError;
 use walkdir::WalkDir;
 
-use crate::cache::music_lib::Track;
+use crate::data::music_lib::Track;
 
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
@@ -71,7 +71,7 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-pub fn index(
+pub(crate) fn index(
     music_dir: Option<PathBuf>,
     rebuild_covers: bool,
 ) -> Result<Vec<Track>, MusicLibraryError> {

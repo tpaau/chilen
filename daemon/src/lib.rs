@@ -1,5 +1,5 @@
-mod cache;
 mod daemon_thread;
+pub mod data;
 #[cfg(test)]
 mod tests;
 
@@ -17,10 +17,10 @@ use std::{
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{ClientCommand, DaemonError, DaemonEvent, SOCKET_NAME, get_daemon_socket};
+use mpipc::{get_daemon_socket, ClientCommand, DaemonError, DaemonEvent, DataError, SOCKET_NAME};
 use serde::{Deserialize, Serialize};
 
-use crate::cache::{CACHE_DIR, CacheError, music_lib};
+use crate::data::{music_lib::{self, LoadMode}, set_data_dirs, CACHE_DIR};
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
@@ -43,7 +43,7 @@ pub struct Config {
     /// The directory containing daemon cache.
     cache_dir: PathBuf,
     /// The directory containing the music library/audio files to load.
-    music_lib: PathBuf,
+    music_dir: PathBuf,
     /// The directory containing the program data, eg. the playlist file.
     data_dir: PathBuf,
 }
@@ -52,23 +52,34 @@ impl Config {
     /// Get the default daemon config when running headless.
     ///
     /// For a custom music player, you probably want to create your own config from
-    /// scratch.
-    pub fn try_default() -> Result<Config, CacheError> {
-        let cache_dir = CACHE_DIR.clone()?;
-        let music_lib = match home_dir() {
-            Some(mut dir) => {
-                dir.push("Music/");
-                dir
-            }
+    /// scratch, or use the `Config::try_from_name(...)` constructor.
+    pub fn try_default() -> Result<Self, DataError> {
+        Self::try_from_name(String::from("music-player"))
+    }
+
+    pub fn try_from_name(name: String) -> Result<Self, DataError> {
+        let home_dir = match home_dir() {
+            Some(home) => home,
             None => {
-                return Err(CacheError::HomeError);
+                return Err(DataError::HomeError);
             }
         };
 
+        let mut cache_dir = home_dir.clone();
+        cache_dir.push(".cache");
+        cache_dir.push(&name);
+
+        let mut data_dir = home_dir.clone();
+        data_dir.push(".local/share");
+        data_dir.push(name);
+
+        let mut music_dir = home_dir.clone();
+        music_dir.push("Music");
+
         Ok(Config {
             cache_dir,
-            music_lib,
-            data_dir: PathBuf::new(), // TODO: Actually put something here.
+            music_dir,
+            data_dir,
         })
     }
 }
@@ -118,6 +129,11 @@ pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
 pub fn start(config: Config) -> Result<(), DaemonError> {
     debug!("Starting daemon on '{SOCKET_NAME}'");
 
+    if let Err(e) = set_data_dirs(config) {
+        error!("Could not set the paths: {e}");
+        return Err(DaemonError::DataError(e));
+    }
+
     let socket = match get_daemon_socket() {
         Ok(sock) => sock,
         Err(e) => {
@@ -141,7 +157,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         }
     };
 
-    thread::spawn(|| music_lib::load(music_lib::LoadMode::Initialize));
+    thread::spawn(|| music_lib::load(LoadMode::Initialize));
 
     let senders = Arc::new(RwLock::new(Vec::new()));
 

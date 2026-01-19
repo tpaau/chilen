@@ -15,6 +15,31 @@ use serde::{Deserialize, Serialize};
 pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum DataError {
+    PermissionError,
+    NotDirectory,
+    NoMusicLibrary,
+    HomeError,
+    NoPicturesInTag,
+    NoSuitablePicturesInTag,
+    CoverWriteError,
+}
+
+impl std::fmt::Display for DataError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PermissionError => write!(f, "Could not perform an operation due to a permission error"),
+            Self::NotDirectory => write!(f, "The path was not a directory where it should"),
+            Self::NoMusicLibrary => write!(f, "The music library directory does not exist"),
+            Self::HomeError => write!(f, "Could not get the home directory path"),
+            Self::NoPicturesInTag => write!(f, "No pictures were found in the audio file tag"),
+            Self::NoSuitablePicturesInTag => write!(f, "Couldn't find any suitable images in the audio file tag"),
+            Self::CoverWriteError => write!(f, "Could not write the cover image contents to the covers cache"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Error related to the daemon.
 ///
 /// Can either originate from the daemon itself or while connecting to the daemon.
@@ -31,6 +56,7 @@ pub enum DaemonError {
     SendingError { error: String },
     /// An error occurred in the music library module.
     MusicLibraryError(MusicLibraryError),
+    DataError(DataError),
     /// The response received from the daemon was unexpected or invalid.
     InvalidResponse,
 }
@@ -56,6 +82,7 @@ impl std::fmt::Display for DaemonError {
             Self::MusicLibraryError(e) => {
                 write!(f, "{e}")
             }
+            Self::DataError(e) => write!(f, "Data error: {e}"),
             Self::InvalidResponse => {
                 write!(f, "The response from the daemon was invalid or malformed")
             }
@@ -116,6 +143,46 @@ pub struct Track {
     pub disk: Option<u32>,
     pub disk_total: Option<u32>,
     pub year: Option<u32>,
+}
+
+impl std::fmt::Display for Track {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} - {} ({})",
+            self.artist.clone().unwrap_or(String::from("Unknown")),
+            self.title.clone().unwrap_or(String::from("Unknown")),
+            self.path.to_string_lossy()
+        )
+    }
+}
+
+impl From<&Tag> for Track {
+    fn from(tag: &Tag) -> Self {
+        let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
+            Some(tag_item) => match tag_item.value() {
+                ItemValue::Text(lyrics) => Some(lyrics.clone()),
+                _ => None,
+            },
+            None => None,
+        };
+
+        Track {
+            path: PathBuf::new(),
+            cover_path: None,
+            artist: tag.artist().map(|artist| artist.into()),
+            title: tag.title().map(|title| title.into()),
+            album: tag.album().map(|album| album.into()),
+            genre: tag.genre().map(|genre| genre.into()),
+            lyrics,
+            comment: tag.comment().map(|comment| comment.into()),
+            track: tag.track(),
+            track_total: tag.track_total(),
+            disk: tag.disk(),
+            disk_total: tag.disk_total(),
+            year: tag.year(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -239,46 +306,6 @@ impl TryFrom<DaemonCommand> for ClientCommand {
                 "The start command is not meant to be sent to the daemon",
             )),
             DaemonCommand::ClientCommand(command) => Ok(command),
-        }
-    }
-}
-
-impl std::fmt::Display for Track {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} - {} ({:?})",
-            self.artist.clone().unwrap_or(String::from("Unknown")),
-            self.title.clone().unwrap_or(String::from("Unknown")),
-            self.path
-        )
-    }
-}
-
-impl From<&Tag> for Track {
-    fn from(tag: &Tag) -> Self {
-        let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
-            Some(tag_item) => match tag_item.value() {
-                ItemValue::Text(lyrics) => Some(lyrics.clone()),
-                _ => None,
-            },
-            None => None,
-        };
-
-        Track {
-            path: PathBuf::new(),
-            cover_path: None,
-            artist: tag.artist().map(|artist| artist.into()),
-            title: tag.title().map(|title| title.into()),
-            album: tag.album().map(|album| album.into()),
-            genre: tag.genre().map(|genre| genre.into()),
-            lyrics,
-            comment: tag.comment().map(|comment| comment.into()),
-            track: tag.track(),
-            track_total: tag.track_total(),
-            disk: tag.disk(),
-            disk_total: tag.disk_total(),
-            year: tag.year(),
         }
     }
 }
