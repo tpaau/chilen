@@ -46,10 +46,10 @@ pub enum DaemonCommand {
 pub struct Config {
     /// The directory containing daemon cache.
     cache_dir: PathBuf,
-    /// The directory containing the music library/audio files to load.
-    music_dir: PathBuf,
     /// The directory containing the program data, eg. the playlist file.
     data_dir: PathBuf,
+    /// The directory containing the music library/audio files to load.
+    music_dir: PathBuf,
 }
 
 impl Config {
@@ -59,6 +59,10 @@ impl Config {
     /// scratch, or use the `Config::try_from_name(...)` constructor.
     pub fn try_default() -> Result<Self, DataError> {
         Self::try_from_name(String::from("music-player"))
+    }
+
+    pub fn new(cache_dir: PathBuf, data_dir: PathBuf, music_dir: PathBuf) -> Self {
+        Self { cache_dir, data_dir, music_dir }
     }
 
     pub fn try_from_name(name: String) -> Result<Self, DataError> {

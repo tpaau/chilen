@@ -9,7 +9,17 @@ use mpipc::ClientCommand;
 #[derive(Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
     /// Start the daemon process
-    Start,
+    Start {
+        #[arg(long, short, value_hint = ValueHint::DirPath)]
+        /// Set the cache runtime directory.
+        cache_dir: Option<PathBuf>,
+        #[arg(long, short, value_hint = ValueHint::DirPath)]
+        /// Set the data runtime directory.
+        data_dir: Option<PathBuf>,
+        #[arg(long, short, value_hint = ValueHint::DirPath)]
+        /// Set the directory with audio files.
+        music_dir: Option<PathBuf>,
+    },
     /// Stop the daemon process
     Stop,
     /// Stream events from the daemon. Causes the thread to stop accepting requests.
@@ -29,7 +39,11 @@ pub enum DaemonCommand {
 impl From<DaemonCommand> for mpipc::DaemonCommand {
     fn from(value: DaemonCommand) -> Self {
         match value {
-            DaemonCommand::Start => mpipc::DaemonCommand::Start,
+            DaemonCommand::Start {
+                cache_dir: _,
+                music_dir: _,
+                data_dir: _,
+            } => mpipc::DaemonCommand::Start,
             DaemonCommand::Stop => mpipc::DaemonCommand::ClientCommand(ClientCommand::Shutdown),
             DaemonCommand::EventStream {
                 json: _,

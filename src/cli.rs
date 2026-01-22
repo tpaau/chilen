@@ -1,8 +1,10 @@
 use std::{
+    env::home_dir,
     io::{BufReader, Write, stdin, stdout},
     thread,
 };
 
+use clap::crate_name;
 use log::{error, info, trace};
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon};
 use rmp_serde::from_read;
@@ -82,7 +84,7 @@ fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
     let mut conn = match connect_to_daemon() {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
-            trace!("{e}");
+            error!("Could not start the event stream: {e}");
             return Err(());
         }
     };
@@ -131,15 +133,58 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
     if let Some(command) = command {
         match command {
             Command::Daemon { command } => match command {
-                DaemonCommand::Start => match daemon::start(daemon::Config::try_default().unwrap())
-                {
-                    // TODO: Error handling and actual config
-                    Ok(_) => info!("Daemon exited"),
-                    Err(e) => {
-                        error!("Daemon failed: {e}");
-                        return Err(());
+                DaemonCommand::Start {
+                    cache_dir,
+                    data_dir,
+                    music_dir,
+                } => {
+                    let home = if cache_dir.is_none() || data_dir.is_none() || music_dir.is_none() {
+                        match home_dir() {
+                            Some(home) => Some(home),
+                            None => {
+                                error!("Could not get the path to the home directory");
+                                return Err(());
+                            }
+                        }
+                    } else {
+                        None
+                    };
+                    let cache_dir = match cache_dir {
+                        Some(cache) => cache,
+                        None => {
+                            let mut cache = home.clone().unwrap();
+                            cache.push(".cache");
+                            cache.push(crate_name!());
+                            cache
+                        }
+                    };
+                    let data_dir = match data_dir {
+                        Some(data) => data,
+                        None => {
+                            let mut data = home.clone().unwrap();
+                            data.push(".local/share");
+                            data.push(crate_name!());
+                            data
+                        }
+                    };
+                    let music_dir = match music_dir {
+                        Some(music) => music,
+                        None => {
+                            let mut music = home.clone().unwrap();
+                            music.push("Music");
+                            music
+                        }
+                    };
+                    let config = daemon::Config::new(cache_dir, data_dir, music_dir);
+                    match daemon::start(config) {
+                        // TODO: Error handling and actual config
+                        Ok(_) => info!("Daemon exited"),
+                        Err(e) => {
+                            error!("Daemon failed: {e}");
+                            return Err(());
+                        }
                     }
-                },
+                }
                 DaemonCommand::EventStream { json, pretty_json } => {
                     return event_stream(json || pretty_json, pretty_json);
                 }
