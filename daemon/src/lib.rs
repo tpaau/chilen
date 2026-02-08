@@ -61,10 +61,21 @@ impl Config {
         Self::try_from_name(String::from("music-player"))
     }
 
+    /// Create a new config from runtime paths.
     pub fn new(cache_dir: PathBuf, data_dir: PathBuf, music_dir: PathBuf) -> Self {
-        Self { cache_dir, data_dir, music_dir }
+        Self {
+            cache_dir,
+            data_dir,
+            music_dir,
+        }
     }
 
+    /// Try to generate a default config from the name of the program.
+    ///
+    /// The generated paths will contain the name of the program, eg. `~/.cache/<PROGRAM_NAME>`,
+    /// ``~/.local/share/<PROGRAM_NAME>`.
+    ///
+    /// Fails if the home directory is not available.
     pub fn try_from_name(name: String) -> Result<Self, DataError> {
         let home_dir = match home_dir() {
             Some(home) => home,

@@ -165,9 +165,13 @@ pub struct MusicLibrary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Event from the daemon sent to clients.
 pub enum DaemonEvent {
+    /// Event sent before the daemon stops.
     Shutdown,
+    /// Event sent before the daemon restarts.
     Restart,
+    /// Event sent after the content of the music library changed.
     MusicLibraryChanged(MusicLibrary),
 }
 
@@ -306,7 +310,7 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
         match value {
             DaemonCommand::Start => Err(String::from(
-                "The start command is not meant to be sent to the daemon",
+                "This command is not meant to be sent to the daemon",
             )),
             DaemonCommand::ClientCommand(command) => Ok(command),
         }

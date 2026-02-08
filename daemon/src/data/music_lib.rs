@@ -288,6 +288,7 @@ pub enum LoadMode {
 }
 
 impl LoadMode {
+    /// Creates library load mode from the command line cache command.
     pub fn from_cache_command(cmd: mpipc::CacheCommand) -> Self {
         match cmd {
             mpipc::CacheCommand::Reload => Self::Reinitialize,
@@ -352,6 +353,8 @@ pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
 pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     trace!("Loading the music library");
 
+    // This should never occur, `LoadMode::Initialize` shall only be passed to this function on
+    // startup.
     if mode == LoadMode::Initialize && MUSIC_LIBRARY.read().unwrap().is_some() {
         error!("Cannot load the music library, it is already initialized!");
         return Err(MusicLibraryError::CacheError);
@@ -360,6 +363,7 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     let time_start = SystemTime::now();
 
     let rebuild_covers = mode == LoadMode::Rebuild;
+    // No need to specify the music directory, it is detected by the indexer
     let tracks = match index(None, rebuild_covers) {
         Ok(tracks) => tracks,
         Err(e) => {
@@ -374,11 +378,9 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         tracks.len()
     );
 
-    trace!("Loading the library cache");
-
     let library_cache = LIBRARY_FILE.clone();
 
-    trace!("Library cache path: {library_cache:?}");
+    trace!("Loading the library cache from {library_cache:?}");
 
     let exists = match library_cache.try_exists() {
         Ok(exists) => exists,
@@ -389,7 +391,7 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     };
 
     if exists {
-        trace!("The library cache exists, restoring the library state");
+        trace!("Library cache exists, restoring library state");
 
         if library_cache.is_dir() {
             error!("The library cache at {library_cache:?} must not be a directory!");
