@@ -1,12 +1,7 @@
 name: Cargo Build & Test
-
-on:
-  push:
-  pull_request:
-
+on: [push, pull_request]
 env: 
   CARGO_TERM_COLOR: always
-
 jobs:
   build_and_test:
     name: Rust project - latest
@@ -22,4 +17,3 @@ jobs:
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - run: cargo build --verbose
       - run: cargo test --verbose
-  

@@ -1,5 +1,5 @@
 use std::{
-    fs::File,
+    fs::{File, create_dir_all},
     hash::{DefaultHasher, Hash, Hasher},
     io::Write,
     path::PathBuf,
@@ -72,7 +72,14 @@ pub(crate) fn get_track_cover(
     track.hash(&mut hasher);
     let hash = hasher.finish();
 
-    let mut cover_path = COVERS_CACHE_DIR.clone();
+    let cover_cache = COVERS_CACHE_DIR.clone();
+    if !cover_cache.is_dir()
+        && let Err(e) = create_dir_all(&cover_cache)
+    {
+        error!("Could not create the cover cache directory {cover_cache:?}: {e}");
+    }
+
+    let mut cover_path = cover_cache.clone();
     cover_path.push(hash.to_string());
 
     if !ignore_cache && cover_path.is_file() {
@@ -83,7 +90,9 @@ pub(crate) fn get_track_cover(
     let mut file = match File::create(&cover_path) {
         Ok(file) => file,
         Err(e) => {
-            error!("Could not open the cover image file in the cache directory: {e}");
+            error!(
+                "Could not open the cover image file in the cache directory in {cover_path:?}: {e}"
+            );
             return Err(DataError::CoverWriteError);
         }
     };

@@ -9,3 +9,7 @@ loc:
 
 release:
 	cargo build --release
+
+clean-dirs:
+	rm -rf ~/.cache/music-player/
+	rm -rf ~/.local/share/music-player/
