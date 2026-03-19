@@ -210,7 +210,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             Command::Gui { command } => {
                 if let GuiCommand::Start = command {
                     match gui::start() {
-                        Ok(status) => info!("GUI exited: {status}"),
+                        Ok(status) => info!("GUI exited: {status:?}"),
                         Err(e) => {
                             error!("GUI failed: {e}");
                             return Err(());
@@ -291,7 +291,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         {
             trace!("Starting GUI");
             match gui::start() {
-                Ok(status) => info!("GUI exited: {status}"),
+                Ok(status) => info!("GUI exited: {status:?}"),
                 Err(e) => {
                     error!("GUI failed: {e}");
                     return Err(());

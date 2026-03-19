@@ -238,9 +238,23 @@ pub fn parse_args() -> Args {
         }
     };
 
+    let foreign_module_filter = LevelFilter::Error;
+
     Builder::new()
         .filter_level(filter)
-        .filter_module("lofty", LevelFilter::Warn)
+        .filter_module("calloop", foreign_module_filter)
+        .filter_module("cosmic_text", foreign_module_filter)
+        .filter_module("iced_graphics", foreign_module_filter)
+        .filter_module("iced_wgpu", foreign_module_filter)
+        .filter_module("iced_winit", foreign_module_filter)
+        .filter_module("lofty", foreign_module_filter)
+        .filter_module("naga", foreign_module_filter)
+        .filter_module("sctk", foreign_module_filter)
+        .filter_module("tracing", foreign_module_filter)
+        .filter_module("wgpu_core", foreign_module_filter)
+        .filter_module("wgpu_hal", foreign_module_filter)
+        .filter_module("winit", foreign_module_filter)
+        .filter_module("zbus", foreign_module_filter)
         .init();
 
     trace!("Finished parsing command line arguments");
