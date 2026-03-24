@@ -175,9 +175,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                             music
                         }
                     };
-                    let config = daemon::Config::new(cache_dir, data_dir, music_dir);
-                    match daemon::start(config) {
-                        // TODO: Error handling and actual config
+                    match daemon::start(daemon::Config::new(cache_dir, data_dir, music_dir)) {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => {
                             error!("Daemon failed: {e}");
@@ -281,7 +279,6 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         let handle =
             thread::spawn(
                 || match daemon::start(daemon::Config::try_default().unwrap()) {
-                    // TODO: Error handling and actual config
                     Ok(_) => info!("Daemon exited"),
                     Err(e) => error!("Daemon failed: {e}"),
                 },

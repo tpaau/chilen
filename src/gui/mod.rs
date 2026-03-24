@@ -1,8 +1,11 @@
-use iced::{self, Element, widget::{button, text}};
+use iced::{
+    self, Element,
+    widget::{button, text},
+};
 
 #[derive(Debug, Copy, Clone)]
 enum Message {
-    Test
+    Test,
 }
 
 fn view(something: &bool) -> Element<'_, Message> {
@@ -11,7 +14,7 @@ fn view(something: &bool) -> Element<'_, Message> {
 
 fn update(something: &mut bool, message: Message) {
     match message {
-        Message::Test => *something = !*something
+        Message::Test => *something = !*something,
     }
 }
 

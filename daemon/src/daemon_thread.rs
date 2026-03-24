@@ -66,12 +66,9 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                         DaemonEvent::Restart
                     };
                     respond(&mut conn, &DaemonResponse::Ok);
-                    // TODO: Error handling
                     if let Err(e) = send_event(event) {
                         error!("Could not send the command to the daemon: {e}");
-                        trace!(
-                            "The connection will be closed regardles due to client expectations"
-                        );
+                        trace!("The connection will be closed regardles");
                     }
                     return;
                 }
