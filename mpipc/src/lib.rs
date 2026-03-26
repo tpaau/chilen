@@ -39,7 +39,7 @@ impl std::fmt::Display for MusicLibraryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
-            Self::LibraryNotInitialized => write!(f, "The music library is not yet initialized"),
+            Self::LibraryNotInitialized => write!(f, "The music library is not initialized"),
             Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
             Self::CacheError => write!(f, "Cache is unusable"),
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
@@ -234,6 +234,53 @@ pub enum DaemonResponse {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlaybackCommand {
+    Play,
+    Pause,
+    Next,
+    Previous,
+}
+
+impl std::fmt::Display for PlaybackCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Play => write!(f, "Play"),
+            Self::Pause => write!(f, "Pause"),
+            Self::Next => write!(f, "Next"),
+            Self::Previous => write!(f, "Previous"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlaybackEvent {
+    Test,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlaybackState {
+    Playing,
+    Paused,
+    #[default]
+    Stopped,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ShuffleState {
+    On,
+    #[default]
+    Off,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LoopState {
+    #[default]
+    Off,
+    Track,
+    Playlist,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Command for managing the music library, can be sent to a deamon instance by wrapping it in a
 /// `ClientCommand`.
 pub enum PlaylistCommand {
@@ -303,6 +350,8 @@ pub enum ClientCommand {
     EventStream,
     /// Close the connection to the daemon.
     Disconnect,
+    // Command to the playback module.
+    PlaybackCommand(PlaybackCommand),
 }
 
 impl TryFrom<DaemonCommand> for ClientCommand {

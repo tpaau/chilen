@@ -186,6 +186,9 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     trace!("Closing client connection (client request)");
                     return;
                 }
+                ClientCommand::PlaybackCommand(cmd) => {
+                    panic!("Playback commands are not yet supported!");
+                }
             };
         }
     })

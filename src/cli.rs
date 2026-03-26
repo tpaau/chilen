@@ -268,6 +268,9 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     }
                 }
             }
+            Command::Playback { command } => {
+                panic!("Playback commands are not yet supported!");
+            }
         }
     } else {
         #[cfg(feature = "gui")]

@@ -153,6 +153,29 @@ impl From<CacheCommand> for mpipc::CacheCommand {
 }
 
 #[derive(Subcommand)]
+pub enum PlaybackCommand {
+    /// Play the audio.
+    Play,
+    /// Pause the audio.
+    Pause,
+    /// Skip to the next track.
+    Next,
+    /// Skip to the previous track.
+    Previous,
+}
+
+impl From<PlaybackCommand> for mpipc::PlaybackCommand {
+    fn from(value: PlaybackCommand) -> Self {
+        match value {
+            PlaybackCommand::Play => mpipc::PlaybackCommand::Play,
+            PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
+            PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
+            PlaybackCommand::Previous => mpipc::PlaybackCommand::Previous,
+        }
+    }
+}
+
+#[derive(Subcommand)]
 pub enum Command {
     /// Manage the daemon
     Daemon {
@@ -174,6 +197,11 @@ pub enum Command {
     Cache {
         #[command(subcommand)]
         command: CacheCommand,
+    },
+    /// Control audio playback
+    Playback {
+        #[command(subcommand)]
+        command: PlaybackCommand,
     },
 }
 

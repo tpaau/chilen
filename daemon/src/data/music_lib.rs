@@ -5,6 +5,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     sync::{LazyLock, RwLock},
+    thread,
     time::{Duration, SystemTime},
 };
 
@@ -22,7 +23,7 @@ use crate::{
             indexer::{index, index_files},
         },
     },
-    send_event,
+    playback, send_event,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -33,15 +34,9 @@ struct ConfPlaylist {
 
 impl From<Playlist> for ConfPlaylist {
     fn from(value: Playlist) -> Self {
-        let mut track_hashes = Vec::new();
-        for track in value.tracks {
-            let mut hasher = DefaultHasher::new();
-            track.hash(&mut hasher);
-            track_hashes.push(hasher.finish());
-        }
         Self {
             name: value.name,
-            track_hashes,
+            track_hashes: Track::hash_tracks(&value.tracks),
         }
     }
 }
@@ -165,6 +160,20 @@ impl Track {
     pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), DataError> {
         get_track_cover(self, tag, true)
     }
+
+    pub fn hash_track(track: &Track) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        track.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    pub fn hash_tracks(tracks: &Vec<Track>) -> Vec<u64> {
+        let mut hashes = Vec::new();
+        for track in tracks {
+            hashes.push(Self::hash_track(track));
+        }
+        hashes
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -202,21 +211,7 @@ impl From<Playlist> for mpipc::Playlist {
 
 impl Playlist {
     fn from_loaded_playlist(loaded: ConfPlaylist, tracks: &[Track]) -> Self {
-        let wanted: HashSet<u64> = loaded.track_hashes.into_iter().collect();
-
-        let tracks = tracks
-            .iter()
-            .filter_map(|track| {
-                let mut hasher = DefaultHasher::new();
-                track.hash(&mut hasher);
-                let h = hasher.finish();
-                if wanted.contains(&h) {
-                    Some(track.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let tracks = tracks_from_hashes(loaded.track_hashes, tracks);
 
         Self {
             name: loaded.name,
@@ -304,6 +299,21 @@ static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 });
 
 static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
+
+pub(crate) fn tracks_from_hashes(track_hashes: Vec<u64>, tracks: &[Track]) -> Vec<Track> {
+    let wanted: HashSet<u64> = track_hashes.into_iter().collect();
+    tracks
+        .iter()
+        .filter_map(|track| {
+            let h = Track::hash_track(track);
+            if wanted.contains(&h) {
+                Some(track.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
 
 /// Save the library state to a file.
 pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
@@ -433,6 +443,7 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         time_elapsed.as_secs_f64()
     );
 
+    thread::spawn(playback::init);
     Ok(())
 }
 

@@ -1,5 +1,6 @@
 mod daemon_thread;
 pub mod data;
+mod playback;
 #[cfg(test)]
 mod tests;
 
