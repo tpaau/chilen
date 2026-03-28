@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use log::{debug, error, trace};
+use log::{debug, error, info, trace};
 use mpipc::{LoopState, MusicLibraryError, ShuffleState};
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Player;
@@ -42,6 +42,10 @@ impl TryFrom<QueueStateRaw> for QueueState {
 impl QueueState {
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.tracks = tracks;
+    }
+
+    pub fn append_tracks(&mut self, mut tracks: &mut Vec<Track>) {
+        self.tracks.append(&mut tracks);
     }
 
     pub fn len(&self) -> usize {
@@ -131,6 +135,7 @@ pub(crate) enum Command {
     Play,
     Pause,
     SetQueue(Vec<Track>),
+    AppendToQueue(Vec<Track>),
     Next,
     Previous,
 }
@@ -146,7 +151,14 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
                 let indexed_tracks = index_files(track_paths, false)?;
                 let track_hashes = Track::hash_tracks(&indexed_tracks);
                 let filtered_tracks = tracks_from_hashes(track_hashes, &tracks);
-                Ok(Command::SetQueue(filtered_tracks))
+                Ok(Self::SetQueue(filtered_tracks))
+            }
+            mpipc::PlaybackCommand::AppendToQueue(track_paths) => {
+                let tracks = get_library()?.tracks;
+                let indexed_tracks = index_files(track_paths, false)?;
+                let track_hashes = Track::hash_tracks(&indexed_tracks);
+                let filtered_tracks = tracks_from_hashes(track_hashes, &tracks);
+                Ok(Self::AppendToQueue(filtered_tracks))
             }
             mpipc::PlaybackCommand::SetPlaylist(playlist_name) => {
                 let lib = get_library()?;
@@ -154,7 +166,7 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
                     Some(playlist) => playlist,
                     None => return Err(MusicLibraryError::NoSuchPlaylist),
                 };
-                Ok(Command::SetQueue(playlist.tracks.clone()))
+                Ok(Self::SetQueue(playlist.tracks.clone()))
             }
             mpipc::PlaybackCommand::Next => Ok(Self::Next),
             mpipc::PlaybackCommand::Previous => Ok(Self::Previous),
@@ -275,22 +287,26 @@ pub(crate) fn init() {
     let (command_sender, command_receiver) = mpsc::channel();
     *COMMAND_SENDER.write().unwrap() = Some(command_sender);
 
-    let state_cloned = queue_state.clone();
-    thread::spawn(move || {
-        let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
-            Ok(sink) => sink,
-            Err(e) => {
-                error!("Could not open the default sink, audio playback will not work! Error: {e}");
-                return;
-            }
-        };
-        let player = Player::connect_new(handle.mixer());
+    let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
+        Ok(sink) => sink,
+        Err(e) => {
+            error!("Could not open the default sink, audio playback will not work! Error: {e}");
+            return;
+        }
+    };
+    let player = Arc::new(RwLock::new(Player::connect_new(handle.mixer())));
 
+    let state_cloned = queue_state.clone();
+    let player_cloned = player.clone();
+    thread::spawn(move || {
+        let mut initial_iter = true;
         loop {
             thread::sleep(Duration::from_millis(100));
+            let player_arc = player_cloned.clone();
+            let player = player_arc.read().unwrap();
             if player.len() == 0 {
-                let arc = state_cloned.clone();
-                let mut state = arc.write().unwrap();
+                let state_arc = state_cloned.clone();
+                let mut state = state_arc.write().unwrap();
                 if !state.can_go_next() {
                     continue;
                 }
@@ -301,8 +317,11 @@ pub(crate) fn init() {
                         continue;
                     }
                 };
-                println!("Source set!");
                 player.append(source);
+                if initial_iter {
+                    player.pause();
+                    initial_iter = false;
+                }
             }
         }
     });
@@ -320,16 +339,31 @@ pub(crate) fn init() {
         match command {
             Command::Play => {
                 trace!("Playing the current media");
+                let player_arc = player.clone();
+                let player = player_arc.read().unwrap();
+                player.play();
             }
             Command::Pause => {
                 trace!("Pausing the current media");
+                let player_arc = player.clone();
+                let player = player_arc.read().unwrap();
+                player.pause();
             }
             Command::SetQueue(queue) => {
                 trace!("Setting a new queue");
-                let arc = queue_state.clone();
-                let mut state = arc.write().unwrap();
+                let state_arc = queue_state.clone();
+                let mut state = state_arc.write().unwrap();
                 state.set_tracks(queue);
-                trace!("Queue length: {}", state.len());
+                match save_state_to_cache(state.clone()) {
+                    Ok(_) => trace!("Saved queue state to cache"),
+                    Err(e) => error!("Could not save queue state to cache: {e}"),
+                }
+            }
+            Command::AppendToQueue(mut queue) => {
+                trace!("Appending tracks to queue");
+                let state_arc = queue_state.clone();
+                let mut state = state_arc.write().unwrap();
+                state.append_tracks(&mut queue);
                 match save_state_to_cache(state.clone()) {
                     Ok(_) => trace!("Saved queue state to cache"),
                     Err(e) => error!("Could not save queue state to cache: {e}"),
@@ -337,7 +371,24 @@ pub(crate) fn init() {
             }
             Command::Next => {
                 trace!("Skipping to the next track");
-                todo!("Not implemented!")
+                let state_arc = queue_state.clone();
+                let mut state = state_arc.write().unwrap();
+                if state.can_go_next() {
+                    let source = match state.next().unwrap().open_source() {
+                        Ok(source) => source,
+                        Err(e) => {
+                            error!("Could not open audio source: {e}");
+                            continue;
+                        }
+                    };
+                    let player_arc = player.clone();
+                    let player = player_arc.read().unwrap();
+                    player.clear();
+                    player.append(source);
+                    player.play();
+                } else {
+                    info!("Cannot skip to the next track, the current track is last in the queue");
+                }
             }
             Command::Previous => {
                 trace!("Skipping to the previous track");

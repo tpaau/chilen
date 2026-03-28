@@ -176,10 +176,6 @@ impl Track {
         hashes
     }
 
-    pub fn open_file(&self) -> std::io::Result<File> {
-        File::open(&self.path)
-    }
-
     pub fn open_file_buf(&self) -> std::io::Result<BufReader<File>> {
         match File::open(&self.path) {
             Ok(file) => Ok(BufReader::new(file)),

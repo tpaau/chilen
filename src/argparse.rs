@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand, ValueHint};
+use clap::{ArgGroup, Parser, Subcommand, ValueHint};
 
 use env_logger::Builder;
 use log::{LevelFilter, error, trace};
@@ -168,9 +168,25 @@ pub enum PlayCommand {
 #[derive(Subcommand)]
 pub enum PlaybackCommand {
     /// Play the audio.
-    Play {
-        #[command(subcommand)]
-        command: PlayCommand,
+    Play,
+    #[command(group(
+        ArgGroup::new("source")
+            .required(true)
+            .args(&["tracks", "playlist"])
+    ))]
+    SetQueue {
+        /// Paths of tracks to be set as the new queue.
+        #[arg(long, short, value_parser = is_file, value_hint = ValueHint::FilePath, conflicts_with = "playlist")]
+        tracks: Option<Vec<PathBuf>>,
+
+        /// The name of the playlist to be set as the new queue.
+        #[arg(long, short, conflicts_with = "tracks")]
+        playlist: Option<String>,
+    },
+    AppendToQueue {
+        /// Paths of tracks to be appended to the queue.
+        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
+        tracks: Vec<PathBuf>,
     },
     /// Pause the audio.
     Pause,
@@ -183,11 +199,16 @@ pub enum PlaybackCommand {
 impl From<PlaybackCommand> for mpipc::PlaybackCommand {
     fn from(value: PlaybackCommand) -> Self {
         match value {
-            PlaybackCommand::Play { command } => match command {
-                PlayCommand::Current => mpipc::PlaybackCommand::Play,
-                PlayCommand::Tracks { tracks } => mpipc::PlaybackCommand::SetQueue(tracks),
-                PlayCommand::Playlist { name } => mpipc::PlaybackCommand::SetPlaylist(name),
-            },
+            PlaybackCommand::Play => mpipc::PlaybackCommand::Play,
+            PlaybackCommand::SetQueue { tracks, playlist } => {
+                if let Some(tracks) = tracks {
+                    return mpipc::PlaybackCommand::SetQueue(tracks);
+                } else if let Some(playlist) = playlist {
+                    return mpipc::PlaybackCommand::SetPlaylist(playlist);
+                }
+                panic!("This should never happen :)");
+            }
+            PlaybackCommand::AppendToQueue { tracks } => mpipc::PlaybackCommand::AppendToQueue(tracks),
             PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
             PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
             PlaybackCommand::Previous => mpipc::PlaybackCommand::Previous,
@@ -304,6 +325,7 @@ pub fn parse_args() -> Args {
         .filter_module("winit", foreign_module_filter)
         .filter_module("zbus", foreign_module_filter)
         .filter_module("symphonia_core", foreign_module_filter)
+        .filter_module("symphonia_bundle_mp3", foreign_module_filter)
         .init();
 
     trace!("Finished parsing command line arguments");

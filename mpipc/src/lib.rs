@@ -241,22 +241,10 @@ pub enum PlaybackCommand {
     Play,
     Pause,
     SetQueue(Vec<PathBuf>),
+    AppendToQueue(Vec<PathBuf>),
     SetPlaylist(String),
     Next,
     Previous,
-}
-
-impl std::fmt::Display for PlaybackCommand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Play => write!(f, "Play"),
-            Self::Pause => write!(f, "Pause"),
-            Self::SetQueue(_) => write!(f, "SetQueue"),
-            Self::SetPlaylist(name) => write!(f, "Set playlist \"{name}\""),
-            Self::Next => write!(f, "Next"),
-            Self::Previous => write!(f, "Previous"),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
