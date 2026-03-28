@@ -17,7 +17,7 @@ use crate::{
         self, LoadMode, add_tracks, create_playlist, delete_playlist, get_library,
         import_playlist_from_m3u8, remove_tracks, save_library,
     },
-    send_event,
+    playback, send_event,
 };
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
@@ -176,7 +176,6 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                             }
                             Err(e) => {
                                 trace!("Could not receive an event from the daemon: {e}");
-                                return;
                             }
                         }
                     }
@@ -186,8 +185,19 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     trace!("Closing client connection (client request)");
                     return;
                 }
-                ClientCommand::PlaybackCommand(cmd) => {
-                    panic!("Playback commands are not yet supported!");
+                ClientCommand::Playback(cmd) => {
+                    let cmd: playback::Command = match cmd.try_into() {
+                        Ok(cmd) => cmd,
+                        Err(e) => {
+                            error!("Could not parse the playback command: {e}");
+                            respond(&mut conn, &DaemonResponse::Error(DaemonError::ParsingError));
+                            return;
+                        }
+                    };
+                    if let Err(e) = playback::send_command(cmd) {
+                        error!("Could not execute the playback command: {e}");
+                    }
+                    respond(&mut conn, &DaemonResponse::Ok);
                 }
             };
         }

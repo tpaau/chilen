@@ -269,7 +269,24 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 }
             }
             Command::Playback { command } => {
-                panic!("Playback commands are not yet supported!");
+                let cmd = ClientCommand::Playback(command.into());
+                match mpipc::exec_client_command(cmd) {
+                    Ok(response) => match response {
+                        DaemonResponse::Ok => println!("Ok"),
+                        DaemonResponse::Error(e) => {
+                            error!("Playback command failed: {e}");
+                            return Err(());
+                        }
+                        _ => {
+                            error!("Got an unexpected response from the daemon: {response:?}");
+                            return Err(());
+                        }
+                    },
+                    Err(e) => {
+                        print_daemon_error(e);
+                        return Err(());
+                    }
+                }
             }
         }
     } else {

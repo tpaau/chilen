@@ -197,17 +197,14 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
     loop {
         let event = event_receiver.recv().unwrap();
         let mut guard = senders.write().unwrap();
-        let mut dead_connections = Vec::new();
+        let mut dead = Vec::new();
         for (i, sender) in guard.iter().enumerate() {
-            trace!("Sending daemon event to a thread: {sender:?}");
             if sender.send(event.clone()).is_err() {
-                debug!(
-                    "Could not send data to a thread over mspc, removing it from the consumer list"
-                );
-                dead_connections.push(i);
+                debug!("Removing dead connection at {}", i);
+                dead.push(i);
             }
         }
-        for ded in dead_connections {
+        for &ded in dead.iter().rev() {
             guard.remove(ded);
         }
 

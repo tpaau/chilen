@@ -2,7 +2,7 @@ use std::{
     collections::HashSet,
     fs::{File, read},
     hash::{DefaultHasher, Hash, Hasher},
-    io::Write,
+    io::{BufReader, Write},
     path::{Path, PathBuf},
     sync::{LazyLock, RwLock},
     thread,
@@ -13,6 +13,7 @@ use lofty::tag::{Accessor, ItemValue, Tag};
 use log::{error, trace};
 use mpipc::{DataError, MusicLibraryError};
 use rmp_serde::{Deserializer, Serializer};
+use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -174,6 +175,28 @@ impl Track {
         }
         hashes
     }
+
+    pub fn open_file(&self) -> std::io::Result<File> {
+        File::open(&self.path)
+    }
+
+    pub fn open_file_buf(&self) -> std::io::Result<BufReader<File>> {
+        match File::open(&self.path) {
+            Ok(file) => Ok(BufReader::new(file)),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn open_source(&self) -> Result<Decoder<BufReader<File>>, String> {
+        let file = match self.open_file_buf() {
+            Ok(file) => file,
+            Err(e) => return Err(e.to_string()),
+        };
+        match Decoder::try_from(file) {
+            Ok(source) => Ok(source),
+            Err(e) => Err(e.to_string()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -300,6 +323,15 @@ static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 
 static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
 
+pub(crate) fn get_library() -> Result<MusicLibrary, MusicLibraryError> {
+    if let Some(lib) = MUSIC_LIBRARY.read().unwrap().clone() {
+        Ok(lib)
+    } else {
+        error!("Tried to get the music library, but it was uninitialized!");
+        Err(MusicLibraryError::LibraryNotInitialized)
+    }
+}
+
 pub(crate) fn tracks_from_hashes(track_hashes: Vec<u64>, tracks: &[Track]) -> Vec<Track> {
     let wanted: HashSet<u64> = track_hashes.into_iter().collect();
     tracks
@@ -313,6 +345,23 @@ pub(crate) fn tracks_from_hashes(track_hashes: Vec<u64>, tracks: &[Track]) -> Ve
             }
         })
         .collect()
+}
+
+pub(crate) fn find_tracks_from_paths(paths: Vec<PathBuf>) -> Result<Vec<Track>, MusicLibraryError> {
+    let lib = get_library()?;
+    let tracks = match index_files(paths, false) {
+        Ok(tracks) => tracks,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+    let lib_set: HashSet<_> = lib.tracks.iter().collect();
+    let intersecting_tracks: Vec<Track> = tracks
+        .iter()
+        .filter(|t| lib_set.contains(t))
+        .cloned()
+        .collect();
+    Ok(intersecting_tracks)
 }
 
 /// Save the library state to a file.
@@ -447,15 +496,6 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     Ok(())
 }
 
-pub(crate) fn get_library() -> Result<MusicLibrary, MusicLibraryError> {
-    if let Some(lib) = MUSIC_LIBRARY.read().unwrap().clone() {
-        Ok(lib)
-    } else {
-        error!("Tried to get the music library, but it was uninitialized!");
-        Err(MusicLibraryError::LibraryNotInitialized)
-    }
-}
-
 pub fn create_playlist(
     name: String,
     tracks: &Option<Vec<PathBuf>>,
@@ -491,10 +531,10 @@ pub fn create_playlist(
 
             drop(guard);
             save_library()?;
-            trace!("Created a new playlist with the name \"{name}\"");
+            trace!("Created a new playlist with name \"{name}\"");
             Ok(())
         } else {
-            error!("A playlist with the name \"{name}\" already exists");
+            error!("A playlist with name \"{name}\" already exists");
             Err(MusicLibraryError::PlaylistExists)
         }
     } else {

@@ -192,6 +192,8 @@ pub enum DaemonError {
     ListenerError,
     /// Could not send the command to the daemon.
     SendingError,
+    /// Could not parse the command sent to the daemon.
+    ParsingError,
     /// Error related to the music library.
     MusicLibraryError(MusicLibraryError),
     /// Error related to the data and cache modules.
@@ -209,6 +211,7 @@ impl std::fmt::Display for DaemonError {
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
             Self::ListenerError => write!(f, "Could not initialize the listener in the daemon"),
             Self::SendingError => write!(f, "Could not send the commadnd to the daemon"),
+            Self::ParsingError => write!(f, "Could not parse the command sent to the daemon."),
             Self::MusicLibraryError(e) => {
                 write!(f, "{e}")
             }
@@ -237,6 +240,8 @@ pub enum DaemonResponse {
 pub enum PlaybackCommand {
     Play,
     Pause,
+    SetQueue(Vec<PathBuf>),
+    SetPlaylist(String),
     Next,
     Previous,
 }
@@ -246,6 +251,8 @@ impl std::fmt::Display for PlaybackCommand {
         match self {
             Self::Play => write!(f, "Play"),
             Self::Pause => write!(f, "Pause"),
+            Self::SetQueue(_) => write!(f, "SetQueue"),
+            Self::SetPlaylist(name) => write!(f, "Set playlist \"{name}\""),
             Self::Next => write!(f, "Next"),
             Self::Previous => write!(f, "Previous"),
         }
@@ -351,7 +358,7 @@ pub enum ClientCommand {
     /// Close the connection to the daemon.
     Disconnect,
     // Command to the playback module.
-    PlaybackCommand(PlaybackCommand),
+    Playback(PlaybackCommand),
 }
 
 impl TryFrom<DaemonCommand> for ClientCommand {

@@ -153,9 +153,25 @@ impl From<CacheCommand> for mpipc::CacheCommand {
 }
 
 #[derive(Subcommand)]
+pub enum PlayCommand {
+    /// Play the queue.
+    Current,
+    /// Put a list of tracks in the queue before playing it.
+    Tracks {
+        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
+        tracks: Vec<PathBuf>,
+    },
+    /// Put the contents of a playlist in the queue before playing it.
+    Playlist { name: String },
+}
+
+#[derive(Subcommand)]
 pub enum PlaybackCommand {
     /// Play the audio.
-    Play,
+    Play {
+        #[command(subcommand)]
+        command: PlayCommand,
+    },
     /// Pause the audio.
     Pause,
     /// Skip to the next track.
@@ -167,7 +183,11 @@ pub enum PlaybackCommand {
 impl From<PlaybackCommand> for mpipc::PlaybackCommand {
     fn from(value: PlaybackCommand) -> Self {
         match value {
-            PlaybackCommand::Play => mpipc::PlaybackCommand::Play,
+            PlaybackCommand::Play { command } => match command {
+                PlayCommand::Current => mpipc::PlaybackCommand::Play,
+                PlayCommand::Tracks { tracks } => mpipc::PlaybackCommand::SetQueue(tracks),
+                PlayCommand::Playlist { name } => mpipc::PlaybackCommand::SetPlaylist(name),
+            },
             PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
             PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
             PlaybackCommand::Previous => mpipc::PlaybackCommand::Previous,
@@ -283,6 +303,7 @@ pub fn parse_args() -> Args {
         .filter_module("wgpu_hal", foreign_module_filter)
         .filter_module("winit", foreign_module_filter)
         .filter_module("zbus", foreign_module_filter)
+        .filter_module("symphonia_core", foreign_module_filter)
         .init();
 
     trace!("Finished parsing command line arguments");
