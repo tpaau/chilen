@@ -48,6 +48,33 @@ impl std::fmt::Display for MusicLibraryError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Error related to the playback module.
+pub enum PlaybackError {
+    /// The audio player is not connected.
+    PlayerNotConnected,
+    /// There are no tracks in the queue.
+    NoTracksInQueue,
+    /// Could not open the audio source.
+    AudioSourceError,
+    /// The player is playing.
+    PlayerPlaying,
+    /// The player is paused.
+    PlayerPaused,
+}
+
+impl std::fmt::Display for PlaybackError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
+            Self::NoTracksInQueue => write!(f, "There are no tracks in the queue"),
+            Self::AudioSourceError => write!(f, "Could not open the audio source"),
+            Self::PlayerPlaying => write!(f, "The player is playing"),
+            Self::PlayerPaused => write!(f, "The player is paused"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DataError {
     PermissionError,
     CacheDirNotAvailable,
@@ -200,6 +227,8 @@ pub enum DaemonError {
     DataError(DataError),
     /// The response received from the daemon was unexpected or invalid.
     InvalidResponse,
+    /// Error related to the playback module.
+    PlaybackError(PlaybackError),
 }
 
 impl std::fmt::Display for DaemonError {
@@ -219,6 +248,7 @@ impl std::fmt::Display for DaemonError {
             Self::InvalidResponse => {
                 write!(f, "The response from the daemon was invalid or malformed")
             }
+            Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
         }
     }
 }

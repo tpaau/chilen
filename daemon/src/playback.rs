@@ -2,13 +2,13 @@ use std::{
     fs::{File, read},
     io::Write,
     path::PathBuf,
-    sync::{Arc, LazyLock, RwLock, mpsc},
+    sync::{Arc, LazyLock, RwLock},
     thread,
     time::Duration,
 };
 
-use log::{debug, error, info, trace};
-use mpipc::{LoopState, MusicLibraryError, ShuffleState};
+use log::{debug, error, info, trace, warn};
+use mpipc::{LoopState, MusicLibraryError, PlaybackError, ShuffleState};
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
@@ -220,7 +220,10 @@ static STATE_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
     data
 });
 
-static COMMAND_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Command>>>>> =
+static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+static QUEUE_STATE: LazyLock<Arc<RwLock<Option<QueueState>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 fn save_state(state: QueueState) -> Result<(), MusicLibraryError> {
@@ -303,17 +306,6 @@ fn restore_state_from_cache() -> Result<QueueState, MusicLibraryError> {
     }
 }
 
-pub(crate) fn send_command(cmd: Command) -> Result<(), String> {
-    trace!("Sending a command to the playback thread: {cmd:?}");
-    match COMMAND_SENDER.read().as_mut() {
-        Ok(guard) => match guard.clone().unwrap().send(cmd) {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e.to_string()),
-        },
-        Err(e) => Err(e.to_string()),
-    }
-}
-
 pub(crate) fn init() {
     trace!("Initializing the playback module");
 
@@ -332,9 +324,6 @@ pub(crate) fn init() {
     };
     trace!("Queue state ready!");
 
-    let (command_sender, command_receiver) = mpsc::channel();
-    *COMMAND_SENDER.write().unwrap() = Some(command_sender);
-
     let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
         Ok(sink) => sink,
         Err(e) => {
@@ -343,139 +332,176 @@ pub(crate) fn init() {
         }
     };
     let player = Player::connect_new(handle.mixer());
+
+    *QUEUE_STATE.write().unwrap() = Some(state);
+    *PLAYER_HANDLE.write().unwrap() = Some(player);
+
+    let mut queue_guard = QUEUE_STATE.write().unwrap();
+    let state = queue_guard.as_mut().unwrap();
     if let Some(track) = state.current()
         && let Ok(source) = track.open_source()
     {
+        let player_guard = PLAYER_HANDLE.read().unwrap();
+        let player = player_guard.as_ref().unwrap();
         player.append(source);
         player.pause();
+        drop(player_guard);
     }
+    drop(queue_guard);
 
-    let queue_state = Arc::new(RwLock::new(state));
-    let player = Arc::new(RwLock::new(player));
-
-    let state_cloned = queue_state.clone();
-    let player_cloned = player.clone();
-    thread::spawn(move || {
-        let mut initial_iter = true;
-        loop {
-            thread::sleep(Duration::from_millis(100));
-            let player_arc = player_cloned.clone();
-            let player = player_arc.read().unwrap();
-            if player.len() == 0 {
-                let state_arc = state_cloned.clone();
-                let mut state = state_arc.write().unwrap();
-                if !state.can_go_next() {
+    let mut initial_iter = true;
+    loop {
+        thread::sleep(Duration::from_millis(100));
+        let player_guard = PLAYER_HANDLE.read().unwrap();
+        let player = player_guard.as_ref().unwrap();
+        if player.len() == 0 {
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            if !state.can_go_next() {
+                continue;
+            }
+            let source = match state.next().unwrap().open_source() {
+                Ok(source) => source,
+                Err(e) => {
+                    error!("Could not open audio source: {e}");
                     continue;
                 }
-                let source = match state.next().unwrap().open_source() {
+            };
+            drop(queue_guard);
+            player.append(source);
+            if initial_iter {
+                player.pause();
+                initial_iter = false;
+            }
+        }
+        drop(player_guard);
+    }
+}
+
+pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
+    match cmd {
+        Command::Play => {
+            trace!("Playing the current media");
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            if let Some(player) = player_guard.as_ref() {
+                let mut queue_guard = QUEUE_STATE.write().unwrap();
+                let state = queue_guard.as_mut().unwrap();
+                if !player.is_paused() && !player.empty() {
+                    return Err(PlaybackError::PlayerPlaying);
+                } else if player.empty() {
+                    if let Some(track) = state.current() {
+                        let source = match track.open_source() {
+                            Ok(source) => source,
+                            Err(e) => {
+                                error!("Could not open audio source: {e}");
+                                return Err(PlaybackError::AudioSourceError);
+                            }
+                        };
+                        player.append(source);
+                    } else {
+                        return Err(PlaybackError::NoTracksInQueue);
+                    }
+                } else {
+                    player.play();
+                }
+            } else {
+                warn!("Cannot play, player is not connected");
+                return Err(PlaybackError::PlayerNotConnected);
+            }
+        }
+        Command::Pause => {
+            trace!("Pausing the current media");
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            let player = player_guard.as_ref().unwrap();
+            if player.is_paused() {
+                return Err(PlaybackError::PlayerPaused);
+            } else {
+                player.pause();
+            }
+        }
+        Command::SetQueue(queue) => {
+            trace!("Setting a new queue");
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            state.set_tracks(queue);
+            background_save_state(state.clone());
+        }
+        Command::AppendToQueue(mut queue) => {
+            trace!("Appending tracks to queue");
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            state.append_tracks(&mut queue);
+            background_save_state(state.clone());
+        }
+        Command::Next => {
+            trace!("Skipping to the next track");
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            if state.can_go_next() {
+                let track = state.next().unwrap().clone();
+                background_save_state(state.clone());
+                let source = match track.open_source() {
                     Ok(source) => source,
                     Err(e) => {
                         error!("Could not open audio source: {e}");
-                        continue;
+                        todo!()
                     }
                 };
-                player.append(source);
-                if initial_iter {
-                    player.pause();
-                    initial_iter = false;
+                let player_guard = PLAYER_HANDLE.read().unwrap();
+                if let Some(player) = player_guard.as_ref() {
+                    player.clear();
+                    player.append(source);
+                    player.play();
+                } else {
+                    warn!("Cannot skip to the next track, player is not connected");
+                    return Err(PlaybackError::PlayerNotConnected);
                 }
+            } else {
+                info!("Cannot skip to the next track, the current track is last in the queue");
             }
         }
-    });
-
-    loop {
-        let command = match command_receiver.recv() {
-            Ok(command) => command,
-            Err(e) => {
-                error!("Failed receiving command: {e}");
-                continue;
-            }
-        };
-
-        trace!("Got command: {command:?}");
-        match command {
-            Command::Play => {
-                trace!("Playing the current media");
-                let player_arc = player.clone();
-                let player = player_arc.read().unwrap();
-                player.play();
-            }
-            Command::Pause => {
-                trace!("Pausing the current media");
-                let player_arc = player.clone();
-                let player = player_arc.read().unwrap();
-                player.pause();
-            }
-            Command::SetQueue(queue) => {
-                trace!("Setting a new queue");
-                let state_arc = queue_state.clone();
-                let mut state = state_arc.write().unwrap();
-                state.set_tracks(queue);
+        Command::Previous => {
+            trace!("Skipping to the previous track");
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            if state.can_go_previous() {
+                let track = state.previous().unwrap().clone();
                 background_save_state(state.clone());
-            }
-            Command::AppendToQueue(mut queue) => {
-                trace!("Appending tracks to queue");
-                let state_arc = queue_state.clone();
-                let mut state = state_arc.write().unwrap();
-                state.append_tracks(&mut queue);
-                background_save_state(state.clone());
-            }
-            Command::Next => {
-                trace!("Skipping to the next track");
-                let state_arc = queue_state.clone();
-                let mut state = state_arc.write().unwrap();
-                if state.can_go_next() {
-                    let source = match state.next().unwrap().open_source() {
-                        Ok(source) => source,
-                        Err(e) => {
-                            error!("Could not open audio source: {e}");
-                            continue;
-                        }
-                    };
-                    let player_arc = player.clone();
-                    let player = player_arc.read().unwrap();
+                let source = match track.open_source() {
+                    Ok(source) => source,
+                    Err(e) => {
+                        error!("Could not open audio source: {e}");
+                        todo!();
+                    }
+                };
+                let player_guard = PLAYER_HANDLE.read().unwrap();
+                if let Some(player) = player_guard.as_ref() {
                     player.clear();
                     player.append(source);
                     player.play();
-                    background_save_state(state.clone());
                 } else {
-                    info!("Cannot skip to the next track, the current track is last in the queue");
+                    warn!("Cannot skip to the previous track, player is not connected");
+                    return Err(PlaybackError::PlayerNotConnected);
                 }
+            } else {
+                info!("Cannot go the the previous track");
             }
-            Command::Previous => {
-                trace!("Skipping to the previous track");
-                let state_arc = queue_state.clone();
-                let mut state = state_arc.write().unwrap();
-                if state.can_go_previous() {
-                    let source = match state.previous().unwrap().open_source() {
-                        Ok(source) => source,
-                        Err(e) => {
-                            error!("Could not open audio source: {e}");
-                            continue;
-                        }
-                    };
-                    let player_arc = player.clone();
-                    let player = player_arc.read().unwrap();
-                    player.clear();
-                    player.append(source);
-                    player.play();
-                    background_save_state(state.clone());
-                } else {
-                    info!("Cannot go the the previous track");
-                }
-            }
-            Command::SetLoopState(loop_state) => {
-                trace!("Setting loop state to {loop_state:?}");
-                let state_arc = queue_state.clone();
-                let mut state = state_arc.write().unwrap();
-                state.loop_state = loop_state;
-            }
-            Command::SetShuffleState(shuffle_state) => {
-                trace!("Setting shuffle state to {shuffle_state:?}");
-                let state_arc = queue_state.clone();
-                let mut state = state_arc.write().unwrap();
-                state.shuffle_state = shuffle_state;
-            }
+        }
+        Command::SetLoopState(loop_state) => {
+            trace!("Setting loop state to {loop_state:?}");
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            state.loop_state = loop_state;
+            background_save_state(state.clone());
+        }
+        Command::SetShuffleState(shuffle_state) => {
+            trace!("Setting shuffle state to {shuffle_state:?}");
+            let mut queue_guard = QUEUE_STATE.write().unwrap();
+            let state = queue_guard.as_mut().unwrap();
+            state.shuffle_state = shuffle_state;
+            background_save_state(state.clone());
         }
     }
+
+    Ok(())
 }

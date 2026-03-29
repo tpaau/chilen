@@ -194,8 +194,12 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                             return;
                         }
                     };
-                    if let Err(e) = playback::send_command(cmd) {
+                    if let Err(e) = playback::run_command(cmd) {
                         error!("Could not execute the playback command: {e}");
+                        respond(
+                            &mut conn,
+                            &DaemonResponse::Error(DaemonError::PlaybackError(e)),
+                        );
                     }
                     respond(&mut conn, &DaemonResponse::Ok);
                 }
