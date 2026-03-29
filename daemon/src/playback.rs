@@ -41,11 +41,12 @@ impl TryFrom<QueueStateRaw> for QueueState {
 
 impl QueueState {
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
+        self.position = 0;
         self.tracks = tracks;
     }
 
-    pub fn append_tracks(&mut self, mut tracks: &mut Vec<Track>) {
-        self.tracks.append(&mut tracks);
+    pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
+        self.tracks.append(tracks);
     }
 
     pub fn len(&self) -> usize {
@@ -54,6 +55,92 @@ impl QueueState {
 
     pub fn pos(&self) -> usize {
         self.position
+    }
+
+    pub fn current(&self) -> Option<&Track> {
+        if self.position < self.len() {
+            return Some(&self.tracks[self.position]);
+        }
+        None
+    }
+
+    pub fn can_go_next(&self) -> bool {
+        match self.loop_state {
+            LoopState::Off => {
+                if self.tracks.is_empty() {
+                    return false;
+                }
+                self.pos() < self.len() - 1
+            }
+            _ => true,
+        }
+    }
+
+    pub fn next(&mut self) -> Option<&Track> {
+        match self.loop_state {
+            LoopState::Off => match self.shuffle_state {
+                ShuffleState::Off => {
+                    if self.position < self.len() - 1 {
+                        self.position += 1;
+                        return self.current();
+                    }
+                    None
+                }
+                ShuffleState::On => {
+                    todo!("Implement shuffle")
+                }
+            },
+            LoopState::Track => self.current(),
+            LoopState::Playlist => match self.shuffle_state {
+                ShuffleState::Off => {
+                    if self.position < self.len() - 1 {
+                        self.position += 1;
+                        self.current()
+                    } else {
+                        self.position = 0;
+                        self.current()
+                    }
+                }
+                ShuffleState::On => {
+                    todo!("Implement shuffle")
+                }
+            },
+        }
+    }
+
+    pub fn can_go_previous(&self) -> bool {
+        trace!("Going previous");
+        trace!("Position: {}", self.pos());
+        trace!("Length: {}", self.len());
+        if self.tracks.is_empty() {
+            return false;
+        }
+        self.pos() > 0
+    }
+
+    pub fn previous(&mut self) -> Option<&Track> {
+        match self.loop_state {
+            LoopState::Off => {
+                if self.pos() > 0 && !self.tracks.is_empty() {
+                    self.position -= 1;
+                    return self.current();
+                }
+                None
+            }
+            LoopState::Track => self.current(),
+            LoopState::Playlist => {
+                if self.tracks.is_empty() {
+                    return None;
+                }
+                if self.pos() > 0 {
+                    self.position -= 1;
+                    self.current()
+                } else {
+                    self.position = self.len() - 1;
+                    self.current()
+                }
+            }
+        }
     }
 }
 
@@ -77,59 +164,6 @@ impl From<QueueState> for QueueStateRaw {
     }
 }
 
-impl QueueState {
-    pub fn current(&self) -> Option<&Track> {
-        if self.position <= self.tracks.len() {
-            return Some(&self.tracks[self.position - 1]);
-        }
-        None
-    }
-
-    pub fn can_go_next(&self) -> bool {
-        match self.loop_state {
-            LoopState::Off => {
-                if self.tracks.is_empty() {
-                    return false;
-                }
-                self.position < self.tracks.len()
-            }
-            _ => true,
-        }
-    }
-
-    pub fn next(&mut self) -> Option<&Track> {
-        match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
-                    if self.position < self.tracks.len() {
-                        self.position += 1;
-                        return self.current();
-                    }
-                    None
-                }
-                ShuffleState::On => {
-                    todo!("Implement shuffle")
-                }
-            },
-            LoopState::Track => self.current(),
-            LoopState::Playlist => match self.shuffle_state {
-                ShuffleState::Off => {
-                    if self.position < self.tracks.len() {
-                        self.position += 1;
-                        self.current()
-                    } else {
-                        self.position = 0;
-                        self.current()
-                    }
-                }
-                ShuffleState::On => {
-                    todo!("Implement shuffle")
-                }
-            },
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) enum Command {
     Play,
@@ -138,6 +172,8 @@ pub(crate) enum Command {
     AppendToQueue(Vec<Track>),
     Next,
     Previous,
+    SetLoopState(LoopState),
+    SetShuffleState(ShuffleState),
 }
 
 impl TryFrom<mpipc::PlaybackCommand> for Command {
@@ -170,6 +206,10 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
             }
             mpipc::PlaybackCommand::Next => Ok(Self::Next),
             mpipc::PlaybackCommand::Previous => Ok(Self::Previous),
+            mpipc::PlaybackCommand::SetLoopState(loop_state) => Ok(Self::SetLoopState(loop_state)),
+            mpipc::PlaybackCommand::SetShuffleState(shuffle_state) => {
+                Ok(Self::SetShuffleState(shuffle_state))
+            }
         }
     }
 }
@@ -183,7 +223,7 @@ static STATE_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 static COMMAND_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Command>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-fn save_state_to_cache(state: QueueState) -> Result<(), MusicLibraryError> {
+fn save_state(state: QueueState) -> Result<(), MusicLibraryError> {
     let state_raw: QueueStateRaw = state.into();
     let state_file = STATE_FILE.clone();
 
@@ -202,12 +242,23 @@ fn save_state_to_cache(state: QueueState) -> Result<(), MusicLibraryError> {
     };
 
     match file.write_all(&data) {
-        Ok(_) => Ok(()),
+        Ok(_) => {
+            trace!("Saved queue state to cache");
+            Ok(())
+        }
         Err(e) => {
             error!("Could not write to the queue state cache: {e}");
             Err(MusicLibraryError::CacheError)
         }
     }
+}
+
+fn background_save_state(state: QueueState) {
+    thread::spawn(|| {
+        if let Err(e) = save_state(state) {
+            error!("Could not save queue state to cache: {e}")
+        }
+    });
 }
 
 fn restore_state_from_cache() -> Result<QueueState, MusicLibraryError> {
@@ -275,14 +326,11 @@ pub(crate) fn init() {
             error!("Could not restore queue state from cache: {e}");
             let state = QueueState::default();
             debug!("Creating a new state and attempting to save it in cache");
-            if let Err(e) = save_state_to_cache(state.clone()) {
-                error!("Could not save queue state to cache: {e}");
-            }
+            background_save_state(state.clone());
             state
         }
     };
     trace!("Queue state ready!");
-    let queue_state = Arc::new(RwLock::new(state));
 
     let (command_sender, command_receiver) = mpsc::channel();
     *COMMAND_SENDER.write().unwrap() = Some(command_sender);
@@ -294,7 +342,16 @@ pub(crate) fn init() {
             return;
         }
     };
-    let player = Arc::new(RwLock::new(Player::connect_new(handle.mixer())));
+    let player = Player::connect_new(handle.mixer());
+    if let Some(track) = state.current()
+        && let Ok(source) = track.open_source()
+    {
+        player.append(source);
+        player.pause();
+    }
+
+    let queue_state = Arc::new(RwLock::new(state));
+    let player = Arc::new(RwLock::new(player));
 
     let state_cloned = queue_state.clone();
     let player_cloned = player.clone();
@@ -354,20 +411,14 @@ pub(crate) fn init() {
                 let state_arc = queue_state.clone();
                 let mut state = state_arc.write().unwrap();
                 state.set_tracks(queue);
-                match save_state_to_cache(state.clone()) {
-                    Ok(_) => trace!("Saved queue state to cache"),
-                    Err(e) => error!("Could not save queue state to cache: {e}"),
-                }
+                background_save_state(state.clone());
             }
             Command::AppendToQueue(mut queue) => {
                 trace!("Appending tracks to queue");
                 let state_arc = queue_state.clone();
                 let mut state = state_arc.write().unwrap();
                 state.append_tracks(&mut queue);
-                match save_state_to_cache(state.clone()) {
-                    Ok(_) => trace!("Saved queue state to cache"),
-                    Err(e) => error!("Could not save queue state to cache: {e}"),
-                }
+                background_save_state(state.clone());
             }
             Command::Next => {
                 trace!("Skipping to the next track");
@@ -386,13 +437,44 @@ pub(crate) fn init() {
                     player.clear();
                     player.append(source);
                     player.play();
+                    background_save_state(state.clone());
                 } else {
                     info!("Cannot skip to the next track, the current track is last in the queue");
                 }
             }
             Command::Previous => {
                 trace!("Skipping to the previous track");
-                todo!("Not implemented!")
+                let state_arc = queue_state.clone();
+                let mut state = state_arc.write().unwrap();
+                if state.can_go_previous() {
+                    let source = match state.previous().unwrap().open_source() {
+                        Ok(source) => source,
+                        Err(e) => {
+                            error!("Could not open audio source: {e}");
+                            continue;
+                        }
+                    };
+                    let player_arc = player.clone();
+                    let player = player_arc.read().unwrap();
+                    player.clear();
+                    player.append(source);
+                    player.play();
+                    background_save_state(state.clone());
+                } else {
+                    info!("Cannot go the the previous track");
+                }
+            }
+            Command::SetLoopState(loop_state) => {
+                trace!("Setting loop state to {loop_state:?}");
+                let state_arc = queue_state.clone();
+                let mut state = state_arc.write().unwrap();
+                state.loop_state = loop_state;
+            }
+            Command::SetShuffleState(shuffle_state) => {
+                trace!("Setting shuffle state to {shuffle_state:?}");
+                let state_arc = queue_state.clone();
+                let mut state = state_arc.write().unwrap();
+                state.shuffle_state = shuffle_state;
             }
         }
     }

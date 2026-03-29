@@ -74,9 +74,11 @@ fn ask_user_yn(prompt: &str, default: bool) -> Result<bool, std::io::Error> {
 }
 
 fn print_daemon_error(error: DaemonError) {
-    error!("Could not connect to the daemon: {error}");
     if let DaemonError::ConnectionError = error {
-        eprintln!("You must first start the daemon to run this command!");
+        error!("Could not connect to the daemon (is the daemon running?)");
+        eprintln!("You must first start the daemon to run this command");
+    } else {
+        error!("Could not connect to the daemon: {error}");
     }
 }
 

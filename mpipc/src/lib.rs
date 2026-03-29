@@ -245,6 +245,8 @@ pub enum PlaybackCommand {
     SetPlaylist(String),
     Next,
     Previous,
+    SetLoopState(LoopState),
+    SetShuffleState(ShuffleState),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -507,7 +509,7 @@ pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonE
     let mut conn = match connect_to_daemon() {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
-            error!("Could not execute daemon command: {e:?}");
+            error!("Could not execute daemon command: {e}");
             return Err(e);
         }
     };

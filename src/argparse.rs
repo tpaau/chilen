@@ -166,9 +166,47 @@ pub enum PlayCommand {
 }
 
 #[derive(Subcommand)]
+pub enum LoopState {
+    /// Do not loop.
+    Off,
+    /// Loop the current track.
+    Track,
+    /// Loop the current playlist.
+    Playlist,
+}
+
+impl From<LoopState> for mpipc::LoopState {
+    fn from(value: LoopState) -> Self {
+        match value {
+            LoopState::Off => mpipc::LoopState::Off,
+            LoopState::Track => mpipc::LoopState::Track,
+            LoopState::Playlist => mpipc::LoopState::Playlist,
+        }
+    }
+}
+
+#[derive(Subcommand)]
+pub enum ShuffleState {
+    /// Enable shuffle.
+    On,
+    /// Disable shuffle.
+    Off,
+}
+
+impl From<ShuffleState> for mpipc::ShuffleState {
+    fn from(value: ShuffleState) -> Self {
+        match value {
+            ShuffleState::On => mpipc::ShuffleState::On,
+            ShuffleState::Off => mpipc::ShuffleState::Off,
+        }
+    }
+}
+
+#[derive(Subcommand)]
 pub enum PlaybackCommand {
     /// Play the audio.
     Play,
+    /// Set the queue to a playlist or a list of tracks.
     #[command(group(
         ArgGroup::new("source")
             .required(true)
@@ -183,6 +221,7 @@ pub enum PlaybackCommand {
         #[arg(long, short, conflicts_with = "tracks")]
         playlist: Option<String>,
     },
+    /// Append a list of tracks to the queue.
     AppendToQueue {
         /// Paths of tracks to be appended to the queue.
         #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
@@ -194,6 +233,16 @@ pub enum PlaybackCommand {
     Next,
     /// Skip to the previous track.
     Previous,
+    /// Set the loop state.
+    SetLoopState {
+        #[command(subcommand)]
+        loop_state: LoopState,
+    },
+    /// Set the shuffle state.
+    SetShuffleState {
+        #[command(subcommand)]
+        shuffle_state: ShuffleState,
+    },
 }
 
 impl From<PlaybackCommand> for mpipc::PlaybackCommand {
@@ -208,10 +257,18 @@ impl From<PlaybackCommand> for mpipc::PlaybackCommand {
                 }
                 panic!("This should never happen :)");
             }
-            PlaybackCommand::AppendToQueue { tracks } => mpipc::PlaybackCommand::AppendToQueue(tracks),
+            PlaybackCommand::AppendToQueue { tracks } => {
+                mpipc::PlaybackCommand::AppendToQueue(tracks)
+            }
             PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
             PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
             PlaybackCommand::Previous => mpipc::PlaybackCommand::Previous,
+            PlaybackCommand::SetLoopState { loop_state } => {
+                mpipc::PlaybackCommand::SetLoopState(loop_state.into())
+            }
+            PlaybackCommand::SetShuffleState { shuffle_state } => {
+                mpipc::PlaybackCommand::SetShuffleState(shuffle_state.into())
+            }
         }
     }
 }
