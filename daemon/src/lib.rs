@@ -18,7 +18,7 @@ use std::{
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{ClientCommand, DaemonError, DaemonEvent, DataError, SOCKET_NAME, get_daemon_socket};
+use mpipc::{ClientCommand, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DataError, get_daemon_socket};
 use serde::{Deserialize, Serialize};
 
 use crate::data::{
@@ -51,6 +51,8 @@ pub struct Config {
     data_dir: PathBuf,
     /// The directory containing the music library/audio files to load.
     music_dir: PathBuf,
+    /// The name of the socket to listen on.
+    socket_name: String,
 }
 
 impl Config {
@@ -59,25 +61,25 @@ impl Config {
     /// For a custom music player, you probably want to create your own config from
     /// scratch, or use the `Config::try_from_name(...)` constructor.
     pub fn try_default() -> Result<Self, DataError> {
-        Self::try_from_name(String::from("music-player"))
+        Self::try_from_name(String::from("music-player"), String::from(DEFAULT_SOCKET_NAME))
     }
 
-    /// Create a new config from runtime paths.
-    pub fn new(cache_dir: PathBuf, data_dir: PathBuf, music_dir: PathBuf) -> Self {
+    pub fn new(cache_dir: PathBuf, data_dir: PathBuf, music_dir: PathBuf, socket_name: String) -> Self {
         Self {
             cache_dir,
             data_dir,
             music_dir,
+            socket_name,
         }
     }
 
-    /// Try to generate a default config from the name of the program.
+    /// Create a new config from program and socket names.
     ///
     /// The generated paths will contain the name of the program, eg. `~/.cache/<PROGRAM_NAME>`,
     /// ``~/.local/share/<PROGRAM_NAME>`.
     ///
     /// Fails if the home directory is not available.
-    pub fn try_from_name(name: String) -> Result<Self, DataError> {
+    pub fn try_from_name(name: String, socket_name: String) -> Result<Self, DataError> {
         let home_dir = match home_dir() {
             Some(home) => home,
             None => {
@@ -100,6 +102,7 @@ impl Config {
             cache_dir,
             music_dir,
             data_dir,
+            socket_name
         })
     }
 }
@@ -147,14 +150,18 @@ pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
 /// daemon::start(config).unwrap();
 /// ```
 pub fn start(config: Config) -> Result<(), DaemonError> {
-    debug!("Starting daemon on '{SOCKET_NAME}'");
+    debug!("Starting daemon on '{}'", config.socket_name);
 
-    if let Err(e) = set_data_dirs(config) {
+    if let Err(e) = set_data_dirs(config.clone()) {
         error!("Could not set the paths: {e}");
         return Err(DaemonError::DataError(e));
     }
 
-    let socket = match get_daemon_socket() {
+    if config.socket_name == mpipc::DEFAULT_SOCKET_NAME {
+        warn!("Using the default IPC socket name. Please use a unique name outside of just testing.");
+    }
+
+    let socket = match get_daemon_socket(&config.socket_name) {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
@@ -162,7 +169,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         }
     };
 
-    trace!("Creating a listener on '{SOCKET_NAME}'");
+    trace!("Creating a listener on '{}'", config.socket_name);
     let opts = ListenerOptions::new().name(socket.clone());
 
     let listener = match opts.create_sync() {

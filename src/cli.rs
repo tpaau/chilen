@@ -15,6 +15,9 @@ use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 #[cfg(feature = "gui")]
 use crate::{argparse::GuiCommand, gui};
 
+/// The name of the socket the daemon should listen on.
+pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
+
 fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
     if debug {
         println!("{playlists:?}");
@@ -83,7 +86,7 @@ fn print_daemon_error(error: DaemonError) {
 }
 
 fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
-    let mut conn = match connect_to_daemon() {
+    let mut conn = match connect_to_daemon(SOCKET_NAME) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("Could not start the event stream: {e}");
@@ -177,7 +180,8 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                             music
                         }
                     };
-                    match daemon::start(daemon::Config::new(cache_dir, data_dir, music_dir)) {
+                    let config = daemon::Config::new(cache_dir, data_dir, music_dir, SOCKET_NAME.to_string());
+                    match daemon::start(config) {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => {
                             error!("Daemon failed: {e}");
@@ -197,7 +201,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                             return Err(());
                         }
                     };
-                    match mpipc::exec_client_command(cmd) {
+                    match mpipc::exec_client_command(cmd, SOCKET_NAME) {
                         Ok(response) => info!("Got a response from the daemon: {response:?}"),
                         Err(e) => {
                             print_daemon_error(e);
@@ -225,7 +229,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     PlaylistCommand::List { full, debug } => (full, debug),
                     _ => (false, false),
                 };
-                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist(command.into())) {
+                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist(command.into()), SOCKET_NAME) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => {
                             println!("Ok");
@@ -250,7 +254,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             }
             Command::Cache { command } => {
                 let cmd = ClientCommand::Cache(command.into());
-                match mpipc::exec_client_command(cmd) {
+                match mpipc::exec_client_command(cmd, SOCKET_NAME) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => {
                             println!("Ok");
@@ -272,7 +276,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             }
             Command::Playback { command } => {
                 let cmd = ClientCommand::Playback(command.into());
-                match mpipc::exec_client_command(cmd) {
+                match mpipc::exec_client_command(cmd, SOCKET_NAME) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => println!("Ok"),
                         DaemonResponse::Error(e) => {

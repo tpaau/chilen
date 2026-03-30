@@ -11,8 +11,8 @@ use log::{error, trace, warn};
 use rmp_serde::{Serializer, from_read};
 use serde::{Deserialize, Serialize};
 
-/// The name of the socket the daemon listens on.
-pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
+/// The default name of the socket the daemon listens on.
+pub const DEFAULT_SOCKET_NAME: &str = "DEFAULT_MUSIC_PLAYER.socket";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// An error originating from the music library module of the daemon.
@@ -413,14 +413,14 @@ pub enum DaemonCommand {
 ///     Err(e) => panic!("Could not obtain a socket: {e}"),
 /// }
 /// ```
-pub fn get_daemon_socket<'a>() -> Result<Name<'a>, std::io::Error> {
-    trace!("Obtaining a namespaced socket for '{SOCKET_NAME}'");
+pub fn get_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
+    trace!("Obtaining a namespaced socket for '{socket_name}'");
 
-    match SOCKET_NAME.to_ns_name::<GenericNamespaced>() {
+    match socket_name.to_ns_name::<GenericNamespaced>() {
         Ok(socket) => Ok(socket),
         Err(e) => {
             warn!("Could not obtain a namespaced socket (is your system supported?): {e}");
-            match SOCKET_NAME.to_fs_name::<GenericFilePath>() {
+            match socket_name.to_fs_name::<GenericFilePath>() {
                 Ok(socket) => Ok(socket),
                 Err(e) => {
                     error!("Could not obtain both a namespaced and a filesystem socket: {e}");
@@ -497,10 +497,10 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
 ///     Err(error) => panic!("Could not connect to the daemon: {error}"),
 /// }
 /// ```
-pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
-    trace!("Connecting to daemon on socket '{SOCKET_NAME}'");
+pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
+    trace!("Connecting to daemon on socket '{socket_name}'");
 
-    let socket = match get_daemon_socket() {
+    let socket = match get_daemon_socket(socket_name) {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
@@ -533,10 +533,10 @@ pub fn connect_to_daemon() -> Result<Stream, DaemonError> {
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }
 /// ```
-pub fn exec_client_command(cmd: ClientCommand) -> Result<DaemonResponse, DaemonError> {
+pub fn exec_client_command(cmd: ClientCommand, socket_name: &str) -> Result<DaemonResponse, DaemonError> {
     trace!("Executing daemon command: {cmd:?}");
 
-    let mut conn = match connect_to_daemon() {
+    let mut conn = match connect_to_daemon(socket_name) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("Could not execute daemon command: {e}");
