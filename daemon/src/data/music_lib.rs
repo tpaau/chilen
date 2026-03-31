@@ -176,15 +176,15 @@ impl Track {
         hashes
     }
 
-    pub fn open_file_buf(&self) -> std::io::Result<BufReader<File>> {
+    pub fn open_file(&self) -> std::io::Result<File> {
         match File::open(&self.path) {
-            Ok(file) => Ok(BufReader::new(file)),
+            Ok(file) => Ok(file),
             Err(e) => Err(e),
         }
     }
 
     pub fn open_source(&self) -> Result<Decoder<BufReader<File>>, String> {
-        let file = match self.open_file_buf() {
+        let file = match self.open_file() {
             Ok(file) => file,
             Err(e) => return Err(e.to_string()),
         };

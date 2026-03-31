@@ -22,6 +22,7 @@ use crate::data::{
 #[derive(Debug, Clone, Default)]
 struct QueueState {
     position: usize,
+    player_position: Duration,
     tracks: Vec<Track>,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
@@ -32,6 +33,7 @@ impl TryFrom<QueueStateRaw> for QueueState {
     fn try_from(value: QueueStateRaw) -> Result<Self, Self::Error> {
         Ok(Self {
             position: value.position,
+            player_position: value.player_position,
             tracks: tracks_from_hashes(value.track_hashes, &get_library()?.tracks),
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
@@ -147,6 +149,7 @@ impl QueueState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct QueueStateRaw {
     position: usize,
+    player_position: Duration,
     track_hashes: Vec<u64>,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
@@ -157,6 +160,7 @@ impl From<QueueState> for QueueStateRaw {
         let track_hashes = Track::hash_tracks(&value.tracks);
         Self {
             position: value.position,
+            player_position: value.player_position,
             track_hashes,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
@@ -174,6 +178,7 @@ pub(crate) enum Command {
     Previous,
     SetLoopState(LoopState),
     SetShuffleState(ShuffleState),
+    SetPosition(Duration),
 }
 
 impl TryFrom<mpipc::PlaybackCommand> for Command {
@@ -210,6 +215,7 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
             mpipc::PlaybackCommand::SetShuffleState(shuffle_state) => {
                 Ok(Self::SetShuffleState(shuffle_state))
             }
+            mpipc::PlaybackCommand::SetPosition(position) => Ok(Self::SetPosition(position)),
         }
     }
 }
@@ -350,13 +356,17 @@ pub(crate) fn init() {
     drop(queue_guard);
 
     let mut initial_iter = true;
+    let sleep_duration = Duration::from_millis(100);
     loop {
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(sleep_duration);
+        let mut queue_guard = QUEUE_STATE.write().unwrap();
+        let state = queue_guard.as_mut().unwrap();
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = player_guard.as_ref().unwrap();
-        if player.len() == 0 {
-            let mut queue_guard = QUEUE_STATE.write().unwrap();
-            let state = queue_guard.as_mut().unwrap();
+        if !player.is_paused() && !player.empty() {
+            state.player_position += sleep_duration;
+        } else if player.empty() {
+            state.player_position = Duration::default();
             if !state.can_go_next() {
                 continue;
             }
@@ -367,13 +377,13 @@ pub(crate) fn init() {
                     continue;
                 }
             };
-            drop(queue_guard);
             player.append(source);
             if initial_iter {
                 player.pause();
                 initial_iter = false;
             }
         }
+        drop(queue_guard);
         drop(player_guard);
     }
 }
@@ -449,6 +459,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 };
                 let player_guard = PLAYER_HANDLE.read().unwrap();
                 if let Some(player) = player_guard.as_ref() {
+                    state.player_position = Duration::default();
                     player.clear();
                     player.append(source);
                     player.play();
@@ -476,6 +487,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 };
                 let player_guard = PLAYER_HANDLE.read().unwrap();
                 if let Some(player) = player_guard.as_ref() {
+                    state.player_position = Duration::default();
                     player.clear();
                     player.append(source);
                     player.play();
@@ -500,6 +512,26 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             let state = queue_guard.as_mut().unwrap();
             state.shuffle_state = shuffle_state;
             background_save_state(state.clone());
+        }
+        Command::SetPosition(position) => {
+            trace!("Setting position to {:?}", position.as_secs());
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            if let Some(player) = player_guard.as_ref() {
+                if player.empty() {
+                    return Err(PlaybackError::NoTracksInQueue);
+                }
+                if let Err(e) = player.try_seek(position) {
+                    error!("Could not seek: {e}");
+                    return Err(PlaybackError::SeekNotSupported);
+                } else {
+                    let mut queue_guard = QUEUE_STATE.write().unwrap();
+                    let state = queue_guard.as_mut().unwrap();
+                    state.player_position = position;
+                }
+            } else {
+                warn!("Cannot seek, player is not connected");
+                return Err(PlaybackError::PlayerNotConnected);
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 use std::{
     io::{BufReader, Read, Write},
     path::PathBuf,
+    time::Duration,
 };
 
 use interprocess::local_socket::{
@@ -60,6 +61,8 @@ pub enum PlaybackError {
     PlayerPlaying,
     /// The player is paused.
     PlayerPaused,
+    /// Seek is not supported.
+    SeekNotSupported,
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -70,6 +73,7 @@ impl std::fmt::Display for PlaybackError {
             Self::AudioSourceError => write!(f, "Could not open the audio source"),
             Self::PlayerPlaying => write!(f, "The player is playing"),
             Self::PlayerPaused => write!(f, "The player is paused"),
+            Self::SeekNotSupported => write!(f, "Seek is not supported"),
         }
     }
 }
@@ -277,6 +281,7 @@ pub enum PlaybackCommand {
     Previous,
     SetLoopState(LoopState),
     SetShuffleState(ShuffleState),
+    SetPosition(Duration),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -408,7 +413,8 @@ pub enum DaemonCommand {
 /// # Examples
 /// ```
 /// # use mpipc::get_daemon_socket;
-/// match get_daemon_socket() {
+/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
+/// match get_daemon_socket(socket_name) {
 ///     Ok(socket) => eprintln!("Got a socket: {socket:?}"),
 ///     Err(e) => panic!("Could not obtain a socket: {e}"),
 /// }
@@ -437,7 +443,8 @@ pub fn get_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::
 /// ```no_run
 /// # use std::io::BufReader;
 /// # use mpipc::{connect_to_daemon, disconnect};
-/// let conn = connect_to_daemon().unwrap();
+/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
+/// let conn = connect_to_daemon(socket_name).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// // Do some stuff with the connection here...
 /// match disconnect(&mut conn) {
@@ -492,7 +499,8 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
 /// # Examples
 /// ```no_run
 /// # use mpipc::connect_to_daemon;
-/// match connect_to_daemon() {
+/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
+/// match connect_to_daemon(socket_name) {
 ///     Ok(stream) => eprintln!("Connected to the daemon: {stream:?}"),
 ///     Err(error) => panic!("Could not connect to the daemon: {error}"),
 /// }
@@ -528,12 +536,16 @@ pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
 /// # Examples
 /// ```no_run
 /// # use mpipc::{exec_client_command, ClientCommand};
-/// match exec_client_command(ClientCommand::Shutdown) {
+/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
+/// match exec_client_command(ClientCommand::Shutdown, socket_name) {
 ///     Ok(response) => eprintln!("Got a response from the daemon: {response:?}"),
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }
 /// ```
-pub fn exec_client_command(cmd: ClientCommand, socket_name: &str) -> Result<DaemonResponse, DaemonError> {
+pub fn exec_client_command(
+    cmd: ClientCommand,
+    socket_name: &str,
+) -> Result<DaemonResponse, DaemonError> {
     trace!("Executing daemon command: {cmd:?}");
 
     let mut conn = match connect_to_daemon(socket_name) {

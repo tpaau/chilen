@@ -180,7 +180,12 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                             music
                         }
                     };
-                    let config = daemon::Config::new(cache_dir, data_dir, music_dir, SOCKET_NAME.to_string());
+                    let config = daemon::Config::new(
+                        cache_dir,
+                        data_dir,
+                        music_dir,
+                        SOCKET_NAME.to_string(),
+                    );
                     match daemon::start(config) {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => {
@@ -229,7 +234,10 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     PlaylistCommand::List { full, debug } => (full, debug),
                     _ => (false, false),
                 };
-                match mpipc::exec_client_command(mpipc::ClientCommand::Playlist(command.into()), SOCKET_NAME) {
+                match mpipc::exec_client_command(
+                    mpipc::ClientCommand::Playlist(command.into()),
+                    SOCKET_NAME,
+                ) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => {
                             println!("Ok");

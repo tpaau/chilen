@@ -18,7 +18,9 @@ use std::{
 use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{ClientCommand, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DataError, get_daemon_socket};
+use mpipc::{
+    ClientCommand, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DataError, get_daemon_socket,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::data::{
@@ -61,10 +63,18 @@ impl Config {
     /// For a custom music player, you probably want to create your own config from
     /// scratch, or use the `Config::try_from_name(...)` constructor.
     pub fn try_default() -> Result<Self, DataError> {
-        Self::try_from_name(String::from("music-player"), String::from(DEFAULT_SOCKET_NAME))
+        Self::try_from_name(
+            String::from("music-player"),
+            String::from(DEFAULT_SOCKET_NAME),
+        )
     }
 
-    pub fn new(cache_dir: PathBuf, data_dir: PathBuf, music_dir: PathBuf, socket_name: String) -> Self {
+    pub fn new(
+        cache_dir: PathBuf,
+        data_dir: PathBuf,
+        music_dir: PathBuf,
+        socket_name: String,
+    ) -> Self {
         Self {
             cache_dir,
             data_dir,
@@ -102,7 +112,7 @@ impl Config {
             cache_dir,
             music_dir,
             data_dir,
-            socket_name
+            socket_name,
         })
     }
 }
@@ -158,7 +168,9 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
     }
 
     if config.socket_name == mpipc::DEFAULT_SOCKET_NAME {
-        warn!("Using the default IPC socket name. Please use a unique name outside of just testing.");
+        warn!(
+            "Using the default IPC socket name. Please use a unique name outside of just testing."
+        );
     }
 
     let socket = match get_daemon_socket(&config.socket_name) {

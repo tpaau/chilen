@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use clap::{ArgGroup, Parser, Subcommand, ValueHint};
 
@@ -243,6 +243,11 @@ pub enum PlaybackCommand {
         #[command(subcommand)]
         shuffle_state: ShuffleState,
     },
+    /// Set the player position.
+    SetPosition {
+        #[arg()]
+        position_secs: u64,
+    },
 }
 
 impl From<PlaybackCommand> for mpipc::PlaybackCommand {
@@ -268,6 +273,9 @@ impl From<PlaybackCommand> for mpipc::PlaybackCommand {
             }
             PlaybackCommand::SetShuffleState { shuffle_state } => {
                 mpipc::PlaybackCommand::SetShuffleState(shuffle_state.into())
+            }
+            PlaybackCommand::SetPosition { position_secs } => {
+                mpipc::PlaybackCommand::SetPosition(Duration::from_secs(position_secs))
             }
         }
     }
