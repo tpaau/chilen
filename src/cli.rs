@@ -7,8 +7,6 @@ use std::{
 use clap::crate_name;
 use log::{error, info, trace};
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon};
-use rmp_serde::from_read;
-use serde::Serialize;
 
 use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 
@@ -94,23 +92,24 @@ fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
         }
     };
 
-    let mut data = Vec::new();
-    if let Err(e) = ClientCommand::EventStream.serialize(&mut rmp_serde::Serializer::new(&mut data))
-    {
-        error!("Could not encode the client command: {e}");
-        return Err(());
-    }
+    let command = match mpipc::serialize_client_command(ClientCommand::EventStream) {
+        Ok(cmd) => cmd,
+        Err(e) => {
+            error!("Could not encode the client command: {e}");
+            return Err(());
+        }
+    };
 
-    if let Err(e) = conn.get_mut().write_all(&data) {
+    if let Err(e) = conn.get_mut().write_all(&command) {
         error!("Could not send the command to the daemon: {e}");
         return Err(());
     }
 
     loop {
-        let response: DaemonResponse = match from_read(&mut conn) {
+        let response: DaemonResponse = match mpipc::receive_daemon_response(&mut conn) {
             Ok(response) => response,
             Err(e) => {
-                error!("Failed decoding a daemon response: {e}");
+                error!("Failed to receive a response from the daemon: {e}");
                 return Err(());
             }
         };

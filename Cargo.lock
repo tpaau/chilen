@@ -846,7 +846,6 @@ name = "daemon"
 version = "0.1.0"
 dependencies = [
  "interprocess",
- "landlock",
  "lofty",
  "log",
  "mpipc",
@@ -1767,17 +1766,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "landlock"
-version = "0.4.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49fefd6652c57d68aaa32544a4c0e642929725bdc1fd929367cdeb673ab81088"
-dependencies = [
- "enumflags2",
- "libc",
- "thiserror 2.0.17",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2027,10 +2015,8 @@ dependencies = [
  "daemon",
  "env_logger",
  "iced",
- "landlock",
  "log",
  "mpipc",
- "rmp-serde",
  "serde",
  "serde_json",
 ]

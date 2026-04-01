@@ -437,6 +437,54 @@ pub fn get_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::
     }
 }
 
+/// Serialize a client command to a format that can be sent to the daemon.
+///
+/// # Examples
+/// ```no_run
+/// // Connect to the daemon and immediately disconnect.
+/// # use std::io::{BufReader, Write};
+/// # use mpipc;
+/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME).unwrap());
+/// let cmd = mpipc::serialize_client_command(mpipc::ClientCommand::Disconnect).unwrap();
+/// conn.get_mut().write_all(&cmd).unwrap();
+/// ```
+pub fn serialize_client_command(cmd: ClientCommand) -> Result<Vec<u8>, DaemonError> {
+    let mut data = Vec::new();
+    if let Err(e) = cmd.serialize(&mut rmp_serde::Serializer::new(&mut data)) {
+        error!("Could not encode the client command: {e}");
+        return Err(DaemonError::EncodingError);
+    }
+    Ok(data)
+}
+
+/// Receive a daemon response from a buffered stream connection.
+///
+/// This function will block until a response is received or the connection ends.
+///
+/// # Examples
+/// ```no_run
+/// # use std::io::{BufReader, Write};
+/// # use mpipc;
+/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME).unwrap());
+/// let cmd = mpipc::serialize_client_command(mpipc::ClientCommand::EventStream).unwrap();
+/// conn.get_mut().write_all(&cmd).unwrap();
+/// loop {
+///     let response = mpipc::receive_daemon_response(&mut conn).unwrap();
+///     println!("Got a response from the daemon: {response:?}");
+/// }
+/// ```
+pub fn receive_daemon_response(
+    conn: &mut BufReader<Stream>,
+) -> Result<DaemonResponse, DaemonError> {
+    match from_read(conn) {
+        Ok(response) => Ok(response),
+        Err(e) => {
+            error!("Failed decoding a daemon response: {e}");
+            Err(DaemonError::EncodingError)
+        }
+    }
+}
+
 /// Disconnect from the daemon (send the disconnect client command).
 ///
 /// # Examples
