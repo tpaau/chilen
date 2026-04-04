@@ -53,27 +53,36 @@ impl std::fmt::Display for MusicLibraryError {
 pub enum PlaybackError {
     /// The audio player is not connected.
     PlayerNotConnected,
-    /// There are no tracks in the queue.
-    NoTracksInQueue,
-    /// Could not open the audio source.
-    AudioSourceError,
-    /// The player is playing.
+    /// The queue is empty.
+    QueueEmpty,
+    /// Could not open an audio source.
+    SourceError,
+    /// The audio file could not be opened, has an unsupported format or is corrupt.
     PlayerPlaying,
-    /// The player is paused.
+    /// The player is already paused.
     PlayerPaused,
     /// Seek is not supported.
     SeekNotSupported,
+    /// Cannot go to the previous track.
+    CannotGoPrevious,
+    /// Cannot go to the next track.
+    CannotGoNext,
 }
 
 impl std::fmt::Display for PlaybackError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
-            Self::NoTracksInQueue => write!(f, "There are no tracks in the queue"),
-            Self::AudioSourceError => write!(f, "Could not open the audio source"),
-            Self::PlayerPlaying => write!(f, "The player is playing"),
-            Self::PlayerPaused => write!(f, "The player is paused"),
+            Self::QueueEmpty => write!(f, "The queue is empty"),
+            Self::SourceError => write!(
+                f,
+                "The audio file could not be opened, has an unsupported format or is corrupt"
+            ),
+            Self::PlayerPlaying => write!(f, "The player is already playing"),
+            Self::PlayerPaused => write!(f, "The player is already paused"),
             Self::SeekNotSupported => write!(f, "Seek is not supported"),
+            Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
+            Self::CannotGoNext => write!(f, "Cannot go to the next track"),
         }
     }
 }

@@ -9,6 +9,7 @@ use std::{
 
 use log::{debug, error, info, trace, warn};
 use mpipc::{LoopState, MusicLibraryError, PlaybackError, ShuffleState};
+use rand::seq::SliceRandom;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
@@ -24,6 +25,7 @@ struct QueueState {
     position: usize,
     player_position: Duration,
     tracks: Vec<Track>,
+    shuffled_tracks: Vec<Track>,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
 }
@@ -31,10 +33,12 @@ struct QueueState {
 impl TryFrom<QueueStateRaw> for QueueState {
     type Error = MusicLibraryError;
     fn try_from(value: QueueStateRaw) -> Result<Self, Self::Error> {
+        let tracks = &get_library()?.tracks;
         Ok(Self {
             position: value.position,
             player_position: value.player_position,
-            tracks: tracks_from_hashes(value.track_hashes, &get_library()?.tracks),
+            tracks: tracks_from_hashes(value.track_hashes, tracks),
+            shuffled_tracks: tracks_from_hashes(value.shuffled_track_hashes, tracks),
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         })
@@ -45,36 +49,70 @@ impl QueueState {
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.position = 0;
         self.tracks = tracks;
+        self.shuffle();
     }
 
     pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
         self.tracks.append(tracks);
+        if self.shuffle_state == ShuffleState::On {
+            self.shuffle();
+        }
     }
 
-    pub fn len(&self) -> usize {
-        self.tracks.len()
+    pub fn shuffle(&mut self) {
+        let mut rng = rand::rng();
+        let mut tracks = self.tracks.clone();
+        tracks.shuffle(&mut rng);
+        self.shuffled_tracks = tracks;
     }
 
-    pub fn pos(&self) -> usize {
-        self.position
+    pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
+        self.shuffle_state = shuffle_state;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        match self.shuffle_state {
+            ShuffleState::Off => self.tracks.is_empty(),
+            ShuffleState::On => self.shuffled_tracks.is_empty(),
+        }
     }
 
     pub fn current(&self) -> Option<&Track> {
-        if self.position < self.len() {
-            return Some(&self.tracks[self.position]);
+        match self.shuffle_state {
+            ShuffleState::Off => {
+                if self.position < self.tracks.len() {
+                    return Some(&self.tracks[self.position]);
+                }
+            }
+            ShuffleState::On => {
+                if self.position < self.shuffled_tracks.len() {
+                    return Some(&self.shuffled_tracks[self.position]);
+                }
+            }
         }
         None
     }
 
     pub fn can_go_next(&self) -> bool {
         match self.loop_state {
-            LoopState::Off => {
-                if self.tracks.is_empty() {
-                    return false;
+            LoopState::Off => match self.shuffle_state {
+                ShuffleState::Off => {
+                    if self.tracks.is_empty() {
+                        return false;
+                    }
+                    self.position < self.tracks.len() - 1
                 }
-                self.pos() < self.len() - 1
-            }
-            _ => true,
+                ShuffleState::On => {
+                    if self.shuffled_tracks.is_empty() {
+                        return false;
+                    }
+                    self.position < self.shuffled_tracks.len() - 1
+                }
+            },
+            _ => match self.shuffle_state {
+                ShuffleState::Off => !self.tracks.is_empty(),
+                ShuffleState::On => !self.shuffled_tracks.is_empty(),
+            },
         }
     }
 
@@ -82,20 +120,26 @@ impl QueueState {
         match self.loop_state {
             LoopState::Off => match self.shuffle_state {
                 ShuffleState::Off => {
-                    if self.position < self.len() - 1 {
+                    if self.position < self.tracks.len() - 1 {
                         self.position += 1;
                         return self.current();
                     }
                     None
                 }
                 ShuffleState::On => {
-                    todo!("Implement shuffle")
+                    if self.position < self.shuffled_tracks.len() - 1 {
+                        self.position += 1;
+                        return self.current();
+                    }
+                    None
                 }
             },
             LoopState::Track => self.current(),
             LoopState::Playlist => match self.shuffle_state {
                 ShuffleState::Off => {
-                    if self.position < self.len() - 1 {
+                    if self.tracks.is_empty() {
+                        None
+                    } else if self.position < self.tracks.len() - 1 {
                         self.position += 1;
                         self.current()
                     } else {
@@ -104,44 +148,86 @@ impl QueueState {
                     }
                 }
                 ShuffleState::On => {
-                    todo!("Implement shuffle")
+                    if self.shuffled_tracks.is_empty() {
+                        None
+                    } else if self.position < self.shuffled_tracks.len() - 1 {
+                        self.position += 1;
+                        self.current()
+                    } else {
+                        self.position = 0;
+                        self.current()
+                    }
                 }
             },
         }
     }
 
     pub fn can_go_previous(&self) -> bool {
-        trace!("Going previous");
-        trace!("Position: {}", self.pos());
-        trace!("Length: {}", self.len());
-        if self.tracks.is_empty() {
-            return false;
+        match self.loop_state {
+            LoopState::Off => match self.shuffle_state {
+                ShuffleState::Off => {
+                    if self.tracks.is_empty() {
+                        return false;
+                    }
+                    self.position > 0
+                }
+                ShuffleState::On => {
+                    if self.shuffled_tracks.is_empty() {
+                        return false;
+                    }
+                    self.position > 0
+                }
+            },
+            _ => match self.shuffle_state {
+                ShuffleState::Off => !self.tracks.is_empty(),
+                ShuffleState::On => !self.shuffled_tracks.is_empty(),
+            },
         }
-        self.pos() > 0
     }
 
     pub fn previous(&mut self) -> Option<&Track> {
         match self.loop_state {
-            LoopState::Off => {
-                if self.pos() > 0 && !self.tracks.is_empty() {
-                    self.position -= 1;
-                    return self.current();
+            LoopState::Off => match self.shuffle_state {
+                ShuffleState::Off => {
+                    if self.position > 0 && !self.tracks.is_empty() {
+                        self.position -= 1;
+                        return self.current();
+                    }
+                    None
                 }
-                None
-            }
+                ShuffleState::On => {
+                    if self.position > 0 && !self.shuffled_tracks.is_empty() {
+                        self.position -= 1;
+                        return self.current();
+                    }
+                    None
+                }
+            },
             LoopState::Track => self.current(),
-            LoopState::Playlist => {
-                if self.tracks.is_empty() {
-                    return None;
+            LoopState::Playlist => match self.shuffle_state {
+                ShuffleState::Off => {
+                    if self.tracks.is_empty() {
+                        None
+                    } else if self.position > 0 {
+                        self.position -= 1;
+                        self.current()
+                    } else {
+                        self.position = self.tracks.len() - 1;
+                        self.current()
+                    }
                 }
-                if self.pos() > 0 {
-                    self.position -= 1;
-                    self.current()
-                } else {
-                    self.position = self.len() - 1;
-                    self.current()
+                ShuffleState::On => {
+                    if self.shuffled_tracks.is_empty() {
+                        None
+                    } else if self.position > 0 {
+                        self.position -= 1;
+                        self.current()
+                    } else {
+                        self.position = self.shuffled_tracks.len() - 1;
+                        self.current()
+                    }
                 }
-            }
+            },
         }
     }
 }
@@ -151,6 +237,7 @@ struct QueueStateRaw {
     position: usize,
     player_position: Duration,
     track_hashes: Vec<u64>,
+    shuffled_track_hashes: Vec<u64>,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
 }
@@ -158,10 +245,12 @@ struct QueueStateRaw {
 impl From<QueueState> for QueueStateRaw {
     fn from(value: QueueState) -> Self {
         let track_hashes = Track::hash_tracks(&value.tracks);
+        let shuffled_track_hashes = Track::hash_tracks(&value.shuffled_tracks);
         Self {
             position: value.position,
             player_position: value.player_position,
             track_hashes,
+            shuffled_track_hashes,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         }
@@ -404,12 +493,12 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                             Ok(source) => source,
                             Err(e) => {
                                 error!("Could not open audio source: {e}");
-                                return Err(PlaybackError::AudioSourceError);
+                                return Err(PlaybackError::SourceError);
                             }
                         };
                         player.append(source);
                     } else {
-                        return Err(PlaybackError::NoTracksInQueue);
+                        return Err(PlaybackError::QueueEmpty);
                     }
                 } else {
                     player.play();
@@ -454,7 +543,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                     Ok(source) => source,
                     Err(e) => {
                         error!("Could not open audio source: {e}");
-                        todo!()
+                        return Err(PlaybackError::SourceError);
                     }
                 };
                 let player_guard = PLAYER_HANDLE.read().unwrap();
@@ -467,8 +556,12 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                     warn!("Cannot skip to the next track, player is not connected");
                     return Err(PlaybackError::PlayerNotConnected);
                 }
+            } else if state.is_empty() {
+                info!("Cannot skip to the next track, queue is empty");
+                return Err(PlaybackError::QueueEmpty);
             } else {
-                info!("Cannot skip to the next track, the current track is last in the queue");
+                info!("Cannot skip to the next track");
+                return Err(PlaybackError::CannotGoNext);
             }
         }
         Command::Previous => {
@@ -482,7 +575,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                     Ok(source) => source,
                     Err(e) => {
                         error!("Could not open audio source: {e}");
-                        todo!();
+                        return Err(PlaybackError::SourceError);
                     }
                 };
                 let player_guard = PLAYER_HANDLE.read().unwrap();
@@ -495,8 +588,12 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                     warn!("Cannot skip to the previous track, player is not connected");
                     return Err(PlaybackError::PlayerNotConnected);
                 }
+            } else if state.is_empty() {
+                info!("Cannot go to the previous track, queue is empty");
+                return Err(PlaybackError::QueueEmpty);
             } else {
-                info!("Cannot go the the previous track");
+                info!("Cannot go to the previous track");
+                return Err(PlaybackError::CannotGoPrevious);
             }
         }
         Command::SetLoopState(loop_state) => {
@@ -510,7 +607,8 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             trace!("Setting shuffle state to {shuffle_state:?}");
             let mut queue_guard = QUEUE_STATE.write().unwrap();
             let state = queue_guard.as_mut().unwrap();
-            state.shuffle_state = shuffle_state;
+            state.set_shuffle_state(shuffle_state);
+            state.shuffle();
             background_save_state(state.clone());
         }
         Command::SetPosition(position) => {
@@ -518,7 +616,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             let player_guard = PLAYER_HANDLE.read().unwrap();
             if let Some(player) = player_guard.as_ref() {
                 if player.empty() {
-                    return Err(PlaybackError::NoTracksInQueue);
+                    return Err(PlaybackError::QueueEmpty);
                 }
                 if let Err(e) = player.try_seek(position) {
                     error!("Could not seek: {e}");

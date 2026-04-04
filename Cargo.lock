@@ -850,6 +850,7 @@ dependencies = [
  "log",
  "mpipc",
  "mpris-server",
+ "rand",
  "rmp-serde",
  "rodio",
  "serde",
