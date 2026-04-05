@@ -212,8 +212,6 @@ pub struct MusicLibrary {
 pub enum DaemonEvent {
     /// Event sent before the daemon stops.
     Shutdown,
-    /// Event sent before the daemon restarts.
-    Restart,
     /// Event sent after the content of the music library changed.
     MusicLibraryChanged(MusicLibrary),
     /// Event sent when a client disconnects from the daemon.
@@ -381,8 +379,6 @@ pub enum CacheCommand {
 pub enum ClientCommand {
     /// Stop the daemon instance.
     Shutdown,
-    /// Restart the daemon instance.
-    Restart,
     /// Manage the music library.
     Playlist(PlaylistCommand),
     /// Manage the music library cache.
@@ -638,12 +634,10 @@ pub fn exec_client_command(
         }
     };
 
-    if cmd != ClientCommand::Restart && cmd != ClientCommand::Shutdown {
-        if let Err(e) = disconnect(&mut conn) {
-            error!("Could not close the connection to the daemon: {e}");
-        }
-    } else {
+    if cmd == ClientCommand::Shutdown {
         trace!("Not trying to close the connection to the daemon");
+    } else if let Err(e) = disconnect(&mut conn) {
+        error!("Could not close the connection to the daemon: {e}");
     }
 
     Ok(response)

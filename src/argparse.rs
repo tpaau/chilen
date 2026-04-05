@@ -32,8 +32,6 @@ pub enum DaemonCommand {
         /// Show the output in nicely formatted JSON
         pretty_json: bool,
     },
-    /// Restart the daemon process
-    Restart,
 }
 
 impl From<DaemonCommand> for mpipc::DaemonCommand {
@@ -49,7 +47,6 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
                 json: _,
                 pretty_json: _,
             } => mpipc::DaemonCommand::ClientCommand(ClientCommand::EventStream),
-            DaemonCommand::Restart => mpipc::DaemonCommand::ClientCommand(ClientCommand::Restart),
         }
     }
 }
@@ -61,8 +58,6 @@ pub enum GuiCommand {
     Start,
     /// Stop the GUI process
     Stop,
-    /// Restart the GUI process
-    Restart,
 }
 
 #[derive(Subcommand)]

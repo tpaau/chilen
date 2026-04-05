@@ -235,8 +235,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
             DaemonEvent::ConnectionClosed => {
                 trace!("Connection with a client closed")
             }
-            DaemonEvent::Restart => todo!(),
-            _ => todo!(),
+            _ => {}
         }
     }
 }

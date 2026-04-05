@@ -59,20 +59,13 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
             };
 
             match command {
-                ClientCommand::Shutdown | ClientCommand::Restart => {
-                    let event = if command == ClientCommand::Shutdown {
-                        info!("Received shutdown command from the client");
-                        trace!("Closing client connection (shutdown)");
-                        DaemonEvent::Shutdown
-                    } else {
-                        info!("Received restart command from the client");
-                        trace!("Closing client connection (restart)");
-                        DaemonEvent::Restart
-                    };
+                ClientCommand::Shutdown => {
+                    info!("Received shutdown command from the client");
+                    trace!("Closing client connection (shutdown)");
                     if let Err(DaemonError::SocketError) = respond(&mut conn, &DaemonResponse::Ok) {
                         break;
                     }
-                    if let Err(e) = send_event(event) {
+                    if let Err(e) = send_event(DaemonEvent::Shutdown) {
                         error!("Could not send the event to the daemon: {e}");
                         trace!("The connection will be closed regardles");
                     }
