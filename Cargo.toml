@@ -10,7 +10,7 @@ env_logger = "0.11.8"
 log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
 mpipc = { path = "mpipc" }
-daemon = { path = "daemon" }
+daemon = { path = "daemon", features = [ "shuffle" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.149"
 iced = { version = "0.14.0", optional = true }

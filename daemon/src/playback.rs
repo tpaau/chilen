@@ -8,7 +8,10 @@ use std::{
 };
 
 use log::{debug, error, info, trace, warn};
-use mpipc::{LoopState, MusicLibraryError, PlaybackError, ShuffleState};
+#[cfg(feature = "shuffle")]
+use mpipc::ShuffleState;
+use mpipc::{LoopState, MusicLibraryError, PlaybackError};
+#[cfg(feature = "shuffle")]
 use rand::seq::SliceRandom;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Player;
@@ -25,7 +28,9 @@ struct QueueState {
     position: usize,
     player_position: Duration,
     tracks: Vec<Track>,
+    #[cfg(feature = "shuffle")]
     shuffled_tracks: Vec<Track>,
+    #[cfg(feature = "shuffle")]
     shuffle_state: ShuffleState,
     loop_state: LoopState,
 }
@@ -38,7 +43,9 @@ impl TryFrom<QueueStateRaw> for QueueState {
             position: value.position,
             player_position: value.player_position,
             tracks: tracks_from_hashes(value.track_hashes, tracks),
+            #[cfg(feature = "shuffle")]
             shuffled_tracks: tracks_from_hashes(value.shuffled_track_hashes, tracks),
+            #[cfg(feature = "shuffle")]
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         })
@@ -49,16 +56,19 @@ impl QueueState {
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.position = 0;
         self.tracks = tracks;
+        #[cfg(feature = "shuffle")]
         self.shuffle();
     }
 
     pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
         self.tracks.append(tracks);
+        #[cfg(feature = "shuffle")]
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
         }
     }
 
+    #[cfg(feature = "shuffle")]
     pub fn shuffle(&mut self) {
         let mut rng = rand::rng();
         let mut tracks = self.tracks.clone();
@@ -66,18 +76,23 @@ impl QueueState {
         self.shuffled_tracks = tracks;
     }
 
+    #[cfg(feature = "shuffle")]
     pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
         self.shuffle_state = shuffle_state;
     }
 
     pub fn is_empty(&self) -> bool {
+        #[cfg(feature = "shuffle")]
         match self.shuffle_state {
             ShuffleState::Off => self.tracks.is_empty(),
             ShuffleState::On => self.shuffled_tracks.is_empty(),
         }
+        #[cfg(not(feature = "shuffle"))]
+        self.tracks.is_empty()
     }
 
     pub fn current(&self) -> Option<&Track> {
+        #[cfg(feature = "shuffle")]
         match self.shuffle_state {
             ShuffleState::Off => {
                 if self.position < self.tracks.len() {
@@ -90,53 +105,109 @@ impl QueueState {
                 }
             }
         }
+        #[cfg(not(feature = "shuffle"))]
+        if self.position < self.tracks.len() {
+            return Some(&self.tracks[self.position]);
+        }
         None
     }
 
     pub fn can_go_next(&self) -> bool {
         match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
+            LoopState::Off => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => {
+                        if self.tracks.is_empty() {
+                            return false;
+                        }
+                        self.position < self.tracks.len() - 1
+                    }
+                    ShuffleState::On => {
+                        if self.shuffled_tracks.is_empty() {
+                            return false;
+                        }
+                        self.position < self.shuffled_tracks.len() - 1
+                    }
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
                     if self.tracks.is_empty() {
                         return false;
                     }
                     self.position < self.tracks.len() - 1
                 }
-                ShuffleState::On => {
-                    if self.shuffled_tracks.is_empty() {
-                        return false;
-                    }
-                    self.position < self.shuffled_tracks.len() - 1
+            }
+            _ => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => !self.tracks.is_empty(),
+                    ShuffleState::On => !self.shuffled_tracks.is_empty(),
                 }
-            },
-            _ => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty(),
-                ShuffleState::On => !self.shuffled_tracks.is_empty(),
-            },
+                #[cfg(not(feature = "shuffle"))]
+                !self.tracks.is_empty()
+            }
         }
     }
 
     pub fn next(&mut self) -> Option<&Track> {
         match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
+            LoopState::Off => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => {
+                        if self.position < self.tracks.len() - 1 {
+                            self.position += 1;
+                            return self.current();
+                        }
+                        None
+                    }
+                    ShuffleState::On => {
+                        if self.position < self.shuffled_tracks.len() - 1 {
+                            self.position += 1;
+                            return self.current();
+                        }
+                        None
+                    }
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
                     if self.position < self.tracks.len() - 1 {
                         self.position += 1;
                         return self.current();
                     }
                     None
                 }
-                ShuffleState::On => {
-                    if self.position < self.shuffled_tracks.len() - 1 {
-                        self.position += 1;
-                        return self.current();
-                    }
-                    None
-                }
-            },
+            }
             LoopState::Track => self.current(),
-            LoopState::Playlist => match self.shuffle_state {
-                ShuffleState::Off => {
+            LoopState::Playlist => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => {
+                        if self.tracks.is_empty() {
+                            None
+                        } else if self.position < self.tracks.len() - 1 {
+                            self.position += 1;
+                            self.current()
+                        } else {
+                            self.position = 0;
+                            self.current()
+                        }
+                    }
+                    ShuffleState::On => {
+                        if self.shuffled_tracks.is_empty() {
+                            None
+                        } else if self.position < self.shuffled_tracks.len() - 1 {
+                            self.position += 1;
+                            self.current()
+                        } else {
+                            self.position = 0;
+                            self.current()
+                        }
+                    }
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
                     if self.tracks.is_empty() {
                         None
                     } else if self.position < self.tracks.len() - 1 {
@@ -147,65 +218,106 @@ impl QueueState {
                         self.current()
                     }
                 }
-                ShuffleState::On => {
-                    if self.shuffled_tracks.is_empty() {
-                        None
-                    } else if self.position < self.shuffled_tracks.len() - 1 {
-                        self.position += 1;
-                        self.current()
-                    } else {
-                        self.position = 0;
-                        self.current()
-                    }
-                }
-            },
+            }
         }
     }
 
     pub fn can_go_previous(&self) -> bool {
         match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
+            LoopState::Off => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => {
+                        if self.tracks.is_empty() {
+                            return false;
+                        }
+                        self.position > 0
+                    }
+                    ShuffleState::On => {
+                        if self.shuffled_tracks.is_empty() {
+                            return false;
+                        }
+                        self.position > 0
+                    }
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
                     if self.tracks.is_empty() {
                         return false;
                     }
                     self.position > 0
                 }
-                ShuffleState::On => {
-                    if self.shuffled_tracks.is_empty() {
-                        return false;
-                    }
-                    self.position > 0
+            }
+            _ => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => !self.tracks.is_empty(),
+                    ShuffleState::On => !self.shuffled_tracks.is_empty(),
                 }
-            },
-            _ => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty(),
-                ShuffleState::On => !self.shuffled_tracks.is_empty(),
-            },
+                #[cfg(not(feature = "shuffle"))]
+                !self.tracks.is_empty()
+            }
         }
     }
 
     pub fn previous(&mut self) -> Option<&Track> {
         match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
+            LoopState::Off => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => {
+                        if self.position > 0 && !self.tracks.is_empty() {
+                            self.position -= 1;
+                            return self.current();
+                        }
+                        None
+                    }
+                    ShuffleState::On => {
+                        if self.position > 0 && !self.shuffled_tracks.is_empty() {
+                            self.position -= 1;
+                            return self.current();
+                        }
+                        None
+                    }
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
                     if self.position > 0 && !self.tracks.is_empty() {
                         self.position -= 1;
                         return self.current();
                     }
                     None
                 }
-                ShuffleState::On => {
-                    if self.position > 0 && !self.shuffled_tracks.is_empty() {
-                        self.position -= 1;
-                        return self.current();
-                    }
-                    None
-                }
-            },
+            }
             LoopState::Track => self.current(),
-            LoopState::Playlist => match self.shuffle_state {
-                ShuffleState::Off => {
+            LoopState::Playlist => {
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => {
+                        if self.tracks.is_empty() {
+                            None
+                        } else if self.position > 0 {
+                            self.position -= 1;
+                            self.current()
+                        } else {
+                            self.position = self.tracks.len() - 1;
+                            self.current()
+                        }
+                    }
+                    ShuffleState::On => {
+                        if self.shuffled_tracks.is_empty() {
+                            None
+                        } else if self.position > 0 {
+                            self.position -= 1;
+                            self.current()
+                        } else {
+                            self.position = self.shuffled_tracks.len() - 1;
+                            self.current()
+                        }
+                    }
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
                     if self.tracks.is_empty() {
                         None
                     } else if self.position > 0 {
@@ -216,18 +328,7 @@ impl QueueState {
                         self.current()
                     }
                 }
-                ShuffleState::On => {
-                    if self.shuffled_tracks.is_empty() {
-                        None
-                    } else if self.position > 0 {
-                        self.position -= 1;
-                        self.current()
-                    } else {
-                        self.position = self.shuffled_tracks.len() - 1;
-                        self.current()
-                    }
-                }
-            },
+            }
         }
     }
 }
@@ -237,7 +338,9 @@ struct QueueStateRaw {
     position: usize,
     player_position: Duration,
     track_hashes: Vec<u64>,
+    #[cfg(feature = "shuffle")]
     shuffled_track_hashes: Vec<u64>,
+    #[cfg(feature = "shuffle")]
     shuffle_state: ShuffleState,
     loop_state: LoopState,
 }
@@ -245,12 +348,15 @@ struct QueueStateRaw {
 impl From<QueueState> for QueueStateRaw {
     fn from(value: QueueState) -> Self {
         let track_hashes = Track::hash_tracks(&value.tracks);
+        #[cfg(feature = "shuffle")]
         let shuffled_track_hashes = Track::hash_tracks(&value.shuffled_tracks);
         Self {
             position: value.position,
             player_position: value.player_position,
             track_hashes,
+            #[cfg(feature = "shuffle")]
             shuffled_track_hashes,
+            #[cfg(feature = "shuffle")]
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         }
@@ -266,7 +372,10 @@ pub(crate) enum Command {
     Next,
     Previous,
     SetLoopState(LoopState),
+    #[cfg(feature = "shuffle")]
     SetShuffleState(ShuffleState),
+    #[cfg(not(feature = "shuffle"))]
+    SetShuffleState,
     SetPosition(Duration),
 }
 
@@ -301,9 +410,12 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
             mpipc::PlaybackCommand::Next => Ok(Self::Next),
             mpipc::PlaybackCommand::Previous => Ok(Self::Previous),
             mpipc::PlaybackCommand::SetLoopState(loop_state) => Ok(Self::SetLoopState(loop_state)),
+            #[cfg(feature = "shuffle")]
             mpipc::PlaybackCommand::SetShuffleState(shuffle_state) => {
                 Ok(Self::SetShuffleState(shuffle_state))
             }
+            #[cfg(not(feature = "shuffle"))]
+            mpipc::PlaybackCommand::SetShuffleState(_) => Ok(Self::SetShuffleState),
             mpipc::PlaybackCommand::SetPosition(position) => Ok(Self::SetPosition(position)),
         }
     }
@@ -603,6 +715,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             state.loop_state = loop_state;
             background_save_state(state.clone());
         }
+        #[cfg(feature = "shuffle")]
         Command::SetShuffleState(shuffle_state) => {
             trace!("Setting shuffle state to {shuffle_state:?}");
             let mut queue_guard = QUEUE_STATE.write().unwrap();
@@ -610,6 +723,12 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             state.set_shuffle_state(shuffle_state);
             state.shuffle();
             background_save_state(state.clone());
+            #[cfg(not(feature = "shuffle"))]
+            return Err(PlaybackError::ShuffleNotSupported);
+        }
+        #[cfg(not(feature = "shuffle"))]
+        Command::SetShuffleState => {
+            return Err(PlaybackError::ShuffleNotSupported);
         }
         Command::SetPosition(position) => {
             trace!("Setting position to {:?}", position.as_secs());

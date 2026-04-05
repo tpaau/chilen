@@ -67,6 +67,8 @@ pub enum PlaybackError {
     CannotGoPrevious,
     /// Cannot go to the next track.
     CannotGoNext,
+    /// The daemon was not built with shuffle support.
+    ShuffleNotSupported,
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -83,6 +85,7 @@ impl std::fmt::Display for PlaybackError {
             Self::SeekNotSupported => write!(f, "Seek is not supported"),
             Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
             Self::CannotGoNext => write!(f, "Cannot go to the next track"),
+            Self::ShuffleNotSupported => write!(f, "The daemon was not built with shuffle support"),
         }
     }
 }
