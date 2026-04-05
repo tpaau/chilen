@@ -489,7 +489,7 @@ pub fn receive_daemon_response(
         Ok(response) => Ok(response),
         Err(e) => {
             error!("Failed decoding a daemon response: {e}");
-            Err(DaemonError::EncodingError)
+            Err(DaemonError::DecodingError)
         }
     }
 }

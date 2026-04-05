@@ -5,7 +5,7 @@ use std::{
 };
 
 use interprocess::local_socket::Stream;
-use log::{error, info, trace};
+use log::{error, info, trace, warn};
 
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, PlaylistCommand};
 use rmp_serde::{Serializer, from_read};
@@ -20,19 +20,23 @@ use crate::{
     playback, send_event,
 };
 
-fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) {
+fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) -> Result<(), DaemonError> {
     let mut data = Vec::new();
     if let Err(e) = msg.serialize(&mut Serializer::new(&mut data)) {
         error!("Could not prepare the command for the client: {e}");
-        return;
+        return Err(DaemonError::EncodingError);
     }
 
     match conn.get_mut().write_all(&data) {
-        Ok(_) => {}
+        Ok(_) => Ok(()),
         Err(e) => {
-            error!("Failed sending response message: {e}");
+            error!(
+                "Failed sending the response to the client: {e}"
+            );
+            warn!("The client likely crashed or was closed forcefully, dropping the connection");
+            Err(DaemonError::SendingError)
         }
-    };
+    }
 }
 
 pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> {
@@ -65,7 +69,9 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                         trace!("Closing client connection (restart)");
                         DaemonEvent::Restart
                     };
-                    respond(&mut conn, &DaemonResponse::Ok);
+                    if let Err(DaemonError::SocketError) = respond(&mut conn, &DaemonResponse::Ok) {
+                        break;
+                    }
                     if let Err(e) = send_event(event) {
                         error!("Could not send the event to the daemon: {e}");
                         trace!("The connection will be closed regardles");
@@ -75,91 +81,149 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                 ClientCommand::Playlist(cmd) => match cmd {
                     PlaylistCommand::New { name, tracks } => {
                         if let Err(e) = create_playlist(name, &tracks) {
-                            respond(
+                            if let Err(DaemonError::SendingError) = respond(
                                 &mut conn,
                                 &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                            );
+                            ) {
+                                break;
+                            }
                             continue;
                         }
-                        respond(&mut conn, &DaemonResponse::Ok);
+                        if let Err(DaemonError::SendingError) =
+                            respond(&mut conn, &DaemonResponse::Ok)
+                        {
+                            break;
+                        }
                     }
                     PlaylistCommand::FromM3U8 { name, m3u8_file } => {
                         if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
-                            respond(
+                            if let Err(DaemonError::SendingError) = respond(
                                 &mut conn,
                                 &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                            );
+                            ) {
+                                break;
+                            }
                             continue;
                         }
-                        respond(&mut conn, &DaemonResponse::Ok);
+                        if let Err(DaemonError::SendingError) =
+                            respond(&mut conn, &DaemonResponse::Ok)
+                        {
+                            break;
+                        }
                     }
                     PlaylistCommand::Delete { names } => {
                         for name in names {
-                            if let Err(e) = delete_playlist(&name, false) {
-                                respond(
+                            if let Err(e) = delete_playlist(&name, false)
+                                && let Err(DaemonError::SendingError) = respond(
                                     &mut conn,
                                     &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                                );
+                                )
+                            {
+                                break;
                             }
                         }
                         if let Err(e) = save_library() {
-                            respond(
+                            if let Err(DaemonError::SendingError) = respond(
                                 &mut conn,
                                 &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                            );
+                            ) {
+                                break;
+                            }
                             continue;
                         }
-                        respond(&mut conn, &DaemonResponse::Ok);
+                        if let Err(DaemonError::SendingError) =
+                            respond(&mut conn, &DaemonResponse::Ok)
+                        {
+                            break;
+                        }
                     }
                     PlaylistCommand::AddTracks { name, tracks } => {
                         match add_tracks(&name, tracks) {
-                            Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
-                            Err(e) => respond(
-                                &mut conn,
-                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                            ),
+                            Ok(_) => {
+                                if let Err(DaemonError::SendingError) =
+                                    respond(&mut conn, &DaemonResponse::Ok)
+                                {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                if let Err(DaemonError::SendingError) = respond(
+                                    &mut conn,
+                                    &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
+                                ) {
+                                    break;
+                                }
+                            }
                         }
                     }
                     PlaylistCommand::RemoveTracks { name, ids } => {
                         match remove_tracks(&name, ids) {
-                            Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
-                            Err(e) => respond(
-                                &mut conn,
-                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                            ),
+                            Ok(_) => {
+                                if let Err(DaemonError::SendingError) =
+                                    respond(&mut conn, &DaemonResponse::Ok)
+                                {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                if let Err(DaemonError::SendingError) = respond(
+                                    &mut conn,
+                                    &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
+                                ) {
+                                    break;
+                                }
+                            }
                         }
                     }
                     PlaylistCommand::List => match get_library() {
                         Ok(lib) => {
-                            respond(&mut conn, &DaemonResponse::Library(lib.into()));
+                            if let Err(DaemonError::SendingError) =
+                                respond(&mut conn, &DaemonResponse::Library(lib.into()))
+                            {
+                                break;
+                            }
                         }
                         Err(e) => {
-                            respond(
+                            if let Err(DaemonError::SendingError) = respond(
                                 &mut conn,
                                 &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                            );
+                            ) {
+                                break;
+                            }
                         }
                     },
                 },
                 ClientCommand::Cache(cmd) => {
                     match music_lib::load(LoadMode::from_cache_command(cmd)) {
-                        Ok(_) => respond(&mut conn, &DaemonResponse::Ok),
-                        Err(e) => respond(
-                            &mut conn,
-                            &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
-                        ),
+                        Ok(_) => {
+                            if let Err(DaemonError::SendingError) =
+                                respond(&mut conn, &DaemonResponse::Ok)
+                            {
+                                break;
+                            }
+                        }
+                        Err(e) => {
+                            if let Err(DaemonError::SendingError) = respond(
+                                &mut conn,
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
+                            ) {
+                                break;
+                            }
+                        }
                     }
                 }
                 ClientCommand::EventStream => {
                     trace!("Sending initial events to the client");
                     match get_library() {
                         Ok(lib) => {
-                            respond(
+                            if let Err(DaemonError::SendingError) = respond(
                                 &mut conn,
                                 &DaemonResponse::Event(DaemonEvent::MusicLibraryChanged(
                                     lib.into(),
                                 )),
-                            );
+                            ) {
+                                break;
+                            }
                         }
                         Err(e) => {
                             error!("Could not get the contents of the music library: {e}");
@@ -172,7 +236,11 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                                 trace!(
                                     "Received an event from the daemon, realaying it to the client"
                                 );
-                                respond(&mut conn, &DaemonResponse::Event(event));
+                                if let Err(DaemonError::SendingError) =
+                                    respond(&mut conn, &DaemonResponse::Event(event))
+                                {
+                                    break;
+                                }
                             }
                             Err(e) => {
                                 trace!("Could not receive an event from the daemon: {e}");
@@ -182,7 +250,10 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                 }
                 ClientCommand::Disconnect => {
                     trace!("Closing client connection (client request)");
-                    respond(&mut conn, &DaemonResponse::Ok);
+                    if let Err(DaemonError::SendingError) = respond(&mut conn, &DaemonResponse::Ok)
+                    {
+                        break;
+                    }
                     if let Err(e) = send_event(DaemonEvent::ConnectionClosed) {
                         error!("Could not send the event to the daemon: {e}");
                     }
@@ -193,18 +264,28 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                         Ok(cmd) => cmd,
                         Err(e) => {
                             error!("Could not parse the playback command: {e}");
-                            respond(&mut conn, &DaemonResponse::Error(DaemonError::ParsingError));
+                            if let Err(DaemonError::SendingError) = respond(
+                                &mut conn,
+                                &DaemonResponse::Error(DaemonError::ParsingError),
+                            ) {
+                                break;
+                            }
                             return;
                         }
                     };
                     if let Err(e) = playback::run_command(cmd) {
                         error!("Could not execute the playback command: {e}");
-                        respond(
+                        if let Err(DaemonError::SendingError) = respond(
                             &mut conn,
                             &DaemonResponse::Error(DaemonError::PlaybackError(e)),
-                        );
+                        ) {
+                            break;
+                        }
                     }
-                    respond(&mut conn, &DaemonResponse::Ok);
+                    if let Err(DaemonError::SendingError) = respond(&mut conn, &DaemonResponse::Ok)
+                    {
+                        break;
+                    }
                 }
             };
         }
