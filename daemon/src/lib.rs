@@ -140,7 +140,7 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
 }
 
 pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
-    trace!("Sending an event to the daemon");
+    trace!("Sending an event to the daemon: {event:?}");
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone().unwrap().send(event) {
             Ok(_) => Ok(()),
@@ -232,8 +232,11 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
                 trace!("Received shutdown event");
                 exit(0);
             }
+            DaemonEvent::ConnectionClosed => {
+                trace!("Connection with a client closed")
+            }
             DaemonEvent::Restart => todo!(),
-            _ => {}
+            _ => todo!(),
         }
     }
 }

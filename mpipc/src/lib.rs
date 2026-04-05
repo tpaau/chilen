@@ -216,6 +216,8 @@ pub enum DaemonEvent {
     Restart,
     /// Event sent after the content of the music library changed.
     MusicLibraryChanged(MusicLibrary),
+    /// Event sent when a client disconnects from the daemon.
+    ConnectionClosed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -255,7 +257,7 @@ impl std::fmt::Display for DaemonError {
             Self::SocketError => write!(f, "Could not obtain the daemon socket"),
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
             Self::ListenerError => write!(f, "Could not initialize the listener in the daemon"),
-            Self::SendingError => write!(f, "Could not send the commadnd to the daemon"),
+            Self::SendingError => write!(f, "Could not send the command to the daemon"),
             Self::ParsingError => write!(f, "Could not parse the command sent to the daemon."),
             Self::MusicLibraryError(e) => {
                 write!(f, "{e}")
@@ -294,11 +296,6 @@ pub enum PlaybackCommand {
     SetLoopState(LoopState),
     SetShuffleState(ShuffleState),
     SetPosition(Duration),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PlaybackEvent {
-    Test,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -611,7 +608,7 @@ pub fn exec_client_command(
     let mut conn = match connect_to_daemon(socket_name) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
-            error!("Could not execute daemon command: {e}");
+            error!("Could not connect to the daemon: {e}");
             return Err(e);
         }
     };
@@ -641,8 +638,12 @@ pub fn exec_client_command(
         }
     };
 
-    if let Err(e) = disconnect(&mut conn) {
-        error!("Could not close the connection to the daemon: {e}");
+    if cmd != ClientCommand::Restart && cmd != ClientCommand::Shutdown {
+        if let Err(e) = disconnect(&mut conn) {
+            error!("Could not close the connection to the daemon: {e}");
+        }
+    } else {
+        trace!("Not trying to close the connection to the daemon");
     }
 
     Ok(response)

@@ -466,7 +466,7 @@ fn save_state(state: QueueState) -> Result<(), MusicLibraryError> {
 fn background_save_state(state: QueueState) {
     thread::spawn(|| {
         if let Err(e) = save_state(state) {
-            error!("Could not save queue state to cache: {e}")
+            error!("Could not save queue state to cache: {e}");
         }
     });
 }

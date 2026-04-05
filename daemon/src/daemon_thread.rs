@@ -67,7 +67,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     };
                     respond(&mut conn, &DaemonResponse::Ok);
                     if let Err(e) = send_event(event) {
-                        error!("Could not send the command to the daemon: {e}");
+                        error!("Could not send the event to the daemon: {e}");
                         trace!("The connection will be closed regardles");
                     }
                     return;
@@ -181,8 +181,11 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     }
                 }
                 ClientCommand::Disconnect => {
-                    respond(&mut conn, &DaemonResponse::Ok);
                     trace!("Closing client connection (client request)");
+                    respond(&mut conn, &DaemonResponse::Ok);
+                    if let Err(e) = send_event(DaemonEvent::ConnectionClosed) {
+                        error!("Could not send the event to the daemon: {e}");
+                    }
                     return;
                 }
                 ClientCommand::Playback(cmd) => {
