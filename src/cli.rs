@@ -1,6 +1,6 @@
 use std::{
     env::home_dir,
-    io::{BufReader, Write, stdin, stdout},
+    io::{BufReader, Write},
     thread,
 };
 
@@ -32,45 +32,6 @@ fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
         for playlist in playlists {
             println!("{} ({} tracks)", playlist.name, playlist.tracks.len());
         }
-    }
-}
-
-/// Asks the user the given question and returns their response:
-/// - `true` -> Users' answer was positive (y/yes)
-/// - `false` -> Users' answer was negative (n/no)
-///
-/// Returns an error if the users' input was invalid.
-///
-/// Valid input is either 'y' or 'yes' for yes and 'n' or 'no' for no.
-///
-/// Users' input is converted to lowercase internally so it doesn't matter
-/// whether they respond with all uppercase, all lowercase, or mixed letters.
-fn ask_user_yn(prompt: &str, default: bool) -> Result<bool, std::io::Error> {
-    let mut input = String::new();
-
-    if default {
-        print!("{prompt} [Yes/no]: ");
-    } else {
-        print!("{prompt} [No/yes]: ");
-    }
-
-    let _ = stdout().flush();
-
-    match stdin().read_line(&mut input) {
-        Ok(_) => {
-            let il = input.trim().to_lowercase();
-            if il.is_empty() {
-                Ok(default)
-            } else if il == "y" || il == "yes" {
-                Ok(true)
-            } else if il == "n" || il == "no" {
-                Ok(false)
-            } else {
-                error!("Invalid input: '{}'", input.trim());
-                ask_user_yn(prompt, default)
-            }
-        }
-        Err(e) => Err(e),
     }
 }
 
@@ -307,15 +268,22 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         trace!("No command specified, starting a deamon with GUI");
 
         #[cfg(not(feature = "gui"))]
-        trace!("No command specified, starting a deamon");
+        trace!("No command specified, starting the deamon");
 
-        let handle =
-            thread::spawn(
-                || match daemon::start(daemon::Config::try_default().unwrap()) {
-                    Ok(_) => info!("Daemon exited"),
-                    Err(e) => error!("Daemon failed: {e}"),
-                },
-            );
+        let conf = match daemon::Config::try_from_name(
+            "music-player".to_string(),
+            SOCKET_NAME.to_string(),
+        ) {
+            Ok(conf) => conf,
+            Err(e) => {
+                error!("Could not create a config for the daemon: {e}");
+                return Err(());
+            }
+        };
+        let handle = thread::spawn(|| match daemon::start(conf) {
+            Ok(_) => info!("Daemon exited"),
+            Err(e) => error!("Daemon failed: {e}"),
+        });
 
         #[cfg(feature = "gui")]
         {

@@ -343,23 +343,6 @@ pub(crate) fn tracks_from_hashes(track_hashes: Vec<u64>, tracks: &[Track]) -> Ve
         .collect()
 }
 
-pub(crate) fn find_tracks_from_paths(paths: Vec<PathBuf>) -> Result<Vec<Track>, MusicLibraryError> {
-    let lib = get_library()?;
-    let tracks = match index_files(paths, false) {
-        Ok(tracks) => tracks,
-        Err(e) => {
-            return Err(e);
-        }
-    };
-    let lib_set: HashSet<_> = lib.tracks.iter().collect();
-    let intersecting_tracks: Vec<Track> = tracks
-        .iter()
-        .filter(|t| lib_set.contains(t))
-        .cloned()
-        .collect();
-    Ok(intersecting_tracks)
-}
-
 /// Save the library state to a file.
 pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
     trace!("Saving the library state to library cache");

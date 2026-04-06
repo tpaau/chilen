@@ -30,9 +30,7 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) -> Result<(), Da
     match conn.get_mut().write_all(&data) {
         Ok(_) => Ok(()),
         Err(e) => {
-            error!(
-                "Failed sending the response to the client: {e}"
-            );
+            error!("Failed sending the response to the client: {e}");
             warn!("The client likely crashed or was closed forcefully, dropping the connection");
             Err(DaemonError::SendingError)
         }
