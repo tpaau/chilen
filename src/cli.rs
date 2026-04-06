@@ -224,9 +224,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 let cmd = ClientCommand::Cache(command.into());
                 match mpipc::exec_client_command(cmd, SOCKET_NAME) {
                     Ok(response) => match response {
-                        DaemonResponse::Ok => {
-                            println!("Ok");
-                        }
+                        DaemonResponse::Ok => println!("Ok"),
                         DaemonResponse::Error(e) => {
                             error!("{e}");
                             return Err(());

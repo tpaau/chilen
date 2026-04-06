@@ -9,7 +9,7 @@ use interprocess::local_socket::{
 };
 use lofty::tag::{Accessor, ItemValue, Tag};
 use log::{error, trace, warn};
-use rmp_serde::{Serializer, from_read};
+use rmp_serde::Serializer;
 use serde::{Deserialize, Serialize};
 
 /// The default name of the socket the daemon listens on.
@@ -481,7 +481,7 @@ pub fn serialize_client_command(cmd: ClientCommand) -> Result<Vec<u8>, DaemonErr
 pub fn receive_daemon_response(
     conn: &mut BufReader<Stream>,
 ) -> Result<DaemonResponse, DaemonError> {
-    match from_read(conn) {
+    match rmp_serde::from_read(conn) {
         Ok(response) => Ok(response),
         Err(e) => {
             error!("Failed decoding a daemon response: {e}");
@@ -502,7 +502,7 @@ pub fn receive_daemon_response(
 /// // Do some stuff with the connection here...
 /// match disconnect(&mut conn) {
 ///     Ok(_) => eprintln!("Disconnected from the deamon!"),
-///     Err(e) => panic!("Could not terminate the daemon connection: {e}"),
+///     Err(e) => panic!("Could not close the daemon connection: {e}"),
 /// }
 /// ```
 pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
@@ -522,7 +522,13 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
         }
     }
 
-    let response: DaemonResponse = match from_read(conn) {
+    let mut data = Vec::new();
+    if let Err(e) = conn.get_ref().read_to_end(&mut data) {
+        error!("Failed connecting to the daemon: {e}");
+        return Err(DaemonError::ConnectionError);
+    }
+
+    let response: DaemonResponse = match rmp_serde::from_read(&mut data.as_slice()) {
         Ok(response) => response,
         Err(e) => {
             error!("Failed decoding a daemon response: {e}");
@@ -536,10 +542,10 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
             return Err(e);
         }
         DaemonResponse::Ok => {
-            trace!("Connection with the daemon closed.");
+            trace!("Connection with the daemon closed");
         }
         _ => {
-            error!("Got an unexpected response from the daemon: {response:?}");
+            error!("Got an unexpected response while closing the daemon connection: {response:?}");
             return Err(DaemonError::InvalidResponse);
         }
     }
@@ -620,13 +626,7 @@ pub fn exec_client_command(
         return Err(DaemonError::SendingError);
     }
 
-    let mut data = Vec::new();
-    if let Err(e) = conn.get_ref().read(&mut data) {
-        error!("Failed connecting to the daemon: {e}");
-        return Err(DaemonError::ConnectionError);
-    }
-
-    let response: DaemonResponse = match from_read(&mut conn) {
+    let response: DaemonResponse = match rmp_serde::from_read(&mut conn) {
         Ok(response) => response,
         Err(e) => {
             error!("Failed decoding a daemon response: {e}");

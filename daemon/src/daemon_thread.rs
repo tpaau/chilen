@@ -37,7 +37,7 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) -> Result<(), Da
     }
 }
 
-pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> {
+pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> JoinHandle<()> {
     trace!("New connection to the daemon: {conn:?}");
 
     thread::spawn(move || {
@@ -52,7 +52,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                 Ok(cmd) => cmd,
                 Err(e) => {
                     error!("Failed decoding a client command: {e}");
-                    return;
+                    break;
                 }
             };
 
@@ -67,7 +67,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                         error!("Could not send the event to the daemon: {e}");
                         trace!("The connection will be closed regardles");
                     }
-                    return;
+                    break;
                 }
                 ClientCommand::Playlist(cmd) => match cmd {
                     PlaylistCommand::New { name, tracks } => {
@@ -240,7 +240,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     }
                 }
                 ClientCommand::Disconnect => {
-                    trace!("Closing client connection (client request)");
+                    trace!("Thread {index} closing client connection (client request)");
                     if let Err(DaemonError::SendingError) = respond(&mut conn, &DaemonResponse::Ok)
                     {
                         break;
@@ -248,7 +248,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                     if let Err(e) = send_event(DaemonEvent::ConnectionClosed) {
                         error!("Could not send the event to the daemon: {e}");
                     }
-                    return;
+                    break;
                 }
                 ClientCommand::Playback(cmd) => {
                     let cmd: playback::Command = match cmd.try_into() {
@@ -261,7 +261,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                             ) {
                                 break;
                             }
-                            return;
+                            continue;
                         }
                     };
                     if let Err(e) = playback::run_command(cmd) {
@@ -280,5 +280,6 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>) -> JoinHandle<()> 
                 }
             };
         }
+        trace!("Thread {index} finished handling the client connection")
     })
 }

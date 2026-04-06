@@ -496,7 +496,7 @@ fn restore_state_from_cache() -> Result<QueueState, MusicLibraryError> {
         let state_raw = match QueueStateRaw::deserialize(&mut Deserializer::from_read_ref(&data)) {
             Ok(data) => data,
             Err(e) => {
-                error!("Could not decode the contents of the queue state cache: {e}");
+                error!("Could not decode the contents of the queue state file: {e}");
                 return Err(MusicLibraryError::CacheError);
             }
         };

@@ -140,7 +140,8 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
 }
 
 pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
-    trace!("Sending an event to the daemon: {event:?}");
+    // Do not log the event here, they are sometimes huge and would fill up the terminal with garbage.
+    trace!("Sending an event to the daemon");
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone().unwrap().send(event) {
             Ok(_) => Ok(()),
@@ -200,10 +201,13 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         let senders_clone = senders.clone();
         info!("Listening for incomming connections");
         move || {
-            for conn in listener.incoming().filter_map(handle_error) {
+            for (index, conn) in listener.incoming().filter_map(handle_error).enumerate() {
                 let (ttx, trx) = channel();
                 senders_clone.clone().write().unwrap().push(ttx);
-                daemon_thread::spawn(conn, trx);
+                // Size for `u64` is 8 bytes, and for `usize` it's 4 bytes on 32-bit and 8
+                // bytes on 64-bit, so the conversion can be done safely if I understand this
+                // correctly :)
+                daemon_thread::spawn(conn, trx, u64::try_from(index).unwrap());
             }
         }
     });

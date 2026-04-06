@@ -345,14 +345,14 @@ pub(crate) fn tracks_from_hashes(track_hashes: Vec<u64>, tracks: &[Track]) -> Ve
 
 /// Save the library state to a file.
 pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
-    trace!("Saving the library state to library cache");
+    trace!("Saving the library state");
 
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
 
     if let Some(lib_data) = lib {
         let lib = ConfMusicLibrary::from(lib_data.clone());
 
-        let library_cache = LIBRARY_FILE.clone();
+        let library_state = LIBRARY_FILE.clone();
 
         let mut data = Vec::new();
         if let Err(e) = lib.serialize(&mut Serializer::new(&mut data)) {
@@ -360,10 +360,10 @@ pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
             return Err(MusicLibraryError::CacheError);
         }
 
-        let mut file = match File::create(library_cache) {
+        let mut file = match File::create(library_state) {
             Ok(file) => file,
             Err(e) => {
-                error!("Could not open the library cache in write-only mode: {e}");
+                error!("Could not open the library in write-only mode: {e}");
                 return Err(MusicLibraryError::CacheError);
             }
         };
@@ -377,7 +377,7 @@ pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
                 Ok(())
             }
             Err(e) => {
-                error!("Could not write to the library cache: {e}");
+                error!("Could not write to the library: {e}");
                 Err(MusicLibraryError::CacheError)
             }
         }
@@ -416,30 +416,30 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         tracks.len()
     );
 
-    let library_cache = LIBRARY_FILE.clone();
+    let library_state = LIBRARY_FILE.clone();
 
-    trace!("Loading the library cache from {library_cache:?}");
+    trace!("Loading the library state from {library_state:?}");
 
-    let exists = match library_cache.try_exists() {
+    let exists = match library_state.try_exists() {
         Ok(exists) => exists,
         Err(e) => {
-            error!("Could not check if the library cache exists: {e}");
+            error!("Could not check if the library exists: {e}");
             return Err(MusicLibraryError::CacheError);
         }
     };
 
     if exists {
-        trace!("Library cache exists, restoring library state");
+        trace!("Restoring the library state");
 
-        if library_cache.is_dir() {
-            error!("The library cache at {library_cache:?} must not be a directory!");
+        if library_state.is_dir() {
+            error!("The item at {library_state:?} must not be a directory!");
             return Err(MusicLibraryError::CacheError);
         }
 
-        let data = match read(library_cache) {
+        let data = match read(library_state) {
             Ok(data) => data,
             Err(e) => {
-                error!("Could not read the library cache: {e}");
+                error!("Could not read the library: {e}");
                 return Err(MusicLibraryError::CacheError);
             }
         };
@@ -448,7 +448,7 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         {
             Ok(data) => data,
             Err(e) => {
-                error!("Could not decode the contents of the library cache: {e}");
+                error!("Could not decode the contents of the library state file: {e}");
                 return Err(MusicLibraryError::CacheError);
             }
         };
@@ -458,7 +458,7 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         *guard = Some(lib);
         drop(guard);
     } else {
-        trace!("The library cache does not exist, creating a new library");
+        trace!("The library file does not exist, creating a new library");
         let mut guard = MUSIC_LIBRARY.write().unwrap();
         *guard = Some(MusicLibrary::default());
         drop(guard);
