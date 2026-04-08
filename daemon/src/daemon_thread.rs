@@ -220,6 +220,13 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                             error!("Could not get the contents of the music library: {e}");
                         }
                     }
+                    for event in playback::get_initial_events() {
+                        if let Err(DaemonError::SendingError) =
+                            respond(&mut conn, &DaemonResponse::Event(event))
+                        {
+                            return;
+                        }
+                    }
                     trace!("Streaming daemon events to the client");
                     loop {
                         match trx.recv() {
@@ -245,9 +252,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                     {
                         break;
                     }
-                    if let Err(e) = send_event(DaemonEvent::ConnectionClosed) {
-                        error!("Could not send the event to the daemon: {e}");
-                    }
+                    let _ = send_event(DaemonEvent::ConnectionClosed);
                     break;
                 }
                 ClientCommand::Playback(cmd) => {

@@ -140,12 +140,13 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
 }
 
 pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
-    // Do not log the event here, they are sometimes huge and would fill up the terminal with garbage.
-    trace!("Sending an event to the daemon");
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone().unwrap().send(event) {
             Ok(_) => Ok(()),
-            Err(e) => Err(e.to_string()),
+            Err(e) => {
+                error!("Could not send the event to the daemon: {e}");
+                Err(e.to_string())
+            }
         },
         Err(e) => Err(e.to_string()),
     }

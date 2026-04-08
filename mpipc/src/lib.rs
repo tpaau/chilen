@@ -208,14 +208,33 @@ pub struct MusicLibrary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Event originating from the playback module of the daemon.
+pub enum PlaybackEvent {
+    /// Emitted when the playback state changes, for instance when the player is paused.
+    PlaybackStateChanged(PlaybackState),
+    /// Emitted when the loop state of the player changes.
+    LoopStateChanged(LoopState),
+    /// Emitted when the shuffle state of the player changes.
+    ShuffleStateChanged(ShuffleState),
+    /// Emitted when the current queue changes.
+    QueueChanged(Vec<Track>),
+    /// Emitted when the current track changes.
+    PositionChanged(usize),
+    /// Emitted when the position of the player changes.
+    PlayerPositionChanged(Duration),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Event from the daemon sent to clients.
 pub enum DaemonEvent {
     /// Event sent before the daemon stops.
     Shutdown,
-    /// Event sent after the content of the music library changed.
+    /// Event sent after the contents of the music library have changed.
     MusicLibraryChanged(MusicLibrary),
     /// Event sent when a client disconnects from the daemon.
     ConnectionClosed,
+    /// Event originating from the playback module of the daemon.
+    PlaybackEvent(PlaybackEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -296,7 +315,7 @@ pub enum PlaybackCommand {
     SetPosition(Duration),
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PlaybackState {
     Playing,
     Paused,
@@ -304,14 +323,14 @@ pub enum PlaybackState {
     Stopped,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShuffleState {
     On,
     #[default]
     Off,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LoopState {
     #[default]
     Off,

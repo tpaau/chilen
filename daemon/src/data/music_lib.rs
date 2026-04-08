@@ -370,10 +370,7 @@ pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
 
         match file.write_all(&data) {
             Ok(_) => {
-                if let Err(e) = send_event(mpipc::DaemonEvent::MusicLibraryChanged(lib_data.into()))
-                {
-                    error!("Could not emit the library changed event: {e}");
-                }
+                let _ = send_event(mpipc::DaemonEvent::MusicLibraryChanged(lib_data.into()));
                 Ok(())
             }
             Err(e) => {

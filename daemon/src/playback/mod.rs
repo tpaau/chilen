@@ -1,3 +1,5 @@
+mod mpris;
+
 use std::{
     fs::{File, read},
     io::Write,
@@ -10,23 +12,29 @@ use std::{
 use log::{debug, error, info, trace, warn};
 #[cfg(feature = "shuffle")]
 use mpipc::ShuffleState;
-use mpipc::{LoopState, MusicLibraryError, PlaybackError};
+use mpipc::{
+    DaemonEvent, LoopState, MusicLibraryError, PlaybackError, PlaybackEvent, PlaybackState,
+};
 #[cfg(feature = "shuffle")]
 use rand::seq::SliceRandom;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
 
-use crate::data::{
-    CACHE_DIR,
-    cache::indexer::index_files,
-    music_lib::{Track, get_library, tracks_from_hashes},
+use crate::{
+    data::{
+        CACHE_DIR,
+        cache::indexer::index_files,
+        music_lib::{Track, get_library, tracks_from_hashes},
+    },
+    send_event,
 };
 
 #[derive(Debug, Clone, Default)]
 struct QueueState {
     position: usize,
     player_position: Duration,
+    playback_state: PlaybackState,
     tracks: Vec<Track>,
     #[cfg(feature = "shuffle")]
     shuffled_tracks: Vec<Track>,
@@ -42,6 +50,7 @@ impl TryFrom<QueueStateRaw> for QueueState {
         Ok(Self {
             position: value.position,
             player_position: value.player_position,
+            playback_state: PlaybackState::Stopped,
             tracks: tracks_from_hashes(value.track_hashes, tracks),
             #[cfg(feature = "shuffle")]
             shuffled_tracks: tracks_from_hashes(value.shuffled_track_hashes, tracks),
@@ -53,6 +62,34 @@ impl TryFrom<QueueStateRaw> for QueueState {
 }
 
 impl QueueState {
+    pub fn get_initial_events(&self) -> Vec<DaemonEvent> {
+        vec![
+            DaemonEvent::PlaybackEvent(PlaybackEvent::PlaybackStateChanged(self.playback_state)),
+            DaemonEvent::PlaybackEvent(PlaybackEvent::LoopStateChanged(self.loop_state)),
+            DaemonEvent::PlaybackEvent(PlaybackEvent::ShuffleStateChanged(self.shuffle_state)),
+            DaemonEvent::PlaybackEvent(PlaybackEvent::QueueChanged(
+                if self.shuffle_state == ShuffleState::On {
+                    self.shuffled_tracks
+                        .clone()
+                        .into_iter()
+                        .map(Into::into)
+                        .collect()
+                } else {
+                    self.tracks.clone().into_iter().map(Into::into).collect()
+                },
+            )),
+            DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(self.position)),
+            DaemonEvent::PlaybackEvent(PlaybackEvent::PlayerPositionChanged(self.player_position)),
+        ]
+    }
+
+    pub fn send_initial_events(&self) {
+        trace!("Sending initial playback events to the daemon");
+        for event in self.get_initial_events() {
+            let _ = send_event(event);
+        }
+    }
+
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.position = 0;
         self.tracks = tracks;
@@ -74,11 +111,70 @@ impl QueueState {
         let mut tracks = self.tracks.clone();
         tracks.shuffle(&mut rng);
         self.shuffled_tracks = tracks;
+        if self.shuffle_state == ShuffleState::On {
+            let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::QueueChanged(
+                self.shuffled_tracks
+                    .clone()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            )));
+        }
     }
 
     #[cfg(feature = "shuffle")]
     pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
-        self.shuffle_state = shuffle_state;
+        if self.shuffle_state != shuffle_state {
+            self.shuffle_state = shuffle_state;
+            let _ = send_event(DaemonEvent::PlaybackEvent(
+                PlaybackEvent::ShuffleStateChanged(self.shuffle_state),
+            ));
+            let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::QueueChanged(
+                if self.shuffle_state == ShuffleState::On {
+                    self.shuffled_tracks
+                        .clone()
+                        .into_iter()
+                        .map(Into::into)
+                        .collect()
+                } else {
+                    self.tracks.clone().into_iter().map(Into::into).collect()
+                },
+            )));
+        }
+    }
+
+    pub fn increment_player_position(&mut self, duration: Duration) {
+        self.player_position += duration;
+        let _ = send_event(DaemonEvent::PlaybackEvent(
+            PlaybackEvent::PlayerPositionChanged(self.player_position),
+        ));
+    }
+
+    pub fn set_player_position(&mut self, player_position: Duration) {
+        if self.player_position != player_position {
+            self.player_position = player_position;
+            let _ = send_event(DaemonEvent::PlaybackEvent(
+                PlaybackEvent::PlayerPositionChanged(self.player_position),
+            ));
+        }
+    }
+
+    pub fn set_loop_state(&mut self, loop_state: LoopState) {
+        if self.loop_state != loop_state {
+            self.loop_state = loop_state;
+            let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::LoopStateChanged(
+                self.loop_state,
+            )));
+        }
+    }
+
+    pub fn set_playback_state(&mut self, playback_state: PlaybackState) {
+        if self.playback_state != playback_state {
+            self.playback_state = playback_state;
+            let _ = send_event(DaemonEvent::PlaybackEvent(
+                PlaybackEvent::PlaybackStateChanged(self.playback_state),
+            ));
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -158,6 +254,9 @@ impl QueueState {
                     ShuffleState::Off => {
                         if self.position < self.tracks.len() - 1 {
                             self.position += 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             return self.current();
                         }
                         None
@@ -165,6 +264,9 @@ impl QueueState {
                     ShuffleState::On => {
                         if self.position < self.shuffled_tracks.len() - 1 {
                             self.position += 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             return self.current();
                         }
                         None
@@ -179,7 +281,12 @@ impl QueueState {
                     None
                 }
             }
-            LoopState::Track => self.current(),
+            LoopState::Track => {
+                let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                    self.position,
+                )));
+                self.current()
+            }
             LoopState::Playlist => {
                 #[cfg(feature = "shuffle")]
                 match self.shuffle_state {
@@ -188,9 +295,15 @@ impl QueueState {
                             None
                         } else if self.position < self.tracks.len() - 1 {
                             self.position += 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         } else {
                             self.position = 0;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         }
                     }
@@ -199,9 +312,15 @@ impl QueueState {
                             None
                         } else if self.position < self.shuffled_tracks.len() - 1 {
                             self.position += 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         } else {
                             self.position = 0;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         }
                     }
@@ -212,9 +331,15 @@ impl QueueState {
                         None
                     } else if self.position < self.tracks.len() - 1 {
                         self.position += 1;
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
                         self.current()
                     } else {
                         self.position = 0;
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
                         self.current()
                     }
                 }
@@ -268,6 +393,9 @@ impl QueueState {
                     ShuffleState::Off => {
                         if self.position > 0 && !self.tracks.is_empty() {
                             self.position -= 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             return self.current();
                         }
                         None
@@ -275,6 +403,9 @@ impl QueueState {
                     ShuffleState::On => {
                         if self.position > 0 && !self.shuffled_tracks.is_empty() {
                             self.position -= 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             return self.current();
                         }
                         None
@@ -284,12 +415,20 @@ impl QueueState {
                 {
                     if self.position > 0 && !self.tracks.is_empty() {
                         self.position -= 1;
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
                         return self.current();
                     }
                     None
                 }
             }
-            LoopState::Track => self.current(),
+            LoopState::Track => {
+                let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                    self.position,
+                )));
+                self.current()
+            }
             LoopState::Playlist => {
                 #[cfg(feature = "shuffle")]
                 match self.shuffle_state {
@@ -298,9 +437,15 @@ impl QueueState {
                             None
                         } else if self.position > 0 {
                             self.position -= 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         } else {
                             self.position = self.tracks.len() - 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         }
                     }
@@ -309,9 +454,15 @@ impl QueueState {
                             None
                         } else if self.position > 0 {
                             self.position -= 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         } else {
                             self.position = self.shuffled_tracks.len() - 1;
+                            let _ = send_event(DaemonEvent::PlaybackEvent(
+                                PlaybackEvent::PositionChanged(self.position),
+                            ));
                             self.current()
                         }
                     }
@@ -322,9 +473,15 @@ impl QueueState {
                         None
                     } else if self.position > 0 {
                         self.position -= 1;
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
                         self.current()
                     } else {
                         self.position = self.tracks.len() - 1;
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
                         self.current()
                     }
                 }
@@ -513,6 +670,12 @@ fn restore_state_from_cache() -> Result<QueueState, MusicLibraryError> {
     }
 }
 
+pub(crate) fn get_initial_events() -> Vec<DaemonEvent> {
+    let queue_guard = QUEUE_STATE.read().unwrap();
+    let state = queue_guard.as_ref().unwrap();
+    state.get_initial_events()
+}
+
 pub(crate) fn init() {
     trace!("Initializing the playback module");
 
@@ -530,6 +693,8 @@ pub(crate) fn init() {
         }
     };
     trace!("Queue state ready!");
+
+    state.send_initial_events();
 
     let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
         Ok(sink) => sink,
@@ -565,10 +730,11 @@ pub(crate) fn init() {
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = player_guard.as_ref().unwrap();
         if !player.is_paused() && !player.empty() {
-            state.player_position += sleep_duration;
+            state.increment_player_position(sleep_duration);
         } else if player.empty() {
-            state.player_position = Duration::default();
+            state.set_player_position(Duration::default());
             if !state.can_go_next() {
+                state.set_playback_state(PlaybackState::Stopped);
                 continue;
             }
             let source = match state.next().unwrap().open_source() {
@@ -582,6 +748,9 @@ pub(crate) fn init() {
             if initial_iter {
                 player.pause();
                 initial_iter = false;
+                state.set_playback_state(PlaybackState::Paused);
+            } else {
+                state.set_playback_state(PlaybackState::Playing);
             }
         }
         drop(queue_guard);
@@ -609,11 +778,13 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                             }
                         };
                         player.append(source);
+                        state.set_playback_state(PlaybackState::Playing);
                     } else {
                         return Err(PlaybackError::QueueEmpty);
                     }
                 } else {
                     player.play();
+                    state.set_playback_state(PlaybackState::Playing);
                 }
             } else {
                 warn!("Cannot play, player is not connected");
@@ -628,6 +799,9 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 return Err(PlaybackError::PlayerPaused);
             } else {
                 player.pause();
+                let mut queue_guard = QUEUE_STATE.write().unwrap();
+                let state = queue_guard.as_mut().unwrap();
+                state.set_playback_state(PlaybackState::Paused);
             }
         }
         Command::SetQueue(queue) => {
@@ -660,7 +834,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 };
                 let player_guard = PLAYER_HANDLE.read().unwrap();
                 if let Some(player) = player_guard.as_ref() {
-                    state.player_position = Duration::default();
+                    state.set_player_position(Duration::default());
                     player.clear();
                     player.append(source);
                     player.play();
@@ -692,7 +866,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 };
                 let player_guard = PLAYER_HANDLE.read().unwrap();
                 if let Some(player) = player_guard.as_ref() {
-                    state.player_position = Duration::default();
+                    state.set_player_position(Duration::default());
                     player.clear();
                     player.append(source);
                     player.play();
@@ -712,7 +886,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             trace!("Setting loop state to {loop_state:?}");
             let mut queue_guard = QUEUE_STATE.write().unwrap();
             let state = queue_guard.as_mut().unwrap();
-            state.loop_state = loop_state;
+            state.set_loop_state(loop_state);
             background_save_state(state.clone());
         }
         #[cfg(feature = "shuffle")]
@@ -743,7 +917,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 } else {
                     let mut queue_guard = QUEUE_STATE.write().unwrap();
                     let state = queue_guard.as_mut().unwrap();
-                    state.player_position = position;
+                    state.set_player_position(position);
                 }
             } else {
                 warn!("Cannot seek, player is not connected");
