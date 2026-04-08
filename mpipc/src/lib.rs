@@ -1,4 +1,5 @@
 use std::{
+    f32,
     io::{BufReader, Read, Write},
     path::PathBuf,
     time::Duration,
@@ -69,6 +70,8 @@ pub enum PlaybackError {
     CannotGoNext,
     /// The daemon was not built with shuffle support.
     ShuffleNotSupported,
+    /// No track at this index.
+    NoTrackAtIndex(usize),
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -86,6 +89,7 @@ impl std::fmt::Display for PlaybackError {
             Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
             Self::CannotGoNext => write!(f, "Cannot go to the next track"),
             Self::ShuffleNotSupported => write!(f, "The daemon was not built with shuffle support"),
+            Self::NoTrackAtIndex(index) => write!(f, "No track was found at index {index}"),
         }
     }
 }
@@ -96,6 +100,7 @@ pub enum DataError {
     CacheDirNotAvailable,
     DataDirNotAvailable,
     NoMusicLibrary,
+    /// Could not get the home directory path.
     HomeError,
     NoPicturesInTag,
     NoSuitablePicturesInTag,
@@ -207,7 +212,7 @@ pub struct MusicLibrary {
     pub tracks: Vec<Track>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Event originating from the playback module of the daemon.
 pub enum PlaybackEvent {
     /// Emitted when the playback state changes, for instance when the player is paused.
@@ -222,9 +227,11 @@ pub enum PlaybackEvent {
     PositionChanged(usize),
     /// Emitted when the position of the player changes.
     PlayerPositionChanged(Duration),
+    /// Emitted when the volume of the player changes.
+    PlayerVolumeChanged(PlayerVolume),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Event from the daemon sent to clients.
 pub enum DaemonEvent {
     /// Event sent before the daemon stops.
@@ -235,6 +242,26 @@ pub enum DaemonEvent {
     ConnectionClosed,
     /// Event originating from the playback module of the daemon.
     PlaybackEvent(PlaybackEvent),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// Error that can occur while creating a daemon configuration.
+pub enum ConfigError {
+    /// The bus name suffix provided was invalid.
+    ///
+    /// The suffix must only contain ASCII characters.
+    InvalidBusNameSuffix,
+    /// Could not get the home directory path.
+    HomeError,
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidBusNameSuffix => write!(f, "The bus name suffix provided was invalid"),
+            Self::HomeError => write!(f, "Could not get the home directory path"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -264,6 +291,8 @@ pub enum DaemonError {
     InvalidResponse,
     /// Error related to the playback module.
     PlaybackError(PlaybackError),
+    /// Error that can occur while creating a daemon configuration.
+    ConfigError(ConfigError),
 }
 
 impl std::fmt::Display for DaemonError {
@@ -284,11 +313,12 @@ impl std::fmt::Display for DaemonError {
                 write!(f, "The response from the daemon was invalid or malformed")
             }
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
+            Self::ConfigError(e) => write!(f, "Could not create daemon configuration: {e}"),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Response sent to a client from the daemon.
 pub enum DaemonResponse {
     /// The client command was executed successfully.
@@ -301,18 +331,57 @@ pub enum DaemonResponse {
     Error(DaemonError),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackCommand {
-    Play,
+    /// Play the current track or play a track at a specific index in the queue.
+    Play(Option<usize>),
+    /// Pause the player.
     Pause,
+    /// Set a new queue for the player.
     SetQueue(Vec<PathBuf>),
+    /// Append tracks to the queue.
     AppendToQueue(Vec<PathBuf>),
+    /// Load a playlist and put its tracks in the queue.
     SetPlaylist(String),
+    /// Skip to the next track.
     Next,
+    /// Skip to the previous track.
     Previous,
+    /// Set the loop state.
     SetLoopState(LoopState),
+    /// Set the shuffle state.
     SetShuffleState(ShuffleState),
-    SetPosition(Duration),
+    /// Set the position of the player.
+    SetPlayerPosition(Duration),
+    /// Set the volume of the player.
+    SetPlayerVolume(PlayerVolume),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlayerVolume {
+    volume: f32,
+}
+
+impl PlayerVolume {
+    pub fn set(&mut self, volume: f32) {
+        self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    pub fn get(&self) -> f32 {
+        self.volume
+    }
+
+    pub fn new(volume: f32) -> Self {
+        Self {
+            volume: volume.clamp(0.0, 1.0),
+        }
+    }
+}
+
+impl Default for PlayerVolume {
+    fn default() -> Self {
+        Self { volume: 1.0 }
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -393,7 +462,7 @@ pub enum CacheCommand {
     Reload,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Command that can be executed by a daemon instance.
 pub enum ClientCommand {
     /// Stop the daemon instance.
@@ -422,7 +491,7 @@ impl TryFrom<DaemonCommand> for ClientCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// A parsed CLI command that can either be a daemon start command, or a message to be sent to
 /// an already running deamon instance.
 pub enum DaemonCommand {

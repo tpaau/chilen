@@ -140,6 +140,21 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                             music
                         }
                     };
+                    #[cfg(feature = "mpris")]
+                    let config = match daemon::Config::try_new(
+                        cache_dir,
+                        data_dir,
+                        music_dir,
+                        SOCKET_NAME.to_string(),
+                        format!("com.dev.{}", crate_name!()),
+                    ) {
+                        Ok(conf) => conf,
+                        Err(e) => {
+                            error!("Could not create daemon config: {e}");
+                            return Err(());
+                        }
+                    };
+                    #[cfg(not(feature = "mpris"))]
                     let config = daemon::Config::new(
                         cache_dir,
                         data_dir,
@@ -268,10 +283,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         #[cfg(not(feature = "gui"))]
         trace!("No command specified, starting the deamon");
 
-        let conf = match daemon::Config::try_from_name(
-            "music-player".to_string(),
-            SOCKET_NAME.to_string(),
-        ) {
+        let conf = match daemon::Config::try_from_name("music-player", SOCKET_NAME) {
             Ok(conf) => conf,
             Err(e) => {
                 error!("Could not create a config for the daemon: {e}");

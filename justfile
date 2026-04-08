@@ -1,5 +1,8 @@
 check:
-	cargo fmt --check --all && cargo test --workspace && cargo deny check
+	cargo fmt --check --all
+	cargo test --workspace
+	cargo test --workspace --no-default-features
+	cargo deny check
 
 fmt:
 	cargo fmt --all

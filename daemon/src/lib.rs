@@ -19,7 +19,7 @@ use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
 use mpipc::{
-    ClientCommand, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DataError, get_daemon_socket,
+    ClientCommand, ConfigError, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, get_daemon_socket,
 };
 use serde::{Deserialize, Serialize};
 
@@ -32,7 +32,7 @@ use crate::data::{
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Parsed CLI arguments for the daemon.
 pub enum DaemonCommand {
     /// Start the daemon. This is not to be sent over the daemon socket.
@@ -55,20 +55,27 @@ pub struct Config {
     music_dir: PathBuf,
     /// The name of the socket to listen on.
     socket_name: String,
+    #[cfg(feature = "mpris")]
+    /// The suffix of the but name used with mpris.
+    bus_name_suffix: String,
 }
 
 impl Config {
-    /// Get the default daemon config when running headless.
+    /// Get the default daemon config.
     ///
     /// For a custom music player, you probably want to create your own config from
     /// scratch, or use the `Config::try_from_name(...)` constructor.
-    pub fn try_default() -> Result<Self, DataError> {
-        Self::try_from_name(
-            String::from("music-player"),
-            String::from(DEFAULT_SOCKET_NAME),
-        )
+    ///
+    /// # Examples
+    /// ```
+    /// # use daemon;
+    /// let conf = daemon::Config::try_default().unwrap();
+    /// ```
+    pub fn try_default() -> Result<Self, ConfigError> {
+        Self::try_from_name("music-player", DEFAULT_SOCKET_NAME)
     }
 
+    #[cfg(not(feature = "mpris"))]
     pub fn new(
         cache_dir: PathBuf,
         data_dir: PathBuf,
@@ -83,23 +90,56 @@ impl Config {
         }
     }
 
+    #[cfg(feature = "mpris")]
+    pub fn try_new(
+        cache_dir: PathBuf,
+        data_dir: PathBuf,
+        music_dir: PathBuf,
+        socket_name: String,
+        bus_name_suffix: String,
+    ) -> Result<Self, ConfigError> {
+        if bus_name_suffix.is_empty()
+            || !bus_name_suffix.is_ascii()
+            || bus_name_suffix
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_digit())
+        {
+            return Err(ConfigError::InvalidBusNameSuffix);
+        }
+
+        Ok(Self {
+            cache_dir,
+            data_dir,
+            music_dir,
+            socket_name,
+            bus_name_suffix,
+        })
+    }
+
     /// Create a new config from program and socket names.
     ///
     /// The generated paths will contain the name of the program, eg. `~/.cache/<PROGRAM_NAME>`,
     /// ``~/.local/share/<PROGRAM_NAME>`.
     ///
     /// Fails if the home directory is not available.
-    pub fn try_from_name(name: String, socket_name: String) -> Result<Self, DataError> {
+    ///
+    /// # Examples
+    /// ```
+    /// # use daemon;
+    /// let conf = daemon::Config::try_from_name("my-player", "MY_PLAYER");
+    /// ```
+    pub fn try_from_name(name: &str, socket_name: &str) -> Result<Self, ConfigError> {
         let home_dir = match home_dir() {
             Some(home) => home,
             None => {
-                return Err(DataError::HomeError);
+                return Err(ConfigError::HomeError);
             }
         };
 
         let mut cache_dir = home_dir.clone();
         cache_dir.push(".cache");
-        cache_dir.push(&name);
+        cache_dir.push(name);
 
         let mut data_dir = home_dir.clone();
         data_dir.push(".local/share");
@@ -108,11 +148,20 @@ impl Config {
         let mut music_dir = home_dir.clone();
         music_dir.push("Music");
 
+        #[cfg(feature = "mpris")]
+        let bus_name_suffix = String::from("com.dev.") + name;
+        #[cfg(feature = "mpris")]
+        if !bus_name_suffix.is_ascii() {
+            return Err(ConfigError::InvalidBusNameSuffix);
+        }
+
         Ok(Config {
             cache_dir,
             music_dir,
             data_dir,
-            socket_name,
+            socket_name: socket_name.to_string(),
+            #[cfg(feature = "mpris")]
+            bus_name_suffix,
         })
     }
 }

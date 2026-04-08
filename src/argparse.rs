@@ -200,7 +200,11 @@ impl From<ShuffleState> for mpipc::ShuffleState {
 #[derive(Subcommand)]
 pub enum PlaybackCommand {
     /// Play the audio.
-    Play,
+    Play {
+        /// Play the track at this index.
+        #[arg(long, short)]
+        index: Option<usize>,
+    },
     /// Set the queue to a playlist or a list of tracks.
     #[command(group(
         ArgGroup::new("source")
@@ -239,7 +243,7 @@ pub enum PlaybackCommand {
         shuffle_state: ShuffleState,
     },
     /// Set the player position.
-    SetPosition {
+    SetPlayerPosition {
         #[arg()]
         position_secs: u64,
     },
@@ -248,7 +252,7 @@ pub enum PlaybackCommand {
 impl From<PlaybackCommand> for mpipc::PlaybackCommand {
     fn from(value: PlaybackCommand) -> Self {
         match value {
-            PlaybackCommand::Play => mpipc::PlaybackCommand::Play,
+            PlaybackCommand::Play { index } => mpipc::PlaybackCommand::Play(index),
             PlaybackCommand::SetQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
                     return mpipc::PlaybackCommand::SetQueue(tracks);
@@ -269,8 +273,8 @@ impl From<PlaybackCommand> for mpipc::PlaybackCommand {
             PlaybackCommand::SetShuffleState { shuffle_state } => {
                 mpipc::PlaybackCommand::SetShuffleState(shuffle_state.into())
             }
-            PlaybackCommand::SetPosition { position_secs } => {
-                mpipc::PlaybackCommand::SetPosition(Duration::from_secs(position_secs))
+            PlaybackCommand::SetPlayerPosition { position_secs } => {
+                mpipc::PlaybackCommand::SetPlayerPosition(Duration::from_secs(position_secs))
             }
         }
     }
