@@ -541,7 +541,7 @@ pub fn import_playlist_from_m3u8(
     let lib = &*MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = lib {
         if lib.get_playlist_with_name(&name).is_none() {
-            todo!()
+            todo!("Importing playlists from M3U8 is not yet supported")
         } else {
             Err(MusicLibraryError::PlaylistExists)
         }
