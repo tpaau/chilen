@@ -46,8 +46,6 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
         loop {
             let mut conn = BufReader::new(&conn);
 
-            trace!("Awaiting client command");
-
             let command: ClientCommand = match from_read(&mut conn) {
                 Ok(cmd) => cmd,
                 Err(e) => {
@@ -262,7 +260,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                             error!("Could not parse the playback command: {e}");
                             if let Err(DaemonError::SendingError) = respond(
                                 &mut conn,
-                                &DaemonResponse::Error(DaemonError::ParsingError),
+                                &DaemonResponse::Error(DaemonError::MusicLibraryError(e)),
                             ) {
                                 break;
                             }

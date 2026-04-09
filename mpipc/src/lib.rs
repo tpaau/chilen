@@ -341,6 +341,8 @@ pub enum PlaybackCommand {
     SetQueue(Vec<PathBuf>),
     /// Append tracks to the queue.
     AppendToQueue(Vec<PathBuf>),
+    /// Load a playlist and append its tracks to the queue.
+    AppendPlaylist(String),
     /// Load a playlist and put its tracks in the queue.
     SetPlaylist(String),
     /// Skip to the next track.

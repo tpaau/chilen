@@ -611,6 +611,14 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
                 };
                 Ok(Self::SetQueue(playlist.tracks.clone()))
             }
+            mpipc::PlaybackCommand::AppendPlaylist(playlist_name) => {
+                let lib = get_library()?;
+                let playlist = match lib.playlists.iter().find(|p| p.name == playlist_name) {
+                    Some(playlist) => playlist,
+                    None => return Err(MusicLibraryError::NoSuchPlaylist),
+                };
+                Ok(Self::AppendToQueue(playlist.tracks.clone()))
+            }
             mpipc::PlaybackCommand::Next => Ok(Self::Next),
             mpipc::PlaybackCommand::Previous => Ok(Self::Previous),
             mpipc::PlaybackCommand::SetLoopState(loop_state) => Ok(Self::SetLoopState(loop_state)),

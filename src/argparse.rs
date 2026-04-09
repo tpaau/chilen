@@ -211,6 +211,7 @@ pub enum PlaybackCommand {
             .required(true)
             .args(&["tracks", "playlist"])
     ))]
+    /// Append the queue.
     SetQueue {
         /// Paths of tracks to be set as the new queue.
         #[arg(long, short, value_parser = is_file, value_hint = ValueHint::FilePath, conflicts_with = "playlist")]
@@ -220,11 +221,15 @@ pub enum PlaybackCommand {
         #[arg(long, short, conflicts_with = "tracks")]
         playlist: Option<String>,
     },
-    /// Append a list of tracks to the queue.
+    /// Append a tracks to the queue.
     AppendToQueue {
         /// Paths of tracks to be appended to the queue.
         #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
-        tracks: Vec<PathBuf>,
+        tracks: Option<Vec<PathBuf>>,
+
+        /// The name of the playlist to append to the queue.
+        #[arg(long, short, conflicts_with = "tracks")]
+        playlist: Option<String>,
     },
     /// Pause the audio.
     Pause,
@@ -261,8 +266,13 @@ impl From<PlaybackCommand> for mpipc::PlaybackCommand {
                 }
                 panic!("This should never happen :)");
             }
-            PlaybackCommand::AppendToQueue { tracks } => {
-                mpipc::PlaybackCommand::AppendToQueue(tracks)
+            PlaybackCommand::AppendToQueue { tracks, playlist } => {
+                if let Some(tracks) = tracks {
+                    return mpipc::PlaybackCommand::AppendToQueue(tracks);
+                } else if let Some(playlist) = playlist {
+                    return mpipc::PlaybackCommand::AppendPlaylist(playlist);
+                }
+                panic!("This should never happen :)");
             }
             PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
             PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
