@@ -12,7 +12,7 @@ Prototype local music player, very much a WIP right now.
     - [Managing playlists](#usage_playback)
     - [Controlling playback](#usage_playback)
 - [FAQ](#faq)
-    - [Is this a rewrite/clone of [MPD](https://www.musicpd.org/)?](#faq_mpd)
+    - [Is this a rewrite/clone of MPD?](#faq_mpd)
 - [Inspiration](#inspiration)
 
 
@@ -25,13 +25,13 @@ Prototype local music player, very much a WIP right now.
 <a name="project-structure"></a>
 ## Project structure
 
+Project modules are managed in a
+[Cargo workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html).
+
 The project has three main workspace members:
 - The root is a binary package with a CLI and will soon also have a GUI
     - `daemon` is the core of the music player, responsible for managing cache, the music library, and playback
     - `mpipc` is a library that defines common types and functions used to interact with the daemon
-
-Those modules are managed in a
-[Cargo workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html).
 
 ```
 ├── daemon // The daemon library
@@ -45,7 +45,7 @@ Those modules are managed in a
 │       │   ├── mod.rs
 │       │   └── music_lib.rs   // Music library state managemnt (playlists, etc.)
 │       ├── lib.rs
-│       ├── playback.rs        // Audio playback and Mpris integrations
+│       ├── playback.rs        // Audio playback and Mpris integration
 │       └── tests.rs
 ├── mpipc // Library used to interact with the daemon
 │   └── src
@@ -63,10 +63,9 @@ Those modules are managed in a
 ## Building from source
 You will need to have Rust properly configured on your system to compile this program.
 
-For compiling the player from source on Linux, you will also need to have the development files for
-`alsa-libs` installed.
+On Linux, you will also need to have the development files for `alsa-libs` installed.
 
-#### Fedora Silverblue
+### Fedora Silverblue
 ```bash
 rpm-ostree install alsa-libs-devel
 ```
@@ -87,12 +86,12 @@ You can find the compiled binary in `target/release/music-player`.
 <a name="usage"></a>
 ## Usage
 
+> [!NOTE]
+> Not all commands are listed here.
+
 Currently, the player only comes with a command-line interface. This is only to test if the deamon
 works properly and will obviously not be the primary way of interacting with the player once it's
 finished.
-
-> [!NOTE]
-> Not all commands are listed here.
 
 > [!TIP]
 > You can pass the `-v|--verbosity` option to set the log level filter:
@@ -101,7 +100,7 @@ finished.
 > ```
 
 <a name="usage_daemon"></a>
-#### Running the daemon
+### Running the daemon
 **Starting the daemon**
 ```bash
 cargo run --release -- daemon start
@@ -113,7 +112,7 @@ cargo run --release -- daemon stop
 ```
 
 <a name="usage_playlists"></a>
-#### Managing playlists
+### Managing playlists
 Playlists can be managed with the `playlist` command.
 
 **Creating a new empty playlist**
@@ -133,7 +132,7 @@ cargo run --release -- playlist list
 
 
 <a name="usage_playback"></a>
-#### Controlling playback
+### Controlling playback
 
 **Adding tracks to the queue by paths**
 ```bash
@@ -145,7 +144,7 @@ Tracks can also be appended to the queue:
 cargo run --release -- playback append-to-queue ~/Music/track.mp3
 ```
 
-You can also set the queue to be a playlist:
+You can also set a playlist as the queue:
 ```bash
 cargo run --release -- playback set-queue --playlist playlist-name
 ```
@@ -183,7 +182,7 @@ cargo run --release -- playback previous
 ## FAQ
 
 <a name="faq_mpd"></a>
-#### Is this a rewrite/clone of [MPD](https://www.musicpd.org/)?
+### Is this a rewrite/clone of [MPD](https://www.musicpd.org/)?
 No. I have never seen even one line of MPD code.
 
 I tried to install MPD once but I ran into a dependency hell :P
