@@ -6,6 +6,7 @@ mod tests;
 
 use std::{
     env::home_dir,
+    fs::remove_file,
     path::PathBuf,
     process::exit,
     sync::{
@@ -15,11 +16,14 @@ use std::{
     thread,
 };
 
-use interprocess::local_socket::{ListenerOptions, Stream, traits::ListenerExt};
+use interprocess::local_socket::{
+    GenericNamespaced, ListenerOptions, NameType, Stream, traits::ListenerExt,
+};
 use log::{debug, error, info, trace, warn};
 
 use mpipc::{
-    ClientCommand, ConfigError, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, get_daemon_socket,
+    ClientCommand, ConfigError, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DaemonResponse,
+    exec_client_command, get_daemon_socket,
 };
 use serde::{Deserialize, Serialize};
 
@@ -44,6 +48,22 @@ pub enum DaemonCommand {
     },
 }
 
+// TODO: Test if this even works
+/// Defines under which conditions should the daemon claim an occupied socket address.
+///
+/// This is only effective if filesystem sockets are used.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum AddrClaimMode {
+    /// Do not claim the socket address under any circumstances.
+    DoNotClaim,
+    /// Only claim the socket address if there is no response to ping requests from the process
+    /// that listens of the socket.
+    ClaimIfUnresponsive,
+    /// Force claim the socket address.
+    #[default]
+    ForceClaim,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Daemon config that can be passed to the `start` function.
 pub struct Config {
@@ -58,6 +78,8 @@ pub struct Config {
     #[cfg(feature = "mpris")]
     /// The suffix of the but name used with mpris.
     bus_name_suffix: String,
+    /// Defines under which conditions should the daemon claim an occupied socket address.
+    addr_claim_mode: AddrClaimMode,
 }
 
 impl Config {
@@ -81,12 +103,14 @@ impl Config {
         data_dir: PathBuf,
         music_dir: PathBuf,
         socket_name: String,
+        addr_claim_mode: AddrClaimMode,
     ) -> Self {
         Self {
             cache_dir,
             data_dir,
             music_dir,
             socket_name,
+            addr_claim_mode,
         }
     }
 
@@ -97,6 +121,7 @@ impl Config {
         music_dir: PathBuf,
         socket_name: String,
         bus_name_suffix: String,
+        addr_claim_mode: AddrClaimMode,
     ) -> Result<Self, ConfigError> {
         if bus_name_suffix.is_empty()
             || !bus_name_suffix.is_ascii()
@@ -114,6 +139,7 @@ impl Config {
             music_dir,
             socket_name,
             bus_name_suffix,
+            addr_claim_mode,
         })
     }
 
@@ -162,6 +188,7 @@ impl Config {
             socket_name: socket_name.to_string(),
             #[cfg(feature = "mpris")]
             bus_name_suffix,
+            addr_claim_mode: AddrClaimMode::default(),
         })
     }
 }
@@ -238,8 +265,91 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
     let listener = match opts.create_sync() {
         Ok(listener) => listener,
         Err(e) => {
-            error!("Failed creating a listener for the daemon socket: '{e}'");
-            return Err(DaemonError::ListenerError);
+            if (cfg!(not(feature = "ns-socket")) || !GenericNamespaced::is_supported())
+                && e.kind() == std::io::ErrorKind::AddrInUse
+            {
+                warn!("The socket address is already in use");
+
+                match config.addr_claim_mode {
+                    AddrClaimMode::DoNotClaim => {
+                        warn!("The daemon is configured to not reclaim the socket address");
+                        return Err(DaemonError::AddrInUse);
+                    }
+                    AddrClaimMode::ClaimIfUnresponsive => {
+                        info!("Attempting to claim the socket address if it appears to be unused");
+                        match exec_client_command(ClientCommand::Ping, &config.socket_name) {
+                            Ok(response) => {
+                                if response == DaemonResponse::Pong {
+                                    error!(
+                                        "The other deamon responded to the pong command, not claiming the address"
+                                    );
+                                    return Err(DaemonError::AddrInUse);
+                                } else {
+                                    error!(
+                                        "Got an unexpected response from the deamon: {response:?}"
+                                    );
+                                    return Err(DaemonError::UnexpectedResponse);
+                                }
+                            }
+                            Err(e) => {
+                                if e == DaemonError::ConnectionError {
+                                    info!(
+                                        "The other daemon is either dead or unresponsive, claiming the address"
+                                    );
+                                } else {
+                                    error!(
+                                        "Got an unexpected error while trying to send a ping command: {e}"
+                                    );
+                                    return Err(DaemonError::UnexpectedResponse);
+                                }
+                            }
+                        }
+
+                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(&config.socket_name))
+                        {
+                            error!("Could not remove the old socket: {e}");
+                            return Err(DaemonError::SocketError);
+                        }
+                        let opts = ListenerOptions::new().name(socket.clone());
+                        match opts.create_sync() {
+                            Ok(listener) => {
+                                info!("Succesfully claimed the address");
+                                listener
+                            }
+                            Err(e) => {
+                                error!(
+                                    "Could not create a listener despite claiming the socket: {e}"
+                                );
+                                return Err(DaemonError::SocketError);
+                            }
+                        }
+                    }
+                    AddrClaimMode::ForceClaim => {
+                        info!("Force claiming the socket address");
+                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(&config.socket_name))
+                        {
+                            error!("Could not remove the old socket: {e}");
+                            return Err(DaemonError::SocketError);
+                        }
+                        let opts = ListenerOptions::new().name(socket.clone());
+                        match opts.create_sync() {
+                            Ok(listener) => {
+                                info!("Succesfully claimed the address");
+                                listener
+                            }
+                            Err(e) => {
+                                error!(
+                                    "Could not create a listener despite claiming the socket: {e}"
+                                );
+                                return Err(DaemonError::SocketError);
+                            }
+                        }
+                    }
+                }
+            } else {
+                error!("Failed creating a listener for the daemon socket: '{e}'");
+                return Err(DaemonError::SocketError);
+            }
         }
     };
 

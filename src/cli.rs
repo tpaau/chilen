@@ -5,6 +5,7 @@ use std::{
 };
 
 use clap::crate_name;
+use daemon::AddrClaimMode;
 use log::{error, info, trace};
 use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon};
 
@@ -147,6 +148,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         music_dir,
                         SOCKET_NAME.to_string(),
                         format!("com.dev.{}", crate_name!()),
+                        AddrClaimMode::default(),
                     ) {
                         Ok(conf) => conf,
                         Err(e) => {
@@ -160,6 +162,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         data_dir,
                         music_dir,
                         SOCKET_NAME.to_string(),
+                        AddrClaimMode::default(),
                     );
                     match daemon::start(config) {
                         Ok(_) => info!("Daemon exited"),

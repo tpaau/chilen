@@ -1964,7 +1964,6 @@ name = "mpipc"
 version = "0.1.0"
 dependencies = [
  "interprocess",
- "lofty",
  "log",
  "rmp-serde",
  "serde",

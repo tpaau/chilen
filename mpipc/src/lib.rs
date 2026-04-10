@@ -1,4 +1,5 @@
 use std::{
+    env::temp_dir,
     f32,
     io::{BufReader, Read, Write},
     path::PathBuf,
@@ -8,8 +9,9 @@ use std::{
 use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
 };
-use lofty::tag::{Accessor, ItemValue, Tag};
-use log::{error, trace, warn};
+#[cfg(not(feature = "ns-socket"))]
+use log::warn;
+use log::{error, trace};
 use rmp_serde::Serializer;
 use serde::{Deserialize, Serialize};
 
@@ -166,34 +168,6 @@ impl std::fmt::Display for Track {
     }
 }
 
-impl From<&Tag> for Track {
-    fn from(tag: &Tag) -> Self {
-        let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
-            Some(tag_item) => match tag_item.value() {
-                ItemValue::Text(lyrics) => Some(lyrics.clone()),
-                _ => None,
-            },
-            None => None,
-        };
-
-        Track {
-            path: PathBuf::new(),
-            cover_path: None,
-            artist: tag.artist().map(|artist| artist.into()),
-            title: tag.title().map(|title| title.into()),
-            album: tag.album().map(|album| album.into()),
-            genre: tag.genre().map(|genre| genre.into()),
-            lyrics,
-            comment: tag.comment().map(|comment| comment.into()),
-            track: tag.track(),
-            track_total: tag.track_total(),
-            disk: tag.disk(),
-            disk_total: tag.disk_total(),
-            year: tag.year(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Struct representing a playlist from the music library.
 pub struct Playlist {
@@ -277,8 +251,6 @@ pub enum DaemonError {
     SocketError,
     /// Could not connect to the daemon.
     ConnectionError,
-    /// Could not initialize the listener in the daemon.
-    ListenerError,
     /// Could not send the command to the daemon.
     SendingError,
     /// Could not parse the command sent to the daemon.
@@ -293,6 +265,10 @@ pub enum DaemonError {
     PlaybackError(PlaybackError),
     /// Error that can occur while creating a daemon configuration.
     ConfigError(ConfigError),
+    /// The socket address is already in use.
+    AddrInUse,
+    /// Got an unexpected response from the daemon.
+    UnexpectedResponse,
 }
 
 impl std::fmt::Display for DaemonError {
@@ -302,7 +278,6 @@ impl std::fmt::Display for DaemonError {
             Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
             Self::SocketError => write!(f, "Could not obtain the daemon socket"),
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
-            Self::ListenerError => write!(f, "Could not initialize the listener in the daemon"),
             Self::SendingError => write!(f, "Could not send the command to the daemon"),
             Self::ParsingError => write!(f, "Could not parse the command sent to the daemon."),
             Self::MusicLibraryError(e) => {
@@ -314,6 +289,8 @@ impl std::fmt::Display for DaemonError {
             }
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
             Self::ConfigError(e) => write!(f, "Could not create daemon configuration: {e}"),
+            Self::AddrInUse => write!(f, "The socket address is already in use"),
+            Self::UnexpectedResponse => write!(f, "Got an unexpected response from the daemon"),
         }
     }
 }
@@ -323,6 +300,8 @@ impl std::fmt::Display for DaemonError {
 pub enum DaemonResponse {
     /// The client command was executed successfully.
     Ok,
+    /// Response to the `Ping` client command.
+    Pong,
     /// List of some playlists returned by the daemon.
     Library(MusicLibrary),
     /// An event from the daemon.
@@ -477,8 +456,10 @@ pub enum ClientCommand {
     EventStream,
     /// Close the connection to the daemon.
     Disconnect,
-    // Command to the playback module.
+    /// Command to the playback module.
     Playback(PlaybackCommand),
+    /// Ping the daemon.
+    Ping,
 }
 
 impl TryFrom<DaemonCommand> for ClientCommand {
@@ -503,6 +484,12 @@ pub enum DaemonCommand {
     ClientCommand(ClientCommand),
 }
 
+pub fn get_fs_socket_path(socket_name: &str) -> PathBuf {
+    let mut temp_dir = temp_dir();
+    temp_dir.push(socket_name);
+    temp_dir
+}
+
 /// Try to get a namespaced socket or a filesystem socket for daemon IPC.
 ///
 /// # Examples
@@ -515,18 +502,23 @@ pub enum DaemonCommand {
 /// }
 /// ```
 pub fn get_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
-    trace!("Obtaining a namespaced socket for '{socket_name}'");
-
-    match socket_name.to_ns_name::<GenericNamespaced>() {
-        Ok(socket) => Ok(socket),
-        Err(e) => {
-            warn!("Could not obtain a namespaced socket (is your system supported?): {e}");
-            match socket_name.to_fs_name::<GenericFilePath>() {
-                Ok(socket) => Ok(socket),
-                Err(e) => {
-                    error!("Could not obtain both a namespaced and a filesystem socket: {e}");
-                    Err(e)
-                }
+    if cfg!(feature = "ns-socket") && GenericNamespaced::is_supported() {
+        trace!("Using a namespaced socket {socket_name}");
+        match socket_name.to_ns_name::<GenericNamespaced>() {
+            Ok(socket) => Ok(socket),
+            Err(e) => {
+                error!("Could not obtain a namespaced socket: {e}");
+                Err(e)
+            }
+        }
+    } else {
+        let socket_path = get_fs_socket_path(socket_name);
+        trace!("Using a filesystem socket in {socket_path:?}");
+        match socket_path.to_fs_name::<GenericFilePath>() {
+            Ok(socket) => Ok(socket),
+            Err(e) => {
+                error!("Could not obtain a filesystem socket: {e}");
+                Err(e)
             }
         }
     }
@@ -669,6 +661,10 @@ pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
         Ok(conn) => conn,
         Err(e) => {
             error!("Could not initialize a connection to the daemon: {e}");
+            #[cfg(not(feature = "ns-socket"))]
+            warn!(
+                "Note that the `ns-socket` feature is disabled, maybe the daemon is listening on a namespaced socket?"
+            );
             return Err(DaemonError::ConnectionError);
         }
     };
@@ -700,7 +696,7 @@ pub fn exec_client_command(
     let mut conn = match connect_to_daemon(socket_name) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
-            error!("Could not connect to the daemon: {e}");
+            error!("{e}");
             return Err(e);
         }
     };

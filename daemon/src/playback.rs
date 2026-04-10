@@ -750,7 +750,7 @@ pub(crate) fn init() {
             state
         }
     };
-    trace!("Queue state ready!");
+    trace!("Player state ready!");
 
     state.send_initial_events();
 

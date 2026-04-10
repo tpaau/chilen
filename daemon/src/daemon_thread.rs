@@ -253,6 +253,14 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                     let _ = send_event(DaemonEvent::ConnectionClosed);
                     break;
                 }
+                ClientCommand::Ping => {
+                    trace!("Got a ping command from the client, responding with pong");
+                    if let Err(DaemonError::SendingError) =
+                        respond(&mut conn, &DaemonResponse::Pong)
+                    {
+                        break;
+                    }
+                }
                 ClientCommand::Playback(cmd) => {
                     let cmd: playback::Command = match cmd.try_into() {
                         Ok(cmd) => cmd,
