@@ -32,6 +32,8 @@ pub enum DaemonCommand {
         /// Show the output in nicely formatted JSON
         pretty_json: bool,
     },
+    /// Ping the daemon (used for debugging)
+    Ping,
 }
 
 impl From<DaemonCommand> for mpipc::DaemonCommand {
@@ -47,6 +49,7 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
                 json: _,
                 pretty_json: _,
             } => mpipc::DaemonCommand::ClientCommand(ClientCommand::EventStream),
+            DaemonCommand::Ping => mpipc::DaemonCommand::ClientCommand(ClientCommand::Ping),
         }
     }
 }

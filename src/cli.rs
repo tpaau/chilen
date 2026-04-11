@@ -7,7 +7,9 @@ use std::{
 use clap::crate_name;
 use daemon::AddrClaimMode;
 use log::{error, info, trace};
-use mpipc::{ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon};
+use mpipc::{
+    ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon, exec_client_command,
+};
 
 use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 
@@ -174,6 +176,12 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 }
                 DaemonCommand::EventStream { json, pretty_json } => {
                     return event_stream(json || pretty_json, pretty_json);
+                }
+                DaemonCommand::Ping => {
+                    match exec_client_command(ClientCommand::Ping, SOCKET_NAME) {
+                        Ok(response) => println!("{response:?}"),
+                        Err(e) => println!("{e}"),
+                    }
                 }
                 _ => {
                     let cmd: mpipc::DaemonCommand = command.into();
