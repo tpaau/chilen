@@ -21,6 +21,7 @@ use interprocess::local_socket::{
 };
 use log::{debug, error, info, trace, warn};
 
+use mpipc::SocketType;
 use mpipc::{
     ClientCommand, ConfigError, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DaemonResponse,
     exec_client_command, get_daemon_socket,
@@ -58,9 +59,9 @@ pub enum AddrClaimMode {
     DoNotClaim,
     /// Only claim the socket address if there is no response to ping requests from the process
     /// that listens of the socket.
+    #[default]
     ClaimIfUnresponsive,
     /// Force claim the socket address.
-    #[default]
     ForceClaim,
 }
 
@@ -75,11 +76,13 @@ pub struct Config {
     music_dir: PathBuf,
     /// The name of the socket to listen on.
     socket_name: String,
-    #[cfg(feature = "mpris")]
     /// The suffix of the but name used with mpris.
+    #[cfg(feature = "mpris")]
     bus_name_suffix: String,
     /// Defines under which conditions should the daemon claim an occupied socket address.
     addr_claim_mode: AddrClaimMode,
+    /// Defines the type of socket the daemon should use.
+    socket_type: SocketType,
 }
 
 impl Config {
@@ -104,6 +107,7 @@ impl Config {
         music_dir: PathBuf,
         socket_name: String,
         addr_claim_mode: AddrClaimMode,
+        socket_type: SocketType,
     ) -> Self {
         Self {
             cache_dir,
@@ -111,6 +115,7 @@ impl Config {
             music_dir,
             socket_name,
             addr_claim_mode,
+            socket_type,
         }
     }
 
@@ -122,6 +127,7 @@ impl Config {
         socket_name: String,
         bus_name_suffix: String,
         addr_claim_mode: AddrClaimMode,
+        socket_type: SocketType,
     ) -> Result<Self, ConfigError> {
         if bus_name_suffix.is_empty()
             || !bus_name_suffix.is_ascii()
@@ -140,6 +146,7 @@ impl Config {
             socket_name,
             bus_name_suffix,
             addr_claim_mode,
+            socket_type,
         })
     }
 
@@ -189,6 +196,7 @@ impl Config {
             #[cfg(feature = "mpris")]
             bus_name_suffix,
             addr_claim_mode: AddrClaimMode::default(),
+            socket_type: SocketType::default(),
         })
     }
 }
@@ -251,21 +259,32 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         );
     }
 
-    let socket = match get_daemon_socket(&config.socket_name) {
+    let socket = match get_daemon_socket(&config.socket_name, &config.socket_type) {
         Ok(sock) => sock,
         Err(e) => {
-            error!("Could not obtain a socket: {e}");
+            error!("Could not obtain the socket: {e}");
             return Err(DaemonError::SocketError);
         }
     };
 
-    trace!("Creating a listener on '{}'", config.socket_name);
     let opts = ListenerOptions::new().name(socket.clone());
+    if socket.is_namespaced() {
+        trace!(
+            "Creating a listener on \"{}\" (namespaced socket)",
+            config.socket_name
+        );
+    } else {
+        trace!(
+            "Creating a listener on \"{}\" (filesystem socket)",
+            config.socket_name
+        );
+    }
 
     let listener = match opts.create_sync() {
         Ok(listener) => listener,
         Err(e) => {
-            if (cfg!(not(feature = "ns-socket")) || !GenericNamespaced::is_supported())
+            if (!GenericNamespaced::is_supported()
+                || config.socket_type == SocketType::FilesystemOnly)
                 && e.kind() == std::io::ErrorKind::AddrInUse
             {
                 warn!("The socket address is already in use");
@@ -277,7 +296,11 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
                     }
                     AddrClaimMode::ClaimIfUnresponsive => {
                         info!("Attempting to claim the socket address if it appears to be unused");
-                        match exec_client_command(ClientCommand::Ping, &config.socket_name) {
+                        match exec_client_command(
+                            ClientCommand::Ping,
+                            &config.socket_name,
+                            &config.socket_type,
+                        ) {
                             Ok(response) => {
                                 if response == DaemonResponse::Pong {
                                     error!(

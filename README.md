@@ -61,14 +61,16 @@ The project has three main workspace members:
 
 <a name="building-from-source"></a>
 ## Building from source
-You will need to have Rust properly configured on your system to compile this program.
+You will need to have Rust installed on your system to compile this program.
 
-On Linux, you will also need to have the development files for `alsa-libs` installed.
+On Linux, you will also need the development files for `alsa-libs`. They
+usually can be installed as `alsa-libs-devel`:
 
-### Fedora Silverblue
+For Fedora Silverblue, run this:
 ```bash
 rpm-ostree install alsa-libs-devel
 ```
+
 
 After you have all your dependencies installed, run the command below to compile the program:
 ```bash

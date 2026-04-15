@@ -1,23 +1,23 @@
 use std::{path::PathBuf, time::Duration};
 
-use clap::{ArgGroup, Parser, Subcommand, ValueHint};
+use clap::{ArgGroup, Parser, Subcommand, ValueEnum, ValueHint};
 
 use env_logger::Builder;
-use log::{LevelFilter, error, trace};
+use log::{self, trace};
 use mpipc::ClientCommand;
 
 #[derive(Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
     /// Start the daemon process
     Start {
-        #[arg(long, short, value_hint = ValueHint::DirPath)]
         /// Set the cache runtime directory.
+        #[arg(long, short, value_hint = ValueHint::DirPath)]
         cache_dir: Option<PathBuf>,
-        #[arg(long, short, value_hint = ValueHint::DirPath)]
         /// Set the data runtime directory.
-        data_dir: Option<PathBuf>,
         #[arg(long, short, value_hint = ValueHint::DirPath)]
+        data_dir: Option<PathBuf>,
         /// Set the directory with audio files.
+        #[arg(long, short, value_hint = ValueHint::DirPath)]
         music_dir: Option<PathBuf>,
     },
     /// Stop the daemon process
@@ -28,8 +28,8 @@ pub enum DaemonCommand {
         /// Show the output in JSON
         json: bool,
 
-        #[arg(long, short, default_value_t = false, conflicts_with = "json")]
         /// Show the output in nicely formatted JSON
+        #[arg(long, short, default_value_t = false, conflicts_with = "json")]
         pretty_json: bool,
     },
     /// Ping the daemon (used for debugging)
@@ -91,8 +91,8 @@ pub enum PlaylistCommand {
     AddTracks {
         /// The name of the playlist to operate on.
         name: String,
-        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         /// The list of tracks to add.
+        #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         tracks: Vec<PathBuf>,
     },
     /// Remove tracks from an already existing playlist.
@@ -104,12 +104,12 @@ pub enum PlaylistCommand {
     },
     /// List all playlists in the library
     List {
-        #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
         /// Also list all the tracks in the playlists
+        #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
         full: bool,
 
-        #[arg(long, short, default_value_t = false, conflicts_with = "full")]
         /// Print all the info about the playlists
+        #[arg(long, short, default_value_t = false, conflicts_with = "full")]
         debug: bool,
     },
 }
@@ -323,6 +323,58 @@ pub enum Command {
     },
 }
 
+#[derive(Default, ValueEnum, Clone, Copy)]
+pub enum SocketType {
+    NamespacedOnly,
+    #[default]
+    NamespacedOrFilesystem,
+    FilesystemOnly,
+}
+
+impl std::fmt::Display for SocketType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NamespacedOnly => write!(f, "namespaced-only"),
+            Self::NamespacedOrFilesystem => write!(f, "namespaced-or-filesystem"),
+            Self::FilesystemOnly => write!(f, "filesystem-only"),
+        }
+    }
+}
+
+impl From<SocketType> for mpipc::SocketType {
+    fn from(value: SocketType) -> Self {
+        match value {
+            SocketType::NamespacedOnly => Self::NamespacedOnly,
+            SocketType::NamespacedOrFilesystem => Self::NamespacedOrFilesystem,
+            SocketType::FilesystemOnly => Self::FilesystemOnly,
+        }
+    }
+}
+
+#[derive(Default, ValueEnum, Clone, Copy)]
+pub enum LevelFilter {
+    Off,
+    Error,
+    #[default]
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+impl From<LevelFilter> for log::LevelFilter {
+    fn from(level: LevelFilter) -> Self {
+        match level {
+            LevelFilter::Off => log::LevelFilter::Off,
+            LevelFilter::Error => log::LevelFilter::Error,
+            LevelFilter::Warn => log::LevelFilter::Warn,
+            LevelFilter::Info => log::LevelFilter::Info,
+            LevelFilter::Debug => log::LevelFilter::Debug,
+            LevelFilter::Trace => log::LevelFilter::Trace,
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(
     version,
@@ -337,13 +389,17 @@ pub struct Args {
     #[command(subcommand)]
     pub command: Option<Command>,
 
-    #[arg(long, short = 'v', default_value_t = String::from("Warn"))]
+    /// Specify the socket name to use.
+    #[arg(long, short)]
+    pub socket_name: Option<String>,
+
+    /// Specify the socket type to use.
+    #[arg(long, short = 'n', default_value_t = SocketType::default())]
+    pub socket_type: SocketType,
+
+    #[arg(long, short)]
     /// Set the log filter level
-    ///
-    /// Possible values are: `off`, `error`, `warn`, `info`, `debug`, and `trace`.
-    ///
-    /// You can also use numbers from 0 to 5 to set the log filtering level.
-    pub logger_verbosity: String,
+    pub log_filter: LevelFilter,
 }
 
 fn is_file(path: &str) -> Result<PathBuf, String> {
@@ -354,35 +410,13 @@ fn is_file(path: &str) -> Result<PathBuf, String> {
     Ok(track)
 }
 
-fn level_filter_from_string(filter_string: &str) -> Result<LevelFilter, String> {
-    match filter_string.to_lowercase().as_str() {
-        "0" | "off" => Ok(LevelFilter::Off),
-        "1" | "error" => Ok(LevelFilter::Error),
-        "2" | "warn" => Ok(LevelFilter::Warn),
-        "3" | "info" => Ok(LevelFilter::Info),
-        "4" | "debug" => Ok(LevelFilter::Debug),
-        "5" | "trace" => Ok(LevelFilter::Trace),
-        _ => Err(format!(
-            "No log level for the provided string: '{filter_string}'"
-        )),
-    }
-}
-
 pub fn parse_args() -> Args {
     let args = Args::parse();
 
-    let filter = match level_filter_from_string(&args.logger_verbosity) {
-        Ok(log_level) => log_level,
-        Err(e) => {
-            error!("Failed parsing log level from arguments: {e}");
-            LevelFilter::Info
-        }
-    };
-
-    let foreign_module_filter = LevelFilter::Error;
+    let foreign_module_filter = log::LevelFilter::Error;
 
     Builder::new()
-        .filter_level(filter)
+        .filter_level(args.log_filter.into())
         .filter_module("calloop", foreign_module_filter)
         .filter_module("cosmic_text", foreign_module_filter)
         .filter_module("iced_graphics", foreign_module_filter)

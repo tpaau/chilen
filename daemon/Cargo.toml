@@ -20,5 +20,4 @@ rand = { version = "0.10.0", optional = true }
 [features]
 mpris = [ "dep:mpris-server" ]
 shuffle = [ "dep:rand" ]
-ns-socket = [ "mpipc/ns-socket" ]
-default = [ "shuffle", "ns-socket" ]
+default = [ "shuffle" ]

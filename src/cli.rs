@@ -8,7 +8,8 @@ use clap::crate_name;
 use daemon::AddrClaimMode;
 use log::{error, info, trace};
 use mpipc::{
-    ClientCommand, DaemonError, DaemonResponse, Playlist, connect_to_daemon, exec_client_command,
+    ClientCommand, DaemonError, DaemonResponse, Playlist, SocketType, connect_to_daemon,
+    exec_client_command,
 };
 
 use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
@@ -16,8 +17,10 @@ use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 #[cfg(feature = "gui")]
 use crate::{argparse::GuiCommand, gui};
 
-/// The name of the socket the daemon should listen on.
-pub const SOCKET_NAME: &str = "MUSIC_PLAYER.socket";
+pub const SOCKET_NAME_HEADLESS: &str = "MUSIC_PLAYER_HEADLESS.socket";
+
+// #[cfg(feature = "gui")]
+// pub const SOCKET_NAME_GUI: &str = "MUSIC_PLAYER_GUI.socket";
 
 fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
     if debug {
@@ -47,8 +50,13 @@ fn print_daemon_error(error: DaemonError) {
     }
 }
 
-fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
-    let mut conn = match connect_to_daemon(SOCKET_NAME) {
+fn event_stream(
+    json: bool,
+    pretty: bool,
+    socket_name: &str,
+    socket_type: &SocketType,
+) -> Result<(), ()> {
+    let mut conn = match connect_to_daemon(socket_name, socket_type) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("Could not start the event stream: {e}");
@@ -97,7 +105,12 @@ fn event_stream(json: bool, pretty: bool) -> Result<(), ()> {
     }
 }
 
-pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
+pub fn run_cli_command(
+    command: Option<Command>,
+    socket_type: SocketType,
+    socket_name: Option<String>,
+) -> Result<(), ()> {
+    let socket_name = socket_name.unwrap_or(SOCKET_NAME_HEADLESS.to_string());
     if let Some(command) = command {
         match command {
             Command::Daemon { command } => match command {
@@ -148,9 +161,10 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         cache_dir,
                         data_dir,
                         music_dir,
-                        SOCKET_NAME.to_string(),
+                        socket_name,
                         format!("com.dev.{}", crate_name!()),
                         AddrClaimMode::default(),
+                        socket_type,
                     ) {
                         Ok(conf) => conf,
                         Err(e) => {
@@ -163,8 +177,9 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                         cache_dir,
                         data_dir,
                         music_dir,
-                        SOCKET_NAME.to_string(),
+                        socket_name,
                         AddrClaimMode::default(),
+                        socket_type,
                     );
                     match daemon::start(config) {
                         Ok(_) => info!("Daemon exited"),
@@ -175,10 +190,15 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                     }
                 }
                 DaemonCommand::EventStream { json, pretty_json } => {
-                    return event_stream(json || pretty_json, pretty_json);
+                    return event_stream(
+                        json || pretty_json,
+                        pretty_json,
+                        &socket_name,
+                        &socket_type,
+                    );
                 }
                 DaemonCommand::Ping => {
-                    match exec_client_command(ClientCommand::Ping, SOCKET_NAME) {
+                    match exec_client_command(ClientCommand::Ping, &socket_name, &socket_type) {
                         Ok(response) => println!("{response:?}"),
                         Err(e) => println!("{e}"),
                     }
@@ -192,7 +212,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                             return Err(());
                         }
                     };
-                    match mpipc::exec_client_command(cmd, SOCKET_NAME) {
+                    match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
                         Ok(response) => info!("Got a response from the daemon: {response:?}"),
                         Err(e) => {
                             print_daemon_error(e);
@@ -222,7 +242,8 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
                 };
                 match mpipc::exec_client_command(
                     mpipc::ClientCommand::Playlist(command.into()),
-                    SOCKET_NAME,
+                    &socket_name,
+                    &socket_type,
                 ) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => {
@@ -248,7 +269,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             }
             Command::Cache { command } => {
                 let cmd = ClientCommand::Cache(command.into());
-                match mpipc::exec_client_command(cmd, SOCKET_NAME) {
+                match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => println!("Ok"),
                         DaemonResponse::Error(e) => {
@@ -268,7 +289,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
             }
             Command::Playback { command } => {
                 let cmd = ClientCommand::Playback(command.into());
-                match mpipc::exec_client_command(cmd, SOCKET_NAME) {
+                match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
                         DaemonResponse::Ok => println!("Ok"),
                         DaemonResponse::Error(e) => {
@@ -294,7 +315,7 @@ pub fn run_cli_command(command: Option<Command>) -> Result<(), ()> {
         #[cfg(not(feature = "gui"))]
         trace!("No command specified, starting the deamon");
 
-        let conf = match daemon::Config::try_from_name("music-player", SOCKET_NAME) {
+        let conf = match daemon::Config::try_from_name("music-player", &socket_name) {
             Ok(conf) => conf,
             Err(e) => {
                 error!("Could not create a config for the daemon: {e}");

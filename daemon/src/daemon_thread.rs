@@ -38,11 +38,8 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &DaemonResponse) -> Result<(), Da
 }
 
 pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> JoinHandle<()> {
-    trace!("New connection to the daemon: {conn:?}");
-
     thread::spawn(move || {
         trace!("Handling client connection");
-
         loop {
             let mut conn = BufReader::new(&conn);
 

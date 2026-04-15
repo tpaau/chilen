@@ -9,8 +9,7 @@ use std::{
 use interprocess::local_socket::{
     GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
 };
-#[cfg(not(feature = "ns-socket"))]
-use log::warn;
+use log::info;
 use log::{error, trace};
 use rmp_serde::Serializer;
 use serde::{Deserialize, Serialize};
@@ -462,6 +461,14 @@ pub enum ClientCommand {
     Ping,
 }
 
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum SocketType {
+    NamespacedOnly,
+    #[default]
+    NamespacedOrFilesystem,
+    FilesystemOnly,
+}
+
 impl TryFrom<DaemonCommand> for ClientCommand {
     type Error = String;
     fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
@@ -490,37 +497,71 @@ pub fn get_fs_socket_path(socket_name: &str) -> PathBuf {
     temp_dir
 }
 
-/// Try to get a namespaced socket or a filesystem socket for daemon IPC.
+/// Returns a namespaced socket for the given socket name.
 ///
 /// # Examples
 /// ```
-/// # use mpipc::get_daemon_socket;
-/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
-/// match get_daemon_socket(socket_name) {
+/// let socket = mpipc::get_ns_daemon_socket(mpipc::DEFAULT_SOCKET_NAME).unwrap();
+/// ```
+pub fn get_ns_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
+    match socket_name.to_ns_name::<GenericNamespaced>() {
+        Ok(socket) => Ok(socket),
+        Err(e) => {
+            error!("Could not obtain a namespaced socket: {e}");
+            Err(e)
+        }
+    }
+}
+
+/// Returns a namespaced socket for the given socket name.
+///
+/// # Examples
+/// ```
+/// let socket = mpipc::get_fs_daemon_socket(mpipc::DEFAULT_SOCKET_NAME).unwrap();
+/// ```
+pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
+    let socket_path = get_fs_socket_path(socket_name);
+    match socket_path.to_fs_name::<GenericFilePath>() {
+        Ok(socket) => Ok(socket),
+        Err(e) => {
+            error!("Could not obtain a filesystem socket: {e}");
+            Err(e)
+        }
+    }
+}
+
+/// Attempts to get a socket address for daemon IPC.
+///
+/// If the library is built with namespaced socket support, additional configuration options can be
+/// used to specify whether a namespaced or a filesystem socket should be used.
+///
+/// # Examples
+/// ```
+/// match mpipc::get_daemon_socket(
+///     mpipc::DEFAULT_SOCKET_NAME,
+///     &mpipc::SocketType::NamespacedOrFilesystem
+/// ) {
 ///     Ok(socket) => eprintln!("Got a socket: {socket:?}"),
 ///     Err(e) => panic!("Could not obtain a socket: {e}"),
 /// }
 /// ```
-pub fn get_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
-    if cfg!(feature = "ns-socket") && GenericNamespaced::is_supported() {
-        trace!("Using a namespaced socket {socket_name}");
-        match socket_name.to_ns_name::<GenericNamespaced>() {
+pub fn get_daemon_socket<'a>(
+    socket_name: &'a str,
+    mode: &SocketType,
+) -> Result<Name<'a>, std::io::Error> {
+    match mode {
+        SocketType::NamespacedOnly => get_ns_daemon_socket(socket_name),
+        SocketType::FilesystemOnly => {
+            get_fs_socket_path(socket_name).to_fs_name::<GenericFilePath>()
+        }
+        SocketType::NamespacedOrFilesystem => match get_ns_daemon_socket(socket_name) {
             Ok(socket) => Ok(socket),
             Err(e) => {
-                error!("Could not obtain a namespaced socket: {e}");
-                Err(e)
+                info!("Could not obtain a namespaced socket: {e}");
+                info!("Trying a filesystem socket instead");
+                get_fs_socket_path(socket_name).to_fs_name::<GenericFilePath>()
             }
-        }
-    } else {
-        let socket_path = get_fs_socket_path(socket_name);
-        trace!("Using a filesystem socket in {socket_path:?}");
-        match socket_path.to_fs_name::<GenericFilePath>() {
-            Ok(socket) => Ok(socket),
-            Err(e) => {
-                error!("Could not obtain a filesystem socket: {e}");
-                Err(e)
-            }
-        }
+        },
     }
 }
 
@@ -530,8 +571,7 @@ pub fn get_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::
 /// ```no_run
 /// // Connect to the daemon and immediately disconnect.
 /// # use std::io::{BufReader, Write};
-/// # use mpipc;
-/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME).unwrap());
+/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()).unwrap());
 /// let cmd = mpipc::serialize_client_command(mpipc::ClientCommand::Disconnect).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// ```
@@ -551,8 +591,7 @@ pub fn serialize_client_command(cmd: ClientCommand) -> Result<Vec<u8>, DaemonErr
 /// # Examples
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc;
-/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME).unwrap());
+/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()).unwrap());
 /// let cmd = mpipc::serialize_client_command(mpipc::ClientCommand::EventStream).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// loop {
@@ -577,12 +616,10 @@ pub fn receive_daemon_response(
 /// # Examples
 /// ```no_run
 /// # use std::io::BufReader;
-/// # use mpipc::{connect_to_daemon, disconnect};
-/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
-/// let conn = connect_to_daemon(socket_name).unwrap();
+/// let conn = mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// // Do some stuff with the connection here...
-/// match disconnect(&mut conn) {
+/// match mpipc::disconnect(&mut conn) {
 ///     Ok(_) => eprintln!("Disconnected from the deamon!"),
 ///     Err(e) => panic!("Could not close the daemon connection: {e}"),
 /// }
@@ -639,17 +676,18 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
 ///
 /// # Examples
 /// ```no_run
-/// # use mpipc::connect_to_daemon;
-/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
-/// match connect_to_daemon(socket_name) {
+/// match mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()) {
 ///     Ok(stream) => eprintln!("Connected to the daemon: {stream:?}"),
 ///     Err(error) => panic!("Could not connect to the daemon: {error}"),
 /// }
 /// ```
-pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
+pub fn connect_to_daemon(
+    socket_name: &str,
+    socket_type: &SocketType,
+) -> Result<Stream, DaemonError> {
     trace!("Connecting to daemon on socket '{socket_name}'");
 
-    let socket = match get_daemon_socket(socket_name) {
+    let socket = match get_daemon_socket(socket_name, socket_type) {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
@@ -661,10 +699,6 @@ pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
         Ok(conn) => conn,
         Err(e) => {
             error!("Could not initialize a connection to the daemon: {e}");
-            #[cfg(not(feature = "ns-socket"))]
-            warn!(
-                "Note that the `ns-socket` feature is disabled, maybe the daemon is listening on a namespaced socket?"
-            );
             return Err(DaemonError::ConnectionError);
         }
     };
@@ -680,9 +714,7 @@ pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
 ///
 /// # Examples
 /// ```no_run
-/// # use mpipc::{exec_client_command, ClientCommand};
-/// let socket_name = mpipc::DEFAULT_SOCKET_NAME;
-/// match exec_client_command(ClientCommand::Shutdown, socket_name) {
+/// match mpipc::exec_client_command(mpipc::ClientCommand::Shutdown, mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()) {
 ///     Ok(response) => eprintln!("Got a response from the daemon: {response:?}"),
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }
@@ -690,10 +722,11 @@ pub fn connect_to_daemon(socket_name: &str) -> Result<Stream, DaemonError> {
 pub fn exec_client_command(
     cmd: ClientCommand,
     socket_name: &str,
+    socket_type: &SocketType,
 ) -> Result<DaemonResponse, DaemonError> {
     trace!("Executing daemon command: {cmd:?}");
 
-    let mut conn = match connect_to_daemon(socket_name) {
+    let mut conn = match connect_to_daemon(socket_name, socket_type) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("{e}");
