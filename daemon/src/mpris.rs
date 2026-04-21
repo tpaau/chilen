@@ -285,7 +285,7 @@ impl PlayerInterface for MprisInterface {
     async fn metadata(&self) -> MprisResult<mpris_server::Metadata> {
         match playback::run_command(playback::Command::GetCurrentTrack) {
             Ok(response) => match response {
-                PlaybackResponse::Track(maybe_track) => match *maybe_track {
+                PlaybackResponse::Track(maybe_track) => match maybe_track {
                     Some(track) => Ok(mpris_server::Metadata::builder()
                         .url(track.path.to_string_lossy())
                         .build()),
@@ -382,19 +382,39 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn can_go_next(&self) -> MprisResult<bool> {
-        Ok(playback::can_go_next())
+        match playback::can_go_next() {
+            Ok(can_go_next) => Ok(can_go_next),
+            Err(e) => Err(MprisError::Failed(format!(
+                "Could not check whether the player can skip to the next track: {e}"
+            ))),
+        }
     }
 
     async fn can_go_previous(&self) -> MprisResult<bool> {
-        Ok(playback::can_go_previous())
+        match playback::can_go_previous() {
+            Ok(can_go_previous) => Ok(can_go_previous),
+            Err(e) => Err(MprisError::Failed(format!(
+                "Could not check whether the player can skip to the previous track: {e}"
+            ))),
+        }
     }
 
     async fn can_play(&self) -> MprisResult<bool> {
-        Ok(playback::can_play())
+        match playback::can_play() {
+            Ok(can_play) => Ok(can_play),
+            Err(e) => Err(MprisError::Failed(format!(
+                "Could not check whether the player can play: {e}"
+            ))),
+        }
     }
 
     async fn can_pause(&self) -> MprisResult<bool> {
-        Ok(playback::can_pause())
+        match playback::can_pause() {
+            Ok(can_pause) => Ok(can_pause),
+            Err(e) => Err(MprisError::Failed(format!(
+                "Could not check whether the player can pause: {e}"
+            ))),
+        }
     }
 
     async fn can_seek(&self) -> mpris_server::zbus::fdo::Result<bool> {

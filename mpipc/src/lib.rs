@@ -54,6 +54,8 @@ impl std::fmt::Display for MusicLibraryError {
 pub enum PlaybackError {
     /// The audio player is not connected.
     PlayerNotConnected,
+    /// The playback state is not initialized.
+    StateNotInitialized,
     /// The queue is empty.
     QueueEmpty,
     /// Could not open an audio source.
@@ -84,6 +86,7 @@ impl std::fmt::Display for PlaybackError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
+            Self::StateNotInitialized => write!(f, "The playback state is not initialized"),
             Self::QueueEmpty => write!(f, "The queue is empty"),
             Self::SourceError => write!(
                 f,
@@ -407,7 +410,7 @@ pub enum PlaybackResponse {
     LoopState(LoopState),
     PlaybackRate(PlaybackRate),
     ShuffleState(ShuffleState),
-    Track(Box<Option<Track>>),
+    Track(Option<Box<Track>>),
     PlayerVolume(PlayerVolume),
     PlayerPosition(Duration),
 }
@@ -420,7 +423,7 @@ impl std::fmt::Display for PlaybackResponse {
             Self::LoopState(state) => write!(f, "{state}"),
             Self::PlaybackRate(rate) => write!(f, "{rate}"),
             Self::ShuffleState(state) => write!(f, "{state}"),
-            Self::Track(track) => match &**track {
+            Self::Track(track) => match track {
                 Some(track) => write!(f, "{track}"),
                 None => write!(f, "None"),
             },

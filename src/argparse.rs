@@ -270,6 +270,8 @@ pub enum PlaybackCommand {
         #[command(subcommand)]
         shuffle_state: ShuffleState,
     },
+    /// Get the shuffle state of the player.
+    GetShuffleState,
     /// Set the player position.
     SetPlayerPosition {
         #[arg()]
@@ -327,6 +329,7 @@ impl From<PlaybackCommand> for mpipc::PlaybackCommand {
             PlaybackCommand::SetShuffleState { shuffle_state } => {
                 mpipc::PlaybackCommand::SetShuffleState(shuffle_state.into())
             }
+            PlaybackCommand::GetShuffleState => mpipc::PlaybackCommand::GetShuffleState,
             PlaybackCommand::SetPlayerPosition { position_secs } => {
                 mpipc::PlaybackCommand::SetPlayerPosition(Duration::from_secs(position_secs))
             }

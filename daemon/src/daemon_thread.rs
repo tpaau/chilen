@@ -215,7 +215,14 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                             error!("Could not get the contents of the music library: {e}");
                         }
                     }
-                    for event in playback::get_initial_events() {
+                    let events = match playback::get_initial_events() {
+                        Ok(events) => events,
+                        Err(e) => {
+                            error!("Could not get the initial events: {e}");
+                            continue;
+                        }
+                    };
+                    for event in events {
                         if let Err(DaemonError::SendingError) =
                             respond(&mut conn, &DaemonResponse::Event(event))
                         {
