@@ -5,7 +5,6 @@ use std::{
     io::{BufReader, Write},
     path::{Path, PathBuf},
     sync::{LazyLock, RwLock},
-    thread,
     time::{Duration, SystemTime},
 };
 
@@ -24,7 +23,7 @@ use crate::{
             indexer::{index, index_files},
         },
     },
-    playback, send_event,
+    send_event,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -468,7 +467,6 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
         time_elapsed.as_secs_f64()
     );
 
-    thread::spawn(playback::init);
     Ok(())
 }
 

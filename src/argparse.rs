@@ -4,7 +4,7 @@ use clap::{ArgGroup, Parser, Subcommand, ValueEnum, ValueHint};
 
 use env_logger::Builder;
 use log::{self, trace};
-use mpipc::ClientCommand;
+use mpipc::{ClientCommand, SignedDuration};
 
 #[derive(Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
@@ -19,6 +19,9 @@ pub enum DaemonCommand {
         /// Set the directory with audio files.
         #[arg(long, short, value_hint = ValueHint::DirPath)]
         music_dir: Option<PathBuf>,
+        /// Allow clients to modify the playback rate of the player.
+        #[arg(long, short, default_value_t = false)]
+        allow_rate_modification: bool,
     },
     /// Stop the daemon process
     Stop,
@@ -43,6 +46,7 @@ impl From<DaemonCommand> for mpipc::DaemonCommand {
                 cache_dir: _,
                 music_dir: _,
                 data_dir: _,
+                allow_rate_modification: _,
             } => mpipc::DaemonCommand::Start,
             DaemonCommand::Stop => mpipc::DaemonCommand::ClientCommand(ClientCommand::Shutdown),
             DaemonCommand::EventStream {
@@ -208,13 +212,20 @@ pub enum PlaybackCommand {
         #[arg(long, short)]
         index: Option<usize>,
     },
+    /// Pause the audio.
+    Pause,
+    /// Stop the player.
+    Stop,
+    /// Toggle between play/pause.
+    TogglePlaying,
+    /// Get the playback state (Playing, Paused, Stopped) of the player.
+    GetPlaybackState,
     /// Set the queue to a playlist or a list of tracks.
     #[command(group(
         ArgGroup::new("source")
             .required(true)
             .args(&["tracks", "playlist"])
     ))]
-    /// Append the queue.
     SetQueue {
         /// Paths of tracks to be set as the new queue.
         #[arg(long, short, value_parser = is_file, value_hint = ValueHint::FilePath, conflicts_with = "playlist")]
@@ -234,8 +245,8 @@ pub enum PlaybackCommand {
         #[arg(long, short, conflicts_with = "tracks")]
         playlist: Option<String>,
     },
-    /// Pause the audio.
-    Pause,
+    /// Get the current track.
+    GetCurrentTrack,
     /// Skip to the next track.
     Next,
     /// Skip to the previous track.
@@ -245,6 +256,15 @@ pub enum PlaybackCommand {
         #[command(subcommand)]
         loop_state: LoopState,
     },
+    /// Get the loop state of the player.
+    GetLoopState,
+    /// Set the playback rate of the player.
+    SetRate {
+        #[arg()]
+        rate: f32,
+    },
+    /// Get the playback rate of the player.
+    GetRate,
     /// Set the shuffle state.
     SetShuffleState {
         #[command(subcommand)]
@@ -255,12 +275,30 @@ pub enum PlaybackCommand {
         #[arg()]
         position_secs: u64,
     },
+    /// Change the player position by a time delta in seconds.
+    Seek {
+        #[arg()]
+        delta_secs: i64,
+    },
+    /// Get the position of the player.
+    GetPlayerPosition,
+    /// Set the volume of the player.
+    SetVolume {
+        #[arg()]
+        volume: f64,
+    },
+    /// Get the volume of the player.
+    GetVolume,
 }
 
 impl From<PlaybackCommand> for mpipc::PlaybackCommand {
     fn from(value: PlaybackCommand) -> Self {
         match value {
             PlaybackCommand::Play { index } => mpipc::PlaybackCommand::Play(index),
+            PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
+            PlaybackCommand::Stop => mpipc::PlaybackCommand::Stop,
+            PlaybackCommand::TogglePlaying => mpipc::PlaybackCommand::TogglePlaying,
+            PlaybackCommand::GetPlaybackState => mpipc::PlaybackCommand::GetPlaybackState,
             PlaybackCommand::SetQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
                     return mpipc::PlaybackCommand::SetQueue(tracks);
@@ -277,18 +315,29 @@ impl From<PlaybackCommand> for mpipc::PlaybackCommand {
                 }
                 panic!("This should never happen :)");
             }
-            PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
+            PlaybackCommand::GetCurrentTrack => mpipc::PlaybackCommand::GetCurrentTrack,
             PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
             PlaybackCommand::Previous => mpipc::PlaybackCommand::Previous,
             PlaybackCommand::SetLoopState { loop_state } => {
                 mpipc::PlaybackCommand::SetLoopState(loop_state.into())
             }
+            PlaybackCommand::GetLoopState => mpipc::PlaybackCommand::GetLoopState,
+            PlaybackCommand::SetRate { rate } => mpipc::PlaybackCommand::SetRate(rate.into()),
+            PlaybackCommand::GetRate => mpipc::PlaybackCommand::GetRate,
             PlaybackCommand::SetShuffleState { shuffle_state } => {
                 mpipc::PlaybackCommand::SetShuffleState(shuffle_state.into())
             }
             PlaybackCommand::SetPlayerPosition { position_secs } => {
                 mpipc::PlaybackCommand::SetPlayerPosition(Duration::from_secs(position_secs))
             }
+            PlaybackCommand::Seek { delta_secs } => {
+                mpipc::PlaybackCommand::Seek(SignedDuration::from_secs(delta_secs))
+            }
+            PlaybackCommand::GetPlayerPosition => mpipc::PlaybackCommand::GetPlayerPosition,
+            PlaybackCommand::SetVolume { volume } => {
+                mpipc::PlaybackCommand::SetPlayerVolume(mpipc::PlayerVolume::new(volume))
+            }
+            PlaybackCommand::GetVolume => mpipc::PlaybackCommand::GetPlayerVolume,
         }
     }
 }

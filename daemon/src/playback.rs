@@ -11,15 +11,19 @@ use log::{debug, error, info, trace, warn};
 #[cfg(feature = "shuffle")]
 use mpipc::ShuffleState;
 use mpipc::{
-    DaemonEvent, LoopState, MusicLibraryError, PlaybackError, PlaybackEvent, PlaybackState,
-    PlayerVolume,
+    DaemonEvent, LoopState, MusicLibraryError, PlaybackError, PlaybackEvent, PlaybackRate,
+    PlaybackResponse, PlaybackState, PlayerVolume, SignedDuration,
 };
+#[cfg(feature = "mpris")]
+use mpris_server::Server;
 #[cfg(feature = "shuffle")]
 use rand::seq::SliceRandom;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "mpris")]
+use crate::mpris;
 use crate::{
     data::{
         CACHE_DIR,
@@ -29,9 +33,22 @@ use crate::{
     send_event,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Config {
+    /// A friendly name to identify the media player to users (eg: “VLC media player”).
+    #[cfg(feature = "mpris")]
+    pub identity: String,
+    /// The suffix of the but name used with mpris.
+    #[cfg(feature = "mpris")]
+    pub bus_name_suffix: String,
+    /// Whether to allow clients to modify the playback rate of the player.
+    pub allow_rate_modification: bool,
+}
+
 #[derive(Debug, Clone, Default)]
-struct PlayerState {
+pub(crate) struct PlayerState {
     position: usize,
+    // TODO: Handle this properly
     player_position: Duration,
     player_volume: PlayerVolume,
     playback_state: PlaybackState,
@@ -41,6 +58,7 @@ struct PlayerState {
     #[cfg(feature = "shuffle")]
     shuffle_state: ShuffleState,
     loop_state: LoopState,
+    playback_rate: PlaybackRate,
 }
 
 impl TryFrom<PlayerStateRaw> for PlayerState {
@@ -58,6 +76,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
             #[cfg(feature = "shuffle")]
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
+            playback_rate: value.playback_rate,
         })
     }
 }
@@ -179,6 +198,15 @@ impl PlayerState {
         }
     }
 
+    pub fn set_rate(&mut self, rate: f64) {
+        if self.playback_rate.get_value() != rate {
+            self.playback_rate.set_value(rate);
+            let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::RateChanged(
+                self.playback_rate,
+            )));
+        }
+    }
+
     pub fn set_playback_state(&mut self, playback_state: PlaybackState) {
         if self.playback_state != playback_state {
             self.playback_state = playback_state;
@@ -250,6 +278,21 @@ impl PlayerState {
             return Some(&self.tracks[index]);
         }
         None
+    }
+
+    pub fn can_play(&self) -> bool {
+        #[cfg(feature = "shuffle")]
+        match self.shuffle_state {
+            ShuffleState::Off => {
+                self.position < self.tracks.len() && self.playback_state != PlaybackState::Playing
+            }
+            ShuffleState::On => {
+                self.position < self.shuffled_tracks.len()
+                    && self.playback_state != PlaybackState::Playing
+            }
+        }
+        #[cfg(not(feature = "shuffle"))]
+        return self.position < self.tracks.len() && self.playback_rate != PlaybackState::Playing;
     }
 
     pub fn can_go_next(&self) -> bool {
@@ -538,6 +581,7 @@ struct PlayerStateRaw {
     #[cfg(feature = "shuffle")]
     shuffle_state: ShuffleState,
     loop_state: LoopState,
+    playback_rate: PlaybackRate,
 }
 
 impl From<PlayerState> for PlayerStateRaw {
@@ -555,6 +599,7 @@ impl From<PlayerState> for PlayerStateRaw {
             #[cfg(feature = "shuffle")]
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
+            playback_rate: value.playback_rate,
         }
     }
 }
@@ -563,17 +608,28 @@ impl From<PlayerState> for PlayerStateRaw {
 pub(crate) enum Command {
     Play(Option<usize>),
     Pause,
+    Stop,
+    TogglePlaying,
+    GetPlaybackState,
     SetQueue(Vec<Track>),
     AppendToQueue(Vec<Track>),
+    GetCurrentTrack,
     Next,
     Previous,
     SetLoopState(LoopState),
+    GetLoopState,
+    SetRate(f64),
+    GetRate,
     #[cfg(feature = "shuffle")]
     SetShuffleState(ShuffleState),
+    GetShuffleState,
     #[cfg(not(feature = "shuffle"))]
     SetShuffleState,
     SetPlayerPosition(Duration),
+    Seek(SignedDuration),
+    GetPlayerPosition,
     SetPlayerVolume(PlayerVolume),
+    GetPlayerVolume,
 }
 
 impl TryFrom<mpipc::PlaybackCommand> for Command {
@@ -582,6 +638,9 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
         match value {
             mpipc::PlaybackCommand::Play(maybe_pos) => Ok(Self::Play(maybe_pos)),
             mpipc::PlaybackCommand::Pause => Ok(Self::Pause),
+            mpipc::PlaybackCommand::Stop => Ok(Self::Stop),
+            mpipc::PlaybackCommand::TogglePlaying => Ok(Self::TogglePlaying),
+            mpipc::PlaybackCommand::GetPlaybackState => Ok(Self::GetPlaybackState),
             mpipc::PlaybackCommand::SetQueue(track_paths) => {
                 let tracks = get_library()?.tracks;
                 let indexed_tracks = index_files(track_paths, false)?;
@@ -612,19 +671,27 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
                 };
                 Ok(Self::AppendToQueue(playlist.tracks.clone()))
             }
+            mpipc::PlaybackCommand::GetCurrentTrack => Ok(Self::GetCurrentTrack),
             mpipc::PlaybackCommand::Next => Ok(Self::Next),
             mpipc::PlaybackCommand::Previous => Ok(Self::Previous),
             mpipc::PlaybackCommand::SetLoopState(loop_state) => Ok(Self::SetLoopState(loop_state)),
+            mpipc::PlaybackCommand::GetLoopState => Ok(Self::GetLoopState),
+            mpipc::PlaybackCommand::SetRate(rate) => Ok(Self::SetRate(rate)),
+            mpipc::PlaybackCommand::GetRate => Ok(Self::GetRate),
             #[cfg(feature = "shuffle")]
             mpipc::PlaybackCommand::SetShuffleState(shuffle_state) => {
                 Ok(Self::SetShuffleState(shuffle_state))
             }
             #[cfg(not(feature = "shuffle"))]
             mpipc::PlaybackCommand::SetShuffleState(_) => Ok(Self::SetShuffleState),
+            mpipc::PlaybackCommand::GetShuffleState => Ok(Self::GetShuffleState),
             mpipc::PlaybackCommand::SetPlayerPosition(position) => {
                 Ok(Self::SetPlayerPosition(position))
             }
+            mpipc::PlaybackCommand::Seek(delta) => Ok(Self::Seek(delta)),
+            mpipc::PlaybackCommand::GetPlayerPosition => Ok(Self::GetPlayerPosition),
             mpipc::PlaybackCommand::SetPlayerVolume(volume) => Ok(Self::SetPlayerVolume(volume)),
+            mpipc::PlaybackCommand::GetPlayerVolume => Ok(Self::GetPlayerVolume),
         }
     }
 }
@@ -639,6 +706,9 @@ static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 static PLAYER_STATE: LazyLock<Arc<RwLock<Option<PlayerState>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 fn save_state(state: PlayerState) -> Result<(), MusicLibraryError> {
@@ -727,8 +797,38 @@ pub(crate) fn get_initial_events() -> Vec<DaemonEvent> {
     state.get_initial_events()
 }
 
-pub(crate) fn init() {
+pub(crate) fn init(config: Config) {
     trace!("Initializing the playback module");
+
+    #[cfg(feature = "mpris")]
+    {
+        trace!("Starting the MPRIS server");
+        let bus_name_suffix = config.bus_name_suffix.clone();
+        let interface = mpris::MprisInterface {
+            identity: config.identity.clone(),
+        };
+
+        thread::spawn(move || {
+            use mpris_server::{Metadata, Property};
+
+            thread::sleep(Duration::from_secs(1));
+            smol::block_on(async {
+                let server = Server::new(&bus_name_suffix, interface).await.unwrap();
+                server
+                    .properties_changed([
+                        Property::CanSeek(false),
+                        Property::Metadata(Metadata::new()),
+                    ])
+                    .await
+                    .unwrap();
+
+                thread::sleep(Duration::from_secs(10));
+            });
+        });
+    }
+
+    trace!("Initializing config");
+    *CONFIG.write().unwrap() = Some(config);
 
     let state = match restore_state_from_cache() {
         Ok(state) => {
@@ -769,6 +869,7 @@ pub(crate) fn init() {
         let player = player_guard.as_ref().unwrap();
         player.append(source);
         player.pause();
+        player.set_speed(state.playback_rate.get_value_f32());
         drop(player_guard);
     }
     drop(state_guard);
@@ -810,7 +911,31 @@ pub(crate) fn init() {
     }
 }
 
-pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
+pub(crate) fn can_play() -> bool {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = state_guard.as_ref().unwrap();
+    state.can_play()
+}
+
+pub(crate) fn can_pause() -> bool {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = state_guard.as_ref().unwrap();
+    state.playback_state == PlaybackState::Playing
+}
+
+pub(crate) fn can_go_next() -> bool {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = state_guard.as_ref().unwrap();
+    state.can_go_next()
+}
+
+pub(crate) fn can_go_previous() -> bool {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = state_guard.as_ref().unwrap();
+    state.can_go_previous()
+}
+
+pub(crate) fn run_command(cmd: Command) -> Result<PlaybackResponse, PlaybackError> {
     match cmd {
         Command::Play(maybe_pos) => {
             // trace!("Playing the current media");
@@ -880,6 +1005,50 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                 state.set_playback_state(PlaybackState::Paused);
             }
         }
+        Command::Stop => {
+            trace!("Stopping the playback");
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            let player = player_guard.as_ref().unwrap();
+            if player.empty() {
+                return Err(PlaybackError::PlayerStoppped);
+            } else {
+                player.stop();
+                let mut state_guard = PLAYER_STATE.write().unwrap();
+                let state = state_guard.as_mut().unwrap();
+                state.set_playback_state(PlaybackState::Stopped);
+            }
+        }
+        Command::TogglePlaying => {
+            trace!("Toggling playback state");
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            let playback_state = state.playback_state;
+            drop(state_guard);
+            match playback_state {
+                PlaybackState::Paused => {
+                    return run_command(Command::Play(None));
+                }
+                PlaybackState::Playing => {
+                    return run_command(Command::Pause);
+                }
+                PlaybackState::Stopped => {
+                    let state_guard = PLAYER_STATE.read().unwrap();
+                    let state = state_guard.as_ref().unwrap();
+                    if state.current().is_some() {
+                        let pos = state.position;
+                        drop(state_guard);
+                        return run_command(Command::Play(Some(pos)));
+                    } else {
+                        return Err(PlaybackError::QueueEmpty);
+                    }
+                }
+            }
+        }
+        Command::GetPlaybackState => {
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            return Ok(PlaybackResponse::PlaybackState(state.playback_state));
+        }
         Command::SetQueue(queue) => {
             trace!("Setting a new queue");
             let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -893,6 +1062,16 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             let state = state_guard.as_mut().unwrap();
             state.append_tracks(&mut queue);
             background_save_state(state.clone());
+        }
+        Command::GetCurrentTrack => {
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            return match state.current() {
+                Some(track) => Ok(PlaybackResponse::Track(Box::new(Some(
+                    track.clone().into(),
+                )))),
+                None => Ok(PlaybackResponse::Track(Box::new(None))),
+            };
         }
         Command::Next => {
             trace!("Skipping to the next track");
@@ -965,6 +1144,35 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
             state.set_loop_state(loop_state);
             background_save_state(state.clone());
         }
+        Command::GetLoopState => {
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            return Ok(PlaybackResponse::LoopState(state.loop_state));
+        }
+        Command::SetRate(rate) => {
+            let conf = CONFIG.read().unwrap();
+            if !conf.as_ref().unwrap().allow_rate_modification {
+                return Err(PlaybackError::FixedRate);
+            }
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            let mut state_guard = PLAYER_STATE.write().unwrap();
+            let state = state_guard.as_mut().unwrap();
+            if !state.playback_rate.is_in_range(rate) {
+                return Err(PlaybackError::RateOutOfRange);
+            } else if let Some(player) = player_guard.as_ref() {
+                player.set_speed(PlaybackRate::from(rate).get_value_f32()); // Not the cleanest
+                state.set_rate(rate);
+                background_save_state(state.clone());
+            } else {
+                warn!("Cannot set playback rate, player is not connected");
+                return Err(PlaybackError::PlayerNotConnected);
+            }
+        }
+        Command::GetRate => {
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            return Ok(PlaybackResponse::PlaybackRate(state.playback_rate));
+        }
         #[cfg(feature = "shuffle")]
         Command::SetShuffleState(shuffle_state) => {
             trace!("Setting shuffle state to {shuffle_state:?}");
@@ -980,6 +1188,12 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
         Command::SetShuffleState => {
             return Err(PlaybackError::ShuffleNotSupported);
         }
+        #[cfg(feature = "shuffle")]
+        Command::GetShuffleState => {
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            return Ok(PlaybackResponse::ShuffleState(state.shuffle_state));
+        }
         Command::SetPlayerPosition(position) => {
             trace!("Setting player position to {:?}", position.as_secs());
             let player_guard = PLAYER_HANDLE.read().unwrap();
@@ -988,7 +1202,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                     return Err(PlaybackError::QueueEmpty);
                 }
                 if let Err(e) = player.try_seek(position) {
-                    error!("Could not seek: {e}");
+                    error!("Could not set player position: {e}");
                     return Err(PlaybackError::SeekNotSupported);
                 } else {
                     let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -996,18 +1210,63 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
                     state.set_player_position(position);
                 }
             } else {
-                warn!("Cannot seek, player is not connected");
+                warn!("Cannot set player position, player is not connected");
                 return Err(PlaybackError::PlayerNotConnected);
             }
         }
+        Command::Seek(delta) => {
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            let player = match player_guard.as_ref() {
+                Some(player) => player,
+                None => {
+                    warn!("Cannot seek, the player is not connected");
+                    return Err(PlaybackError::PlayerNotConnected);
+                }
+            };
+            let pos = match delta {
+                SignedDuration::Positive(positive_dur) => {
+                    trace!("Seeking player by {positive_dur:?}");
+                    player.get_pos() + positive_dur
+                }
+                SignedDuration::Negative(negative_dur) => {
+                    trace!("Seeking player by -{negative_dur:?}");
+                    player.get_pos() - negative_dur
+                }
+            };
+            if let Err(e) = player.try_seek(pos) {
+                error!("Could not set player position: {e}");
+                return Err(PlaybackError::SeekNotSupported);
+            } else {
+                let mut state_guard = PLAYER_STATE.write().unwrap();
+                let state = state_guard.as_mut().unwrap();
+                state.set_player_position(pos);
+            }
+        }
+        Command::GetPlayerPosition => {
+            let state_guard = PLAYER_STATE.read().unwrap();
+            let state = state_guard.as_ref().unwrap();
+            return Ok(PlaybackResponse::PlayerPosition(state.player_position));
+        }
         Command::SetPlayerVolume(volume) => {
-            // trace!("Setting position to {:?}", position.as_secs());
+            trace!("Setting player volume to {:?}", volume);
             let player_guard = PLAYER_HANDLE.read().unwrap();
             if let Some(player) = player_guard.as_ref() {
                 player.set_volume(volume.get());
                 let mut state_guard = PLAYER_STATE.write().unwrap();
                 let state = state_guard.as_mut().unwrap();
                 state.set_player_volume(volume);
+                background_save_state(state.clone());
+            } else {
+                warn!("Cannot set player volume, the player is not connected");
+                return Err(PlaybackError::PlayerNotConnected);
+            }
+        }
+        Command::GetPlayerVolume => {
+            let player_guard = PLAYER_HANDLE.read().unwrap();
+            if let Some(player) = player_guard.as_ref() {
+                return Ok(PlaybackResponse::PlayerVolume(PlayerVolume::new(
+                    player.volume(),
+                )));
             } else {
                 warn!("Cannot set player volume, the player is not connected");
                 return Err(PlaybackError::PlayerNotConnected);
@@ -1015,5 +1274,5 @@ pub(crate) fn run_command(cmd: Command) -> Result<(), PlaybackError> {
         }
     }
 
-    Ok(())
+    Ok(PlaybackResponse::Ok)
 }

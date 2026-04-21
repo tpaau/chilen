@@ -5,7 +5,7 @@ use std::{
 };
 
 use clap::crate_name;
-use daemon::AddrClaimMode;
+use daemon::{AddrClaimMode, playback};
 use log::{error, info, trace};
 use mpipc::{
     ClientCommand, DaemonError, DaemonResponse, Playlist, SocketType, connect_to_daemon,
@@ -18,6 +18,11 @@ use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
 use crate::{argparse::GuiCommand, gui};
 
 pub const SOCKET_NAME_HEADLESS: &str = "MUSIC_PLAYER_HEADLESS.socket";
+
+pub const IDENTITY_HEADLESS: &str = "Prototype music player daemon";
+
+#[cfg(feature = "gui")]
+pub const IDENTITY_GUI: &str = "Prototype music player user interface";
 
 // #[cfg(feature = "gui")]
 // pub const SOCKET_NAME_GUI: &str = "MUSIC_PLAYER_GUI.socket";
@@ -118,6 +123,7 @@ pub fn run_cli_command(
                     cache_dir,
                     data_dir,
                     music_dir,
+                    allow_rate_modification,
                 } => {
                     let home = if cache_dir.is_none() || data_dir.is_none() || music_dir.is_none() {
                         match home_dir() {
@@ -156,31 +162,21 @@ pub fn run_cli_command(
                             music
                         }
                     };
-                    #[cfg(feature = "mpris")]
-                    let config = match daemon::Config::try_new(
+                    let config = daemon::Config {
                         cache_dir,
                         data_dir,
                         music_dir,
                         socket_name,
-                        format!("com.dev.{}", crate_name!()),
-                        AddrClaimMode::default(),
+                        addr_claim_mode: AddrClaimMode::default(),
                         socket_type,
-                    ) {
-                        Ok(conf) => conf,
-                        Err(e) => {
-                            error!("Could not create daemon config: {e}");
-                            return Err(());
-                        }
+                        playback_config: playback::Config {
+                            #[cfg(feature = "mpris")]
+                            identity: String::from(IDENTITY_HEADLESS),
+                            #[cfg(feature = "mpris")]
+                            bus_name_suffix: format!("com.dev.{}", crate_name!()),
+                            allow_rate_modification: allow_rate_modification,
+                        },
                     };
-                    #[cfg(not(feature = "mpris"))]
-                    let config = daemon::Config::new(
-                        cache_dir,
-                        data_dir,
-                        music_dir,
-                        socket_name,
-                        AddrClaimMode::default(),
-                        socket_type,
-                    );
                     match daemon::start(config) {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => {
@@ -291,7 +287,9 @@ pub fn run_cli_command(
                 let cmd = ClientCommand::Playback(command.into());
                 match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
-                        DaemonResponse::Ok => println!("Ok"),
+                        DaemonResponse::Playback(response) => {
+                            println!("{response}");
+                        }
                         DaemonResponse::Error(e) => {
                             error!("Playback command failed: {e}");
                             return Err(());
@@ -315,7 +313,13 @@ pub fn run_cli_command(
         #[cfg(not(feature = "gui"))]
         trace!("No command specified, starting the deamon");
 
-        let conf = match daemon::Config::try_from_name("music-player", &socket_name) {
+        #[cfg(feature = "gui")]
+        let identity = IDENTITY_GUI.to_string();
+
+        #[cfg(not(feature = "gui"))]
+        let identity = IDENTITY_HEADLESS.to_string();
+
+        let conf = match daemon::Config::try_from_name(identity, &socket_name) {
             Ok(conf) => conf,
             Err(e) => {
                 error!("Could not create a config for the daemon: {e}");

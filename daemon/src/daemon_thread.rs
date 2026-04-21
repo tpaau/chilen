@@ -272,18 +272,23 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                             continue;
                         }
                     };
-                    if let Err(e) = playback::run_command(cmd) {
-                        error!("Could not execute the playback command: {e}");
-                        if let Err(DaemonError::SendingError) = respond(
-                            &mut conn,
-                            &DaemonResponse::Error(DaemonError::PlaybackError(e)),
-                        ) {
-                            break;
+                    match playback::run_command(cmd) {
+                        Ok(response) => {
+                            if let Err(DaemonError::SendingError) =
+                                respond(&mut conn, &DaemonResponse::Playback(response))
+                            {
+                                break;
+                            }
                         }
-                    }
-                    if let Err(DaemonError::SendingError) = respond(&mut conn, &DaemonResponse::Ok)
-                    {
-                        break;
+                        Err(e) => {
+                            error!("Could not execute the playback command: {e}");
+                            if let Err(DaemonError::SendingError) = respond(
+                                &mut conn,
+                                &DaemonResponse::Error(DaemonError::PlaybackError(e)),
+                            ) {
+                                break;
+                            }
+                        }
                     }
                 }
             };

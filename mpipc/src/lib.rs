@@ -1,6 +1,5 @@
 use std::{
     env::temp_dir,
-    f32,
     io::{BufReader, Read, Write},
     path::PathBuf,
     time::Duration,
@@ -63,6 +62,8 @@ pub enum PlaybackError {
     PlayerPlaying,
     /// The player is already paused.
     PlayerPaused,
+    /// The player has already stopped.
+    PlayerStoppped,
     /// Seek is not supported.
     SeekNotSupported,
     /// Cannot go to the previous track.
@@ -73,6 +74,10 @@ pub enum PlaybackError {
     ShuffleNotSupported,
     /// No track at this index.
     NoTrackAtIndex(usize),
+    /// The specified rate value was out of the allowed range.
+    RateOutOfRange,
+    /// The modification of the playback rate is disallowed.
+    FixedRate,
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -86,11 +91,16 @@ impl std::fmt::Display for PlaybackError {
             ),
             Self::PlayerPlaying => write!(f, "The player is already playing"),
             Self::PlayerPaused => write!(f, "The player is already paused"),
+            Self::PlayerStoppped => write!(f, "The player has already stopped"),
             Self::SeekNotSupported => write!(f, "Seek is not supported"),
             Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
             Self::CannotGoNext => write!(f, "Cannot go to the next track"),
             Self::ShuffleNotSupported => write!(f, "The daemon was not built with shuffle support"),
             Self::NoTrackAtIndex(index) => write!(f, "No track was found at index {index}"),
+            Self::RateOutOfRange => {
+                write!(f, "The specified rate value was out of the allowed range")
+            }
+            Self::FixedRate => write!(f, "The modification of the playback rate is disallowed"),
         }
     }
 }
@@ -202,6 +212,8 @@ pub enum PlaybackEvent {
     PlayerPositionChanged(Duration),
     /// Emitted when the volume of the player changes.
     PlayerVolumeChanged(PlayerVolume),
+    /// Emitted when the playback rate of the player changes.
+    RateChanged(PlaybackRate),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -294,8 +306,8 @@ impl std::fmt::Display for DaemonError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Response sent to a client from the daemon.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DaemonResponse {
     /// The client command was executed successfully.
     Ok,
@@ -305,8 +317,30 @@ pub enum DaemonResponse {
     Library(MusicLibrary),
     /// An event from the daemon.
     Event(DaemonEvent),
+    /// A response from the playback command.
+    Playback(PlaybackResponse),
     /// An internal error occurred.
     Error(DaemonError),
+}
+
+/// Signed duration type used for seeking.
+///
+/// This is just a bare bones enum. Do not use it as a `Duration` replacement outside of
+/// controlling the playback.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum SignedDuration {
+    Positive(Duration),
+    Negative(Duration),
+}
+
+impl SignedDuration {
+    pub fn from_secs<T: Into<i64> + Copy>(secs: T) -> SignedDuration {
+        if secs.into() < 0 {
+            SignedDuration::Negative(Duration::from_secs(secs.into().abs().try_into().unwrap()))
+        } else {
+            SignedDuration::Positive(Duration::from_secs(secs.into().abs().try_into().unwrap()))
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -315,6 +349,12 @@ pub enum PlaybackCommand {
     Play(Option<usize>),
     /// Pause the player.
     Pause,
+    /// Stop the player.
+    Stop,
+    /// Toggle between play/pause.
+    TogglePlaying,
+    /// Get the playback state (Playing, Paused, Stopped) of the player.
+    GetPlaybackState,
     /// Set a new queue for the player.
     SetQueue(Vec<PathBuf>),
     /// Append tracks to the queue.
@@ -323,39 +363,178 @@ pub enum PlaybackCommand {
     AppendPlaylist(String),
     /// Load a playlist and put its tracks in the queue.
     SetPlaylist(String),
+    /// Get the current track.
+    GetCurrentTrack,
     /// Skip to the next track.
     Next,
     /// Skip to the previous track.
     Previous,
-    /// Set the loop state.
+    /// Set the loop state of the player.
     SetLoopState(LoopState),
-    /// Set the shuffle state.
+    /// Get the loop state of the player.
+    GetLoopState,
+    /// Set the playback rate of the player.
+    ///
+    /// This command will fail if the daemon is configured to not allow playback rate modification
+    /// or if the specified rate value is out of the acceptable range.
+    SetRate(f64),
+    /// Get the playback rate of the player.
+    GetRate,
+    /// Set the shuffle state of the player.
+    ///
+    /// This command will fail if the daemon was not built with shuffle support.
     SetShuffleState(ShuffleState),
+    /// Get the shuffle state of the player.
+    ///
+    /// The daemon will always respond with `ShuffleState::Off` if it wasn't built shuffle support.
+    GetShuffleState,
     /// Set the position of the player.
     SetPlayerPosition(Duration),
+    /// Change the player position by a time delta.
+    Seek(SignedDuration),
+    /// Get the position of the player.
+    GetPlayerPosition,
     /// Set the volume of the player.
     SetPlayerVolume(PlayerVolume),
+    /// Get the volume of the player.
+    GetPlayerVolume,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PlaybackResponse {
+    Ok,
+    PlaybackState(PlaybackState),
+    LoopState(LoopState),
+    PlaybackRate(PlaybackRate),
+    ShuffleState(ShuffleState),
+    Track(Box<Option<Track>>),
+    PlayerVolume(PlayerVolume),
+    PlayerPosition(Duration),
+}
+
+impl std::fmt::Display for PlaybackResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Ok => write!(f, "Ok"),
+            Self::PlaybackState(state) => write!(f, "{state}"),
+            Self::LoopState(state) => write!(f, "{state}"),
+            Self::PlaybackRate(rate) => write!(f, "{rate}"),
+            Self::ShuffleState(state) => write!(f, "{state}"),
+            Self::Track(track) => match &**track {
+                Some(track) => write!(f, "{track}"),
+                None => write!(f, "None"),
+            },
+            Self::PlayerVolume(volume) => write!(f, "{volume}"),
+            Self::PlayerPosition(position) => write!(f, "{position:?}"),
+        }
+    }
+}
+
+/// The speed at which tracks are played.
+///
+/// Setting rate to 1.0 will play audio files at their original speed, 2.0 will speed them up two
+/// times, etc.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlaybackRate {
+    rate: f64,
+    min: f64,
+    max: f64,
+}
+
+impl Default for PlaybackRate {
+    fn default() -> Self {
+        Self {
+            rate: 1.0,
+            min: 0.1,
+            max: 10.0,
+        }
+    }
+}
+
+impl<T: Into<f64>> From<T> for PlaybackRate {
+    fn from(value: T) -> Self {
+        let mut def = Self::default();
+        def.set_value(value.into());
+        def
+    }
+}
+
+impl std::fmt::Display for PlaybackRate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Current playback rate: {}, min: {}, max: {}",
+            self.rate, self.min, self.max
+        )
+    }
+}
+
+impl PlaybackRate {
+    /// Create a new [`PlaybackRate`](mpipc::PlaybackRate) object.
+    pub fn new(rate: f64, min: f64, max: f64) -> PlaybackRate {
+        Self { rate, min, max }
+    }
+
+    fn clamp(&mut self) {
+        self.rate = self.rate.clamp(self.min, self.max)
+    }
+
+    /// Checks if the given rate value is in the allowed range.
+    pub fn is_in_range(&self, rate: f64) -> bool {
+        rate >= self.min && rate <= self.max
+    }
+
+    /// Set the rate multiplier.
+    ///
+    /// This value will be clamped with the min and max values.
+    pub fn set_value(&mut self, rate: f64) {
+        self.rate = rate.clamp(self.min, self.max)
+    }
+
+    /// Get the rate multiplier.
+    pub fn get_value(&self) -> f64 {
+        self.rate
+    }
+
+    /// Get the rate multiplier clamped to `f32`.
+    pub fn get_value_f32(&self) -> f32 {
+        if self.rate.is_nan() {
+            f32::NAN
+        } else if self.rate > f32::MAX as f64 {
+            f32::MAX
+        } else if self.rate < f32::MIN as f64 {
+            f32::MIN
+        } else {
+            self.rate as f32
+        }
+    }
+
+    /// Set the minimum acceptable value for the playback rate.
+    pub fn set_min(&mut self, min: f64) {
+        self.min = min.clamp(0.0, self.max);
+        self.clamp();
+    }
+
+    /// Get the minimum acceptable value for the playback rate.
+    pub fn get_min(&self) -> f64 {
+        self.min
+    }
+
+    /// Set the maximum acceptable value for the playback rate.
+    pub fn set_max(&mut self, max: f64) {
+        self.max = max.clamp(self.min, f64::MAX);
+        self.clamp();
+    }
+
+    /// Get the maximum acceptable value for the playback rate.
+    pub fn get_max(&self) -> f64 {
+        self.max
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlayerVolume {
-    volume: f32,
-}
-
-impl PlayerVolume {
-    pub fn set(&mut self, volume: f32) {
-        self.volume = volume.clamp(0.0, 1.0);
-    }
-
-    pub fn get(&self) -> f32 {
-        self.volume
-    }
-
-    pub fn new(volume: f32) -> Self {
-        Self {
-            volume: volume.clamp(0.0, 1.0),
-        }
-    }
+    volume: f64,
 }
 
 impl Default for PlayerVolume {
@@ -364,27 +543,101 @@ impl Default for PlayerVolume {
     }
 }
 
+impl std::fmt::Display for PlayerVolume {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Player volume: {}", self.volume)
+    }
+}
+
+impl PlayerVolume {
+    pub fn new(volume: f64) -> Self {
+        Self {
+            volume: volume.clamp(0.0, 1.0),
+        }
+    }
+
+    pub fn set(&mut self, volume: f64) {
+        self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    pub fn get(&self) -> f64 {
+        self.volume
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PlaybackState {
+    /// The player is playing.
     Playing,
+    /// The player is paused.
     Paused,
+    /// Audio playback is stopped. Playing will play the current track from the beginning.
     #[default]
     Stopped,
 }
 
+impl std::fmt::Display for PlaybackState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Playing => write!(f, "Playing"),
+            Self::Paused => write!(f, "Paused"),
+            Self::Stopped => write!(f, "Stopped"),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShuffleState {
-    On,
+    /// Do not shuffle the queue.
     #[default]
     Off,
+    /// Shuffle the tracks in the queue.
+    On,
+}
+
+impl From<ShuffleState> for bool {
+    fn from(s: ShuffleState) -> bool {
+        match s {
+            ShuffleState::Off => false,
+            ShuffleState::On => true,
+        }
+    }
+}
+
+impl From<bool> for ShuffleState {
+    fn from(value: bool) -> Self {
+        if value { Self::On } else { Self::Off }
+    }
+}
+
+impl std::fmt::Display for ShuffleState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::On => write!(f, "On"),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LoopState {
+    /// The playback will stop when there are no more tracks to play.
     #[default]
     Off,
+    /// The current track will start again from the beginning once it has finished playing.
     Track,
+    /// The playback will loop through a list of tracks.
     Playlist,
+}
+
+impl std::fmt::Display for LoopState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::Track => write!(f, "Track"),
+            Self::Playlist => write!(f, "Playlist"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
