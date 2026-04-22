@@ -1,10 +1,14 @@
-use std::time::Duration;
+use std::{
+    sync::{Arc, LazyLock, RwLock},
+    thread,
+    time::Duration,
+};
 
 use log::trace;
 use mpipc::{
     LoopState, PlaybackError, PlaybackResponse, PlaybackState, PlayerVolume, SignedDuration,
 };
-use mpris_server::{PlayerInterface, RootInterface};
+use mpris_server::{Metadata, PlayerInterface, Property, RootInterface, Server};
 
 use crate::playback;
 
@@ -424,4 +428,27 @@ impl PlayerInterface for MprisInterface {
     async fn can_control(&self) -> MprisResult<bool> {
         Ok(true)
     }
+}
+
+pub(crate) fn launch_server(config: playback::Config) {
+    thread::spawn(move || {
+        trace!("Starting the MPRIS server");
+        let bus_name_suffix = config.bus_name_suffix.clone();
+        let interface = MprisInterface {
+            identity: config.identity.clone(),
+        };
+
+        smol::block_on(async {
+            let server = Server::new(&bus_name_suffix, interface).await.unwrap();
+            server
+                .properties_changed([
+                    Property::CanSeek(false),
+                    Property::Metadata(Metadata::new()),
+                ])
+                .await
+                .unwrap();
+
+            thread::sleep(Duration::from_secs(10));
+        });
+    });
 }

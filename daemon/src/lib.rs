@@ -1,7 +1,5 @@
 mod daemon_thread;
 pub mod data;
-#[cfg(feature = "mpris")]
-mod mpris;
 pub mod playback;
 #[cfg(test)]
 mod tests;
