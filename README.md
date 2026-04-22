@@ -5,7 +5,6 @@ Prototype local music player, very much a WIP right now.
 
 ## Table of contents
 - [Features](#features)
-- [Project structure](#project-structure)
 - [Building from source](#building-from-source)
 - [Usage](#usage)
     - [Running the daemon](#usage_daemon)
@@ -18,46 +17,9 @@ Prototype local music player, very much a WIP right now.
 
 <a name="features"></a>
 ## Features
-
 - Blazingly fast and memory safe 🚀🦀
 - Modular design ideal for creating alternate frontents
 
-<a name="project-structure"></a>
-## Project structure
-
-Project modules are managed in a
-[Cargo workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html).
-
-The project has three main workspace members:
-- The root is a binary package with a CLI and will soon also have a GUI
-    - `daemon` is the core of the music player, responsible for managing cache, the music library, and playback
-    - `mpipc` is a library that defines common types and functions used to interact with the daemon
-
-```
-├── daemon // The daemon library
-│   └── src
-│       ├── daemon_thread.rs   // Client connection handling
-│       ├── data
-│       │   ├── cache          // Covers and cache management
-│       │   │   ├── covers.rs  // Cover caching
-│       │   │   ├── indexer.rs // Music library indexing
-│       │   │   └── mod.rs
-│       │   ├── mod.rs
-│       │   └── music_lib.rs   // Music library state managemnt (playlists, etc.)
-│       ├── lib.rs
-│       ├── playback.rs        // Audio playback and Mpris integration
-│       └── tests.rs
-├── mpipc // Library used to interact with the daemon
-│   └── src
-│       └── lib.rs
-└── src
-    ├── argparse.rs // Command-line argument parsing
-    ├── cli.rs      // Command-line argument execution
-    ├── gui         // TBD
-    │   └── mod.rs
-    ├── main.rs
-    └── tests.rs
-```
 
 <a name="building-from-source"></a>
 ## Building from source
@@ -74,12 +36,12 @@ rpm-ostree install alsa-libs-devel
 
 After you have all your dependencies installed, run the command below to compile the program:
 ```bash
-cargo build --release
+cargo build
 ```
 
 Then, you can run the player with `cargo`:
 ```bash
-cargo run --release -- <PLAYER_ARGUMENTS>
+cargo run -- <PLAYER_ARGUMENTS>
 ```
 
 You can find the compiled binary in `target/release/music-player`.
@@ -98,19 +60,19 @@ finished.
 > [!TIP]
 > You can pass the `-v|--verbosity` option to set the log level filter:
 > ```bash
-> cargo run --release -- -v trace <PLAYER_COMMAND>
+> cargo run -- -v trace <PLAYER_COMMAND>
 > ```
 
 <a name="usage_daemon"></a>
 ### Running the daemon
 **Starting the daemon**
 ```bash
-cargo run --release -- daemon start
+cargo run -- daemon start
 ```
 
 **Stopping the daemon with a client command**
 ```bash
-cargo run --release -- daemon stop
+cargo run -- daemon stop
 ```
 
 <a name="usage_playlists"></a>
@@ -119,17 +81,17 @@ Playlists can be managed with the `playlist` command.
 
 **Creating a new empty playlist**
 ```bash
-cargo run --release -- playlist new playlist-name ~/Music/track.mp3
+cargo run -- playlist new playlist-name ~/Music/track.mp3
 ```
 
 **Deleting an existing playlist**
 ```bash
-cargo run --release -- playlist delete playlist-name
+cargo run -- playlist delete playlist-name
 ```
 
 **Listing existing playlists**
 ```bash
-cargo run --release -- playlist list
+cargo run -- playlist list
 ```
 
 
@@ -138,27 +100,27 @@ cargo run --release -- playlist list
 
 **Adding tracks to the queue by paths**
 ```bash
-cargo run --release -- playback set-queue --tracks ~/Music/track.mp3
+cargo run -- playback set-queue --tracks ~/Music/track.mp3
 ```
 
 Tracks can also be appended to the queue:
 ```bash
-cargo run --release -- playback append-to-queue ~/Music/track.mp3
+cargo run -- playback append-to-queue ~/Music/track.mp3
 ```
 
 You can also set a playlist as the queue:
 ```bash
-cargo run --release -- playback set-queue --playlist playlist-name
+cargo run -- playback set-queue --playlist playlist-name
 ```
 
 **Pausing**
 ```bash
-cargo run --release -- playback pause
+cargo run -- playback pause
 ```
 
 **Playing**
 ```bash
-cargo run --release -- playback play
+cargo run -- playback play
 ```
 
 **Playing a track at a specific index**
@@ -166,17 +128,17 @@ cargo run --release -- playback play
 Tracks have their unique indices in the queue. You can jump to a track at a specific index.
 
 ```bash
-cargo run --release -- playback play --index 6
+cargo run -- playback play --index 6
 ```
 
 **Skipping to the next track**
 ```bash
-cargo run --release -- playback next
+cargo run -- playback next
 ```
 
 **Skipping to the previous track**
 ```bash
-cargo run --release -- playback previous
+cargo run -- playback previous
 ```
 
 
