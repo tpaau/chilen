@@ -228,6 +228,26 @@ impl Track {
             Err(e) => Err(e.to_string()),
         }
     }
+
+    #[cfg(test)]
+    pub fn new() -> Track {
+        Track {
+            path: PathBuf::new(),
+            cover_path: None,
+            duration: Duration::default(),
+            artist: None,
+            title: None,
+            album: None,
+            genre: None,
+            comment: None,
+            track: None,
+            track_total: None,
+            disk: None,
+            disk_total: None,
+            year: None,
+            lyrics: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

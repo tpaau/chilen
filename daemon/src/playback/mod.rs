@@ -1,6 +1,8 @@
 #[cfg(feature = "mpris")]
 mod mpris;
 mod state;
+#[cfg(test)]
+mod tests;
 
 use std::{
     sync::{Arc, LazyLock, RwLock},
@@ -450,6 +452,13 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), PlaybackErro
     }
 }
 
+/// When seeking, if the resulting position would result in a value less than this threshold, set
+/// the position to 0s.
+///
+/// Similarly, if the difference between the duration of the current track and the resulting
+/// position would be smaller than this value, skip to the next track.
+static SEEK_ROUND_THRESHOLD: LazyLock<Duration> = LazyLock::new(|| Duration::from_secs(1));
+
 pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {
@@ -477,7 +486,7 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
                 }
             };
             if let Some(track) = state.current()
-                && sum > track.duration - Duration::from_secs(1)
+                && sum > track.duration - *SEEK_ROUND_THRESHOLD
             {
                 drop(state_guard);
                 return skip_next();
@@ -499,7 +508,7 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
                     return Err(PlaybackError::DurationOverflow);
                 }
             };
-            if sub < Duration::from_secs(1) {
+            if sub < *SEEK_ROUND_THRESHOLD {
                 Duration::default()
             } else {
                 sub

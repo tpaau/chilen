@@ -1,0 +1,191 @@
+use std::time::Duration;
+
+use mpipc::LoopState;
+#[cfg(feature = "shuffle")]
+use mpipc::ShuffleState;
+
+use crate::{data::music_lib::Track, playback::state::PlayerState};
+
+// Higher values will reduce the chance of false positives but will increase the runtime of some tests.
+const TEST_ITER_COUNT: u32 = 100;
+
+/// Returns a [`Vec`] of unique [`Track`] structs for testing.
+fn unique_tracks(size: usize) -> Vec<Track> {
+    let mut tracks = Vec::new();
+    for i in 0..size {
+        let mut track = Track::new();
+        track.duration = Duration::from_secs(i.try_into().unwrap());
+        tracks.push(track);
+    }
+    tracks
+}
+
+#[test]
+fn skip_next() {
+    let mut state = PlayerState {
+        tracks: unique_tracks(5),
+        ..Default::default()
+    };
+    while state.can_go_next() {
+        println!("Position: {}", state.position);
+        state.next().unwrap();
+    }
+    assert!(state.next().is_none());
+    #[cfg(feature = "shuffle")]
+    {
+        state.set_shuffle_state(ShuffleState::On);
+        state.shuffle();
+        state.position = 0;
+        while state.can_go_next() {
+            println!("Position: {}", state.position);
+            state.next().unwrap();
+        }
+        assert!(state.next().is_none());
+    }
+}
+
+#[test]
+fn skip_previous() {
+    let mut state = PlayerState {
+        tracks: unique_tracks(5),
+        ..Default::default()
+    };
+    while state.can_go_previous() {
+        state.previous().unwrap();
+    }
+    assert!(state.previous().is_none());
+    #[cfg(feature = "shuffle")]
+    {
+        state.set_shuffle_state(ShuffleState::On);
+        state.shuffle();
+        state.position = 0;
+        while state.can_go_previous() {
+            state.previous().unwrap();
+        }
+        assert!(state.previous().is_none());
+    }
+}
+
+#[test]
+fn track_loop() {
+    let mut state = PlayerState {
+        tracks: unique_tracks(3),
+        ..Default::default()
+    };
+    state.position = 1;
+    state.loop_state = LoopState::Track;
+    let track = state.tracks[state.position].clone();
+    for _ in 0..state.tracks.len() {
+        assert_eq!(state.next().unwrap(), &track);
+    }
+    for _ in 0..state.tracks.len() {
+        assert_eq!(state.previous().unwrap(), &track);
+    }
+
+    #[cfg(feature = "shuffle")]
+    {
+        state.position = 1;
+        state.set_shuffle_state(ShuffleState::On);
+        state.shuffle();
+        for _ in 0..state.tracks.len() {
+            assert_eq!(state.next().unwrap(), &track);
+        }
+        for _ in 0..state.tracks.len() {
+            assert_eq!(state.previous().unwrap(), &track);
+        }
+    }
+}
+
+#[test]
+fn playlist_loop() {
+    let mut state = PlayerState {
+        tracks: unique_tracks(4),
+        ..Default::default()
+    };
+    state.loop_state = LoopState::Playlist;
+    for _ in 0..state.tracks.len() + 2 {
+        state.next().unwrap();
+    }
+    assert_eq!(&state.tracks[2].clone(), state.current().unwrap());
+    for _ in 0..state.tracks.len() + 2 {
+        state.previous().unwrap();
+    }
+    assert_eq!(&state.tracks[0].clone(), state.current().unwrap());
+}
+
+#[test]
+#[cfg(feature = "shuffle")]
+fn shuffle_works() {
+    let tracks = unique_tracks(10);
+    let mut state = PlayerState {
+        tracks: tracks.clone(),
+        ..Default::default()
+    };
+    state.set_shuffle_state(ShuffleState::On);
+    for _ in 0..TEST_ITER_COUNT {
+        state.shuffle();
+        assert_eq!(state.tracks, tracks);
+        if state.tracks != state.shuffled_tracks {
+            return;
+        }
+    }
+    panic!("Shuffle doesn't seem to be working!");
+}
+
+#[test]
+#[cfg(feature = "shuffle")]
+fn shuffle_track_stays_the_same() {
+    let mut state = PlayerState {
+        tracks: unique_tracks(10),
+        ..Default::default()
+    };
+    state.position = rand::random_range(0..state.tracks.len() - 1);
+    state.set_shuffle_state(ShuffleState::On);
+    state.shuffle();
+    let loops = [LoopState::Off, LoopState::Track, LoopState::Playlist];
+    for loop_state in loops {
+        state.set_loop_state(loop_state);
+        println!("For loop state: {loop_state}");
+        for i in 0..TEST_ITER_COUNT {
+            let pre_track = if loop_state == LoopState::Track {
+                Some(&state.tracks[state.position].clone())
+            } else {
+                None
+            };
+            if rand::random_range(0..5) == 1 {
+                if state.shuffle_state == ShuffleState::Off {
+                    println!("Enabling shuffle!");
+                    let track = &state.tracks[state.position].clone();
+                    state.set_shuffle_state(ShuffleState::On);
+                    state.shuffle();
+                    assert_eq!(state.current().unwrap(), track);
+                } else {
+                    println!("Disabling shuffle!");
+                    let track = &state.tracks[state.position].clone();
+                    state.set_shuffle_state(ShuffleState::Off);
+                    assert_eq!(state.current().unwrap(), track);
+                }
+            }
+            println!(
+                "i: {i}, position: {}, shuffle: {}, tracks: {}, shuffled_tracks: {}",
+                state.position,
+                state.shuffle_state,
+                state.tracks.len(),
+                state.shuffled_tracks.len()
+            );
+            let track = if rand::random() && state.can_go_next() {
+                println!("Right (1)!");
+                state.next()
+            } else if state.can_go_previous() {
+                println!("Left!");
+                state.previous()
+            } else {
+                println!("Right (2)!");
+                state.next()
+            };
+            if loop_state == LoopState::Track {
+                assert_eq!(track, pre_track);
+            }
+        }
+    }
+}
