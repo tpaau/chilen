@@ -198,10 +198,10 @@ impl PlayerState {
     /// Shuffle the queue without changing the current track.
     #[cfg(feature = "shuffle")]
     pub fn shuffle(&mut self) {
-        trace!("Tracks before shuffle (position: {}):", self.position);
-        for track in &self.tracks {
-            trace!("{track}");
-        }
+        // trace!("Tracks before shuffle (position: {}):", self.position);
+        // for track in &self.tracks {
+        //     trace!("{track}");
+        // }
         if self.tracks.is_empty() {
             use log::warn;
 
@@ -216,10 +216,10 @@ impl PlayerState {
         tracks.shuffle(&mut rng);
         tracks.insert(prev_pos, track);
         self.shuffled_tracks = tracks;
-        trace!("Tracks after shuffle (position: {}):", self.position);
-        for track in &self.shuffled_tracks {
-            trace!("{track}");
-        }
+        // trace!("Tracks after shuffle (position: {}):", self.position);
+        // for track in &self.shuffled_tracks {
+        //     trace!("{track}");
+        // }
         if self.shuffle_state == ShuffleState::On {
             let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::QueueChanged(
                 self.shuffled_tracks

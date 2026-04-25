@@ -83,6 +83,8 @@ pub enum PlaybackError {
     FixedRate,
     /// The player position could not be set because the duration provided was invalid.
     InvalidDuration,
+    /// Overflow detected while performing a seek operation.
+    DurationOverflow,
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -111,6 +113,9 @@ impl std::fmt::Display for PlaybackError {
                 f,
                 "The player position could not be set because the duration provided was invalid"
             ),
+            Self::DurationOverflow => {
+                write!(f, "Overflow detected while performing a seek operation")
+            }
         }
     }
 }

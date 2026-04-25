@@ -73,7 +73,7 @@ impl TryFrom<mpipc::PlaybackCommand> for Command {
     type Error = MusicLibraryError;
     fn try_from(value: mpipc::PlaybackCommand) -> Result<Self, Self::Error> {
         match value {
-            mpipc::PlaybackCommand::Play(maybe_pos) => Ok(Self::Play(maybe_pos)),
+            mpipc::PlaybackCommand::Play(maybe_index) => Ok(Self::Play(maybe_index)),
             mpipc::PlaybackCommand::Pause => Ok(Self::Pause),
             mpipc::PlaybackCommand::Stop => Ok(Self::Stop),
             mpipc::PlaybackCommand::TogglePlaying => Ok(Self::TogglePlaying),
@@ -139,63 +139,69 @@ static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
 static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-pub(crate) fn play(position: Option<usize>) -> Result<(), PlaybackError> {
+pub(crate) fn unwrap_player(
+    maybe_player: Option<&rodio::Player>,
+) -> Result<&rodio::Player, PlaybackError> {
+    match maybe_player {
+        Some(player) => Ok(player),
+        None => Err(PlaybackError::StateNotInitialized),
+    }
+}
+
+/// Play the current track or a track at a specified index in the queue.
+pub(crate) fn play(index: Option<usize>) -> Result<(), PlaybackError> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
-    if let Some(player) = player_guard.as_ref() {
-        let mut state_guard = PLAYER_STATE.write().unwrap();
-        let state = unwrap_state_mut(state_guard.as_mut())?;
-        match position {
-            Some(pos) => {
-                trace!("Playing a track at position {pos}");
-                let track = match state.play_track(pos) {
-                    Some(track) => track,
-                    None => {
-                        error!("No track at index {pos}");
-                        return Err(PlaybackError::NoTrackAtIndex(pos));
-                    }
-                };
-                let source = match track.open_source() {
-                    Ok(source) => source,
-                    Err(e) => {
-                        error!("Could not open audio source: {e}");
-                        return Err(PlaybackError::SourceError);
-                    }
-                };
-                player.empty();
-                player.append(source);
+    let player = unwrap_player(player_guard.as_ref())?;
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    match index {
+        Some(id) => {
+            trace!("Playing a track at index {id}");
+            let track = match state.play_track(id) {
+                Some(track) => track,
+                None => {
+                    error!("No track at index {id}");
+                    return Err(PlaybackError::NoTrackAtIndex(id));
+                }
+            };
+            let source = match track.open_source() {
+                Ok(source) => source,
+                Err(e) => {
+                    error!("Could not open audio source: {e}");
+                    return Err(PlaybackError::SourceError);
+                }
+            };
+            player.empty();
+            player.append(source);
+            player.play();
+            state.set_playback_state(PlaybackState::Playing);
+            Ok(())
+        }
+        None => {
+            trace!("Playing the current media");
+            if !player.is_paused() && !player.empty() {
+                Err(PlaybackError::PlayerPlaying)
+            } else if player.empty() {
+                if let Some(track) = state.current() {
+                    let source = match track.open_source() {
+                        Ok(source) => source,
+                        Err(e) => {
+                            error!("Could not open audio source: {e}");
+                            return Err(PlaybackError::SourceError);
+                        }
+                    };
+                    player.append(source);
+                    state.set_playback_state(PlaybackState::Playing);
+                    Ok(())
+                } else {
+                    Err(PlaybackError::QueueEmpty)
+                }
+            } else {
                 player.play();
                 state.set_playback_state(PlaybackState::Playing);
                 Ok(())
             }
-            None => {
-                trace!("Playing the current media");
-                if !player.is_paused() && !player.empty() {
-                    Err(PlaybackError::PlayerPlaying)
-                } else if player.empty() {
-                    if let Some(track) = state.current() {
-                        let source = match track.open_source() {
-                            Ok(source) => source,
-                            Err(e) => {
-                                error!("Could not open audio source: {e}");
-                                return Err(PlaybackError::SourceError);
-                            }
-                        };
-                        player.append(source);
-                        state.set_playback_state(PlaybackState::Playing);
-                        Ok(())
-                    } else {
-                        Err(PlaybackError::QueueEmpty)
-                    }
-                } else {
-                    player.play();
-                    state.set_playback_state(PlaybackState::Playing);
-                    Ok(())
-                }
-            }
         }
-    } else {
-        warn!("Cannot play, player is not connected");
-        Err(PlaybackError::PlayerNotConnected)
     }
 }
 
@@ -303,17 +309,13 @@ pub(crate) fn skip_next() -> Result<(), PlaybackError> {
             }
         };
         let player_guard = PLAYER_HANDLE.read().unwrap();
-        if let Some(player) = player_guard.as_ref() {
-            state.set_player_position(Duration::default());
-            state.set_playback_state(PlaybackState::Playing);
-            player.clear();
-            player.append(source);
-            player.play();
-            Ok(())
-        } else {
-            warn!("Cannot skip to the next track, player is not connected");
-            Err(PlaybackError::PlayerNotConnected)
-        }
+        let player = unwrap_player(player_guard.as_ref())?;
+        state.set_player_position(Duration::default());
+        state.set_playback_state(PlaybackState::Playing);
+        player.clear();
+        player.append(source);
+        player.play();
+        Ok(())
     } else if state.is_empty() {
         info!("Cannot skip to the next track, queue is empty");
         Err(PlaybackError::QueueEmpty)
@@ -338,16 +340,12 @@ pub(crate) fn skip_previous() -> Result<(), PlaybackError> {
             }
         };
         let player_guard = PLAYER_HANDLE.read().unwrap();
-        if let Some(player) = player_guard.as_ref() {
-            state.set_player_position(Duration::default());
-            player.clear();
-            player.append(source);
-            player.play();
-            Ok(())
-        } else {
-            warn!("Cannot skip to the previous track, player is not connected");
-            Err(PlaybackError::PlayerNotConnected)
-        }
+        let player = unwrap_player(player_guard.as_ref())?;
+        state.set_player_position(Duration::default());
+        player.clear();
+        player.append(source);
+        player.play();
+        Ok(())
     } else if state.is_empty() {
         info!("Cannot go to the previous track, queue is empty");
         Err(PlaybackError::QueueEmpty)
@@ -377,19 +375,17 @@ pub(crate) fn set_rate(rate: f64) -> Result<(), PlaybackError> {
     if !conf.as_ref().unwrap().allow_rate_modification {
         return Err(PlaybackError::FixedRate);
     }
-    let player_guard = PLAYER_HANDLE.read().unwrap();
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     if !state.playback_rate.is_in_range(rate) {
         Err(PlaybackError::RateOutOfRange)
-    } else if let Some(player) = player_guard.as_ref() {
+    } else {
+        let player_guard = PLAYER_HANDLE.read().unwrap();
+        let player = unwrap_player(player_guard.as_ref())?;
         player.set_speed(PlaybackRate::from(rate).get_value_f32()); // Not the cleanest
         state.set_rate(rate);
         background_save_state(state.clone());
         Ok(())
-    } else {
-        warn!("Cannot set playback rate, player is not connected");
-        Err(PlaybackError::PlayerNotConnected)
     }
 }
 
@@ -431,20 +427,25 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), PlaybackErro
     if state.playback_state == PlaybackState::Stopped {
         return Err(PlaybackError::PlayerStopped);
     }
-    if let Some(player) = player_guard.as_ref() {
-        if player.empty() {
-            return Err(PlaybackError::QueueEmpty);
+    let player = match player_guard.as_ref() {
+        Some(player) => player,
+        None => {
+            warn!("Cannot set player position, player is not connected");
+            return Err(PlaybackError::PlayerNotConnected);
         }
-        if let Err(e) = player.try_seek(position) {
-            error!("Could not set player position: {e}");
-            Err(PlaybackError::SeekNotSupported)
-        } else {
-            state.set_player_position(position);
-            Ok(())
-        }
+    };
+    if player.empty() {
+        Err(PlaybackError::QueueEmpty)
+    } else if let Some(track) = state.current()
+        && position > track.duration
+    {
+        skip_next()
+    } else if let Err(e) = player.try_seek(position) {
+        error!("Could not set player position: {e}");
+        Err(PlaybackError::SeekNotSupported)
     } else {
-        warn!("Cannot set player position, player is not connected");
-        Err(PlaybackError::PlayerNotConnected)
+        state.set_player_position(position);
+        Ok(())
     }
 }
 
@@ -459,22 +460,28 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
     };
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    // TODO: Clamp the duration here so if a seek would result in setting the player position under
-    // one second, set the player position to 0, and if it would result in the player being less
-    // than one second from the end of the track, skip to the next track.
     let pos = match delta {
         SignedDuration::Positive(positive_dur) => {
             if positive_dur == Duration::default() {
                 info!("Refusing to seek by 0s");
+                mpris::set_position(state.player_position);
                 return Err(PlaybackError::InvalidDuration);
             }
+            let sum = match positive_dur.checked_add(player.get_pos()) {
+                Some(sum) => sum,
+                None => {
+                    error!("Overflow detected while seeking, aborting");
+                    return Err(PlaybackError::DurationOverflow);
+                }
+            };
             if let Some(track) = state.current()
-                && player.get_pos() + positive_dur > track.duration
+                && sum > track.duration - Duration::from_secs(1)
             {
+                drop(state_guard);
                 return skip_next();
             } else {
                 trace!("Seeking player by {positive_dur:?}");
-                player.get_pos() + positive_dur
+                sum
             }
         }
         SignedDuration::Negative(negative_dur) => {
@@ -483,10 +490,17 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
                 return Err(PlaybackError::InvalidDuration);
             }
             trace!("Seeking player by -{negative_dur:?}");
-            if negative_dur > player.get_pos() {
+            let sub = match player.get_pos().checked_sub(negative_dur) {
+                Some(sub) => sub,
+                None => {
+                    error!("Overflow detected while seeking");
+                    return Err(PlaybackError::DurationOverflow);
+                }
+            };
+            if sub < Duration::from_secs(1) {
                 Duration::default()
             } else {
-                player.get_pos() - negative_dur
+                sub
             }
         }
     };
@@ -508,27 +522,19 @@ pub(crate) fn get_player_position() -> Result<Duration, PlaybackError> {
 pub(crate) fn set_player_volume(volume: PlayerVolume) -> Result<(), PlaybackError> {
     trace!("Setting player volume to {:?}", volume);
     let player_guard = PLAYER_HANDLE.read().unwrap();
-    if let Some(player) = player_guard.as_ref() {
-        player.set_volume(volume.get());
-        let mut state_guard = PLAYER_STATE.write().unwrap();
-        let state = unwrap_state_mut(state_guard.as_mut())?;
-        state.set_player_volume(volume);
-        background_save_state(state.clone());
-        Ok(())
-    } else {
-        warn!("Cannot set player volume, the player is not connected");
-        Err(PlaybackError::PlayerNotConnected)
-    }
+    let player = unwrap_player(player_guard.as_ref())?;
+    player.set_volume(volume.get());
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    state.set_player_volume(volume);
+    background_save_state(state.clone());
+    Ok(())
 }
 
 pub(crate) fn get_player_volume() -> Result<PlayerVolume, PlaybackError> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
-    if let Some(player) = player_guard.as_ref() {
-        Ok(PlayerVolume::new(player.volume()))
-    } else {
-        warn!("Cannot set player volume, the player is not connected");
-        Err(PlaybackError::PlayerNotConnected)
-    }
+    let player = unwrap_player(player_guard.as_ref())?;
+    Ok(PlayerVolume::new(player.volume()))
 }
 
 pub(crate) fn get_initial_events() -> Result<Vec<DaemonEvent>, PlaybackError> {

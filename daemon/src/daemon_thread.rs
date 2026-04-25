@@ -233,9 +233,6 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                     loop {
                         match trx.recv() {
                             Ok(event) => {
-                                trace!(
-                                    "Received an event from the daemon, realaying it to the client"
-                                );
                                 if let Err(DaemonError::SendingError) =
                                     respond(&mut conn, &DaemonResponse::Event(event))
                                 {
