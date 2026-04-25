@@ -50,7 +50,13 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
                 }
             };
 
-            let mut track = Track::from(tag);
+            let mut track = match Track::try_from(&tagged_file) {
+                Ok(track) => track,
+                Err(e) => {
+                    warn!("Could not create a track struct: {e}");
+                    return;
+                }
+            };
             if rebuild_covers {
                 if let Err(e) = track.extract_cover(tag) {
                     trace!("Could not extract a cover from file {file:?}: {e}")

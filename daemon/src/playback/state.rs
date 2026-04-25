@@ -28,10 +28,17 @@ use crate::{
     send_event,
 };
 
+#[cfg(feature = "mpris")]
+use crate::playback::mpris;
+
+/// Data structure used to store playback state on the disc and in the RAM at runtime.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct PlayerState {
+    /// The index of the current track.
+    ///
+    /// It can either point to the `tracks` variable or `shuffled_tracks` is shuffle is supported
+    /// and set to [`ShuffleState::Playlist`].
     pub position: usize,
-    // TODO: Handle this properly
     pub player_position: Duration,
     pub player_volume: PlayerVolume,
     pub playback_state: PlaybackState,
@@ -65,7 +72,60 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
 }
 
 impl PlayerState {
-    pub fn get_initial_events(&self) -> Vec<DaemonEvent> {
+    #[cfg(feature = "mpris")]
+    fn on_track_changed(&self) {
+        use mpris_server::{Metadata, Property};
+
+        // mpris::set_position(Duration::default());
+        let properties = vec![
+            match self.current() {
+                Some(track) => Property::Metadata(track.clone().get_meta()),
+                None => Property::Metadata(Metadata::new()),
+            },
+            Property::CanGoPrevious(self.can_go_previous()),
+            Property::CanGoNext(self.can_go_next()),
+        ];
+        mpris::update_properties(properties);
+    }
+
+    #[cfg(feature = "mpris")]
+    pub(crate) fn on_playback_state_changed(&self) {
+        use mpris_server::Property;
+
+        trace!("Playback state changed: {}", self.playback_state);
+        mpris::update_properties(vec![
+            Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
+            Property::CanPlay(self.can_play()),
+            Property::CanPause(self.can_pause()),
+            Property::CanSeek(self.can_seek()),
+        ]);
+    }
+
+    #[cfg(feature = "mpris")]
+    pub(crate) fn get_mpris_properties(&self) -> Vec<mpris_server::Property> {
+        use mpris_server::{Metadata, Property};
+
+        vec![
+            Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
+            Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
+            Property::Rate(self.playback_rate.get_value()),
+            Property::Shuffle(self.shuffle_state.into()),
+            Property::Volume(self.player_volume.get()),
+            Property::MinimumRate(self.get_actual_min_rate()),
+            Property::MaximumRate(self.get_actual_max_rate()),
+            Property::CanGoNext(self.can_go_next()),
+            Property::CanGoPrevious(self.can_go_previous()),
+            Property::CanPlay(self.can_play()),
+            Property::CanPause(self.can_pause()),
+            Property::CanSeek(self.can_seek()),
+            match self.current() {
+                Some(track) => Property::Metadata(track.clone().get_meta()),
+                None => Property::Metadata(Metadata::new()),
+            },
+        ]
+    }
+
+    pub(crate) fn get_initial_events(&self) -> Vec<DaemonEvent> {
         vec![
             DaemonEvent::PlaybackEvent(PlaybackEvent::PlaybackStateChanged(self.playback_state)),
             DaemonEvent::PlaybackEvent(PlaybackEvent::LoopStateChanged(self.loop_state)),
@@ -85,6 +145,32 @@ impl PlayerState {
             DaemonEvent::PlaybackEvent(PlaybackEvent::PlayerPositionChanged(self.player_position)),
             DaemonEvent::PlaybackEvent(PlaybackEvent::PlayerVolumeChanged(self.player_volume)),
         ]
+    }
+
+    /// Returns the minimum playback rate taking into account whether the playback rate
+    /// modification is allowed.
+    #[cfg(feature = "mpris")]
+    pub fn get_actual_min_rate(&self) -> f64 {
+        let conf_guard = super::CONFIG.read().unwrap();
+        let conf = conf_guard.as_ref().unwrap();
+        if conf.allow_rate_modification {
+            self.playback_rate.get_min()
+        } else {
+            self.playback_rate.get_value()
+        }
+    }
+
+    /// Returns the maximum playback rate taking into account whether the playback rate
+    /// modification is allowed.
+    #[cfg(feature = "mpris")]
+    pub fn get_actual_max_rate(&self) -> f64 {
+        let conf_guard = super::CONFIG.read().unwrap();
+        let conf = conf_guard.as_ref().unwrap();
+        if conf.allow_rate_modification {
+            self.playback_rate.get_max()
+        } else {
+            self.playback_rate.get_value()
+        }
     }
 
     pub fn send_initial_events(&self) {
@@ -109,12 +195,31 @@ impl PlayerState {
         }
     }
 
+    /// Shuffle the queue without changing the current track.
     #[cfg(feature = "shuffle")]
     pub fn shuffle(&mut self) {
-        let mut rng = rand::rng();
+        trace!("Tracks before shuffle (position: {}):", self.position);
+        for track in &self.tracks {
+            trace!("{track}");
+        }
+        if self.tracks.is_empty() {
+            use log::warn;
+
+            warn!("Refusing to shuffle an empty queue");
+            return;
+        }
+        // Maybe a position check here is necessary to prevent panics?
         let mut tracks = self.tracks.clone();
+        let prev_pos = self.position;
+        let track = tracks.swap_remove(prev_pos);
+        let mut rng = rand::rng();
         tracks.shuffle(&mut rng);
+        tracks.insert(prev_pos, track);
         self.shuffled_tracks = tracks;
+        trace!("Tracks after shuffle (position: {}):", self.position);
+        for track in &self.shuffled_tracks {
+            trace!("{track}");
+        }
         if self.shuffle_state == ShuffleState::On {
             let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::QueueChanged(
                 self.shuffled_tracks
@@ -144,6 +249,17 @@ impl PlayerState {
                     self.tracks.clone().into_iter().map(Into::into).collect()
                 },
             )));
+            #[cfg(feature = "mpris")]
+            {
+                use mpris_server::Property;
+
+                let properties = vec![
+                    Property::Shuffle(self.shuffle_state.into()),
+                    Property::CanGoPrevious(self.can_go_previous()),
+                    Property::CanGoNext(self.can_go_next()),
+                ];
+                mpris::update_properties(properties);
+            }
         }
     }
 
@@ -160,6 +276,18 @@ impl PlayerState {
             let _ = send_event(DaemonEvent::PlaybackEvent(
                 PlaybackEvent::PlayerPositionChanged(self.player_position),
             ));
+            #[cfg(feature = "mpris")]
+            {
+                use mpris_server::{Metadata, Property};
+
+                let meta = match self.current() {
+                    Some(track) => track.clone().get_meta(),
+                    None => Metadata::new(),
+                };
+                let properties = vec![Property::Metadata(meta)];
+                mpris::update_properties(properties);
+                mpris::set_position(player_position);
+            }
         }
     }
 
@@ -169,6 +297,13 @@ impl PlayerState {
             let _ = send_event(DaemonEvent::PlaybackEvent(
                 PlaybackEvent::PlayerVolumeChanged(self.player_volume),
             ));
+            #[cfg(feature = "mpris")]
+            {
+                use mpris_server::Property;
+
+                let properties = vec![Property::Volume(self.player_volume.get())];
+                mpris::update_properties(properties);
+            }
         }
     }
 
@@ -178,6 +313,17 @@ impl PlayerState {
             let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::LoopStateChanged(
                 self.loop_state,
             )));
+            #[cfg(feature = "mpris")]
+            {
+                use mpris_server::Property;
+
+                let properties = vec![
+                    Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
+                    Property::CanGoPrevious(self.can_go_previous()),
+                    Property::CanGoNext(self.can_go_next()),
+                ];
+                mpris::update_properties(properties);
+            }
         }
     }
 
@@ -187,6 +333,17 @@ impl PlayerState {
             let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::RateChanged(
                 self.playback_rate,
             )));
+            #[cfg(feature = "mpris")]
+            {
+                use mpris_server::Property;
+
+                let properties = vec![
+                    Property::Rate(self.playback_rate.get_value()),
+                    Property::MinimumRate(self.get_actual_min_rate()),
+                    Property::MaximumRate(self.get_actual_max_rate()),
+                ];
+                mpris::update_properties(properties);
+            }
         }
     }
 
@@ -196,6 +353,8 @@ impl PlayerState {
             let _ = send_event(DaemonEvent::PlaybackEvent(
                 PlaybackEvent::PlaybackStateChanged(self.playback_state),
             ));
+            #[cfg(feature = "mpris")]
+            self.on_playback_state_changed();
         }
     }
 
@@ -230,6 +389,7 @@ impl PlayerState {
         None
     }
 
+    // TODO: Inform mpris about track chagnges
     pub fn play_track(&mut self, index: usize) -> Option<&Track> {
         #[cfg(feature = "shuffle")]
         match self.shuffle_state {
@@ -264,6 +424,11 @@ impl PlayerState {
     }
 
     #[cfg(feature = "mpris")]
+    pub fn can_seek(&self) -> bool {
+        self.playback_state != PlaybackState::Stopped
+    }
+
+    #[cfg(feature = "mpris")]
     pub fn can_play(&self) -> bool {
         #[cfg(feature = "shuffle")]
         match self.shuffle_state {
@@ -277,6 +442,11 @@ impl PlayerState {
         }
         #[cfg(not(feature = "shuffle"))]
         return self.position < self.tracks.len() && self.playback_rate != PlaybackState::Playing;
+    }
+
+    #[cfg(feature = "mpris")]
+    pub fn can_pause(&self) -> bool {
+        self.playback_state == PlaybackState::Playing
     }
 
     pub fn can_go_next(&self) -> bool {
@@ -327,6 +497,8 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 return self.current();
                             }
                             None
@@ -337,6 +509,8 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 return self.current();
                             }
                             None
@@ -354,6 +528,8 @@ impl PlayerState {
                 let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                     self.position,
                 )));
+                #[cfg(feature = "mpris")]
+                self.on_track_changed();
                 self.current()
             }
             LoopState::Playlist =>
@@ -369,12 +545,16 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             } else {
                                 self.position = 0;
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             }
                         }
@@ -386,12 +566,16 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             } else {
                                 self.position = 0;
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             }
                         }
@@ -403,12 +587,16 @@ impl PlayerState {
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
                     self.current()
                 } else {
                     self.position = 0;
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
                     self.current()
                 }
             }
@@ -464,6 +652,8 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 return self.current();
                             }
                             None
@@ -474,6 +664,8 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 return self.current();
                             }
                             None
@@ -485,6 +677,8 @@ impl PlayerState {
                         let _ = send_event(DaemonEvent::PlaybackEvent(
                             PlaybackEvent::PositionChanged(self.position),
                         ));
+                        #[cfg(feature = "mpris")]
+                        self.on_track_changed();
                         return self.current();
                     }
                     None
@@ -494,6 +688,8 @@ impl PlayerState {
                 let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                     self.position,
                 )));
+                #[cfg(feature = "mpris")]
+                self.on_track_changed();
                 self.current()
             }
             LoopState::Playlist => {
@@ -507,12 +703,16 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             } else {
                                 self.position = self.tracks.len() - 1;
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             }
                         }
@@ -524,12 +724,16 @@ impl PlayerState {
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             } else {
                                 self.position = self.shuffled_tracks.len() - 1;
                                 let _ = send_event(DaemonEvent::PlaybackEvent(
                                     PlaybackEvent::PositionChanged(self.position),
                                 ));
+                                #[cfg(feature = "mpris")]
+                                self.on_track_changed();
                                 self.current()
                             }
                         }
@@ -541,12 +745,16 @@ impl PlayerState {
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
                     self.current()
                 } else {
                     self.position = self.tracks.len() - 1;
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
                     self.current()
                 }
             }
@@ -683,8 +891,11 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, MusicLibraryErro
             }
         };
 
-        match state_raw.try_into() {
-            Ok(state) => Ok(state),
+        match <PlayerStateRaw as TryInto<PlayerState>>::try_into(state_raw) {
+            Ok(mut state) => {
+                state.playback_state = PlaybackState::Stopped;
+                Ok(state)
+            }
             Err(e) => {
                 error!("Could not restore player state from cache: {e}");
                 Err(e)

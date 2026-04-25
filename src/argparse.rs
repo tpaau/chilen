@@ -484,6 +484,7 @@ pub fn parse_args() -> Args {
         .filter_module("zbus", foreign_module_filter)
         .filter_module("symphonia_core", foreign_module_filter)
         .filter_module("symphonia_bundle_mp3", foreign_module_filter)
+        .filter_module("symphonia_bundle_flac", foreign_module_filter)
         .init();
 
     trace!("Finished parsing command line arguments");

@@ -64,8 +64,9 @@ pub enum PlaybackError {
     PlayerPlaying,
     /// The player is already paused.
     PlayerPaused,
-    /// The player has already stopped.
-    PlayerStoppped,
+    /// Thrown when a client attempts to stop the player when it was already stopped or when a
+    /// client attempts to seek while the player is stopped.
+    PlayerStopped,
     /// Seek is not supported.
     SeekNotSupported,
     /// Cannot go to the previous track.
@@ -80,6 +81,8 @@ pub enum PlaybackError {
     RateOutOfRange,
     /// The modification of the playback rate is disallowed.
     FixedRate,
+    /// The player position could not be set because the duration provided was invalid.
+    InvalidDuration,
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -94,7 +97,7 @@ impl std::fmt::Display for PlaybackError {
             ),
             Self::PlayerPlaying => write!(f, "The player is already playing"),
             Self::PlayerPaused => write!(f, "The player is already paused"),
-            Self::PlayerStoppped => write!(f, "The player has already stopped"),
+            Self::PlayerStopped => write!(f, "The player is stopped"),
             Self::SeekNotSupported => write!(f, "Seek is not supported"),
             Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
             Self::CannotGoNext => write!(f, "Cannot go to the next track"),
@@ -104,6 +107,10 @@ impl std::fmt::Display for PlaybackError {
                 write!(f, "The specified rate value was out of the allowed range")
             }
             Self::FixedRate => write!(f, "The modification of the playback rate is disallowed"),
+            Self::InvalidDuration => write!(
+                f,
+                "The player position could not be set because the duration provided was invalid"
+            ),
         }
     }
 }
@@ -155,6 +162,7 @@ pub struct Track {
     pub path: PathBuf,
     /// The path to the extracted cover file, if exists.
     pub cover_path: Option<PathBuf>,
+    pub duration: Duration,
     pub artist: Option<String>,
     pub title: Option<String>,
     pub album: Option<String>,

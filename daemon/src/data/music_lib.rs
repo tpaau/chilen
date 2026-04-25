@@ -8,7 +8,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use lofty::tag::{Accessor, ItemValue, Tag};
+use lofty::{
+    file::{AudioFile, TaggedFile, TaggedFileExt},
+    tag::{Accessor, ItemValue, Tag},
+};
 use log::{error, trace};
 use mpipc::{DataError, MusicLibraryError};
 use rmp_serde::{Deserializer, Serializer};
@@ -60,6 +63,7 @@ impl From<MusicLibrary> for ConfMusicLibrary {
 pub(crate) struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,
+    pub duration: Duration,
     pub artist: Option<String>,
     pub title: Option<String>,
     pub album: Option<String>,
@@ -78,6 +82,7 @@ impl From<mpipc::Track> for Track {
         Track {
             path: value.path,
             cover_path: value.cover_path,
+            duration: value.duration,
             artist: value.artist,
             title: value.title,
             album: value.album,
@@ -98,6 +103,7 @@ impl From<Track> for mpipc::Track {
         mpipc::Track {
             path: value.path,
             cover_path: value.cover_path,
+            duration: value.duration,
             artist: value.artist,
             title: value.title,
             album: value.album,
@@ -124,8 +130,16 @@ impl std::fmt::Display for Track {
     }
 }
 
-impl From<&Tag> for Track {
-    fn from(tag: &Tag) -> Self {
+impl TryFrom<&TaggedFile> for Track {
+    type Error = String;
+    fn try_from(value: &TaggedFile) -> Result<Self, Self::Error> {
+        let tag = match value.primary_tag() {
+            Some(tag) => tag,
+            None => {
+                return Err(String::from("The provided tagged file had no tags"));
+            }
+        };
+
         let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
             Some(tag_item) => match tag_item.value() {
                 ItemValue::Text(lyrics) => Some(lyrics.clone()),
@@ -134,9 +148,10 @@ impl From<&Tag> for Track {
             None => None,
         };
 
-        Track {
+        Ok(Track {
             path: PathBuf::new(),
             cover_path: None,
+            duration: value.properties().duration(),
             artist: tag.artist().map(|artist| artist.into()),
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
@@ -148,7 +163,7 @@ impl From<&Tag> for Track {
             disk: tag.disk(),
             disk_total: tag.disk_total(),
             year: tag.year(),
-        }
+        })
     }
 }
 
@@ -173,6 +188,27 @@ impl Track {
             hashes.push(Self::hash_track(track));
         }
         hashes
+    }
+
+    #[cfg(feature = "mpris")]
+    pub fn get_meta(self) -> mpris_server::Metadata {
+        use mpris_server::{Time, builder::MetadataBuilder};
+
+        MetadataBuilder::default()
+            .length(Time::from_nanos(
+                self.duration.as_nanos().try_into().unwrap_or(i64::MAX),
+            ))
+            .url(self.path.to_string_lossy())
+            .art_url(self.cover_path.unwrap_or_default().to_string_lossy())
+            .artist(self.artist)
+            .title(self.title.unwrap_or_default())
+            .album(self.album.unwrap_or_default())
+            .genre(self.genre)
+            .comment(self.comment)
+            .track_number(self.track.unwrap_or(0).try_into().unwrap_or(0))
+            .disc_number(self.disk.unwrap_or(0).try_into().unwrap_or(0))
+            .lyrics(self.lyrics.unwrap_or_default())
+            .build()
     }
 
     pub fn open_file(&self) -> std::io::Result<File> {

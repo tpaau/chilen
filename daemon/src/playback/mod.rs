@@ -146,6 +146,7 @@ pub(crate) fn play(position: Option<usize>) -> Result<(), PlaybackError> {
         let state = unwrap_state_mut(state_guard.as_mut())?;
         match position {
             Some(pos) => {
+                trace!("Playing a track at position {pos}");
                 let track = match state.play_track(pos) {
                     Some(track) => track,
                     None => {
@@ -167,6 +168,7 @@ pub(crate) fn play(position: Option<usize>) -> Result<(), PlaybackError> {
                 Ok(())
             }
             None => {
+                trace!("Playing the current media");
                 if !player.is_paused() && !player.empty() {
                     Err(PlaybackError::PlayerPlaying)
                 } else if player.empty() {
@@ -217,7 +219,7 @@ pub(crate) fn stop() -> Result<(), PlaybackError> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = player_guard.as_ref().unwrap();
     if player.empty() {
-        Err(PlaybackError::PlayerStoppped)
+        Err(PlaybackError::PlayerStopped)
     } else {
         player.stop();
         let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -303,6 +305,7 @@ pub(crate) fn skip_next() -> Result<(), PlaybackError> {
         let player_guard = PLAYER_HANDLE.read().unwrap();
         if let Some(player) = player_guard.as_ref() {
             state.set_player_position(Duration::default());
+            state.set_playback_state(PlaybackState::Playing);
             player.clear();
             player.append(source);
             player.play();
@@ -423,6 +426,11 @@ pub(crate) fn get_shuffle_state() -> Result<ShuffleState, PlaybackError> {
 pub(crate) fn set_player_position(position: Duration) -> Result<(), PlaybackError> {
     trace!("Setting player position to {:?}", position.as_secs());
     let player_guard = PLAYER_HANDLE.read().unwrap();
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    if state.playback_state == PlaybackState::Stopped {
+        return Err(PlaybackError::PlayerStopped);
+    }
     if let Some(player) = player_guard.as_ref() {
         if player.empty() {
             return Err(PlaybackError::QueueEmpty);
@@ -431,8 +439,6 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), PlaybackErro
             error!("Could not set player position: {e}");
             Err(PlaybackError::SeekNotSupported)
         } else {
-            let mut state_guard = PLAYER_STATE.write().unwrap();
-            let state = unwrap_state_mut(state_guard.as_mut())?;
             state.set_player_position(position);
             Ok(())
         }
@@ -451,22 +457,43 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
             return Err(PlaybackError::PlayerNotConnected);
         }
     };
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    // TODO: Clamp the duration here so if a seek would result in setting the player position under
+    // one second, set the player position to 0, and if it would result in the player being less
+    // than one second from the end of the track, skip to the next track.
     let pos = match delta {
         SignedDuration::Positive(positive_dur) => {
-            trace!("Seeking player by {positive_dur:?}");
-            player.get_pos() + positive_dur
+            if positive_dur == Duration::default() {
+                info!("Refusing to seek by 0s");
+                return Err(PlaybackError::InvalidDuration);
+            }
+            if let Some(track) = state.current()
+                && player.get_pos() + positive_dur > track.duration
+            {
+                return skip_next();
+            } else {
+                trace!("Seeking player by {positive_dur:?}");
+                player.get_pos() + positive_dur
+            }
         }
         SignedDuration::Negative(negative_dur) => {
+            if negative_dur == Duration::default() {
+                info!("Refusing to seek by 0s");
+                return Err(PlaybackError::InvalidDuration);
+            }
             trace!("Seeking player by -{negative_dur:?}");
-            player.get_pos() - negative_dur
+            if negative_dur > player.get_pos() {
+                Duration::default()
+            } else {
+                player.get_pos() - negative_dur
+            }
         }
     };
     if let Err(e) = player.try_seek(pos) {
         error!("Could not set player position: {e}");
         Err(PlaybackError::SeekNotSupported)
     } else {
-        let mut state_guard = PLAYER_STATE.write().unwrap();
-        let state = unwrap_state_mut(state_guard.as_mut())?;
         state.set_player_position(pos);
         Ok(())
     }
@@ -580,7 +607,8 @@ pub(crate) fn init(config: Config) {
                 state.set_playback_state(PlaybackState::Stopped);
                 continue;
             }
-            let source = match state.next().unwrap().open_source() {
+            let track = state.next().unwrap();
+            let source = match track.open_source() {
                 Ok(source) => source,
                 Err(e) => {
                     error!("Could not open audio source: {e}");
@@ -591,7 +619,7 @@ pub(crate) fn init(config: Config) {
             if initial_iter {
                 player.pause();
                 initial_iter = false;
-                state.set_playback_state(PlaybackState::Paused);
+                state.set_playback_state(PlaybackState::Stopped);
             } else {
                 state.set_playback_state(PlaybackState::Playing);
             }
