@@ -182,9 +182,14 @@ impl PlayerState {
 
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.position = 0;
+        trace!("Position changed: {}", self.position);
         self.tracks = tracks;
         #[cfg(feature = "shuffle")]
-        self.shuffle();
+        if self.shuffle_state == ShuffleState::On {
+            self.shuffle();
+        }
+        #[cfg(feature = "mpris")]
+        self.on_track_changed();
     }
 
     pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
@@ -198,10 +203,10 @@ impl PlayerState {
     /// Shuffle the queue without changing the current track.
     #[cfg(feature = "shuffle")]
     pub fn shuffle(&mut self) {
-        // trace!("Tracks before shuffle (position: {}):", self.position);
-        // for track in &self.tracks {
-        //     trace!("{track}");
-        // }
+        trace!("Tracks before shuffle (position: {}):", self.position);
+        for track in &self.tracks {
+            trace!("{track}");
+        }
         if self.tracks.is_empty() {
             use log::warn;
 
@@ -216,10 +221,10 @@ impl PlayerState {
         tracks.shuffle(&mut rng);
         tracks.insert(prev_pos, track);
         self.shuffled_tracks = tracks;
-        // trace!("Tracks after shuffle (position: {}):", self.position);
-        // for track in &self.shuffled_tracks {
-        //     trace!("{track}");
-        // }
+        trace!("Tracks after shuffle (position: {}):", self.position);
+        for track in &self.shuffled_tracks {
+            trace!("{track}");
+        }
         if self.shuffle_state == ShuffleState::On {
             let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::QueueChanged(
                 self.shuffled_tracks
@@ -399,6 +404,9 @@ impl PlayerState {
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
+                    self.position = index;
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
                     return Some(&self.tracks[index]);
                 }
             }
@@ -408,6 +416,9 @@ impl PlayerState {
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
+                    self.position = index;
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
                     return Some(&self.shuffled_tracks[index]);
                 }
             }
@@ -418,6 +429,9 @@ impl PlayerState {
             let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                 self.position,
             )));
+            self.position = index;
+            #[cfg(feature = "mpris")]
+            self.on_track_changed();
             return Some(&self.tracks[index]);
         }
         None
@@ -452,27 +466,13 @@ impl PlayerState {
     pub fn can_go_next(&self) -> bool {
         match self.loop_state {
             LoopState::Off => {
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => {
-                            if self.tracks.is_empty() {
-                                return false;
-                            }
-                            self.position < self.tracks.len() - 1
-                        }
-                        ShuffleState::On => {
-                            if self.shuffled_tracks.is_empty() {
-                                return false;
-                            }
-                            self.position < self.shuffled_tracks.len() - 1
-                        }
-                    }
-                } else {
-                    if self.tracks.is_empty() {
-                        return false;
-                    }
-                    self.position < self.tracks.len() - 1
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => self.position < self.tracks.len() - 1,
+                    ShuffleState::On => self.position < self.shuffled_tracks.len() - 1,
                 }
+                #[cfg(not(feature = "shuffle"))]
+                return self.position < self.tracks.len() - 1;
             }
             _ => {
                 #[cfg(feature = "shuffle")]
@@ -489,40 +489,30 @@ impl PlayerState {
     pub fn next(&mut self) -> Option<&Track> {
         match self.loop_state {
             LoopState::Off => {
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => {
-                            if self.position < self.tracks.len() - 1 {
-                                self.position += 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                return self.current();
-                            }
-                            None
-                        }
-                        ShuffleState::On => {
-                            if self.position < self.shuffled_tracks.len() - 1 {
-                                self.position += 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                return self.current();
-                            }
-                            None
-                        }
-                    }
-                } else {
-                    if self.position < self.tracks.len() - 1 {
-                        self.position += 1;
-                        return self.current();
-                    }
-                    None
+                #[cfg(feature = "shuffle")]
+                if (self.shuffle_state == ShuffleState::Off
+                    && self.position < self.tracks.len() - 1)
+                    || (self.shuffle_state == ShuffleState::On
+                        && self.position < self.shuffled_tracks.len() - 1)
+                {
+                    self.position += 1;
+                    trace!("Position changed: {}", self.position);
+                    let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                        self.position,
+                    )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
+                    return self.current();
                 }
+                #[cfg(not(feature = "shuffle"))]
+                if self.position < self.tracks.len() - 1 {
+                    self.position += 1;
+                    trace!("Position changed: {}", self.position);
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
+                    return self.current();
+                }
+                None
             }
             LoopState::Track => {
                 let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
@@ -532,58 +522,19 @@ impl PlayerState {
                 self.on_track_changed();
                 self.current()
             }
-            LoopState::Playlist =>
-            {
+            LoopState::Playlist => {
                 #[cfg(feature = "shuffle")]
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => {
-                            if self.tracks.is_empty() {
-                                None
-                            } else if self.position < self.tracks.len() - 1 {
-                                self.position += 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            } else {
-                                self.position = 0;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            }
-                        }
-                        ShuffleState::On => {
-                            if self.shuffled_tracks.is_empty() {
-                                None
-                            } else if self.position < self.shuffled_tracks.len() - 1 {
-                                self.position += 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            } else {
-                                self.position = 0;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            }
-                        }
-                    }
-                } else if self.tracks.is_empty() {
+                if (self.shuffle_state == ShuffleState::Off && self.tracks.is_empty())
+                    || (self.shuffle_state == ShuffleState::On && self.shuffled_tracks.is_empty())
+                {
                     None
-                } else if self.position < self.tracks.len() - 1 {
+                } else if (self.shuffle_state == ShuffleState::Off
+                    && self.position < self.tracks.len() - 1)
+                    || (self.shuffle_state == ShuffleState::On
+                        && self.position < self.shuffled_tracks.len() - 1)
+                {
                     self.position += 1;
+                    trace!("Position changed: {}", self.position);
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
@@ -592,6 +543,29 @@ impl PlayerState {
                     self.current()
                 } else {
                     self.position = 0;
+                    trace!("Position changed: {}", self.position);
+                    let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                        self.position,
+                    )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
+                    self.current()
+                }
+                #[cfg(not(feature = "shuffle"))]
+                if self.tracks.is_empty() {
+                    None
+                } else if self.position < self.tracks.len() - 1 {
+                    self.position += 1;
+                    trace!("Position changed: {}", self.position);
+                    let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                        self.position,
+                    )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
+                    self.current()
+                } else {
+                    self.position = 0;
+                    trace!("Position changed: {}", self.position);
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
@@ -606,37 +580,22 @@ impl PlayerState {
     pub fn can_go_previous(&self) -> bool {
         match self.loop_state {
             LoopState::Off => {
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => {
-                            if self.tracks.is_empty() {
-                                return false;
-                            }
-                            self.position > 0
-                        }
-                        ShuffleState::On => {
-                            if self.shuffled_tracks.is_empty() {
-                                return false;
-                            }
-                            self.position > 0
-                        }
-                    }
-                } else {
-                    if self.tracks.is_empty() {
-                        return false;
-                    }
-                    self.position > 0
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => !self.tracks.is_empty() && self.position > 0,
+                    ShuffleState::On => !self.shuffled_tracks.is_empty() && self.position > 0,
                 }
+                #[cfg(not(feature = "shuffle"))]
+                return !self.tracks.is_empty() && self.position > 0;
             }
             _ => {
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => !self.tracks.is_empty(),
-                        ShuffleState::On => !self.shuffled_tracks.is_empty(),
-                    }
-                } else {
-                    !self.tracks.is_empty()
+                #[cfg(feature = "shuffle")]
+                match self.shuffle_state {
+                    ShuffleState::Off => !self.tracks.is_empty(),
+                    ShuffleState::On => !self.shuffled_tracks.is_empty(),
                 }
+                #[cfg(not(feature = "shuffle"))]
+                return !self.tracks.is_empty();
             }
         }
     }
@@ -644,45 +603,32 @@ impl PlayerState {
     pub fn previous(&mut self) -> Option<&Track> {
         match self.loop_state {
             LoopState::Off => {
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => {
-                            if self.position > 0 && !self.tracks.is_empty() {
-                                self.position -= 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                return self.current();
-                            }
-                            None
-                        }
-                        ShuffleState::On => {
-                            if self.position > 0 && !self.shuffled_tracks.is_empty() {
-                                self.position -= 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                return self.current();
-                            }
-                            None
-                        }
-                    }
-                } else {
-                    if self.position > 0 && !self.tracks.is_empty() {
-                        self.position -= 1;
-                        let _ = send_event(DaemonEvent::PlaybackEvent(
-                            PlaybackEvent::PositionChanged(self.position),
-                        ));
-                        #[cfg(feature = "mpris")]
-                        self.on_track_changed();
-                        return self.current();
-                    }
-                    None
+                #[cfg(feature = "shuffle")]
+                if self.position > 0
+                    && (self.shuffle_state == ShuffleState::Off && !self.tracks.is_empty())
+                    || (self.shuffle_state == ShuffleState::On && !self.shuffled_tracks.is_empty())
+                {
+                    self.position -= 1;
+                    trace!("Position changed: {}", self.position);
+                    let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                        self.position,
+                    )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
+                    return self.current();
                 }
+                #[cfg(not(feature = "shuffle"))]
+                if self.position > 0 && !self.tracks.is_empty() {
+                    self.position -= 1;
+                    trace!("Position changed: {}", self.position);
+                    let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
+                        self.position,
+                    )));
+                    #[cfg(feature = "mpris")]
+                    self.on_track_changed();
+                    return self.current();
+                }
+                None
             }
             LoopState::Track => {
                 let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
@@ -693,55 +639,14 @@ impl PlayerState {
                 self.current()
             }
             LoopState::Playlist => {
-                if cfg!(feature = "shuffle") {
-                    match self.shuffle_state {
-                        ShuffleState::Off => {
-                            if self.tracks.is_empty() {
-                                None
-                            } else if self.position > 0 {
-                                self.position -= 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            } else {
-                                self.position = self.tracks.len() - 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            }
-                        }
-                        ShuffleState::On => {
-                            if self.shuffled_tracks.is_empty() {
-                                None
-                            } else if self.position > 0 {
-                                self.position -= 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            } else {
-                                self.position = self.shuffled_tracks.len() - 1;
-                                let _ = send_event(DaemonEvent::PlaybackEvent(
-                                    PlaybackEvent::PositionChanged(self.position),
-                                ));
-                                #[cfg(feature = "mpris")]
-                                self.on_track_changed();
-                                self.current()
-                            }
-                        }
-                    }
-                } else if self.tracks.is_empty() {
+                #[cfg(feature = "shuffle")]
+                if (self.shuffle_state == ShuffleState::Off && self.tracks.is_empty())
+                    || (self.shuffle_state == ShuffleState::On && self.shuffled_tracks.is_empty())
+                {
                     None
                 } else if self.position > 0 {
                     self.position -= 1;
+                    trace!("Position changed: {}", self.position);
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
@@ -750,12 +655,37 @@ impl PlayerState {
                     self.current()
                 } else {
                     self.position = self.tracks.len() - 1;
+                    trace!("Position changed: {}", self.position);
                     let _ = send_event(DaemonEvent::PlaybackEvent(PlaybackEvent::PositionChanged(
                         self.position,
                     )));
                     #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     self.current()
+                }
+                #[cfg(not(feature = "shuffle"))]
+                {
+                    if self.tracks.is_empty() {
+                        None
+                    } else if self.position > 0 {
+                        self.position -= 1;
+                        trace!("Position changed: {}", self.position);
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
+                        #[cfg(feature = "mpris")]
+                        self.on_track_changed();
+                        self.current()
+                    } else {
+                        self.position = self.tracks.len() - 1;
+                        trace!("Position changed: {}", self.position);
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
+                        #[cfg(feature = "mpris")]
+                        self.on_track_changed();
+                        self.current()
+                    }
                 }
             }
         }

@@ -299,8 +299,7 @@ pub(crate) fn skip_next() -> Result<(), PlaybackError> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     if state.can_go_next() {
-        let track = state.next().unwrap().clone();
-        background_save_state(state.clone());
+        let track = state.next().unwrap();
         let source = match track.open_source() {
             Ok(source) => source,
             Err(e) => {
@@ -308,6 +307,7 @@ pub(crate) fn skip_next() -> Result<(), PlaybackError> {
                 return Err(PlaybackError::SourceError);
             }
         };
+        background_save_state(state.clone());
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = unwrap_player(player_guard.as_ref())?;
         state.set_player_position(Duration::default());
@@ -330,8 +330,7 @@ pub(crate) fn skip_previous() -> Result<(), PlaybackError> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     if state.can_go_previous() {
-        let track = state.previous().unwrap().clone();
-        background_save_state(state.clone());
+        let track = state.previous().unwrap();
         let source = match track.open_source() {
             Ok(source) => source,
             Err(e) => {
@@ -339,9 +338,11 @@ pub(crate) fn skip_previous() -> Result<(), PlaybackError> {
                 return Err(PlaybackError::SourceError);
             }
         };
+        background_save_state(state.clone());
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = unwrap_player(player_guard.as_ref())?;
         state.set_player_position(Duration::default());
+        state.set_playback_state(PlaybackState::Playing);
         player.clear();
         player.append(source);
         player.play();
@@ -464,6 +465,7 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), PlaybackError> {
         SignedDuration::Positive(positive_dur) => {
             if positive_dur == Duration::default() {
                 info!("Refusing to seek by 0s");
+                #[cfg(feature = "mpris")]
                 mpris::set_position(state.player_position);
                 return Err(PlaybackError::InvalidDuration);
             }
