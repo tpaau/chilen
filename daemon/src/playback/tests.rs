@@ -7,7 +7,7 @@ use mpipc::ShuffleState;
 use crate::{data::music_lib::Track, playback::state::PlayerState};
 
 // Higher values will reduce the chance of false positives but will increase the runtime of some tests.
-const TEST_ITER_COUNT: u32 = 100;
+const TEST_ITER_COUNT: u32 = 1000;
 
 /// Returns a [`Vec`] of unique [`Track`] structs for testing.
 fn unique_tracks(size: usize) -> Vec<Track> {
@@ -148,7 +148,7 @@ fn shuffle_track_stays_the_same() {
         println!("For loop state: {loop_state}");
         for i in 0..TEST_ITER_COUNT {
             let pre_track = if loop_state == LoopState::Track {
-                Some(&state.tracks[state.position].clone())
+                Some(state.current().cloned().unwrap())
             } else {
                 None
             };
@@ -161,7 +161,7 @@ fn shuffle_track_stays_the_same() {
                     assert_eq!(state.current().unwrap(), track);
                 } else {
                     println!("Disabling shuffle!");
-                    let track = &state.tracks[state.position].clone();
+                    let track = &state.shuffled_tracks[state.position].clone();
                     state.set_shuffle_state(ShuffleState::Off);
                     assert_eq!(state.current().unwrap(), track);
                 }
@@ -182,7 +182,8 @@ fn shuffle_track_stays_the_same() {
             } else {
                 println!("Right (2)!");
                 state.next()
-            };
+            }
+            .cloned();
             if loop_state == LoopState::Track {
                 assert_eq!(track, pre_track);
             }

@@ -231,24 +231,25 @@ impl PlayerState {
     #[cfg(feature = "shuffle")]
     pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
         if self.shuffle_state != shuffle_state {
-            if shuffle_state == ShuffleState::Off && self.current().is_some() {
-                let track = self.current().unwrap().clone();
-                self.shuffle_state = shuffle_state;
-                let pos = self.tracks.iter().position(|t| *t == track);
-                match pos {
-                    Some(pos) => self.position = pos,
+            if shuffle_state == ShuffleState::Off
+                && let Some(track) = self.current().cloned()
+            {
+                match self.tracks.iter().position(|t| *t == track) {
+                    Some(pos) => {
+                        let _ = send_event(DaemonEvent::PlaybackEvent(
+                            PlaybackEvent::PositionChanged(self.position),
+                        ));
+                        self.position = pos
+                    }
                     None => {
-                        use log::warn;
-
-                        use crate::playback;
-
-                        warn!("Could not find the previous track in the queue, this should never happen");
-                        thread::spawn(playback::stop);
+                        log::warn!(
+                            "Could not find the previous track in the queue, this should never happen"
+                        );
+                        thread::spawn(crate::playback::stop);
                     }
                 }
-            } else {
-                self.shuffle_state = shuffle_state;
             }
+            self.shuffle_state = shuffle_state;
             let _ = send_event(DaemonEvent::PlaybackEvent(
                 PlaybackEvent::ShuffleStateChanged(self.shuffle_state),
             ));
