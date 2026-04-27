@@ -62,7 +62,7 @@ fn check_or_init_dir(dir: &PathBuf, dir_type: DirType) -> Result<(), DataError> 
     }
 }
 
-pub(crate) fn set_data_dirs(config: crate::Config) -> Result<(), DataError> {
+pub(crate) fn set_dirs(config: crate::Config) -> Result<(), DataError> {
     check_or_init_dir(&config.cache_dir, DirType::Cache)?;
     check_or_init_dir(&config.data_dir, DirType::Data)?;
     if config.music_dir.is_dir() {

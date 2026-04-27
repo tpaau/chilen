@@ -1,5 +1,9 @@
+#![doc = include_str!("../README.md")]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![feature(doc_cfg)]
+
 mod daemon_thread;
-pub mod data;
+mod data;
 pub mod playback;
 #[cfg(test)]
 mod tests;
@@ -8,7 +12,6 @@ use std::{
     env::home_dir,
     fs::remove_file,
     path::PathBuf,
-    process::exit,
     sync::{
         Arc, LazyLock, RwLock,
         mpsc::{self, channel},
@@ -16,38 +19,22 @@ use std::{
     thread,
 };
 
-use interprocess::local_socket::{
-    GenericNamespaced, ListenerOptions, NameType, Stream, traits::ListenerExt,
-};
+use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::SocketType;
 use mpipc::{
     ClientCommand, ConfigError, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DaemonResponse,
-    exec_client_command, get_daemon_socket,
+    exec_client_command,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::data::{
-    CACHE_DIR,
-    music_lib::{self, LoadMode},
-    set_data_dirs,
-};
+use crate::data::{CACHE_DIR, music_lib};
+
+/// Defines the socket type to use when starting the daemon.
+pub type SocketType = mpipc::SocketType;
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// Parsed CLI arguments for the daemon.
-pub enum DaemonCommand {
-    /// Start the daemon. This is not to be sent over the daemon socket.
-    Start,
-    /// Command for the daemon instance.
-    Message {
-        /// The command content meant to be sent over the daemon socket.
-        command: ClientCommand,
-    },
-}
 
 /// Defines under which conditions should the daemon claim an occupied socket address.
 ///
@@ -56,16 +43,18 @@ pub enum DaemonCommand {
 pub enum AddrClaimMode {
     /// Do not claim the socket address under any circumstances.
     DoNotClaim,
-    /// Only claim the socket address if there is no response to ping requests from the process
-    /// that listens of the socket.
+    /// Only claim the socket address if there is no response to ping commands from the process
+    /// that listens on the socket.
     #[default]
     ClaimIfUnresponsive,
     /// Force claim the socket address.
     ForceClaim,
 }
 
+/// Configuration options for the daemon.
+///
+/// Used with the [`start`] function.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Daemon config that can be passed to the `start` function.
 pub struct Config {
     /// The directory containing daemon cache.
     pub cache_dir: PathBuf,
@@ -74,11 +63,15 @@ pub struct Config {
     /// The directory containing the music library/audio files to load.
     pub music_dir: PathBuf,
     /// The name of the socket to listen on.
+    ///
+    /// This will either resolve to a namespaced socket with the same name, or, in case of a
+    /// filesystem socket, a file with the same name in the temporary directory.
     pub socket_name: String,
     /// Defines under which conditions should the daemon claim an occupied socket address.
     pub addr_claim_mode: AddrClaimMode,
     /// Defines the type of socket the daemon should use.
     pub socket_type: SocketType,
+    /// Configuration options specific to the [`playback`] module.
     pub playback_config: playback::Config,
 }
 
@@ -86,7 +79,7 @@ impl Config {
     /// Get the default daemon config.
     ///
     /// For a custom music player, you probably want to create your own config from
-    /// scratch, or use the `Config::try_from_name(...)` constructor.
+    /// scratch, or use the [`Config::try_from_name`] constructor.
     ///
     /// # Examples
     /// ```
@@ -94,22 +87,22 @@ impl Config {
     /// let conf = daemon::Config::try_default().unwrap();
     /// ```
     pub fn try_default() -> Result<Self, ConfigError> {
-        Self::try_from_name("music-player".to_string(), DEFAULT_SOCKET_NAME)
+        Self::try_from_name("music-player", DEFAULT_SOCKET_NAME)
     }
 
     /// Create a new config from program and socket names.
     ///
     /// The generated paths will contain the name of the program, eg. `~/.cache/<PROGRAM_NAME>`,
-    /// ``~/.local/share/<PROGRAM_NAME>`.
+    /// `~/.local/share/<PROGRAM_NAME>`.
     ///
-    /// Fails if the home directory is not available.
+    /// Fails if the path to the home directory cannot be obtained.
     ///
     /// # Examples
     /// ```
     /// # use daemon;
-    /// let conf = daemon::Config::try_from_name("my-player".to_string(), "MY_PLAYER");
+    /// let conf = daemon::Config::try_from_name("my-player", "MY_PLAYER");
     /// ```
-    pub fn try_from_name(name: String, socket_name: &str) -> Result<Self, ConfigError> {
+    pub fn try_from_name(name: &str, socket_name: &str) -> Result<Self, ConfigError> {
         let home_dir = match home_dir() {
             Some(home) => home,
             None => {
@@ -119,17 +112,17 @@ impl Config {
 
         let mut cache_dir = home_dir.clone();
         cache_dir.push(".cache");
-        cache_dir.push(&name);
+        cache_dir.push(name);
 
         let mut data_dir = home_dir.clone();
         data_dir.push(".local/share");
-        data_dir.push(&name);
+        data_dir.push(name);
 
         let mut music_dir = home_dir.clone();
         music_dir.push("Music");
 
         #[cfg(feature = "mpris")]
-        let bus_name_suffix = String::from("com.dev.") + &name;
+        let bus_name_suffix = String::from("com.dev.") + name;
         #[cfg(feature = "mpris")]
         if !bus_name_suffix.is_ascii() {
             return Err(ConfigError::InvalidBusNameSuffix);
@@ -153,18 +146,6 @@ impl Config {
     }
 }
 
-impl TryFrom<DaemonCommand> for ClientCommand {
-    type Error = String;
-    fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
-        match value {
-            DaemonCommand::Start => Err(String::from(
-                "Daemon start command cannot be converted to a client command",
-            )),
-            DaemonCommand::Message { command } => Ok(command),
-        }
-    }
-}
-
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     match conn {
         Ok(c) => Some(c),
@@ -175,6 +156,136 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
+/// Create an IPC socket listener for the daemon with the specified address.
+///
+/// Depending on the configuration, this can either return a namespaced socket or a filesystem one.
+///
+/// A filesystem socket will be returned if namespaced sockets are not supported, and the
+/// [`SocketType`] passed is [`SocketType::NamespacedOrFilesystem`], or if the [`SocketType`] value
+/// passed is [`SocketType::FilesystemOnly`].
+///
+/// The [`AddrClaimMode`] value defines under which conditions should an occupied socket address be
+/// claimed. This is only effective for filesystem sockets.
+fn get_listener(
+    socket_name: &str,
+    socket_type: &SocketType,
+    claim_mode: &AddrClaimMode,
+) -> Result<Listener, DaemonError> {
+    let socket = match mpipc::get_socket(socket_name, socket_type) {
+        Ok(sock) => sock,
+        Err(e) => {
+            error!("Could not obtain the socket: {e}");
+            return Err(DaemonError::SocketError);
+        }
+    };
+
+    let opts = ListenerOptions::new().name(socket.clone());
+    if socket.is_namespaced() {
+        trace!(
+            "Creating a listener on \"{}\" (namespaced socket)",
+            socket_name
+        );
+    } else {
+        trace!(
+            "Creating a listener on \"{}\" (filesystem socket)",
+            socket_name
+        );
+    }
+
+    match opts.create_sync() {
+        Ok(listener) => Ok(listener),
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::AddrInUse
+                && socket.is_path()
+                && !socket.is_namespaced()
+            {
+                warn!("The socket address is already in use");
+
+                match claim_mode {
+                    AddrClaimMode::DoNotClaim => {
+                        info!(
+                            "The daemon is configured not to reclaim the socket address, aborting"
+                        );
+                        Err(DaemonError::AddrInUse)
+                    }
+                    AddrClaimMode::ClaimIfUnresponsive => {
+                        info!("Attempting to claim the socket address");
+                        match exec_client_command(ClientCommand::Ping, socket_name, socket_type) {
+                            Ok(response) => {
+                                if response == DaemonResponse::Pong {
+                                    error!(
+                                        "The other deamon responded to the pong command, aborting"
+                                    );
+                                    return Err(DaemonError::AddrInUse);
+                                } else {
+                                    error!(
+                                        "Got an unexpected response from the deamon: {response:?}"
+                                    );
+                                    return Err(DaemonError::UnexpectedResponse);
+                                }
+                            }
+                            Err(e) => {
+                                if e == DaemonError::ConnectionError {
+                                    info!(
+                                        "The other daemon is either dead or unresponsive, claiming the address"
+                                    );
+                                } else {
+                                    error!(
+                                        "Got an unexpected error while sending a ping command: {e}"
+                                    );
+                                    return Err(DaemonError::UnexpectedResponse);
+                                }
+                            }
+                        }
+
+                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(socket_name)) {
+                            error!("Could not remove the old socket: {e}");
+                            return Err(DaemonError::SocketError);
+                        }
+                        let opts = ListenerOptions::new().name(socket.clone());
+                        match opts.create_sync() {
+                            Ok(listener) => {
+                                info!("Succesfully claimed the address");
+                                Ok(listener)
+                            }
+                            Err(e) => {
+                                error!("Could not create a listener: {e}");
+                                Err(DaemonError::SocketError)
+                            }
+                        }
+                    }
+                    AddrClaimMode::ForceClaim => {
+                        info!("Force claiming the socket address");
+                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(socket_name)) {
+                            error!("Could not remove the old socket: {e}");
+                            return Err(DaemonError::SocketError);
+                        }
+                        let opts = ListenerOptions::new().name(socket.clone());
+                        match opts.create_sync() {
+                            Ok(listener) => {
+                                info!("Succesfully claimed the address");
+                                Ok(listener)
+                            }
+                            Err(e) => {
+                                error!(
+                                    "Could not create a listener despite claiming the socket: {e}"
+                                );
+                                Err(DaemonError::SocketError)
+                            }
+                        }
+                    }
+                }
+            } else {
+                error!("Failed creating a listener for the daemon socket: '{e}'");
+                Err(DaemonError::SocketError)
+            }
+        }
+    }
+}
+
+/// Send an event to the daemon thread.
+///
+/// Will always return an error when the daemon isn't initialized, for example during testing.
 pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone() {
@@ -195,146 +306,37 @@ pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
 
 /// Start the daemon with the given config.
 ///
+/// **Note:** This function will block. Launch it in a separate [thread](`std::thread`) if you want
+/// to run the daemon in the background.
+///
 /// # Examples
 /// ```no_run
 /// # use daemon;
-/// // You probably want to create a custom config from scratch
 /// let config = daemon::Config::try_default().unwrap();
 /// daemon::start(config).unwrap();
 /// ```
 pub fn start(config: Config) -> Result<(), DaemonError> {
-    debug!("Starting daemon on '{}'", config.socket_name);
+    debug!("Starting daemon on \"{}\"", config.socket_name);
 
-    if let Err(e) = set_data_dirs(config.clone()) {
+    if let Err(e) = data::set_dirs(config.clone()) {
         error!("Could not set the paths: {e}");
         return Err(DaemonError::DataError(e));
     }
 
     if config.socket_name == mpipc::DEFAULT_SOCKET_NAME {
         warn!(
-            "Using the default IPC socket name. Please use a unique name outside of just testing."
+            "Using the default IPC socket name. Please use a unique name outside of just testing"
         );
     }
 
-    let socket = match get_daemon_socket(&config.socket_name, &config.socket_type) {
-        Ok(sock) => sock,
-        Err(e) => {
-            error!("Could not obtain the socket: {e}");
-            return Err(DaemonError::SocketError);
-        }
-    };
-
-    let opts = ListenerOptions::new().name(socket.clone());
-    if socket.is_namespaced() {
-        trace!(
-            "Creating a listener on \"{}\" (namespaced socket)",
-            config.socket_name
-        );
-    } else {
-        trace!(
-            "Creating a listener on \"{}\" (filesystem socket)",
-            config.socket_name
-        );
-    }
-
-    let listener = match opts.create_sync() {
-        Ok(listener) => listener,
-        Err(e) => {
-            if (!GenericNamespaced::is_supported()
-                || config.socket_type == SocketType::FilesystemOnly)
-                && e.kind() == std::io::ErrorKind::AddrInUse
-            {
-                warn!("The socket address is already in use");
-
-                match config.addr_claim_mode {
-                    AddrClaimMode::DoNotClaim => {
-                        warn!("The daemon is configured to not reclaim the socket address");
-                        return Err(DaemonError::AddrInUse);
-                    }
-                    AddrClaimMode::ClaimIfUnresponsive => {
-                        info!("Attempting to claim the socket address if it appears to be unused");
-                        match exec_client_command(
-                            ClientCommand::Ping,
-                            &config.socket_name,
-                            &config.socket_type,
-                        ) {
-                            Ok(response) => {
-                                if response == DaemonResponse::Pong {
-                                    error!(
-                                        "The other deamon responded to the pong command, not claiming the address"
-                                    );
-                                    return Err(DaemonError::AddrInUse);
-                                } else {
-                                    error!(
-                                        "Got an unexpected response from the deamon: {response:?}"
-                                    );
-                                    return Err(DaemonError::UnexpectedResponse);
-                                }
-                            }
-                            Err(e) => {
-                                if e == DaemonError::ConnectionError {
-                                    info!(
-                                        "The other daemon is either dead or unresponsive, claiming the address"
-                                    );
-                                } else {
-                                    error!(
-                                        "Got an unexpected error while trying to send a ping command: {e}"
-                                    );
-                                    return Err(DaemonError::UnexpectedResponse);
-                                }
-                            }
-                        }
-
-                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(&config.socket_name))
-                        {
-                            error!("Could not remove the old socket: {e}");
-                            return Err(DaemonError::SocketError);
-                        }
-                        let opts = ListenerOptions::new().name(socket.clone());
-                        match opts.create_sync() {
-                            Ok(listener) => {
-                                info!("Succesfully claimed the address");
-                                listener
-                            }
-                            Err(e) => {
-                                error!(
-                                    "Could not create a listener despite claiming the socket: {e}"
-                                );
-                                return Err(DaemonError::SocketError);
-                            }
-                        }
-                    }
-                    AddrClaimMode::ForceClaim => {
-                        info!("Force claiming the socket address");
-                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(&config.socket_name))
-                        {
-                            error!("Could not remove the old socket: {e}");
-                            return Err(DaemonError::SocketError);
-                        }
-                        let opts = ListenerOptions::new().name(socket.clone());
-                        match opts.create_sync() {
-                            Ok(listener) => {
-                                info!("Succesfully claimed the address");
-                                listener
-                            }
-                            Err(e) => {
-                                error!(
-                                    "Could not create a listener despite claiming the socket: {e}"
-                                );
-                                return Err(DaemonError::SocketError);
-                            }
-                        }
-                    }
-                }
-            } else {
-                error!("Failed creating a listener for the daemon socket: '{e}'");
-                return Err(DaemonError::SocketError);
-            }
-        }
-    };
+    let listener = get_listener(
+        &config.socket_name,
+        &config.socket_type,
+        &config.addr_claim_mode,
+    )?;
 
     thread::spawn(move || {
-        let _ = music_lib::load(LoadMode::Initialize);
+        let _ = music_lib::load(true);
         playback::init(config.playback_config);
     });
 
@@ -355,12 +357,20 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         }
     });
 
-    let (event_sender, event_receiver) = mpsc::channel();
     let mut guard = EVENT_SENDER.write().unwrap();
+    // I could check if the sender is still connected here
+    if guard.as_ref().is_some() {
+        error!("Could not start the daemon because the event channel is already initialized");
+        info!("(Did you try to start a second daemon in the same context?)");
+        return Err(DaemonError::EventChannelInitialized);
+    }
+    let (event_sender, event_receiver) = mpsc::channel();
     *guard = Some(event_sender);
     drop(guard);
 
     loop {
+        // Launching a different daemon overwrites the `EVENT_SENDER` variable, causing the
+        // previous sender to be dropped and the `rect()` method to return an `Err(...)` type.
         let event = event_receiver.recv().unwrap();
         let mut guard = senders.write().unwrap();
         let mut dead = Vec::new();
@@ -377,7 +387,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         match event {
             DaemonEvent::Shutdown => {
                 trace!("Received shutdown event");
-                exit(0);
+                std::process::exit(0);
             }
             DaemonEvent::ConnectionClosed => {
                 trace!("Connection with a client closed")

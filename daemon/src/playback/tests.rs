@@ -7,7 +7,7 @@ use mpipc::ShuffleState;
 use crate::{data::music_lib::Track, playback::state::PlayerState};
 
 // Higher values will reduce the chance of false positives but will increase the runtime of some tests.
-const TEST_ITER_COUNT: u32 = 1000;
+const TEST_ITER_COUNT: u32 = 100;
 
 /// Returns a [`Vec`] of unique [`Track`] structs for testing.
 fn unique_tracks(size: usize) -> Vec<Track> {

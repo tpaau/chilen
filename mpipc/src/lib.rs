@@ -296,6 +296,10 @@ pub enum DaemonError {
     AddrInUse,
     /// Got an unexpected response from the daemon.
     UnexpectedResponse,
+    /// Emitted when the daemon event channel is already initialized when starting the daemon.
+    ///
+    /// This likely means a second daemon was started in the same context.
+    EventChannelInitialized,
 }
 
 impl std::fmt::Display for DaemonError {
@@ -318,6 +322,9 @@ impl std::fmt::Display for DaemonError {
             Self::ConfigError(e) => write!(f, "Could not create daemon configuration: {e}"),
             Self::AddrInUse => write!(f, "The socket address is already in use"),
             Self::UnexpectedResponse => write!(f, "Got an unexpected response from the daemon"),
+            Self::EventChannelInitialized => {
+                write!(f, "The event channel for the daemon is already initialized")
+            }
         }
     }
 }
@@ -730,11 +737,16 @@ pub enum ClientCommand {
     Ping,
 }
 
+/// Defines the socket type to use when starting the daemon or when attempting to connect to a
+/// running deamon.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SocketType {
+    /// Only use a namespaced socket with no fallback.
     NamespacedOnly,
+    /// Use a namespaced socket when possible, but allow a fallback to a filesystem socket.
     #[default]
     NamespacedOrFilesystem,
+    /// Only use a filesystem socket with no fallback.
     FilesystemOnly,
 }
 
@@ -806,7 +818,7 @@ pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::i
 ///
 /// # Examples
 /// ```
-/// match mpipc::get_daemon_socket(
+/// match mpipc::get_socket(
 ///     mpipc::DEFAULT_SOCKET_NAME,
 ///     &mpipc::SocketType::NamespacedOrFilesystem
 /// ) {
@@ -814,10 +826,7 @@ pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::i
 ///     Err(e) => panic!("Could not obtain a socket: {e}"),
 /// }
 /// ```
-pub fn get_daemon_socket<'a>(
-    socket_name: &'a str,
-    mode: &SocketType,
-) -> Result<Name<'a>, std::io::Error> {
+pub fn get_socket<'a>(socket_name: &'a str, mode: &SocketType) -> Result<Name<'a>, std::io::Error> {
     match mode {
         SocketType::NamespacedOnly => get_ns_daemon_socket(socket_name),
         SocketType::FilesystemOnly => {
@@ -956,7 +965,7 @@ pub fn connect_to_daemon(
 ) -> Result<Stream, DaemonError> {
     trace!("Connecting to daemon on socket '{socket_name}'");
 
-    let socket = match get_daemon_socket(socket_name, socket_type) {
+    let socket = match get_socket(socket_name, socket_type) {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");

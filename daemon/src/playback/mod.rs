@@ -31,15 +31,30 @@ use crate::{
     },
 };
 
+/// Configuration options specific to the [`playback`](crate::playback) module.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     /// A friendly name to identify the media player to users (eg: “VLC media player”).
-    #[cfg(feature = "mpris")]
+    ///
+    /// This should usually match the name found in .desktop files.
+    #[cfg(any(feature = "mpris", doc))]
     pub identity: String,
-    /// The suffix of the but name used with mpris.
-    #[cfg(feature = "mpris")]
+    /// The bus name suffix to be used with MPRIS.
+    ///
+    /// The resulting bus name will be `org.mpris.MediaPlayer2.<bus_name_suffix>`, where
+    /// `<bus_name_suffix>` must be a unique identifier, such as one based on a UNIX process id.
+    /// For example, this could be:
+    ///
+    /// - `org.mpris.MediaPlayer2.vlc.instance7389`
+    ///
+    /// **Note:** According to the D-Bus specification, the unique identifier “must only contain
+    /// the ASCII characters \[A-Z\]\[a-z\]\[0-9\]_-” and “must not begin with a digit”.
+    #[cfg(any(feature = "mpris", doc))]
     pub bus_name_suffix: String,
     /// Whether to allow clients to modify the playback rate of the player.
+    ///
+    /// If set to true, the playback rate will be locked the value saved in cache the player state,
+    /// or set to the default value of `1.0` (regular speed) if the player state is not present.
     pub allow_rate_modification: bool,
 }
 

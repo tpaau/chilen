@@ -174,7 +174,7 @@ pub fn run_cli_command(
                             identity: String::from(IDENTITY_HEADLESS),
                             #[cfg(feature = "mpris")]
                             bus_name_suffix: format!("com.dev.{}", crate_name!()),
-                            allow_rate_modification: allow_rate_modification,
+                            allow_rate_modification,
                         },
                     };
                     match daemon::start(config) {
@@ -319,7 +319,7 @@ pub fn run_cli_command(
         #[cfg(not(feature = "gui"))]
         let identity = IDENTITY_HEADLESS.to_string();
 
-        let conf = match daemon::Config::try_from_name(identity, &socket_name) {
+        let conf = match daemon::Config::try_from_name(&identity, &socket_name) {
             Ok(conf) => conf,
             Err(e) => {
                 error!("Could not create a config for the daemon: {e}");

@@ -345,27 +345,6 @@ impl MusicLibrary {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-/// The mode in which to load the music library.
-pub enum LoadMode {
-    /// Initialize the library.
-    Initialize,
-    /// Reinitialize the library.
-    Reinitialize,
-    /// Reinitialize the library and rebuild the cover cache.
-    Rebuild,
-}
-
-impl LoadMode {
-    /// Creates library load mode from the command line cache command.
-    pub fn from_cache_command(cmd: mpipc::CacheCommand) -> Self {
-        match cmd {
-            mpipc::CacheCommand::Reload => Self::Reinitialize,
-            mpipc::CacheCommand::Rebuild => Self::Rebuild,
-        }
-    }
-}
-
 static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut data = DATA_DIR.read().unwrap().clone().unwrap();
     data.push("playlists");
@@ -440,20 +419,11 @@ pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
 }
 
 /// Load the music library from the playlists file.
-pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
+pub(crate) fn load(rebuild_covers: bool) -> Result<(), MusicLibraryError> {
     trace!("Loading the music library");
-
-    // This should never occur, `LoadMode::Initialize` shall only be passed to this function on
-    // startup.
-    if mode == LoadMode::Initialize && MUSIC_LIBRARY.read().unwrap().is_some() {
-        error!("Cannot load the music library, it is already initialized!");
-        return Err(MusicLibraryError::CacheError);
-    }
 
     let time_start = SystemTime::now();
 
-    let rebuild_covers = mode == LoadMode::Rebuild;
-    // No need to specify the music directory, it is detected by the indexer
     let tracks = match index(None, rebuild_covers) {
         Ok(tracks) => tracks,
         Err(e) => {
@@ -526,7 +496,7 @@ pub(crate) fn load(mode: LoadMode) -> Result<(), MusicLibraryError> {
     Ok(())
 }
 
-pub fn create_playlist(
+pub(crate) fn create_playlist(
     name: String,
     tracks: &Option<Vec<PathBuf>>,
 ) -> Result<(), MusicLibraryError> {
@@ -573,7 +543,7 @@ pub fn create_playlist(
     }
 }
 
-pub fn import_playlist_from_m3u8(
+pub(crate) fn import_playlist_from_m3u8(
     name: Option<String>,
     m3u8_file: &Path,
 ) -> Result<(), MusicLibraryError> {
@@ -604,7 +574,7 @@ pub fn import_playlist_from_m3u8(
     }
 }
 
-pub fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicLibraryError> {
+pub(crate) fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicLibraryError> {
     trace!("Deleting playlist with name \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
@@ -630,7 +600,7 @@ pub fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicLibraryE
     }
 }
 
-pub fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryError> {
+pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryError> {
     trace!("Appending tracks to playlist \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
@@ -664,7 +634,7 @@ pub fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryEr
     }
 }
 
-pub fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibraryError> {
+pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibraryError> {
     trace!("Removing tracks from playlist \"{name}\"");
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {

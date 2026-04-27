@@ -14,8 +14,8 @@ use serde::Serialize;
 use crate::{
     DaemonEvent,
     data::music_lib::{
-        self, LoadMode, add_tracks, create_playlist, delete_playlist, get_library,
-        import_playlist_from_m3u8, remove_tracks, save_library,
+        self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8,
+        remove_tracks, save_library,
     },
     playback, send_event,
 };
@@ -180,7 +180,11 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<DaemonEvent>, index: u64) -> Joi
                     },
                 },
                 ClientCommand::Cache(cmd) => {
-                    match music_lib::load(LoadMode::from_cache_command(cmd)) {
+                    let rebuild_covers = match cmd {
+                        mpipc::CacheCommand::Reload => false,
+                        mpipc::CacheCommand::Rebuild => true,
+                    };
+                    match music_lib::load(rebuild_covers) {
                         Ok(_) => {
                             if let Err(DaemonError::SendingError) =
                                 respond(&mut conn, &DaemonResponse::Ok)

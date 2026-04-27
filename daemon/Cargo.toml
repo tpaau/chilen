@@ -22,3 +22,6 @@ smol = {version = "2.0.2", optional = true }
 mpris = [ "dep:mpris-server", "dep:smol" ]
 shuffle = [ "dep:rand" ]
 default = [ "shuffle" ]
+
+[package.metadata.docs.rs]
+all-features = true

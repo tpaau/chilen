@@ -1,12 +1,12 @@
 [package]
 name = "music-player"
 version = "0.1.0"
-authors = [ "tpaau <tpaau17db@tutamail.com" ]
+authors = [ "tpaau <tpaau-17db@tutamail.com" ]
 edition = "2024"
 license = "LGPL-3.0-or-later"
 
 [dependencies]
-env_logger = "0.11.8"
+env_logger = "0.11.10"
 log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
 mpipc = { path = "mpipc", default-features = false }
@@ -26,3 +26,6 @@ flatpak = [ "mpris", "gui" ]
 windows = [ "gui" ]
 macos = [ "gui" ]
 default = [ "mpris", "gui" ]
+
+[dev-dependencies]
+env_logger = "0.11.10"
