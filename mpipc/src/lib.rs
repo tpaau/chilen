@@ -1,39 +1,36 @@
+#![doc = include_str!("../README.md")]
+
 use std::{
     env::temp_dir,
-    io::{BufReader, Read, Write},
+    io::{BufReader, Write},
     path::PathBuf,
     time::Duration,
 };
 
-use interprocess::local_socket::{
-    GenericFilePath, GenericNamespaced, Name, Stream, ToNsName, prelude::*,
-};
+pub use interprocess::local_socket::Stream;
+use interprocess::local_socket::{GenericFilePath, GenericNamespaced, Name, ToNsName, prelude::*};
 use log::info;
 use log::{error, trace};
-use rmp_serde::Serializer;
 use serde::{Deserialize, Serialize};
 
 /// The default name of the socket the daemon listens on.
 pub const DEFAULT_SOCKET_NAME: &str = "DEFAULT_MUSIC_PLAYER.socket";
 
+/// An error originating from the music library module of the `daemon`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// An error originating from the music library module of the daemon.
 pub enum MusicLibraryError {
-    /// Could not complete the operation because a playlist with this name already exists.
+    /// Could not complete the operation because a [playlist](Playlist) with the provided name
+    /// already exists.
     PlaylistExists,
     /// Could not perform the operation because the music library is not initialized.
     ///
-    /// This either means that the command was sent too early, or that the music library is
-    /// currently being rebuilt.
+    /// This can happen if a command is sent to early and the music library is not yet initialized.
     LibraryNotInitialized,
-    /// Could not perform an operation on a nonexistent playlist.
+    /// There is not playlist in the music library with the provided name.
     NoSuchPlaylist,
-    /// Could not get the path to the cache or the cache is unusable.
+    /// Could not get the path to the cache directory or the cache is unusable.
     CacheError,
     /// The provided item index was out of bounds.
-    ///
-    /// Eg. there are 68 tracks in the playlist, so the maximum index is 67, but the index
-    /// 69 was provided.
     IndexOutOfBounds,
 }
 
@@ -49,29 +46,41 @@ impl std::fmt::Display for MusicLibraryError {
     }
 }
 
+/// Error originating from the playback module of the `daemon`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Error related to the playback module.
 pub enum PlaybackError {
     /// The audio player is not connected.
+    ///
+    /// This may happen if the device doesn't have an audio device or none of the audio devices are
+    /// marked as default.
     PlayerNotConnected,
     /// The playback state is not initialized.
+    ///
+    /// This error may occur when a [PlaybackCommand] is sent to the `daemon` too early, before the
+    /// state is restored from cache.
     StateNotInitialized,
     /// The queue is empty.
     QueueEmpty,
-    /// Could not open an audio source.
-    SourceError,
     /// The audio file could not be opened, has an unsupported format or is corrupt.
+    SourceError,
+    /// The player is already playing.
     PlayerPlaying,
     /// The player is already paused.
     PlayerPaused,
     /// Thrown when a client attempts to stop the player when it was already stopped or when a
     /// client attempts to seek while the player is stopped.
     PlayerStopped,
-    /// Seek is not supported.
+    /// Seek is not supported for the current audio source.
     SeekNotSupported,
     /// Cannot go to the previous track.
+    ///
+    /// This means that the current track is first in the queue and the [loop state](LoopState) is
+    /// set to [LoopState::Off].
     CannotGoPrevious,
     /// Cannot go to the next track.
+    ///
+    /// This means that the current track is last in the queue and the [loop state](LoopState) is
+    /// set to [LoopState::Off].
     CannotGoNext,
     /// The daemon was not built with shuffle support.
     ShuffleNotSupported,
@@ -79,9 +88,11 @@ pub enum PlaybackError {
     NoTrackAtIndex(usize),
     /// The specified rate value was out of the allowed range.
     RateOutOfRange,
-    /// The modification of the playback rate is disallowed.
+    /// The modification of the playback rate is not allowed.
     FixedRate,
     /// The player position could not be set because the duration provided was invalid.
+    ///
+    /// The player will refuse to seek by 0s to prevent unnecessary audio popping.
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,
@@ -160,24 +171,34 @@ impl std::fmt::Display for DataError {
     }
 }
 
+/// Struct representing a track from the [music library](MusicLibrary).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Struct representing a track from the music library.
 pub struct Track {
     /// The path to the audio file.
     pub path: PathBuf,
-    /// The path to the extracted cover file, if exists.
+    /// The path to the extracted cover file.
     pub cover_path: Option<PathBuf>,
+    /// The duration of the track.
     pub duration: Duration,
+    // TODO: Add an option to split the tag with characters like ",", ";", "/", etc.
+    /// The track artist.
     pub artist: Option<String>,
+    /// The track title.
     pub title: Option<String>,
+    /// The track album.
     pub album: Option<String>,
+    // TODO: Same as with artist
+    /// The track genre.
     pub genre: Option<String>,
+    /// Possibly synchronized lyrics text.
     pub lyrics: Option<String>,
+    /// Contents of the comment tag.
     pub comment: Option<String>,
     pub track: Option<u32>,
     pub track_total: Option<u32>,
-    pub disk: Option<u32>,
-    pub disk_total: Option<u32>,
+    pub disc: Option<u32>,
+    pub disc_total: Option<u32>,
+    /// Release year.
     pub year: Option<u32>,
 }
 
@@ -193,53 +214,60 @@ impl std::fmt::Display for Track {
     }
 }
 
+/// Struct representing a playlist in the [music library](MusicLibrary).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Struct representing a playlist from the music library.
 pub struct Playlist {
-    /// The name of the playlist. Playlist names are unique.
+    /// The name of the playlist.
+    ///
+    /// Playlist names are unique.
     pub name: String,
-    /// The tracks added to the playlist.
+    /// The content of the playlist.
+    ///
+    /// All tracks must already be in the [music library](MusicLibrary). If a track is removed from
+    /// the library (eg. by removing an audio file from the music directory and reloading the
+    /// library), it will also be removed from all the playlists.
     pub tracks: Vec<Track>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Struct representing the contents of the music library.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MusicLibrary {
-    /// The list of playlists in the music library.
+    /// The list of [playlists](Playlist) in the music library.
     pub playlists: Vec<Playlist>,
-    /// The list of all tracks in the music library.
+    /// The list of all [tracks](Track) in the music library.
     pub tracks: Vec<Track>,
 }
 
+/// Event originating from the playback module of the `daemon`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// Event originating from the playback module of the daemon.
 pub enum PlaybackEvent {
-    /// Emitted when the playback state changes, for instance when the player is paused.
+    /// Sent when the [playback state](PlaybackState) changes, for instance when the player is
+    /// paused.
     PlaybackStateChanged(PlaybackState),
-    /// Emitted when the loop state of the player changes.
+    /// Sent when the [loop state](LoopState) of the player changes.
     LoopStateChanged(LoopState),
-    /// Emitted when the shuffle state of the player changes.
+    /// Sent when the [shuffle state](ShuffleState) of the player changes.
     ShuffleStateChanged(ShuffleState),
-    /// Emitted when the current queue changes.
+    /// Sent when the track queue changes.
     QueueChanged(Vec<Track>),
-    /// Emitted when the current track changes.
+    /// Sent when the current track changes.
     PositionChanged(usize),
-    /// Emitted when the position of the player changes.
+    /// Sent when the position of the player changes.
     PlayerPositionChanged(Duration),
-    /// Emitted when the volume of the player changes.
+    /// Sent when the [volume](PlayerVolume) of the player changes.
     PlayerVolumeChanged(PlayerVolume),
-    /// Emitted when the playback rate of the player changes.
+    /// Sent when the [playback rate](PlaybackRate) of the player changes.
     RateChanged(PlaybackRate),
 }
 
+/// Event from the `daemon` received in [DaemonResponse::Event].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// Event from the daemon sent to clients.
 pub enum DaemonEvent {
-    /// Event sent before the daemon stops.
+    /// Sent before the `daemon` closes.
     Shutdown,
-    /// Event sent after the contents of the music library have changed.
+    /// Sent after the contents of the music library have changed.
     MusicLibraryChanged(MusicLibrary),
-    /// Event sent when a client disconnects from the daemon.
+    /// Sent when a client disconnects from the daemon.
     ConnectionClosed,
     /// Event originating from the playback module of the daemon.
     PlaybackEvent(PlaybackEvent),
@@ -248,9 +276,7 @@ pub enum DaemonEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 /// Error that can occur while creating a daemon configuration.
 pub enum ConfigError {
-    /// The bus name suffix provided was invalid.
-    ///
-    /// The suffix must only contain ASCII characters.
+    /// The provided bus name suffix for MPRIS was invalid.
     InvalidBusNameSuffix,
     /// Could not get the home directory path.
     HomeError,
@@ -266,9 +292,9 @@ impl std::fmt::Display for ConfigError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Error related to the daemon.
+/// Error related to the `daemon`.
 ///
-/// Can either originate from the daemon itself or while connecting to the daemon.
+/// Can either originate from a [DaemonResponse] or from a function in [mpipc](crate).
 pub enum DaemonError {
     /// The value could not be encoded before sending it.
     EncodingError,
@@ -280,8 +306,6 @@ pub enum DaemonError {
     ConnectionError,
     /// Could not send the command to the daemon.
     SendingError,
-    /// Could not parse the command sent to the daemon.
-    ParsingError,
     /// Error related to the music library.
     MusicLibraryError(MusicLibraryError),
     /// Error related to the data and cache modules.
@@ -294,8 +318,6 @@ pub enum DaemonError {
     ConfigError(ConfigError),
     /// The socket address is already in use.
     AddrInUse,
-    /// Got an unexpected response from the daemon.
-    UnexpectedResponse,
     /// Emitted when the daemon event channel is already initialized when starting the daemon.
     ///
     /// This likely means a second daemon was started in the same context.
@@ -307,10 +329,9 @@ impl std::fmt::Display for DaemonError {
         match self {
             Self::EncodingError => write!(f, "Could not encode the deamon conmmand"),
             Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
-            Self::SocketError => write!(f, "Could not obtain the daemon socket"),
+            Self::SocketError => write!(f, "Socket cration/connection failed"),
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
             Self::SendingError => write!(f, "Could not send the command to the daemon"),
-            Self::ParsingError => write!(f, "Could not parse the command sent to the daemon."),
             Self::MusicLibraryError(e) => {
                 write!(f, "{e}")
             }
@@ -321,7 +342,6 @@ impl std::fmt::Display for DaemonError {
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
             Self::ConfigError(e) => write!(f, "Could not create daemon configuration: {e}"),
             Self::AddrInUse => write!(f, "The socket address is already in use"),
-            Self::UnexpectedResponse => write!(f, "Got an unexpected response from the daemon"),
             Self::EventChannelInitialized => {
                 write!(f, "The event channel for the daemon is already initialized")
             }
@@ -329,27 +349,27 @@ impl std::fmt::Display for DaemonError {
     }
 }
 
-/// Response sent to a client from the daemon.
+/// Response sent to a client from the `daemon`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DaemonResponse {
     /// The client command was executed successfully.
     Ok,
     /// Response to the `Ping` client command.
     Pong,
-    /// List of some playlists returned by the daemon.
+    /// The contents of the music library.
     Library(MusicLibrary),
     /// An event from the daemon.
     Event(DaemonEvent),
-    /// A response from the playback command.
+    /// Response from a playback command.
     Playback(PlaybackResponse),
-    /// An internal error occurred.
+    /// The client command has failed.
     Error(DaemonError),
 }
 
 /// Signed duration type used for seeking.
 ///
-/// This is just a bare bones enum. Do not use it as a `Duration` replacement outside of
-/// controlling the playback.
+/// This is just a bare bones type that should only be used for
+/// [seeking audio playback](PlaybackCommand::Seek), and not as a [Duration] replacement.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum SignedDuration {
     Positive(Duration),
@@ -366,66 +386,142 @@ impl SignedDuration {
     }
 }
 
+/// Subcommand of [ClientCommand] for managing audio playback in the `daemon`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackCommand {
     /// Play the current track or play a track at a specific index in the queue.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Play(Option<usize>),
     /// Pause the player.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Pause,
     /// Stop the player.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Stop,
     /// Toggle between play/pause.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     TogglePlaying,
-    /// Get the playback state (Playing, Paused, Stopped) of the player.
+    /// Get the [PlaybackState] of the player.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     GetPlaybackState,
+    // TODO: Update this after patching the daemon
     /// Set a new queue for the player.
+    ///
+    /// **Note:** tracks outside of the music directory or not registered by the music player
+    /// (added after the last library reload), will be discarded.
     SetQueue(Vec<PathBuf>),
+    // TODO: Update this after patching the daemon
     /// Append tracks to the queue.
+    ///
+    /// **Note:** tracks outside of the music directory or not registered by the music player
+    /// (added after the last library reload), will be discarded.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     AppendToQueue(Vec<PathBuf>),
     /// Load a playlist and append its tracks to the queue.
+    ///
+    /// If there's no [Playlist] with the provided name present in the [MusicLibrary],
+    /// [MusicLibraryError::NoSuchPlaylist] will be returned, and no changes to the queue will be
+    /// made.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     AppendPlaylist(String),
     /// Load a playlist and put its tracks in the queue.
+    ///
+    /// If there's no [Playlist] with the provided name present in the [MusicLibrary],
+    /// [MusicLibraryError::NoSuchPlaylist] will be returned, and no changes to the queue will be
+    /// made.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     SetPlaylist(String),
-    /// Get the current track.
+    /// Get the current [track](Track).
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::Track] if successful.
     GetCurrentTrack,
     /// Skip to the next track.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Next,
     /// Skip to the previous track.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Previous,
-    /// Set the loop state of the player.
+    /// Set the [loop state](LoopState) of the player.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     SetLoopState(LoopState),
-    /// Get the loop state of the player.
+    /// Get the [loop state](LoopState) of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::LoopState] if
+    /// successful.
     GetLoopState,
-    /// Set the playback rate of the player.
+    /// Set the [playback rate](PlaybackRate) of the player.
     ///
-    /// This command will fail if the daemon is configured to not allow playback rate modification
-    /// or if the specified rate value is out of the acceptable range.
+    /// This command will fail if the `daemon` is configured to not allow playback rate
+    /// modification or if the specified rate value was out of the acceptable range.
+    ///
+    /// If the `daemon` is configured not to allow playback rate modification,
+    /// [PlaybackError::FixedRate] will be returned.
+    ///
+    /// If the provided rate value is out of the allowed range, [PlaybackError::RateOutOfRange]
+    /// will be returned.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     SetRate(f64),
-    /// Get the playback rate of the player.
+    /// Get the [playback rate](PlaybackRate) of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::PlaybackRate] if
+    /// successful.
     GetRate,
-    /// Set the shuffle state of the player.
+    /// Set the [shuffle state](ShuffleState) of the player.
     ///
-    /// This command will fail if the daemon was not built with shuffle support.
+    /// The `daemon` will always respond to this command with [PlaybackError::ShuffleNotSupported]
+    /// if it was built without shuffle support.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     SetShuffleState(ShuffleState),
-    /// Get the shuffle state of the player.
+    /// Get the [shuffle state](ShuffleState) of the player.
     ///
-    /// The daemon will always respond with `ShuffleState::Off` if it wasn't built shuffle support.
+    /// The `daemon` will always respond to this command with [ShuffleState::Off] if it was built
+    /// without shuffle support.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::ShuffleState] if
+    /// successful.
     GetShuffleState,
     /// Set the position of the player.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     SetPlayerPosition(Duration),
     /// Change the player position by a time delta.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Seek(SignedDuration),
     /// Get the position of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::PlayerPosition] if
+    /// successful.
     GetPlayerPosition,
     /// Set the volume of the player.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     SetPlayerVolume(PlayerVolume),
     /// Get the volume of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::PlayerVolume] if
+    /// successful.
     GetPlayerVolume,
 }
 
+/// Response originating from the playback module of the `daemon`.
+///
+/// Used as an enum value for the [DaemonResponse].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackResponse {
-    Ok,
     PlaybackState(PlaybackState),
     LoopState(LoopState),
     PlaybackRate(PlaybackRate),
@@ -438,7 +534,6 @@ pub enum PlaybackResponse {
 impl std::fmt::Display for PlaybackResponse {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ok => write!(f, "Ok"),
             Self::PlaybackState(state) => write!(f, "{state}"),
             Self::LoopState(state) => write!(f, "{state}"),
             Self::PlaybackRate(rate) => write!(f, "{rate}"),
@@ -455,8 +550,8 @@ impl std::fmt::Display for PlaybackResponse {
 
 /// The speed at which tracks are played.
 ///
-/// Setting rate to 1.0 will play audio files at their original speed, 2.0 will speed them up two
-/// times, etc.
+/// Rate of 1.0 will play tracks at their original speed, 2.0 will play them twice as fast, and 0.5
+/// will slow them to half speed.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlaybackRate {
     rate: f64,
@@ -493,7 +588,7 @@ impl std::fmt::Display for PlaybackRate {
 }
 
 impl PlaybackRate {
-    /// Create a new [`PlaybackRate`](mpipc::PlaybackRate) object.
+    /// Create a new [PlaybackRate] struct.
     pub fn new(rate: f64, min: f64, max: f64) -> PlaybackRate {
         Self { rate, min, max }
     }
@@ -555,6 +650,10 @@ impl PlaybackRate {
     }
 }
 
+/// Player volume.
+///
+/// Values passed to this struct will be clamped between 0.0 (no sound at all) and 1.0 (regular
+/// volume).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlayerVolume {
     volume: f64,
@@ -573,21 +672,29 @@ impl std::fmt::Display for PlayerVolume {
 }
 
 impl PlayerVolume {
+    /// Create a new [PlayerVolume] struct with the specified volume.
+    ///
+    /// The passed `volume` parameter will be clamped between 0.0 and 1.0.
     pub fn new(volume: f64) -> Self {
         Self {
             volume: volume.clamp(0.0, 1.0),
         }
     }
 
+    /// Set the volume.
+    ///
+    /// The passed `volume` parameter will be clamped between 0.0 and 1.0.
     pub fn set(&mut self, volume: f64) {
         self.volume = volume.clamp(0.0, 1.0);
     }
 
+    /// Get the wrapped value.
     pub fn get(&self) -> f64 {
         self.volume
     }
 }
 
+/// Playback state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PlaybackState {
     /// The player is playing.
@@ -609,6 +716,7 @@ impl std::fmt::Display for PlaybackState {
     }
 }
 
+/// Shuffle state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShuffleState {
     /// Do not shuffle the queue.
@@ -642,6 +750,7 @@ impl std::fmt::Display for ShuffleState {
     }
 }
 
+/// Loop state defining the looping behavior of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LoopState {
     /// The playback will stop when there are no more tracks to play.
@@ -649,7 +758,7 @@ pub enum LoopState {
     Off,
     /// The current track will start again from the beginning once it has finished playing.
     Track,
-    /// The playback will loop through a list of tracks.
+    /// The playback will loop through the entire queue.
     Playlist,
 }
 
@@ -663,115 +772,156 @@ impl std::fmt::Display for LoopState {
     }
 }
 
+/// Subcommand of [ClientCommand] for managing playlists in the music library.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Command for managing the music library, can be sent to a deamon instance by wrapping it in a
-/// `ClientCommand`.
 pub enum PlaylistCommand {
     /// Create a new playlist, optionally with some tracks in it.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     New {
         /// The name for the new playlist, must not already exist in the music library.
-        name: String,
-        /// The optional list of tracks that will be added to the playlist.
         ///
-        /// Tracks that are outside of the music library (usually the `~/Music/` directory)
-        /// will be ignored.
+        /// If a playlist with the specified name already exists
+        /// [MusicLibraryError::PlaylistExists] will be returned.
+        name: String,
+        // TODO: Update this after patching the daemon
+        /// Optional list of paths to tracks to be added to the playlist.
+        ///
+        /// **Note:** tracks outside of the music directory or not registered by the music player
+        /// (added after the last library reload), will be discarded.
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file.
+    ///
+    /// This is currently unimplemented and will cause the `daemon` to panic every time.
     FromM3U8 {
         /// The name for the imported playlist, must not already exist in the music library.
         ///
         /// If left unspecified, it will be derived from the name of the imported file.
+        ///
+        /// If a playlist with the specified name already exists
+        /// [MusicLibraryError::PlaylistExists] will be returned.
         name: Option<String>,
         /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
     },
     /// Delete playlists from the music library.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Delete {
         /// List of the playlists to delete.
+        ///
+        /// If any of the provided playlists don't exist in the music library,
+        /// [MusicLibraryError::NoSuchPlaylist] will be returned, and no changes to the music
+        /// library will be made.
         names: Vec<String>,
     },
     /// Add tracks to an already existing playlist.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     AddTracks {
-        /// The name of the playlist to operate on.
+        /// The name of the playlist to add tracks to.
+        ///
+        /// If a playlist with the specified name doesn't exist in the music library,
+        /// [MusicLibraryError::NoSuchPlaylist] will be returned.
         name: String,
-        /// The list of tracks to add.
+        // TODO: Update this after patching the daemon
+        /// List of paths to tracks to add to the playlist.
+        ///
+        /// **Note:** tracks with paths outside of the music directory or not registered by the
+        /// music player (added after the last library reload), will be discarded.
         tracks: Vec<PathBuf>,
     },
-    /// Remove tracks from an already existing playlist.
+    /// Remove tracks from a playlist.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     RemoveTracks {
-        /// The name of the playlist to operate on.
+        /// The name of the playlist to remove tracks from.
+        ///
+        /// If a playlist with the specified name doesn't exist in the music library,
+        /// [MusicLibraryError::NoSuchPlaylist] will be returned.
         name: String,
-        /// The list of IDs of tracks to remove.
+        /// The list of track indices in the playlist to remove.
+        ///
+        /// Eg. to remove the first track you would pass `[0]`, to remove the first three
+        /// `[0, 1, 2]`, etc.
+        ///
+        /// If one of the indices is out of range, the daemon will return
+        /// [MusicLibraryError::IndexOutOfBounds]. No changes will be made.
         ids: Vec<usize>,
     },
-    /// Get a list of the playlists from the music library.
-    List,
+    /// Get the contents of the [music library](MusicLibrary).
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Library] if successful.
+    GetLibrary,
 }
 
+/// Subcommand of [`ClientCommand`] for managing `daemon` cover art cache.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Manage the cache.
 pub enum CacheCommand {
-    /// Rebuild the cache. May resolve some issues with badly extracted covers.
+    /// Rebuild the cache ignoring already cached covers.
+    ///
+    /// Will take more time than just reloading the cache.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Rebuild,
-    /// Reinitialize the music library to find newly added tracks.
+    /// Reinitialize cache using already cached covers when possible.
+    ///
+    /// This can be used to discover newly added tracks.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Reload,
 }
 
+/// Command that can be executed by a `daemon` instance.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// Command that can be executed by a daemon instance.
 pub enum ClientCommand {
-    /// Stop the daemon instance.
+    /// Stop the `daemon` instance.
+    ///
+    /// After sending this command, the `daemon` will close almost immediately, so the connection
+    /// to it should be considered to be closed.
     Shutdown,
-    /// Manage the music library.
+    /// Subcommand for managing playlists in the music library.
     Playlist(PlaylistCommand),
-    /// Manage the music library cache.
+    /// Subcommand for managing cover art cache.
     Cache(CacheCommand),
-    /// Stream events from the daemon. Causes the thread to stop accepting requests.
+    /// Stream events from the `daemon`.
+    ///
+    /// The daemon will stop accepting requests from the connection this command was executed on.
     EventStream,
-    /// Close the connection to the daemon.
+    /// Close the connection to the `daemon`.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Disconnect,
     /// Command to the playback module.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Ok] if successful.
     Playback(PlaybackCommand),
-    /// Ping the daemon.
+    /// Ping the `daemon`.
+    ///
+    /// The `daemon` will respond to this with [DaemonResponse::Pong] if successful.
     Ping,
 }
 
-/// Defines the socket type to use when starting the daemon or when attempting to connect to a
-/// running deamon.
+/// Defines the socket type to use when attempting to connect to a `deamon`.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SocketType {
     /// Only use a namespaced socket with no fallback.
+    ///
+    /// The `daemon` will return [DaemonError::SocketError] at startup if a socket with the
+    /// specified name already exists.
     NamespacedOnly,
     /// Use a namespaced socket when possible, but allow a fallback to a filesystem socket.
     #[default]
     NamespacedOrFilesystem,
     /// Only use a filesystem socket with no fallback.
+    ///
+    /// The `daemon` will return [DaemonError::AddrInUse] at startup if a socket with the specified
+    /// name already exists
     FilesystemOnly,
 }
 
-impl TryFrom<DaemonCommand> for ClientCommand {
-    type Error = String;
-    fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
-        match value {
-            DaemonCommand::Start => Err(String::from(
-                "This command is not meant to be sent to the daemon",
-            )),
-            DaemonCommand::ClientCommand(command) => Ok(command),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// A parsed CLI command that can either be a daemon start command, or a message to be sent to
-/// an already running deamon instance.
-pub enum DaemonCommand {
-    /// Start the daemon.
-    Start,
-    /// Command to be sent to an already running daemon instance.
-    ClientCommand(ClientCommand),
-}
-
+/// Returns a filesystem path for a given socket address.
 pub fn get_fs_socket_path(socket_name: &str) -> PathBuf {
     let mut temp_dir = temp_dir();
     temp_dir.push(socket_name);
@@ -782,7 +932,8 @@ pub fn get_fs_socket_path(socket_name: &str) -> PathBuf {
 ///
 /// # Examples
 /// ```
-/// let socket = mpipc::get_ns_daemon_socket(mpipc::DEFAULT_SOCKET_NAME).unwrap();
+/// # use mpipc::{get_ns_daemon_socket, DEFAULT_SOCKET_NAME};
+/// let socket = get_ns_daemon_socket(DEFAULT_SOCKET_NAME).unwrap();
 /// ```
 pub fn get_ns_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
     match socket_name.to_ns_name::<GenericNamespaced>() {
@@ -794,11 +945,12 @@ pub fn get_ns_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::i
     }
 }
 
-/// Returns a namespaced socket for the given socket name.
+/// Returns a filesystem socket for the given socket name.
 ///
 /// # Examples
 /// ```
-/// let socket = mpipc::get_fs_daemon_socket(mpipc::DEFAULT_SOCKET_NAME).unwrap();
+/// # use mpipc::{get_fs_daemon_socket, DEFAULT_SOCKET_NAME};
+/// let socket = get_fs_daemon_socket(DEFAULT_SOCKET_NAME).unwrap();
 /// ```
 pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
     let socket_path = get_fs_socket_path(socket_name);
@@ -811,10 +963,7 @@ pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::i
     }
 }
 
-/// Attempts to get a socket address for daemon IPC.
-///
-/// If the library is built with namespaced socket support, additional configuration options can be
-/// used to specify whether a namespaced or a filesystem socket should be used.
+/// Attempts to get a socket address for `daemon` IPC.
 ///
 /// # Examples
 /// ```
@@ -846,14 +995,15 @@ pub fn get_socket<'a>(socket_name: &'a str, mode: &SocketType) -> Result<Name<'a
 /// Serialize a client command to a format that can be sent to the daemon.
 ///
 /// # Examples
+///
+/// Connect to the daemon and immediately disconnect.
 /// ```no_run
-/// // Connect to the daemon and immediately disconnect.
 /// # use std::io::{BufReader, Write};
 /// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()).unwrap());
-/// let cmd = mpipc::serialize_client_command(mpipc::ClientCommand::Disconnect).unwrap();
+/// let cmd = mpipc::serialize_client_command(&mpipc::ClientCommand::Disconnect).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// ```
-pub fn serialize_client_command(cmd: ClientCommand) -> Result<Vec<u8>, DaemonError> {
+pub fn serialize_client_command(cmd: &ClientCommand) -> Result<Vec<u8>, DaemonError> {
     let mut data = Vec::new();
     if let Err(e) = cmd.serialize(&mut rmp_serde::Serializer::new(&mut data)) {
         error!("Could not encode the client command: {e}");
@@ -864,16 +1014,17 @@ pub fn serialize_client_command(cmd: ClientCommand) -> Result<Vec<u8>, DaemonErr
 
 /// Receive a daemon response from a buffered stream connection.
 ///
-/// This function will block until a response is received or the connection ends.
+/// This function will block until a response is received or the connection is dropped.
 ///
 /// # Examples
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// let mut conn = BufReader::new(mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()).unwrap());
-/// let cmd = mpipc::serialize_client_command(mpipc::ClientCommand::EventStream).unwrap();
+/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, ClientCommand, receive_daemon_response};
+/// let mut conn = BufReader::new(connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap());
+/// let cmd = serialize_client_command(&ClientCommand::EventStream).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// loop {
-///     let response = mpipc::receive_daemon_response(&mut conn).unwrap();
+///     let response = receive_daemon_response(&mut conn).unwrap();
 ///     println!("Got a response from the daemon: {response:?}");
 /// }
 /// ```
@@ -889,15 +1040,21 @@ pub fn receive_daemon_response(
     }
 }
 
-/// Disconnect from the daemon (send the disconnect client command).
+/// Disconnects from the `daemon` by sending the [ClientCommand::Disconnect] command.
+///
+/// This is a convenience function, its effect could be achieved using utilities already provided
+/// by [mpipc](crate).
 ///
 /// # Examples
 /// ```no_run
 /// # use std::io::BufReader;
-/// let conn = mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()).unwrap();
+/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, disconnect};
+/// let conn = connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
+///
 /// // Do some stuff with the connection here...
-/// match mpipc::disconnect(&mut conn) {
+///
+/// match disconnect(&mut conn) {
 ///     Ok(_) => eprintln!("Disconnected from the deamon!"),
 ///     Err(e) => panic!("Could not close the daemon connection: {e}"),
 /// }
@@ -905,11 +1062,7 @@ pub fn receive_daemon_response(
 pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
     trace!("Closing connection with the daemon");
 
-    let mut data = Vec::new();
-    if let Err(e) = ClientCommand::Disconnect.serialize(&mut Serializer::new(&mut data)) {
-        error!("Failed encoding the client command: {e}");
-        return Err(DaemonError::EncodingError);
-    }
+    let data = serialize_client_command(&ClientCommand::Disconnect)?;
 
     match conn.get_mut().write_all(&data) {
         Ok(_) => {}
@@ -919,19 +1072,7 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
         }
     }
 
-    let mut data = Vec::new();
-    if let Err(e) = conn.get_ref().read_to_end(&mut data) {
-        error!("Failed connecting to the daemon: {e}");
-        return Err(DaemonError::ConnectionError);
-    }
-
-    let response: DaemonResponse = match rmp_serde::from_read(&mut data.as_slice()) {
-        Ok(response) => response,
-        Err(e) => {
-            error!("Failed decoding a daemon response: {e}");
-            return Err(DaemonError::DecodingError);
-        }
-    };
+    let response = receive_daemon_response(conn)?;
 
     match response {
         DaemonResponse::Error(e) => {
@@ -950,14 +1091,16 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), DaemonError> {
     Ok(())
 }
 
-/// Connects to the daemon via a local socket and returns the stream connection.
+/// Connects to the `daemon` via a local socket and returns the connection [Stream].
 ///
 /// # Examples
 /// ```no_run
-/// match mpipc::connect_to_daemon(mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()) {
-///     Ok(stream) => eprintln!("Connected to the daemon: {stream:?}"),
-///     Err(error) => panic!("Could not connect to the daemon: {error}"),
-/// }
+/// use std::io::BufReader;
+/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, disconnect};
+/// let mut conn = BufReader::new(connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap());
+/// eprintln!("Connected to the daemon: {conn:?}");
+/// // Run all your commands here!
+/// disconnect(&mut conn).unwrap();
 /// ```
 pub fn connect_to_daemon(
     socket_name: &str,
@@ -984,20 +1127,31 @@ pub fn connect_to_daemon(
     Ok(conn)
 }
 
-/// Executes a single daemon command and ends the connection.
+/// Executes a single `daemon` command and ends the connection.
 ///
-/// > [!WARNING]
-/// > The `Ok` variant only means that the command was sent and received, and that the connection
-/// > was successfully closed. It does not mean that it was properly executed by the daemon!
+/// This function needs to connect to the `daemon` every time it's called, which is very
+/// inefficient.
+///
+/// **Warning:** if this function returns the [Ok] variant, this only means that the command was
+/// successfully delivered to the `daemon`. It doesn't necessarily mean that the command was
+/// executed successfully on the `daemon` side.
 ///
 /// # Examples
 /// ```no_run
-/// match mpipc::exec_client_command(mpipc::ClientCommand::Shutdown, mpipc::DEFAULT_SOCKET_NAME, &mpipc::SocketType::default()) {
-///     Ok(response) => eprintln!("Got a response from the daemon: {response:?}"),
+/// # use mpipc::{send_client_command, ClientCommand, DEFAULT_SOCKET_NAME, SocketType, DaemonResponse};
+/// match send_client_command(ClientCommand::Shutdown, DEFAULT_SOCKET_NAME, &SocketType::default()) {
+///     // The `Ok` variant only means the command was delivered
+///     Ok(response) => {
+///         match response {
+///             DaemonResponse::Ok => eprintln!("Got an `Ok` response, all good!"),
+///             // Depending on the type of command sent, the response from the daemon may be different.
+///             _ => panic!("Got an unexpected response: {response:?}"),
+///         }
+///     },
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }
 /// ```
-pub fn exec_client_command(
+pub fn send_client_command(
     cmd: ClientCommand,
     socket_name: &str,
     socket_type: &SocketType,
@@ -1012,27 +1166,19 @@ pub fn exec_client_command(
         }
     };
 
-    let mut data = Vec::new();
-    if let Err(e) = cmd.serialize(&mut Serializer::new(&mut data)) {
-        error!("Failed encoding the client command: {e}");
-        return Err(DaemonError::EncodingError);
-    }
+    let data = serialize_client_command(&cmd)?;
 
     if let Err(e) = conn.get_mut().write_all(&data) {
         error!("Failed sending the daemon command: {e}");
         return Err(DaemonError::SendingError);
     }
 
-    let response: DaemonResponse = match rmp_serde::from_read(&mut conn) {
-        Ok(response) => response,
-        Err(e) => {
-            error!("Failed decoding a daemon response: {e}");
-            return Err(DaemonError::DecodingError);
-        }
-    };
+    let response = receive_daemon_response(&mut conn)?;
 
     if cmd == ClientCommand::Shutdown {
-        trace!("Not trying to close the connection to the daemon");
+        trace!(
+            "Not trying to close the connection to the daemon, it will likely shut down by then"
+        );
     } else if let Err(e) = disconnect(&mut conn) {
         error!("Could not close the connection to the daemon: {e}");
     }
