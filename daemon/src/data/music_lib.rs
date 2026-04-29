@@ -248,6 +248,18 @@ impl Track {
             lyrics: None,
         }
     }
+
+    /// Returns a [Vec] of unique [Track] structs for testing.
+    #[cfg(test)]
+    pub fn unique_tracks(size: usize) -> Vec<Track> {
+        let mut tracks = Vec::new();
+        for i in 0..size {
+            let mut track = Track::new();
+            track.duration = Duration::from_secs(i.try_into().unwrap());
+            tracks.push(track);
+        }
+        tracks
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -291,6 +303,28 @@ impl Playlist {
             name: loaded.name,
             tracks,
         }
+    }
+
+    pub(crate) fn remove_tracks(&mut self, mut ids: Vec<usize>) -> Result<(), LibraryError> {
+        if let Some(_) = ids.iter().find(|i| i >= &&self.tracks.len()) {
+            return Err(LibraryError::IndexOutOfBounds);
+        }
+        ids.dedup();
+        let remove_set: HashSet<usize> =
+            ids.into_iter().filter(|&i| i < self.tracks.len()).collect();
+        self.tracks = self
+            .tracks
+            .drain(..)
+            .enumerate()
+            .filter_map(|(i, t)| {
+                if remove_set.contains(&i) {
+                    None
+                } else {
+                    Some(t)
+                }
+            })
+            .collect();
+        Ok(())
     }
 }
 
@@ -582,6 +616,7 @@ pub(crate) fn delete_playlist(name: &str, save_state: bool) -> Result<(), Librar
     trace!("Deleting playlist with name \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
+    // FIX: This likely won't work as expected
     if let Some(lib) = guard.as_mut() {
         match lib
             .playlists
@@ -640,6 +675,7 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), Library
     }
 }
 
+// TODO: Add a test to make sure this removes tracks properly
 /// Remove tracks by indices from a specific playlist
 pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryError> {
     trace!("Removing tracks from playlist \"{name}\"");
@@ -653,15 +689,7 @@ pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryEr
             Some(pos) => &mut lib.playlists[pos],
             None => return Err(LibraryError::NoSuchPlaylist),
         };
-        for id in &ids {
-            if *id >= playlist.tracks.len() {
-                return Err(LibraryError::IndexOutOfBounds);
-            }
-        }
-        // FIX: This probably doesn't do what it's supposed to...
-        for id in &ids {
-            playlist.tracks.remove(*id);
-        }
+        playlist.remove_tracks(ids)?;
         drop(guard);
         save_library()?;
         Ok(())

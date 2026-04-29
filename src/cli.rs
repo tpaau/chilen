@@ -231,7 +231,7 @@ pub fn run_cli_command(
             }
             Command::Library { command } => {
                 let (full, debug) = match command {
-                    LibraryCommand::List { full, debug } => (full, debug),
+                    LibraryCommand::ListPlaylists { full, debug } => (full, debug),
                     _ => (false, false),
                 };
                 match mpipc::send_client_command(

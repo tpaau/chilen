@@ -61,7 +61,7 @@ pub enum GuiCommand {
 #[derive(Subcommand)]
 pub enum LibraryCommand {
     /// Create a new playlist
-    New {
+    NewPlaylist {
         /// The name of the playlist
         name: String,
         /// The list of tracks to add to the new playlist
@@ -69,7 +69,7 @@ pub enum LibraryCommand {
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file
-    FromM3U8 {
+    PlaylistFromM3U8 {
         // The path to the M3U8 file to import the playlist from
         #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         m3u8_file: PathBuf,
@@ -81,9 +81,9 @@ pub enum LibraryCommand {
         name: Option<String>,
     },
     /// Delete playlist(s) from the library
-    Delete { names: Vec<String> },
+    DeletePlaylists { names: Vec<String> },
     /// Add tracks to an already existing playlist.
-    AddTracks {
+    AddTracksToPlaylist {
         /// The name of the playlist to operate on.
         name: String,
         /// The list of tracks to add.
@@ -91,14 +91,14 @@ pub enum LibraryCommand {
         tracks: Vec<PathBuf>,
     },
     /// Remove tracks from an already existing playlist.
-    RemoveTracks {
+    RemoveTracksFromPlaylist {
         /// The name of the playlist to operate on.
         name: String,
         /// The list of IDs of tracks to remove.
         ids: Vec<usize>,
     },
     /// List all playlists in the library
-    List {
+    ListPlaylists {
         /// Also list all the tracks in the playlists
         #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
         full: bool,
@@ -118,22 +118,22 @@ pub enum LibraryCommand {
 impl From<LibraryCommand> for mpipc::library::LibraryCommand {
     fn from(value: LibraryCommand) -> Self {
         match value {
-            LibraryCommand::New { name, tracks } => {
+            LibraryCommand::NewPlaylist { name, tracks } => {
                 mpipc::library::LibraryCommand::NewPlaylist { name, tracks }
             }
-            LibraryCommand::FromM3U8 { name, m3u8_file } => {
+            LibraryCommand::PlaylistFromM3U8 { name, m3u8_file } => {
                 mpipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
             }
-            LibraryCommand::Delete { names } => {
-                mpipc::library::LibraryCommand::DeletePlaylist { names }
+            LibraryCommand::DeletePlaylists { names } => {
+                mpipc::library::LibraryCommand::DeletePlaylists { names }
             }
-            LibraryCommand::List { full: _, debug: _ } => {
+            LibraryCommand::ListPlaylists { full: _, debug: _ } => {
                 mpipc::library::LibraryCommand::GetLibrary
             }
-            LibraryCommand::AddTracks { name, tracks } => {
+            LibraryCommand::AddTracksToPlaylist { name, tracks } => {
                 mpipc::library::LibraryCommand::AddTracksToPlaylist { name, tracks }
             }
-            LibraryCommand::RemoveTracks { name, ids } => {
+            LibraryCommand::RemoveTracksFromPlaylist { name, ids } => {
                 mpipc::library::LibraryCommand::RemoveTracksFromPlaylist { name, ids }
             }
             LibraryCommand::Reload => mpipc::library::LibraryCommand::Reload,

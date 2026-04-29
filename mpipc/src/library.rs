@@ -105,7 +105,7 @@ pub enum LibraryCommand {
     /// Delete playlists from the music library.
     ///
     /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
-    DeletePlaylist {
+    DeletePlaylists {
         /// List of the playlists to delete.
         ///
         /// If any of the provided playlists don't exist in the music library,

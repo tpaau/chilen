@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use mpipc::playback::LoopState;
 #[cfg(feature = "shuffle")]
 use mpipc::playback::ShuffleState;
@@ -10,21 +8,10 @@ use crate::{data::music_lib::Track, playback::state::PlayerState};
 // tests.
 const TEST_ITER_COUNT: u32 = 100;
 
-/// Returns a [`Vec`] of unique [`Track`] structs for testing.
-fn unique_tracks(size: usize) -> Vec<Track> {
-    let mut tracks = Vec::new();
-    for i in 0..size {
-        let mut track = Track::new();
-        track.duration = Duration::from_secs(i.try_into().unwrap());
-        tracks.push(track);
-    }
-    tracks
-}
-
 #[test]
 fn skip_next() {
     let mut state = PlayerState {
-        tracks: unique_tracks(5),
+        tracks: Track::unique_tracks(5),
         ..Default::default()
     };
     while state.can_go_next() {
@@ -48,7 +35,7 @@ fn skip_next() {
 #[test]
 fn skip_previous() {
     let mut state = PlayerState {
-        tracks: unique_tracks(5),
+        tracks: Track::unique_tracks(5),
         ..Default::default()
     };
     while state.can_go_previous() {
@@ -70,7 +57,7 @@ fn skip_previous() {
 #[test]
 fn track_loop() {
     let mut state = PlayerState {
-        tracks: unique_tracks(3),
+        tracks: Track::unique_tracks(3),
         ..Default::default()
     };
     state.position = 1;
@@ -100,7 +87,7 @@ fn track_loop() {
 #[test]
 fn playlist_loop() {
     let mut state = PlayerState {
-        tracks: unique_tracks(4),
+        tracks: Track::unique_tracks(4),
         ..Default::default()
     };
     state.loop_state = LoopState::Playlist;
@@ -117,7 +104,7 @@ fn playlist_loop() {
 #[test]
 #[cfg(feature = "shuffle")]
 fn shuffle_works() {
-    let tracks = unique_tracks(10);
+    let tracks = Track::unique_tracks(10);
     let mut state = PlayerState {
         tracks: tracks.clone(),
         ..Default::default()
@@ -137,7 +124,7 @@ fn shuffle_works() {
 #[cfg(feature = "shuffle")]
 fn shuffle_track_stays_the_same() {
     let mut state = PlayerState {
-        tracks: unique_tracks(10),
+        tracks: Track::unique_tracks(10),
         ..Default::default()
     };
     state.position = rand::random_range(0..state.tracks.len() - 1);

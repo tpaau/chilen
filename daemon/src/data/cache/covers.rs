@@ -45,6 +45,7 @@ pub(crate) fn get_track_cover(
         .iter()
         .find(|p| p.pic_type() == PictureType::CoverFront);
 
+    // TODO: Revert to the old cover selection (that one worked :/)
     if let Some(front) = pic {
         let mut hasher = DefaultHasher::new();
         track.hash(&mut hasher);

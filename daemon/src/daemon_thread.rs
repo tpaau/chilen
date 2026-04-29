@@ -91,7 +91,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             break;
                         }
                     }
-                    LibraryCommand::DeletePlaylist { names } => {
+                    LibraryCommand::DeletePlaylists { names } => {
                         for name in names {
                             if let Err(e) = delete_playlist(&name, false)
                                 && let Err(mpipc::Error::SendingError) = respond(

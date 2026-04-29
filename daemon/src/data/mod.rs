@@ -1,5 +1,10 @@
+// TODO: Instead of this module I could have `music_lib` as the root module, and `covers` and `cache`
+// as submodules
+
 pub(crate) mod cache;
 pub mod music_lib;
+#[cfg(test)]
+mod tests;
 
 use std::{fs::create_dir_all, path::PathBuf, sync::RwLock};
 
