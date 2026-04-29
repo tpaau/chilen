@@ -13,7 +13,7 @@ use lofty::{
     tag::{Accessor, ItemValue, Tag},
 };
 use log::{error, trace};
-use mpipc::{DataError, MusicLibraryError};
+use mpipc::{DataError, library::LibraryError};
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
@@ -72,13 +72,13 @@ pub(crate) struct Track {
     pub comment: Option<String>,
     pub track: Option<u32>,
     pub track_total: Option<u32>,
-    pub disk: Option<u32>,
-    pub disk_total: Option<u32>,
+    pub disc: Option<u32>,
+    pub disc_total: Option<u32>,
     pub year: Option<u32>,
 }
 
-impl From<mpipc::Track> for Track {
-    fn from(value: mpipc::Track) -> Self {
+impl From<mpipc::library::Track> for Track {
+    fn from(value: mpipc::library::Track) -> Self {
         Track {
             path: value.path,
             cover_path: value.cover_path,
@@ -90,17 +90,17 @@ impl From<mpipc::Track> for Track {
             comment: value.comment,
             track: value.track,
             track_total: value.track_total,
-            disk: value.disk,
-            disk_total: value.disk_total,
+            disc: value.disc,
+            disc_total: value.disc_total,
             year: value.year,
             lyrics: value.lyrics,
         }
     }
 }
 
-impl From<Track> for mpipc::Track {
+impl From<Track> for mpipc::library::Track {
     fn from(value: Track) -> Self {
-        mpipc::Track {
+        mpipc::library::Track {
             path: value.path,
             cover_path: value.cover_path,
             duration: value.duration,
@@ -111,8 +111,8 @@ impl From<Track> for mpipc::Track {
             comment: value.comment,
             track: value.track,
             track_total: value.track_total,
-            disk: value.disk,
-            disk_total: value.disk_total,
+            disc: value.disc,
+            disc_total: value.disc_total,
             year: value.year,
             lyrics: value.lyrics,
         }
@@ -160,8 +160,8 @@ impl TryFrom<&TaggedFile> for Track {
             comment: tag.comment().map(|comment| comment.into()),
             track: tag.track(),
             track_total: tag.track_total(),
-            disk: tag.disk(),
-            disk_total: tag.disk_total(),
+            disc: tag.disk(),
+            disc_total: tag.disk_total(),
             year: tag.year(),
         })
     }
@@ -206,7 +206,7 @@ impl Track {
             .genre(self.genre)
             .comment(self.comment)
             .track_number(self.track.unwrap_or(0).try_into().unwrap_or(0))
-            .disc_number(self.disk.unwrap_or(0).try_into().unwrap_or(0))
+            .disc_number(self.disc.unwrap_or(0).try_into().unwrap_or(0))
             .lyrics(self.lyrics.unwrap_or_default())
             .build()
     }
@@ -242,8 +242,8 @@ impl Track {
             comment: None,
             track: None,
             track_total: None,
-            disk: None,
-            disk_total: None,
+            disc: None,
+            disc_total: None,
             year: None,
             lyrics: None,
         }
@@ -256,8 +256,8 @@ pub(crate) struct Playlist {
     pub tracks: Vec<Track>,
 }
 
-impl From<mpipc::Playlist> for Playlist {
-    fn from(value: mpipc::Playlist) -> Self {
+impl From<mpipc::library::Playlist> for Playlist {
+    fn from(value: mpipc::library::Playlist) -> Self {
         let mut tracks = Vec::new();
         for track in value.tracks {
             tracks.push(track.into());
@@ -270,13 +270,13 @@ impl From<mpipc::Playlist> for Playlist {
     }
 }
 
-impl From<Playlist> for mpipc::Playlist {
+impl From<Playlist> for mpipc::library::Playlist {
     fn from(value: Playlist) -> Self {
         let mut tracks = Vec::new();
         for track in value.tracks {
             tracks.push(track.into());
         }
-        mpipc::Playlist {
+        mpipc::library::Playlist {
             name: value.name,
             tracks,
         }
@@ -300,8 +300,8 @@ pub(crate) struct MusicLibrary {
     pub tracks: Vec<Track>,
 }
 
-impl From<mpipc::MusicLibrary> for MusicLibrary {
-    fn from(value: mpipc::MusicLibrary) -> Self {
+impl From<mpipc::library::MusicLibrary> for MusicLibrary {
+    fn from(value: mpipc::library::MusicLibrary) -> Self {
         let mut playlists = Vec::new();
         let mut tracks = Vec::new();
         for playlist in value.playlists {
@@ -315,7 +315,7 @@ impl From<mpipc::MusicLibrary> for MusicLibrary {
     }
 }
 
-impl From<MusicLibrary> for mpipc::MusicLibrary {
+impl From<MusicLibrary> for mpipc::library::MusicLibrary {
     fn from(value: MusicLibrary) -> Self {
         let mut playlists = Vec::new();
         let mut tracks = Vec::new();
@@ -325,7 +325,7 @@ impl From<MusicLibrary> for mpipc::MusicLibrary {
         for track in value.tracks {
             tracks.push(track.into());
         }
-        mpipc::MusicLibrary { playlists, tracks }
+        mpipc::library::MusicLibrary { playlists, tracks }
     }
 }
 
@@ -353,12 +353,12 @@ static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 
 static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
 
-pub(crate) fn get_library() -> Result<MusicLibrary, MusicLibraryError> {
+pub(crate) fn get_library() -> Result<MusicLibrary, LibraryError> {
     if let Some(lib) = MUSIC_LIBRARY.read().unwrap().clone() {
         Ok(lib)
     } else {
         error!("Tried to get the music library, but it was uninitialized!");
-        Err(MusicLibraryError::LibraryNotInitialized)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }
 
@@ -378,7 +378,7 @@ pub(crate) fn tracks_from_hashes(track_hashes: Vec<u64>, tracks: &[Track]) -> Ve
 }
 
 /// Save the library state to a file.
-pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
+pub(crate) fn save_library() -> Result<(), LibraryError> {
     trace!("Saving the library state");
 
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
@@ -391,35 +391,35 @@ pub(crate) fn save_library() -> Result<(), MusicLibraryError> {
         let mut data = Vec::new();
         if let Err(e) = lib.serialize(&mut Serializer::new(&mut data)) {
             error!("Could not serialize the music library: {e}");
-            return Err(MusicLibraryError::CacheError);
+            return Err(LibraryError::CacheError);
         }
 
         let mut file = match File::create(library_state) {
             Ok(file) => file,
             Err(e) => {
                 error!("Could not open the library in write-only mode: {e}");
-                return Err(MusicLibraryError::CacheError);
+                return Err(LibraryError::CacheError);
             }
         };
 
         match file.write_all(&data) {
             Ok(_) => {
-                let _ = send_event(mpipc::DaemonEvent::MusicLibraryChanged(lib_data.into()));
+                let _ = send_event(mpipc::Event::LibraryChanged(lib_data.into()));
                 Ok(())
             }
             Err(e) => {
                 error!("Could not write to the library: {e}");
-                Err(MusicLibraryError::CacheError)
+                Err(LibraryError::CacheError)
             }
         }
     } else {
         error!("Cannot save the library since it is uninitialized!");
-        Err(MusicLibraryError::CacheError)
+        Err(LibraryError::CacheError)
     }
 }
 
 /// Load the music library from the playlists file.
-pub(crate) fn load(rebuild_covers: bool) -> Result<(), MusicLibraryError> {
+pub(crate) fn load(rebuild_covers: bool) -> Result<(), LibraryError> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
@@ -446,7 +446,7 @@ pub(crate) fn load(rebuild_covers: bool) -> Result<(), MusicLibraryError> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library exists: {e}");
-            return Err(MusicLibraryError::CacheError);
+            return Err(LibraryError::CacheError);
         }
     };
 
@@ -455,14 +455,14 @@ pub(crate) fn load(rebuild_covers: bool) -> Result<(), MusicLibraryError> {
 
         if library_state.is_dir() {
             error!("The item at {library_state:?} must not be a directory!");
-            return Err(MusicLibraryError::CacheError);
+            return Err(LibraryError::CacheError);
         }
 
         let data = match read(library_state) {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library: {e}");
-                return Err(MusicLibraryError::CacheError);
+                return Err(LibraryError::CacheError);
             }
         };
 
@@ -471,7 +471,7 @@ pub(crate) fn load(rebuild_covers: bool) -> Result<(), MusicLibraryError> {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not decode the contents of the library state file: {e}");
-                return Err(MusicLibraryError::CacheError);
+                return Err(LibraryError::CacheError);
             }
         };
 
@@ -496,10 +496,12 @@ pub(crate) fn load(rebuild_covers: bool) -> Result<(), MusicLibraryError> {
     Ok(())
 }
 
+// FIX: This function should fail if any of the tracks are not registered in the music library
+// TODO: This function should also accept directory paths
 pub(crate) fn create_playlist(
     name: String,
     tracks: &Option<Vec<PathBuf>>,
-) -> Result<(), MusicLibraryError> {
+) -> Result<(), LibraryError> {
     trace!("Creating a new playlist with name \"{name}\" from a list of tracks");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
@@ -535,18 +537,18 @@ pub(crate) fn create_playlist(
             Ok(())
         } else {
             error!("A playlist with name \"{name}\" already exists");
-            Err(MusicLibraryError::PlaylistExists)
+            Err(LibraryError::PlaylistExists)
         }
     } else {
         error!("Cannot modify an uninitialized library");
-        Err(MusicLibraryError::LibraryNotInitialized)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }
 
 pub(crate) fn import_playlist_from_m3u8(
     name: Option<String>,
     m3u8_file: &Path,
-) -> Result<(), MusicLibraryError> {
+) -> Result<(), LibraryError> {
     let name = {
         if let Some(name) = name {
             name
@@ -557,7 +559,7 @@ pub(crate) fn import_playlist_from_m3u8(
                     error!(
                         "Could not determine the name for the imported playlist, the M3U8 file path had no final component!"
                     );
-                    return Err(MusicLibraryError::CacheError);
+                    return Err(LibraryError::CacheError);
                 }
             }
         }
@@ -567,14 +569,16 @@ pub(crate) fn import_playlist_from_m3u8(
         if lib.get_playlist_with_name(&name).is_none() {
             todo!("Importing playlists from M3U8 is not yet supported")
         } else {
-            Err(MusicLibraryError::PlaylistExists)
+            Err(LibraryError::PlaylistExists)
         }
     } else {
-        Err(MusicLibraryError::LibraryNotInitialized)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }
 
-pub(crate) fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicLibraryError> {
+// TODO: Make this function accept multiple playlists at once and fail if any of them are not
+// present in the music library without making any changes.
+pub(crate) fn delete_playlist(name: &str, save_state: bool) -> Result<(), LibraryError> {
     trace!("Deleting playlist with name \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
@@ -593,14 +597,16 @@ pub(crate) fn delete_playlist(name: &str, save_state: bool) -> Result<(), MusicL
                 trace!("Deleted playlist with name \"{name}\"");
                 Ok(())
             }
-            None => Err(MusicLibraryError::NoSuchPlaylist),
+            None => Err(LibraryError::NoSuchPlaylist),
         }
     } else {
-        Err(MusicLibraryError::LibraryNotInitialized)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }
 
-pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLibraryError> {
+// FIX: This function should fail if any of the tracks are not registered in the music library
+// TODO: This function should also accept directory paths
+pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), LibraryError> {
     trace!("Appending tracks to playlist \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
@@ -611,7 +617,7 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLi
             .position(|playlist| playlist.name == name)
         {
             Some(pos) => &mut lib.playlists[pos],
-            None => return Err(MusicLibraryError::NoSuchPlaylist),
+            None => return Err(LibraryError::NoSuchPlaylist),
         };
         let tracks = match index_files(tracks, false) {
             Ok(tracks) => tracks,
@@ -630,11 +636,12 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), MusicLi
         save_library()?;
         Ok(())
     } else {
-        Err(MusicLibraryError::LibraryNotInitialized)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }
 
-pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibraryError> {
+/// Remove tracks by indices from a specific playlist
+pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryError> {
     trace!("Removing tracks from playlist \"{name}\"");
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {
@@ -644,13 +651,14 @@ pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibr
             .position(|playlist| playlist.name == name)
         {
             Some(pos) => &mut lib.playlists[pos],
-            None => return Err(MusicLibraryError::NoSuchPlaylist),
+            None => return Err(LibraryError::NoSuchPlaylist),
         };
         for id in &ids {
             if *id >= playlist.tracks.len() {
-                return Err(MusicLibraryError::IndexOutOfBounds);
+                return Err(LibraryError::IndexOutOfBounds);
             }
         }
+        // FIX: This probably doesn't do what it's supposed to...
         for id in &ids {
             playlist.tracks.remove(*id);
         }
@@ -658,6 +666,6 @@ pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), MusicLibr
         save_library()?;
         Ok(())
     } else {
-        Err(MusicLibraryError::LibraryNotInitialized)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }

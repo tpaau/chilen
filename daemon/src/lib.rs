@@ -22,10 +22,8 @@ use std::{
 use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{
-    ClientCommand, ConfigError, DEFAULT_SOCKET_NAME, DaemonError, DaemonEvent, DaemonResponse,
-    exec_client_command,
-};
+pub use mpipc;
+use mpipc::{Command, DEFAULT_SOCKET_NAME, Error, Event, Response, send_client_command};
 use serde::{Deserialize, Serialize};
 
 use crate::data::{CACHE_DIR, music_lib};
@@ -33,7 +31,7 @@ use crate::data::{CACHE_DIR, music_lib};
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = mpipc::SocketType;
 
-static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<DaemonEvent>>>>> =
+static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 /// Defines under which conditions should the daemon claim an occupied socket address.
@@ -49,6 +47,24 @@ pub enum AddrClaimMode {
     ClaimIfUnresponsive,
     /// Force claim the socket address.
     ForceClaim,
+}
+
+/// Error that can be thrown by the constructors of [Config].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ConfigError {
+    /// The provided bus name suffix for MPRIS was invalid.
+    InvalidBusNameSuffix,
+    /// Could not get the home directory path.
+    HomeError,
+}
+
+impl std::fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidBusNameSuffix => write!(f, "The bus name suffix provided was invalid"),
+            Self::HomeError => write!(f, "Could not get the home directory path"),
+        }
+    }
 }
 
 /// Configuration options for the daemon.
@@ -71,7 +87,7 @@ pub struct Config {
     pub addr_claim_mode: AddrClaimMode,
     /// Defines the type of socket the daemon should use.
     pub socket_type: SocketType,
-    /// Configuration options specific to the [`playback`] module.
+    /// Configuration options specific to the [playback] module.
     pub playback_config: playback::Config,
 }
 
@@ -79,7 +95,7 @@ impl Config {
     /// Get the default daemon config.
     ///
     /// For a custom music player, you probably want to create your own config from
-    /// scratch, or use the [`Config::try_from_name`] constructor.
+    /// scratch, or use the [Config::try_from_name] constructor.
     ///
     /// # Examples
     /// ```
@@ -156,13 +172,15 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
+// TODO: This function should probably use its own error type instead of stealing from mpipc
+// TODO: I should also create a `stop` function for stopping the daemon without connecting to it
 /// Create an IPC socket listener for the daemon with the specified address.
 ///
 /// Depending on the configuration, this can either return a namespaced socket or a filesystem one.
 ///
 /// A filesystem socket will be returned if namespaced sockets are not supported, and the
-/// [`SocketType`] passed is [`SocketType::NamespacedOrFilesystem`], or if the [`SocketType`] value
-/// passed is [`SocketType::FilesystemOnly`].
+/// [SocketType] passed is [SocketType::NamespacedOrFilesystem], or if the [SocketType] value
+/// passed is [SocketType::FilesystemOnly].
 ///
 /// The [`AddrClaimMode`] value defines under which conditions should an occupied socket address be
 /// claimed. This is only effective for filesystem sockets.
@@ -170,12 +188,12 @@ fn get_listener(
     socket_name: &str,
     socket_type: &SocketType,
     claim_mode: &AddrClaimMode,
-) -> Result<Listener, DaemonError> {
+) -> Result<Listener, Error> {
     let socket = match mpipc::get_socket(socket_name, socket_type) {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain the socket: {e}");
-            return Err(DaemonError::SocketError);
+            return Err(Error::SocketError);
         }
     };
 
@@ -206,26 +224,26 @@ fn get_listener(
                         info!(
                             "The daemon is configured not to reclaim the socket address, aborting"
                         );
-                        Err(DaemonError::AddrInUse)
+                        Err(Error::AddrInUse)
                     }
                     AddrClaimMode::ClaimIfUnresponsive => {
                         info!("Attempting to claim the socket address");
-                        match exec_client_command(ClientCommand::Ping, socket_name, socket_type) {
+                        match send_client_command(Command::Ping, socket_name, socket_type) {
                             Ok(response) => {
-                                if response == DaemonResponse::Pong {
+                                if response == Response::Pong {
                                     error!(
                                         "The other deamon responded to the pong command, aborting"
                                     );
-                                    return Err(DaemonError::AddrInUse);
+                                    return Err(Error::AddrInUse);
                                 } else {
                                     error!(
                                         "Got an unexpected response from the deamon: {response:?}"
                                     );
-                                    return Err(DaemonError::UnexpectedResponse);
+                                    return Err(Error::AddrInUse);
                                 }
                             }
                             Err(e) => {
-                                if e == DaemonError::ConnectionError {
+                                if e == Error::ConnectionError {
                                     info!(
                                         "The other daemon is either dead or unresponsive, claiming the address"
                                     );
@@ -233,14 +251,14 @@ fn get_listener(
                                     error!(
                                         "Got an unexpected error while sending a ping command: {e}"
                                     );
-                                    return Err(DaemonError::UnexpectedResponse);
+                                    return Err(Error::AddrInUse);
                                 }
                             }
                         }
 
                         if let Err(e) = remove_file(mpipc::get_fs_socket_path(socket_name)) {
                             error!("Could not remove the old socket: {e}");
-                            return Err(DaemonError::SocketError);
+                            return Err(Error::SocketError);
                         }
                         let opts = ListenerOptions::new().name(socket.clone());
                         match opts.create_sync() {
@@ -250,7 +268,7 @@ fn get_listener(
                             }
                             Err(e) => {
                                 error!("Could not create a listener: {e}");
-                                Err(DaemonError::SocketError)
+                                Err(Error::SocketError)
                             }
                         }
                     }
@@ -258,7 +276,7 @@ fn get_listener(
                         info!("Force claiming the socket address");
                         if let Err(e) = remove_file(mpipc::get_fs_socket_path(socket_name)) {
                             error!("Could not remove the old socket: {e}");
-                            return Err(DaemonError::SocketError);
+                            return Err(Error::SocketError);
                         }
                         let opts = ListenerOptions::new().name(socket.clone());
                         match opts.create_sync() {
@@ -270,14 +288,14 @@ fn get_listener(
                                 error!(
                                     "Could not create a listener despite claiming the socket: {e}"
                                 );
-                                Err(DaemonError::SocketError)
+                                Err(Error::SocketError)
                             }
                         }
                     }
                 }
             } else {
-                error!("Failed creating a listener for the daemon socket: '{e}'");
-                Err(DaemonError::SocketError)
+                error!("Failed creating a listener for the daemon socket: {e}");
+                Err(Error::SocketError)
             }
         }
     }
@@ -286,7 +304,7 @@ fn get_listener(
 /// Send an event to the daemon thread.
 ///
 /// Will always return an error when the daemon isn't initialized, for example during testing.
-pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
+pub(crate) fn send_event(event: Event) -> Result<(), String> {
     match EVENT_SENDER.read().as_mut() {
         Ok(guard) => match guard.clone() {
             Some(guard) => match guard.send(event) {
@@ -306,7 +324,16 @@ pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
 
 /// Start the daemon with the given config.
 ///
-/// **Note:** This function will block. Launch it in a separate [thread](`std::thread`) if you want
+/// The `daemon` usually starts listening for commands around 100ms after this function is
+/// called on a low-end system, but some commands sent too early might fail if the music library
+/// isn't loaded yet, the playback module is not initialized, or if the MPRIS server hasn't started
+/// yet (if the MPRIS feature is enabled).
+///
+/// The initialization of the music library is by far the most time-consuming process ran when the
+/// `daemon` starts, and the time it takes vastly depends on the read speeds of the hard drive of
+/// the host machine and the size of the music library.
+///
+/// **Note:** This function will block. Launch it in a separate [thread](std::thread) if you want
 /// to run the daemon in the background.
 ///
 /// # Examples
@@ -315,12 +342,12 @@ pub(crate) fn send_event(event: DaemonEvent) -> Result<(), String> {
 /// let config = daemon::Config::try_default().unwrap();
 /// daemon::start(config).unwrap();
 /// ```
-pub fn start(config: Config) -> Result<(), DaemonError> {
+pub fn start(config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
 
     if let Err(e) = data::set_dirs(config.clone()) {
         error!("Could not set the paths: {e}");
-        return Err(DaemonError::DataError(e));
+        return Err(Error::DataError(e));
     }
 
     if config.socket_name == mpipc::DEFAULT_SOCKET_NAME {
@@ -362,7 +389,7 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
     if guard.as_ref().is_some() {
         error!("Could not start the daemon because the event channel is already initialized");
         info!("(Did you try to start a second daemon in the same context?)");
-        return Err(DaemonError::EventChannelInitialized);
+        return Err(Error::EventChannelInitialized);
     }
     let (event_sender, event_receiver) = mpsc::channel();
     *guard = Some(event_sender);
@@ -385,11 +412,11 @@ pub fn start(config: Config) -> Result<(), DaemonError> {
         }
 
         match event {
-            DaemonEvent::Shutdown => {
+            Event::Shutdown => {
                 trace!("Received shutdown event");
                 std::process::exit(0);
             }
-            DaemonEvent::ConnectionClosed => {
+            Event::ConnectionClosed => {
                 trace!("Connection with a client closed")
             }
             _ => {}

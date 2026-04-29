@@ -7,7 +7,7 @@ use std::{
 
 use lofty::{file::TaggedFileExt, read_from_path};
 use log::{error, info, trace, warn};
-use mpipc::MusicLibraryError;
+use mpipc::library::LibraryError;
 use walkdir::WalkDir;
 
 use crate::data::{MUSIC_DIR, music_lib::Track};
@@ -15,7 +15,7 @@ use crate::data::{MUSIC_DIR, music_lib::Track};
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
     rebuild_covers: bool,
-) -> Result<Vec<Track>, MusicLibraryError> {
+) -> Result<Vec<Track>, LibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
 
@@ -76,10 +76,11 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
+// TODO: Crate a custom enum to replace the `Option` enum
 pub(crate) fn index(
     music_dir: Option<PathBuf>,
     rebuild_covers: bool,
-) -> Result<Vec<Track>, MusicLibraryError> {
+) -> Result<Vec<Track>, LibraryError> {
     let music_dir = music_dir.unwrap_or(MUSIC_DIR.read().unwrap().clone().unwrap());
 
     trace!("Indexing directory: {music_dir:?}");

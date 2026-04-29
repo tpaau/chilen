@@ -1,0 +1,521 @@
+use std::{path::PathBuf, time::Duration};
+
+use serde::{Deserialize, Serialize};
+
+use crate::library::Track;
+
+/// Playback state of the player.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlaybackState {
+    /// The player is playing.
+    Playing,
+    /// The player is paused.
+    Paused,
+    /// Audio playback is stopped. Playing will play the current track from the beginning.
+    #[default]
+    Stopped,
+}
+
+impl std::fmt::Display for PlaybackState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Playing => write!(f, "Playing"),
+            Self::Paused => write!(f, "Paused"),
+            Self::Stopped => write!(f, "Stopped"),
+        }
+    }
+}
+
+/// Loop state defining the looping behavior of the player.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LoopState {
+    /// The playback will stop when there are no more tracks to play.
+    #[default]
+    Off,
+    /// The current track will start again from the beginning once it has finished playing.
+    Track,
+    /// The playback will loop through the entire queue.
+    Playlist,
+}
+
+/// Shuffle state of the player.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ShuffleState {
+    /// Do not shuffle the queue.
+    #[default]
+    Off,
+    /// Shuffle the tracks in the queue.
+    On,
+}
+
+impl From<ShuffleState> for bool {
+    fn from(s: ShuffleState) -> bool {
+        match s {
+            ShuffleState::Off => false,
+            ShuffleState::On => true,
+        }
+    }
+}
+
+impl From<bool> for ShuffleState {
+    fn from(value: bool) -> Self {
+        if value { Self::On } else { Self::Off }
+    }
+}
+
+impl std::fmt::Display for ShuffleState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::On => write!(f, "On"),
+        }
+    }
+}
+
+impl std::fmt::Display for LoopState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::Track => write!(f, "Track"),
+            Self::Playlist => write!(f, "Playlist"),
+        }
+    }
+}
+
+/// Signed duration type used for seeking.
+///
+/// This is just a bare bones type that should only be used for
+/// [seeking audio playback](PlaybackCommand::Seek), and not as a [Duration] replacement.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum SignedDuration {
+    Positive(Duration),
+    Negative(Duration),
+}
+
+impl SignedDuration {
+    pub fn from_secs<T: Into<i64> + Copy>(secs: T) -> SignedDuration {
+        if secs.into() < 0 {
+            SignedDuration::Negative(Duration::from_secs(secs.into().abs().try_into().unwrap()))
+        } else {
+            SignedDuration::Positive(Duration::from_secs(secs.into().abs().try_into().unwrap()))
+        }
+    }
+}
+
+/// Player volume.
+///
+/// Values passed to this struct will be clamped between 0.0 (no sound at all) and 1.0 (regular
+/// volume).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlayerVolume {
+    volume: f64,
+}
+
+impl Default for PlayerVolume {
+    fn default() -> Self {
+        Self { volume: 1.0 }
+    }
+}
+
+impl std::fmt::Display for PlayerVolume {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Player volume: {}", self.volume)
+    }
+}
+
+impl PlayerVolume {
+    /// Create a new [PlayerVolume] struct with the specified volume.
+    ///
+    /// The passed `volume` parameter will be clamped between 0.0 and 1.0.
+    pub fn new(volume: f64) -> Self {
+        Self {
+            volume: volume.clamp(0.0, 1.0),
+        }
+    }
+
+    /// Set the volume.
+    ///
+    /// The passed `volume` parameter will be clamped between 0.0 and 1.0.
+    pub fn set(&mut self, volume: f64) {
+        self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    /// Get the wrapped value.
+    pub fn get(&self) -> f64 {
+        self.volume
+    }
+}
+
+/// The speed at which tracks are played.
+///
+/// Rate of 1.0 will play tracks at their original speed, 2.0 will play them twice as fast, and 0.5
+/// will slow them to half speed.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlaybackRate {
+    rate: f64,
+    min: f64,
+    max: f64,
+}
+
+impl Default for PlaybackRate {
+    fn default() -> Self {
+        Self {
+            rate: 1.0,
+            min: 0.1,
+            max: 10.0,
+        }
+    }
+}
+
+impl<T: Into<f64>> From<T> for PlaybackRate {
+    fn from(value: T) -> Self {
+        let mut def = Self::default();
+        def.set_value(value.into());
+        def
+    }
+}
+
+impl std::fmt::Display for PlaybackRate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Current playback rate: {}, min: {}, max: {}",
+            self.rate, self.min, self.max
+        )
+    }
+}
+
+impl PlaybackRate {
+    /// Create a new [PlaybackRate] struct.
+    pub fn new(rate: f64, min: f64, max: f64) -> PlaybackRate {
+        Self { rate, min, max }
+    }
+
+    fn clamp(&mut self) {
+        self.rate = self.rate.clamp(self.min, self.max)
+    }
+
+    /// Checks if the given rate value is in the allowed range.
+    pub fn is_in_range(&self, rate: f64) -> bool {
+        rate >= self.min && rate <= self.max
+    }
+
+    /// Set the rate multiplier.
+    ///
+    /// This value will be clamped with the min and max values.
+    pub fn set_value(&mut self, rate: f64) {
+        self.rate = rate.clamp(self.min, self.max)
+    }
+
+    /// Get the rate multiplier.
+    pub fn get_value(&self) -> f64 {
+        self.rate
+    }
+
+    /// Get the rate multiplier clamped to `f32`.
+    pub fn get_value_f32(&self) -> f32 {
+        if self.rate.is_nan() {
+            f32::NAN
+        } else if self.rate > f32::MAX as f64 {
+            f32::MAX
+        } else if self.rate < f32::MIN as f64 {
+            f32::MIN
+        } else {
+            self.rate as f32
+        }
+    }
+
+    /// Set the minimum acceptable value for the playback rate.
+    pub fn set_min(&mut self, min: f64) {
+        self.min = min.clamp(0.0, self.max);
+        self.clamp();
+    }
+
+    /// Get the minimum acceptable value for the playback rate.
+    pub fn get_min(&self) -> f64 {
+        self.min
+    }
+
+    /// Set the maximum acceptable value for the playback rate.
+    pub fn set_max(&mut self, max: f64) {
+        self.max = max.clamp(self.min, f64::MAX);
+        self.clamp();
+    }
+
+    /// Get the maximum acceptable value for the playback rate.
+    pub fn get_max(&self) -> f64 {
+        self.max
+    }
+}
+
+/// Subcommand of [Command](crate::Command) for managing audio playback in the `daemon`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PlaybackCommand {
+    /// Play the current track or play a track at a specific index in the queue.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    Play(Option<usize>),
+    /// Pause the player.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    Pause,
+    /// Stop the player.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    Stop,
+    /// Toggle between play/pause.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    TogglePlaying,
+    /// Get the [PlaybackState] of the player.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    GetPlaybackState,
+    // TODO: Update this after patching the daemon
+    /// Set a new queue for the player.
+    ///
+    /// **Note:** tracks outside of the music directory or not registered by the music player
+    /// (added after the last library reload), will be discarded.
+    SetQueue(Vec<PathBuf>),
+    // TODO: Update this after patching the daemon
+    /// Append tracks to the queue.
+    ///
+    /// **Note:** tracks outside of the music directory or not registered by the music player
+    /// (added after the last library reload), will be discarded.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    AppendToQueue(Vec<PathBuf>),
+    /// Load a playlist and append its tracks to the queue.
+    ///
+    /// If there's no [Playlist](crate::library::Playlist) with the provided name present in the
+    /// [MusicLibrary](crate::library::MusicLibrary),
+    /// [LibraryError::NoSuchPlaylist](crate::library::LibraryError::NoSuchPlaylist) will be
+    /// returned, and no changes to the queue will be made.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    AppendPlaylist(String),
+    /// Load a playlist and put its tracks in the queue.
+    ///
+    /// If there's no [Playlist](crate::library::Playlist) with the provided name present in the
+    /// [MusicLibrary](crate::library::MusicLibrary),
+    /// [LibraryError::NoSuchPlaylist](crate::library::LibraryError::NoSuchPlaylist) will be
+    /// returned, and no changes to the queue will be made.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    SetPlaylist(String),
+    /// Get the current [track](Track).
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::Track] if successful.
+    GetCurrentTrack,
+    /// Skip to the next track.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    Next,
+    /// Skip to the previous track.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    Previous,
+    /// Set the [loop state](LoopState) of the player.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    SetLoopState(LoopState),
+    /// Get the [loop state](LoopState) of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::LoopState] if
+    /// successful.
+    GetLoopState,
+    /// Set the [playback rate](PlaybackRate) of the player.
+    ///
+    /// This command will fail if the `daemon` is configured to not allow playback rate
+    /// modification or if the specified rate value was out of the acceptable range.
+    ///
+    /// If the `daemon` is configured not to allow playback rate modification,
+    /// [PlaybackError::FixedRate] will be returned.
+    ///
+    /// If the provided rate value is out of the allowed range, [PlaybackError::RateOutOfRange]
+    /// will be returned.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    SetRate(f64),
+    /// Get the [playback rate](PlaybackRate) of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::PlaybackRate] if
+    /// successful.
+    GetRate,
+    /// Set the [shuffle state](ShuffleState) of the player.
+    ///
+    /// The `daemon` will always respond to this command with [PlaybackError::ShuffleNotSupported]
+    /// if it was built without shuffle support.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    SetShuffleState(ShuffleState),
+    /// Get the [shuffle state](ShuffleState) of the player.
+    ///
+    /// The `daemon` will always respond to this command with [ShuffleState::Off] if it was built
+    /// without shuffle support.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::ShuffleState] if
+    /// successful.
+    GetShuffleState,
+    /// Set the position of the player.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    SetPlayerPosition(Duration),
+    /// Change the player position by a time delta.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    Seek(SignedDuration),
+    /// Get the position of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::PlayerPosition] if
+    /// successful.
+    GetPlayerPosition,
+    /// Set the volume of the player.
+    ///
+    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    SetPlayerVolume(PlayerVolume),
+    /// Get the volume of the player.
+    ///
+    /// The `daemon` will respond to this with [PlaybackResponse::PlayerVolume] if
+    /// successful.
+    GetPlayerVolume,
+}
+
+/// Error originating from the playback module of the `daemon`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlaybackError {
+    /// The audio player is not connected.
+    ///
+    /// This may happen if the device doesn't have an audio device or none of the audio devices are
+    /// marked as default.
+    PlayerNotConnected,
+    /// The playback state is not initialized.
+    ///
+    /// This error may occur when a [PlaybackCommand] is sent to the `daemon` too early, before the
+    /// state is restored from cache.
+    StateNotInitialized,
+    /// The queue is empty.
+    QueueEmpty,
+    /// The audio file could not be opened, has an unsupported format or is corrupt.
+    SourceError,
+    /// The player is already playing.
+    PlayerPlaying,
+    /// The player is already paused.
+    PlayerPaused,
+    /// Thrown when a client attempts to stop the player when it was already stopped or when a
+    /// client attempts to seek while the player is stopped.
+    PlayerStopped,
+    /// Seek is not supported for the current audio source.
+    SeekNotSupported,
+    /// Cannot go to the previous track.
+    ///
+    /// This means that the current track is first in the queue and the [loop state](LoopState) is
+    /// set to [LoopState::Off].
+    /// asdfasdd
+    CannotGoPrevious,
+    /// Cannot go to the next track.
+    ///
+    /// This means that the current track is last in the queue and the [loop state](LoopState) is
+    /// set to [LoopState::Off].
+    CannotGoNext,
+    /// The daemon was not built with shuffle support.
+    ShuffleNotSupported,
+    /// No track at this index.
+    NoTrackAtIndex(usize),
+    /// The specified rate value was out of the allowed range.
+    RateOutOfRange,
+    /// The modification of the playback rate is not allowed.
+    FixedRate,
+    /// The player position could not be set because the duration provided was invalid.
+    ///
+    /// The player will refuse to seek by 0s to prevent unnecessary audio popping.
+    InvalidDuration,
+    /// Overflow detected while performing a seek operation.
+    DurationOverflow,
+}
+
+impl std::fmt::Display for PlaybackError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
+            Self::StateNotInitialized => write!(f, "The playback state is not initialized"),
+            Self::QueueEmpty => write!(f, "The queue is empty"),
+            Self::SourceError => write!(
+                f,
+                "The audio file could not be opened, has an unsupported format or is corrupt"
+            ),
+            Self::PlayerPlaying => write!(f, "The player is already playing"),
+            Self::PlayerPaused => write!(f, "The player is already paused"),
+            Self::PlayerStopped => write!(f, "The player is stopped"),
+            Self::SeekNotSupported => write!(f, "Seek is not supported"),
+            Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
+            Self::CannotGoNext => write!(f, "Cannot go to the next track"),
+            Self::ShuffleNotSupported => write!(f, "The daemon was not built with shuffle support"),
+            Self::NoTrackAtIndex(index) => write!(f, "No track was found at index {index}"),
+            Self::RateOutOfRange => {
+                write!(f, "The specified rate value was out of the allowed range")
+            }
+            Self::FixedRate => write!(f, "The modification of the playback rate is disallowed"),
+            Self::InvalidDuration => write!(
+                f,
+                "The player position could not be set because the duration provided was invalid"
+            ),
+            Self::DurationOverflow => {
+                write!(f, "Overflow detected while performing a seek operation")
+            }
+        }
+    }
+}
+
+/// Response originating from the playback module of the `daemon`.
+///
+/// Used as an enum value for the [Response](crate::Response).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PlaybackResponse {
+    PlaybackState(PlaybackState),
+    LoopState(LoopState),
+    PlaybackRate(PlaybackRate),
+    ShuffleState(ShuffleState),
+    Track(Option<Box<Track>>),
+    PlayerVolume(PlayerVolume),
+    PlayerPosition(Duration),
+}
+
+impl std::fmt::Display for PlaybackResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::PlaybackState(state) => write!(f, "{state}"),
+            Self::LoopState(state) => write!(f, "{state}"),
+            Self::PlaybackRate(rate) => write!(f, "{rate}"),
+            Self::ShuffleState(state) => write!(f, "{state}"),
+            Self::Track(track) => match track {
+                Some(track) => write!(f, "{track}"),
+                None => write!(f, "None"),
+            },
+            Self::PlayerVolume(volume) => write!(f, "{volume}"),
+            Self::PlayerPosition(position) => write!(f, "{position:?}"),
+        }
+    }
+}
+
+/// Event originating from the playback module of the `daemon`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PlaybackEvent {
+    /// Sent when the [playback state](PlaybackState) changes, for instance when the player is
+    /// paused.
+    PlaybackStateChanged(PlaybackState),
+    /// Sent when the [loop state](LoopState) of the player changes.
+    LoopStateChanged(LoopState),
+    /// Sent when the [shuffle state](ShuffleState) of the player changes.
+    ShuffleStateChanged(ShuffleState),
+    /// Sent when the track queue changes.
+    QueueChanged(Vec<Track>),
+    /// Sent when the current track changes.
+    PositionChanged(usize),
+    /// Sent when the position of the player changes.
+    PlayerPositionChanged(Duration),
+    /// Sent when the [volume](PlayerVolume) of the player changes.
+    PlayerVolumeChanged(PlayerVolume),
+    /// Sent when the [playback rate](PlaybackRate) of the player changes.
+    RateChanged(PlaybackRate),
+}

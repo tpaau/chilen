@@ -1,4 +1,4 @@
-use mpipc::{DaemonError, SocketType};
+use mpipc::{Error, SocketType};
 
 use crate::{AddrClaimMode, get_listener};
 
@@ -17,15 +17,15 @@ fn ns_connections() {
     let listener = get_listener(socket_name, &st, &AddrClaimMode::ClaimIfUnresponsive).unwrap();
     assert_eq!(
         get_listener(socket_name, &st, &AddrClaimMode::DoNotClaim).unwrap_err(),
-        DaemonError::SocketError
+        Error::SocketError
     );
     assert_eq!(
         get_listener(socket_name, &st, &AddrClaimMode::ClaimIfUnresponsive).unwrap_err(),
-        DaemonError::SocketError
+        Error::SocketError
     );
     assert_eq!(
         get_listener(socket_name, &st, &AddrClaimMode::ForceClaim).unwrap_err(),
-        DaemonError::SocketError
+        Error::SocketError
     );
     drop(listener);
 }
@@ -39,7 +39,7 @@ fn fs_addr_reclamation() {
     let listener = get_listener(socket_name, &st, &AddrClaimMode::ClaimIfUnresponsive).unwrap();
     assert_eq!(
         get_listener(socket_name, &st, &AddrClaimMode::DoNotClaim).unwrap_err(),
-        DaemonError::AddrInUse
+        Error::AddrInUse
     );
     drop(listener);
     get_listener(socket_name, &st, &AddrClaimMode::ClaimIfUnresponsive).unwrap();

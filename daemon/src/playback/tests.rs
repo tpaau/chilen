@@ -1,12 +1,13 @@
 use std::time::Duration;
 
-use mpipc::LoopState;
+use mpipc::playback::LoopState;
 #[cfg(feature = "shuffle")]
-use mpipc::ShuffleState;
+use mpipc::playback::ShuffleState;
 
 use crate::{data::music_lib::Track, playback::state::PlayerState};
 
-// Higher values will reduce the chance of false positives but will increase the runtime of some tests.
+// Higher values will reduce the chance of false positives but will increase the runtime of some
+// tests.
 const TEST_ITER_COUNT: u32 = 100;
 
 /// Returns a [`Vec`] of unique [`Track`] structs for testing.

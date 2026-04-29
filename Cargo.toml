@@ -9,7 +9,7 @@ license = "LGPL-3.0-or-later"
 env_logger = "0.11.10"
 log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
-mpipc = { path = "mpipc", default-features = false }
+mpipc = { path = "mpipc" }
 daemon = { path = "daemon", default-features = false, features = [ "shuffle" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.149"
@@ -22,10 +22,7 @@ members = [ "daemon", "mpipc" ]
 mpris = [ "daemon/mpris" ]
 gui = [ "dep:iced" ]
 linux_package = [ "mpris", "gui" ]
-flatpak = [ "mpris", "gui" ]
+linux_flatpak = [ "mpris", "gui" ]
 windows = [ "gui" ]
 macos = [ "gui" ]
 default = [ "mpris", "gui" ]
-
-[dev-dependencies]
-env_logger = "0.11.10"

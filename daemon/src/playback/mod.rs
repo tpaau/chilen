@@ -12,10 +12,15 @@ use std::{
 
 use log::{debug, error, info, trace, warn};
 #[cfg(feature = "shuffle")]
-use mpipc::ShuffleState;
 use mpipc::{
-    DaemonEvent, LoopState, MusicLibraryError, PlaybackError, PlaybackRate, PlaybackResponse,
-    PlaybackState, PlayerVolume, SignedDuration,
+    Event, Response,
+    playback::{
+        PlaybackCommand, PlaybackRate, PlaybackState, PlayerVolume, ShuffleState, SignedDuration,
+    },
+};
+use mpipc::{
+    library::LibraryError,
+    playback::{LoopState, PlaybackError, PlaybackResponse},
 };
 use rodio::Player;
 use serde::{Deserialize, Serialize};
@@ -86,66 +91,65 @@ pub(crate) enum Command {
     GetPlayerVolume,
 }
 
-impl TryFrom<mpipc::PlaybackCommand> for Command {
-    type Error = MusicLibraryError;
-    fn try_from(value: mpipc::PlaybackCommand) -> Result<Self, Self::Error> {
+impl TryFrom<PlaybackCommand> for Command {
+    type Error = LibraryError;
+    fn try_from(value: PlaybackCommand) -> Result<Self, Self::Error> {
         match value {
-            mpipc::PlaybackCommand::Play(maybe_index) => Ok(Self::Play(maybe_index)),
-            mpipc::PlaybackCommand::Pause => Ok(Self::Pause),
-            mpipc::PlaybackCommand::Stop => Ok(Self::Stop),
-            mpipc::PlaybackCommand::TogglePlaying => Ok(Self::TogglePlaying),
-            mpipc::PlaybackCommand::GetPlaybackState => Ok(Self::GetPlaybackState),
-            mpipc::PlaybackCommand::SetQueue(track_paths) => {
+            PlaybackCommand::Play(maybe_index) => Ok(Self::Play(maybe_index)),
+            PlaybackCommand::Pause => Ok(Self::Pause),
+            PlaybackCommand::Stop => Ok(Self::Stop),
+            PlaybackCommand::TogglePlaying => Ok(Self::TogglePlaying),
+            PlaybackCommand::GetPlaybackState => Ok(Self::GetPlaybackState),
+            PlaybackCommand::SetQueue(track_paths) => {
                 let tracks = get_library()?.tracks;
                 let indexed_tracks = index_files(track_paths, false)?;
                 let track_hashes = Track::hash_tracks(&indexed_tracks);
                 let filtered_tracks = tracks_from_hashes(track_hashes, &tracks);
                 Ok(Self::SetQueue(filtered_tracks))
             }
-            mpipc::PlaybackCommand::AppendToQueue(track_paths) => {
+            PlaybackCommand::AppendToQueue(track_paths) => {
+                // TODO: Fail if any of the tracks are invalid
                 let tracks = get_library()?.tracks;
                 let indexed_tracks = index_files(track_paths, false)?;
                 let track_hashes = Track::hash_tracks(&indexed_tracks);
                 let filtered_tracks = tracks_from_hashes(track_hashes, &tracks);
                 Ok(Self::AppendToQueue(filtered_tracks))
             }
-            mpipc::PlaybackCommand::SetPlaylist(playlist_name) => {
+            PlaybackCommand::SetPlaylist(playlist_name) => {
                 let lib = get_library()?;
                 let playlist = match lib.playlists.iter().find(|p| p.name == playlist_name) {
                     Some(playlist) => playlist,
-                    None => return Err(MusicLibraryError::NoSuchPlaylist),
+                    None => return Err(LibraryError::NoSuchPlaylist),
                 };
                 Ok(Self::SetQueue(playlist.tracks.clone()))
             }
-            mpipc::PlaybackCommand::AppendPlaylist(playlist_name) => {
+            PlaybackCommand::AppendPlaylist(playlist_name) => {
                 let lib = get_library()?;
                 let playlist = match lib.playlists.iter().find(|p| p.name == playlist_name) {
                     Some(playlist) => playlist,
-                    None => return Err(MusicLibraryError::NoSuchPlaylist),
+                    None => return Err(LibraryError::NoSuchPlaylist),
                 };
                 Ok(Self::AppendToQueue(playlist.tracks.clone()))
             }
-            mpipc::PlaybackCommand::GetCurrentTrack => Ok(Self::GetCurrentTrack),
-            mpipc::PlaybackCommand::Next => Ok(Self::Next),
-            mpipc::PlaybackCommand::Previous => Ok(Self::Previous),
-            mpipc::PlaybackCommand::SetLoopState(loop_state) => Ok(Self::SetLoopState(loop_state)),
-            mpipc::PlaybackCommand::GetLoopState => Ok(Self::GetLoopState),
-            mpipc::PlaybackCommand::SetRate(rate) => Ok(Self::SetRate(rate)),
-            mpipc::PlaybackCommand::GetRate => Ok(Self::GetRate),
+            PlaybackCommand::GetCurrentTrack => Ok(Self::GetCurrentTrack),
+            PlaybackCommand::Next => Ok(Self::Next),
+            PlaybackCommand::Previous => Ok(Self::Previous),
+            PlaybackCommand::SetLoopState(loop_state) => Ok(Self::SetLoopState(loop_state)),
+            PlaybackCommand::GetLoopState => Ok(Self::GetLoopState),
+            PlaybackCommand::SetRate(rate) => Ok(Self::SetRate(rate)),
+            PlaybackCommand::GetRate => Ok(Self::GetRate),
             #[cfg(feature = "shuffle")]
-            mpipc::PlaybackCommand::SetShuffleState(shuffle_state) => {
+            PlaybackCommand::SetShuffleState(shuffle_state) => {
                 Ok(Self::SetShuffleState(shuffle_state))
             }
             #[cfg(not(feature = "shuffle"))]
-            mpipc::PlaybackCommand::SetShuffleState(_) => Ok(Self::SetShuffleState),
-            mpipc::PlaybackCommand::GetShuffleState => Ok(Self::GetShuffleState),
-            mpipc::PlaybackCommand::SetPlayerPosition(position) => {
-                Ok(Self::SetPlayerPosition(position))
-            }
-            mpipc::PlaybackCommand::Seek(delta) => Ok(Self::Seek(delta)),
-            mpipc::PlaybackCommand::GetPlayerPosition => Ok(Self::GetPlayerPosition),
-            mpipc::PlaybackCommand::SetPlayerVolume(volume) => Ok(Self::SetPlayerVolume(volume)),
-            mpipc::PlaybackCommand::GetPlayerVolume => Ok(Self::GetPlayerVolume),
+            PlaybackCommand::SetShuffleState(_) => Ok(Self::SetShuffleState),
+            PlaybackCommand::GetShuffleState => Ok(Self::GetShuffleState),
+            PlaybackCommand::SetPlayerPosition(position) => Ok(Self::SetPlayerPosition(position)),
+            PlaybackCommand::Seek(delta) => Ok(Self::Seek(delta)),
+            PlaybackCommand::GetPlayerPosition => Ok(Self::GetPlayerPosition),
+            PlaybackCommand::SetPlayerVolume(volume) => Ok(Self::SetPlayerVolume(volume)),
+            PlaybackCommand::GetPlayerVolume => Ok(Self::GetPlayerVolume),
         }
     }
 }
@@ -293,7 +297,7 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), PlaybackError> {
     Ok(())
 }
 
-pub(crate) fn append_to_queu(queue: &mut Vec<Track>) -> Result<(), PlaybackError> {
+pub(crate) fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), PlaybackError> {
     trace!("Appending tracks to queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -563,7 +567,7 @@ pub(crate) fn get_player_volume() -> Result<PlayerVolume, PlaybackError> {
     Ok(PlayerVolume::new(player.volume()))
 }
 
-pub(crate) fn get_initial_events() -> Result<Vec<DaemonEvent>, PlaybackError> {
+pub(crate) fn get_initial_events() -> Result<Vec<Event>, PlaybackError> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.get_initial_events())
@@ -689,44 +693,60 @@ pub(crate) fn can_go_previous() -> Result<bool, PlaybackError> {
     Ok(state.can_go_previous())
 }
 
-pub(crate) fn run_command(cmd: Command) -> Result<PlaybackResponse, PlaybackError> {
+pub(crate) fn run_command(cmd: Command) -> Result<Response, PlaybackError> {
     match cmd {
         Command::Play(pos) => play(pos)?,
         Command::Pause => pause()?,
         Command::Stop => stop()?,
         Command::TogglePlaying => toggle_playing()?,
         Command::GetPlaybackState => {
-            return Ok(PlaybackResponse::PlaybackState(get_playback_state()?));
+            return Ok(Response::Playback(PlaybackResponse::PlaybackState(
+                get_playback_state()?,
+            )));
         }
         Command::SetQueue(queue) => set_queue(queue)?,
-        Command::AppendToQueue(mut queue) => append_to_queu(&mut queue)?,
+        Command::AppendToQueue(mut queue) => append_to_queue(&mut queue)?,
         Command::GetCurrentTrack => {
-            return match get_current_track()? {
-                Some(track) => Ok(PlaybackResponse::Track(Some(Box::new(track.into())))),
-                None => Ok(PlaybackResponse::Track(None)),
-            };
+            return Ok(Response::Playback(match get_current_track()? {
+                Some(track) => PlaybackResponse::Track(Some(Box::new(track.into()))),
+                None => PlaybackResponse::Track(None),
+            }));
         }
         Command::Next => skip_next()?,
         Command::Previous => skip_previous()?,
         Command::SetLoopState(loop_state) => set_loop_state(loop_state)?,
-        Command::GetLoopState => return Ok(PlaybackResponse::LoopState(get_loop_state()?)),
+        Command::GetLoopState => {
+            return Ok(Response::Playback(PlaybackResponse::LoopState(
+                get_loop_state()?,
+            )));
+        }
         Command::SetRate(rate) => set_rate(rate)?,
-        Command::GetRate => return Ok(PlaybackResponse::PlaybackRate(get_rate()?)),
+        Command::GetRate => {
+            return Ok(Response::Playback(PlaybackResponse::PlaybackRate(
+                get_rate()?,
+            )));
+        }
         Command::SetShuffleState(shuffle_state) => set_shuffle_state(shuffle_state)?,
         #[cfg(feature = "shuffle")]
         Command::GetShuffleState => {
-            return Ok(PlaybackResponse::ShuffleState(get_shuffle_state()?));
+            return Ok(Response::Playback(PlaybackResponse::ShuffleState(
+                get_shuffle_state()?,
+            )));
         }
         Command::SetPlayerPosition(position) => set_player_position(position)?,
         Command::Seek(delta) => seek(delta)?,
         Command::GetPlayerPosition => {
-            return Ok(PlaybackResponse::PlayerPosition(get_player_position()?));
+            return Ok(Response::Playback(PlaybackResponse::PlayerPosition(
+                get_player_position()?,
+            )));
         }
         Command::SetPlayerVolume(volume) => set_player_volume(volume)?,
         Command::GetPlayerVolume => {
-            return Ok(PlaybackResponse::PlayerVolume(get_player_volume()?));
+            return Ok(Response::Playback(PlaybackResponse::PlayerVolume(
+                get_player_volume()?,
+            )));
         }
     }
 
-    Ok(PlaybackResponse::Ok)
+    Ok(Response::Ok)
 }

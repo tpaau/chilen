@@ -8,11 +8,10 @@ use clap::crate_name;
 use daemon::{AddrClaimMode, playback};
 use log::{error, info, trace};
 use mpipc::{
-    ClientCommand, DaemonError, DaemonResponse, Playlist, SocketType, connect_to_daemon,
-    exec_client_command,
+    Error, Response, SocketType, connect_to_daemon, library::Playlist, send_client_command,
 };
 
-use crate::argparse::{Command, DaemonCommand, PlaylistCommand};
+use crate::argparse::{Command, DaemonCommand, LibraryCommand};
 
 #[cfg(feature = "gui")]
 use crate::{argparse::GuiCommand, gui};
@@ -46,8 +45,8 @@ fn display_playlists(playlists: &Vec<Playlist>, full: bool, debug: bool) {
     }
 }
 
-fn print_daemon_error(error: DaemonError) {
-    if let DaemonError::ConnectionError = error {
+fn print_daemon_error(error: Error) {
+    if let Error::ConnectionError = error {
         error!("Could not connect to the daemon (is the daemon running?)");
         eprintln!("You must first start the daemon to run this command");
     } else {
@@ -69,7 +68,7 @@ fn event_stream(
         }
     };
 
-    let command = match mpipc::serialize_client_command(ClientCommand::EventStream) {
+    let command = match mpipc::serialize_client_command(&mpipc::Command::EventStream) {
         Ok(cmd) => cmd,
         Err(e) => {
             error!("Could not encode the client command: {e}");
@@ -83,7 +82,7 @@ fn event_stream(
     }
 
     loop {
-        let response: DaemonResponse = match mpipc::receive_daemon_response(&mut conn) {
+        let response: Response = match mpipc::receive_daemon_response(&mut conn) {
             Ok(response) => response,
             Err(e) => {
                 error!("Failed to receive a response from the daemon: {e}");
@@ -194,21 +193,20 @@ pub fn run_cli_command(
                     );
                 }
                 DaemonCommand::Ping => {
-                    match exec_client_command(ClientCommand::Ping, &socket_name, &socket_type) {
+                    match send_client_command(mpipc::Command::Ping, &socket_name, &socket_type) {
                         Ok(response) => println!("{response:?}"),
                         Err(e) => println!("{e}"),
                     }
                 }
                 _ => {
-                    let cmd: mpipc::DaemonCommand = command.into();
-                    let cmd = match cmd.try_into() {
+                    let cmd = match command.try_into() {
                         Ok(cmd) => cmd,
                         Err(e) => {
                             error!("Could not send the command to the daemon: {e}");
                             return Err(());
                         }
                     };
-                    match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
+                    match mpipc::send_client_command(cmd, &socket_name, &socket_type) {
                         Ok(response) => info!("Got a response from the daemon: {response:?}"),
                         Err(e) => {
                             print_daemon_error(e);
@@ -231,44 +229,24 @@ pub fn run_cli_command(
                     panic!("GUI command execution not supported!");
                 }
             }
-            Command::Playlist { command } => {
+            Command::Library { command } => {
                 let (full, debug) = match command {
-                    PlaylistCommand::List { full, debug } => (full, debug),
+                    LibraryCommand::List { full, debug } => (full, debug),
                     _ => (false, false),
                 };
-                match mpipc::exec_client_command(
-                    mpipc::ClientCommand::Playlist(command.into()),
+                match mpipc::send_client_command(
+                    mpipc::Command::Library(command.into()),
                     &socket_name,
                     &socket_type,
                 ) {
                     Ok(response) => match response {
-                        DaemonResponse::Ok => {
+                        Response::Ok => {
                             println!("Ok");
                         }
-                        DaemonResponse::Library(lib) => {
+                        Response::Library(lib) => {
                             display_playlists(&lib.playlists, full, debug);
                         }
-                        DaemonResponse::Error(e) => {
-                            error!("{e}");
-                            return Err(());
-                        }
-                        _ => {
-                            error!("Got an unexpected response from the daemon: {response:?}");
-                            return Err(());
-                        }
-                    },
-                    Err(e) => {
-                        print_daemon_error(e);
-                        return Err(());
-                    }
-                }
-            }
-            Command::Cache { command } => {
-                let cmd = ClientCommand::Cache(command.into());
-                match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
-                    Ok(response) => match response {
-                        DaemonResponse::Ok => println!("Ok"),
-                        DaemonResponse::Error(e) => {
+                        Response::Error(e) => {
                             error!("{e}");
                             return Err(());
                         }
@@ -284,13 +262,13 @@ pub fn run_cli_command(
                 }
             }
             Command::Playback { command } => {
-                let cmd = ClientCommand::Playback(command.into());
-                match mpipc::exec_client_command(cmd, &socket_name, &socket_type) {
+                let cmd = mpipc::Command::Playback(command.into());
+                match mpipc::send_client_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
-                        DaemonResponse::Playback(response) => {
+                        Response::Playback(response) => {
                             println!("{response}");
                         }
-                        DaemonResponse::Error(e) => {
+                        Response::Error(e) => {
                             error!("Playback command failed: {e}");
                             return Err(());
                         }

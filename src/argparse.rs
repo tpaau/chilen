@@ -4,7 +4,7 @@ use clap::{ArgGroup, Parser, Subcommand, ValueEnum, ValueHint};
 
 use env_logger::Builder;
 use log::{self, trace};
-use mpipc::{ClientCommand, SignedDuration};
+use mpipc::playback::SignedDuration;
 
 #[derive(Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
@@ -39,21 +39,12 @@ pub enum DaemonCommand {
     Ping,
 }
 
-impl From<DaemonCommand> for mpipc::DaemonCommand {
-    fn from(value: DaemonCommand) -> Self {
+impl TryFrom<DaemonCommand> for mpipc::Command {
+    type Error = String;
+    fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
         match value {
-            DaemonCommand::Start {
-                cache_dir: _,
-                music_dir: _,
-                data_dir: _,
-                allow_rate_modification: _,
-            } => mpipc::DaemonCommand::Start,
-            DaemonCommand::Stop => mpipc::DaemonCommand::ClientCommand(ClientCommand::Shutdown),
-            DaemonCommand::EventStream {
-                json: _,
-                pretty_json: _,
-            } => mpipc::DaemonCommand::ClientCommand(ClientCommand::EventStream),
-            DaemonCommand::Ping => mpipc::DaemonCommand::ClientCommand(ClientCommand::Ping),
+            DaemonCommand::Ping => Ok(mpipc::Command::Ping),
+            _ => Err("Cannot convert variant {value:?} to a `mpipc::Command`".to_string()),
         }
     }
 }
@@ -68,7 +59,7 @@ pub enum GuiCommand {
 }
 
 #[derive(Subcommand)]
-pub enum PlaylistCommand {
+pub enum LibraryCommand {
     /// Create a new playlist
     New {
         /// The name of the playlist
@@ -116,40 +107,37 @@ pub enum PlaylistCommand {
         #[arg(long, short, default_value_t = false, conflicts_with = "full")]
         debug: bool,
     },
-}
-
-impl From<PlaylistCommand> for mpipc::PlaylistCommand {
-    fn from(value: PlaylistCommand) -> Self {
-        match value {
-            PlaylistCommand::New { name, tracks } => mpipc::PlaylistCommand::New { name, tracks },
-            PlaylistCommand::FromM3U8 { name, m3u8_file } => {
-                mpipc::PlaylistCommand::FromM3U8 { name, m3u8_file }
-            }
-            PlaylistCommand::Delete { names } => mpipc::PlaylistCommand::Delete { names },
-            PlaylistCommand::List { full: _, debug: _ } => mpipc::PlaylistCommand::List,
-            PlaylistCommand::AddTracks { name, tracks } => {
-                mpipc::PlaylistCommand::AddTracks { name, tracks }
-            }
-            PlaylistCommand::RemoveTracks { name, ids } => {
-                mpipc::PlaylistCommand::RemoveTracks { name, ids }
-            }
-        }
-    }
-}
-
-#[derive(Subcommand)]
-pub enum CacheCommand {
-    /// Reinitialize the music library to find newly added tracks.
+    /// Reload the cache using already cached covers.
+    ///
+    /// This can be used for discovering newly added tracks.
     Reload,
-    /// Rebuild the cache. May resolve some issues with badly extracted covers.
+    /// Rebuilt the cache ignoring cached covers.
     Rebuild,
 }
 
-impl From<CacheCommand> for mpipc::CacheCommand {
-    fn from(value: CacheCommand) -> Self {
+impl From<LibraryCommand> for mpipc::library::LibraryCommand {
+    fn from(value: LibraryCommand) -> Self {
         match value {
-            CacheCommand::Reload => mpipc::CacheCommand::Reload,
-            CacheCommand::Rebuild => mpipc::CacheCommand::Rebuild,
+            LibraryCommand::New { name, tracks } => {
+                mpipc::library::LibraryCommand::NewPlaylist { name, tracks }
+            }
+            LibraryCommand::FromM3U8 { name, m3u8_file } => {
+                mpipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
+            }
+            LibraryCommand::Delete { names } => {
+                mpipc::library::LibraryCommand::DeletePlaylist { names }
+            }
+            LibraryCommand::List { full: _, debug: _ } => {
+                mpipc::library::LibraryCommand::GetLibrary
+            }
+            LibraryCommand::AddTracks { name, tracks } => {
+                mpipc::library::LibraryCommand::AddTracksToPlaylist { name, tracks }
+            }
+            LibraryCommand::RemoveTracks { name, ids } => {
+                mpipc::library::LibraryCommand::RemoveTracksFromPlaylist { name, ids }
+            }
+            LibraryCommand::Reload => mpipc::library::LibraryCommand::Reload,
+            LibraryCommand::Rebuild => mpipc::library::LibraryCommand::Rebuild,
         }
     }
 }
@@ -177,12 +165,12 @@ pub enum LoopState {
     Playlist,
 }
 
-impl From<LoopState> for mpipc::LoopState {
+impl From<LoopState> for mpipc::playback::LoopState {
     fn from(value: LoopState) -> Self {
         match value {
-            LoopState::Off => mpipc::LoopState::Off,
-            LoopState::Track => mpipc::LoopState::Track,
-            LoopState::Playlist => mpipc::LoopState::Playlist,
+            LoopState::Off => mpipc::playback::LoopState::Off,
+            LoopState::Track => mpipc::playback::LoopState::Track,
+            LoopState::Playlist => mpipc::playback::LoopState::Playlist,
         }
     }
 }
@@ -195,11 +183,11 @@ pub enum ShuffleState {
     Off,
 }
 
-impl From<ShuffleState> for mpipc::ShuffleState {
+impl From<ShuffleState> for mpipc::playback::ShuffleState {
     fn from(value: ShuffleState) -> Self {
         match value {
-            ShuffleState::On => mpipc::ShuffleState::On,
-            ShuffleState::Off => mpipc::ShuffleState::Off,
+            ShuffleState::On => mpipc::playback::ShuffleState::On,
+            ShuffleState::Off => mpipc::playback::ShuffleState::Off,
         }
     }
 }
@@ -228,7 +216,13 @@ pub enum PlaybackCommand {
     ))]
     SetQueue {
         /// Paths of tracks to be set as the new queue.
-        #[arg(long, short, value_parser = is_file, value_hint = ValueHint::FilePath, conflicts_with = "playlist")]
+        #[arg(
+            long,
+            short,
+            value_parser = is_file,
+            value_hint = ValueHint::FilePath,
+            conflicts_with = "playlist"
+        )]
         tracks: Option<Vec<PathBuf>>,
 
         /// The name of the playlist to be set as the new queue.
@@ -277,10 +271,15 @@ pub enum PlaybackCommand {
         #[arg()]
         position_secs: u64,
     },
-    /// Change the player position by a time delta in seconds.
-    Seek {
+    /// Seek the player forward by a number of seconds.
+    SeekForward {
         #[arg()]
-        delta_secs: i64,
+        secs: u64,
+    },
+    /// Seek the player backward by a number of seconds.
+    SeekBackward {
+        #[arg()]
+        secs: u64,
     },
     /// Get the position of the player.
     GetPlayerPosition,
@@ -293,54 +292,65 @@ pub enum PlaybackCommand {
     GetVolume,
 }
 
-impl From<PlaybackCommand> for mpipc::PlaybackCommand {
+impl From<PlaybackCommand> for mpipc::playback::PlaybackCommand {
     fn from(value: PlaybackCommand) -> Self {
         match value {
-            PlaybackCommand::Play { index } => mpipc::PlaybackCommand::Play(index),
-            PlaybackCommand::Pause => mpipc::PlaybackCommand::Pause,
-            PlaybackCommand::Stop => mpipc::PlaybackCommand::Stop,
-            PlaybackCommand::TogglePlaying => mpipc::PlaybackCommand::TogglePlaying,
-            PlaybackCommand::GetPlaybackState => mpipc::PlaybackCommand::GetPlaybackState,
+            PlaybackCommand::Play { index } => mpipc::playback::PlaybackCommand::Play(index),
+            PlaybackCommand::Pause => mpipc::playback::PlaybackCommand::Pause,
+            PlaybackCommand::Stop => mpipc::playback::PlaybackCommand::Stop,
+            PlaybackCommand::TogglePlaying => mpipc::playback::PlaybackCommand::TogglePlaying,
+            PlaybackCommand::GetPlaybackState => mpipc::playback::PlaybackCommand::GetPlaybackState,
             PlaybackCommand::SetQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
-                    return mpipc::PlaybackCommand::SetQueue(tracks);
+                    return mpipc::playback::PlaybackCommand::SetQueue(tracks);
                 } else if let Some(playlist) = playlist {
-                    return mpipc::PlaybackCommand::SetPlaylist(playlist);
+                    return mpipc::playback::PlaybackCommand::SetPlaylist(playlist);
                 }
                 panic!("This should never happen :)");
             }
             PlaybackCommand::AppendToQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
-                    return mpipc::PlaybackCommand::AppendToQueue(tracks);
+                    return mpipc::playback::PlaybackCommand::AppendToQueue(tracks);
                 } else if let Some(playlist) = playlist {
-                    return mpipc::PlaybackCommand::AppendPlaylist(playlist);
+                    return mpipc::playback::PlaybackCommand::AppendPlaylist(playlist);
                 }
                 panic!("This should never happen :)");
             }
-            PlaybackCommand::GetCurrentTrack => mpipc::PlaybackCommand::GetCurrentTrack,
-            PlaybackCommand::Next => mpipc::PlaybackCommand::Next,
-            PlaybackCommand::Previous => mpipc::PlaybackCommand::Previous,
+            PlaybackCommand::GetCurrentTrack => mpipc::playback::PlaybackCommand::GetCurrentTrack,
+            PlaybackCommand::Next => mpipc::playback::PlaybackCommand::Next,
+            PlaybackCommand::Previous => mpipc::playback::PlaybackCommand::Previous,
             PlaybackCommand::SetLoopState { loop_state } => {
-                mpipc::PlaybackCommand::SetLoopState(loop_state.into())
+                mpipc::playback::PlaybackCommand::SetLoopState(loop_state.into())
             }
-            PlaybackCommand::GetLoopState => mpipc::PlaybackCommand::GetLoopState,
-            PlaybackCommand::SetRate { rate } => mpipc::PlaybackCommand::SetRate(rate.into()),
-            PlaybackCommand::GetRate => mpipc::PlaybackCommand::GetRate,
+            PlaybackCommand::GetLoopState => mpipc::playback::PlaybackCommand::GetLoopState,
+            PlaybackCommand::SetRate { rate } => {
+                mpipc::playback::PlaybackCommand::SetRate(rate.into())
+            }
+            PlaybackCommand::GetRate => mpipc::playback::PlaybackCommand::GetRate,
             PlaybackCommand::SetShuffleState { shuffle_state } => {
-                mpipc::PlaybackCommand::SetShuffleState(shuffle_state.into())
+                mpipc::playback::PlaybackCommand::SetShuffleState(shuffle_state.into())
             }
-            PlaybackCommand::GetShuffleState => mpipc::PlaybackCommand::GetShuffleState,
+            PlaybackCommand::GetShuffleState => mpipc::playback::PlaybackCommand::GetShuffleState,
             PlaybackCommand::SetPlayerPosition { position_secs } => {
-                mpipc::PlaybackCommand::SetPlayerPosition(Duration::from_secs(position_secs))
+                mpipc::playback::PlaybackCommand::SetPlayerPosition(Duration::from_secs(
+                    position_secs,
+                ))
             }
-            PlaybackCommand::Seek { delta_secs } => {
-                mpipc::PlaybackCommand::Seek(SignedDuration::from_secs(delta_secs))
+            PlaybackCommand::SeekForward { secs } => mpipc::playback::PlaybackCommand::Seek(
+                SignedDuration::from_secs(secs.try_into().unwrap_or(i64::MAX)),
+            ),
+            PlaybackCommand::SeekBackward { secs } => mpipc::playback::PlaybackCommand::Seek(
+                SignedDuration::from_secs(-secs.try_into().unwrap_or(i64::MAX)),
+            ),
+            PlaybackCommand::GetPlayerPosition => {
+                mpipc::playback::PlaybackCommand::GetPlayerPosition
             }
-            PlaybackCommand::GetPlayerPosition => mpipc::PlaybackCommand::GetPlayerPosition,
             PlaybackCommand::SetVolume { volume } => {
-                mpipc::PlaybackCommand::SetPlayerVolume(mpipc::PlayerVolume::new(volume))
+                mpipc::playback::PlaybackCommand::SetPlayerVolume(
+                    mpipc::playback::PlayerVolume::new(volume),
+                )
             }
-            PlaybackCommand::GetVolume => mpipc::PlaybackCommand::GetPlayerVolume,
+            PlaybackCommand::GetVolume => mpipc::playback::PlaybackCommand::GetPlayerVolume,
         }
     }
 }
@@ -358,21 +368,31 @@ pub enum Command {
         #[command(subcommand)]
         command: GuiCommand,
     },
-    /// Manage playlists
-    Playlist {
+    /// Manage the library
+    Library {
         #[command(subcommand)]
-        command: PlaylistCommand,
-    },
-    /// Manage cache
-    Cache {
-        #[command(subcommand)]
-        command: CacheCommand,
+        command: LibraryCommand,
     },
     /// Control audio playback
     Playback {
         #[command(subcommand)]
         command: PlaybackCommand,
     },
+}
+
+impl TryFrom<Command> for mpipc::Command {
+    type Error = String;
+    fn try_from(value: Command) -> Result<Self, Self::Error> {
+        match value {
+            Command::Daemon { command } => command.try_into(),
+            #[cfg(feature = "gui")]
+            Command::Gui { command: _ } => {
+                Err("Cannot convert the `GuiCommand variant".to_string())
+            }
+            Command::Library { command } => Ok(mpipc::Command::Library(command.into())),
+            Command::Playback { command } => Ok(mpipc::Command::Playback(command.into())),
+        }
+    }
 }
 
 #[derive(Default, ValueEnum, Clone, Copy)]

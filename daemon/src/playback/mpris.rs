@@ -5,7 +5,7 @@ use std::{
 };
 
 use log::{error, trace};
-use mpipc::{LoopState, PlaybackError, PlaybackState, PlayerVolume, SignedDuration};
+use mpipc::playback::{LoopState, PlaybackError, PlaybackState, PlayerVolume, SignedDuration};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::playback::{
