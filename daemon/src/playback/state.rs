@@ -408,48 +408,18 @@ impl PlayerState {
         None
     }
 
-    // TODO: Inform mpris about track chagnges
-    // FIX: The play by index feature doesn't seem to be working (apart from setting the metadata)
     pub fn play_track(&mut self, index: usize) -> Option<&Track> {
-        #[cfg(feature = "shuffle")]
-        match self.shuffle_state {
-            ShuffleState::Off => {
-                if index < self.tracks.len() {
-                    self.position = index;
-                    let _ = send_event(Event::PlaybackEvent(PlaybackEvent::PositionChanged(
-                        self.position,
-                    )));
-                    self.position = index;
-                    #[cfg(feature = "mpris")]
-                    self.on_track_changed();
-                    return Some(&self.tracks[index]);
-                }
-            }
-            ShuffleState::On => {
-                if index < self.shuffled_tracks.len() {
-                    self.position = index;
-                    let _ = send_event(Event::PlaybackEvent(PlaybackEvent::PositionChanged(
-                        self.position,
-                    )));
-                    self.position = index;
-                    #[cfg(feature = "mpris")]
-                    self.on_track_changed();
-                    return Some(&self.shuffled_tracks[index]);
-                }
-            }
-        }
-        #[cfg(not(feature = "shuffle"))]
         if index < self.tracks.len() {
             self.position = index;
             let _ = send_event(Event::PlaybackEvent(PlaybackEvent::PositionChanged(
                 self.position,
             )));
-            self.position = index;
             #[cfg(feature = "mpris")]
             self.on_track_changed();
-            return Some(&self.tracks[index]);
+            self.current()
+        } else {
+            None
         }
-        None
     }
 
     #[cfg(feature = "mpris")]

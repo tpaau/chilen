@@ -175,53 +175,52 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), PlaybackError> {
     let player = unwrap_player(player_guard.as_ref())?;
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    match index {
-        Some(id) => {
-            trace!("Playing a track at index {id}");
-            let track = match state.play_track(id) {
-                Some(track) => track,
-                None => {
-                    error!("No track at index {id}");
-                    return Err(PlaybackError::NoTrackAtIndex(id));
-                }
-            };
-            let source = match track.open_source() {
-                Ok(source) => source,
-                Err(e) => {
-                    error!("Could not open audio source: {e}");
-                    return Err(PlaybackError::SourceError);
-                }
-            };
-            player.empty();
-            player.append(source);
+    if let Some(id) = index {
+        trace!("Playing a track at index {id}");
+        let track = match state.play_track(id) {
+            Some(track) => track,
+            None => {
+                error!("No track at index {id}");
+                return Err(PlaybackError::NoTrackAtIndex(id));
+            }
+        };
+        let source = match track.open_source() {
+            Ok(source) => source,
+            Err(e) => {
+                error!("Could not open audio source: {e}");
+                return Err(PlaybackError::SourceError);
+            }
+        };
+        player.stop();
+        player.append(source);
+        player.play();
+        state.set_playback_state(PlaybackState::Playing);
+        state.set_player_position(Duration::default());
+        background_save_state(state.clone());
+        Ok(())
+    } else {
+        trace!("Playing the current media");
+        if !player.is_paused() && !player.empty() {
+            Err(PlaybackError::PlayerPlaying)
+        } else if player.empty() {
+            if let Some(track) = state.current() {
+                let source = match track.open_source() {
+                    Ok(source) => source,
+                    Err(e) => {
+                        error!("Could not open audio source: {e}");
+                        return Err(PlaybackError::SourceError);
+                    }
+                };
+                player.append(source);
+                state.set_playback_state(PlaybackState::Playing);
+                Ok(())
+            } else {
+                Err(PlaybackError::QueueEmpty)
+            }
+        } else {
             player.play();
             state.set_playback_state(PlaybackState::Playing);
             Ok(())
-        }
-        None => {
-            trace!("Playing the current media");
-            if !player.is_paused() && !player.empty() {
-                Err(PlaybackError::PlayerPlaying)
-            } else if player.empty() {
-                if let Some(track) = state.current() {
-                    let source = match track.open_source() {
-                        Ok(source) => source,
-                        Err(e) => {
-                            error!("Could not open audio source: {e}");
-                            return Err(PlaybackError::SourceError);
-                        }
-                    };
-                    player.append(source);
-                    state.set_playback_state(PlaybackState::Playing);
-                    Ok(())
-                } else {
-                    Err(PlaybackError::QueueEmpty)
-                }
-            } else {
-                player.play();
-                state.set_playback_state(PlaybackState::Playing);
-                Ok(())
-            }
         }
     }
 }
