@@ -13,7 +13,7 @@ use lofty::{
     tag::{Accessor, ItemValue, Tag},
 };
 use log::{error, trace};
-use mpipc::{DataError, library::LibraryError};
+use mpipc::library::LibraryError;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ use crate::{
     data::{
         DATA_DIR,
         cache::{
-            covers::get_track_cover,
+            covers::{CoverError, get_track_cover},
             indexer::{index, index_files},
         },
     },
@@ -168,11 +168,11 @@ impl TryFrom<&TaggedFile> for Track {
 }
 
 impl Track {
-    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), DataError> {
+    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CoverError> {
         get_track_cover(self, tag, false)
     }
 
-    pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), DataError> {
+    pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), CoverError> {
         get_track_cover(self, tag, true)
     }
 

@@ -23,7 +23,7 @@ use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::List
 use log::{debug, error, info, trace, warn};
 
 pub use mpipc;
-use mpipc::{Command, DEFAULT_SOCKET_NAME, Error, Event, Response, send_client_command};
+use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_client_command};
 use serde::{Deserialize, Serialize};
 
 use crate::data::{CACHE_DIR, music_lib};
@@ -33,6 +33,43 @@ pub type SocketType = mpipc::SocketType;
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Error {
+    /// Could not obtain the daemon socket address.
+    SocketError,
+    /// The socket address is already in use.
+    AddrInUse,
+    /// Emitted when the daemon event channel is already initialized when starting the daemon.
+    ///
+    /// This likely means a second daemon was started in the same context.
+    EventChannelInitialized,
+    NoMusicLibrary,
+    MusicLibraryNotAccessible,
+    CacheDirError(String),
+    DataDirError(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SocketError => write!(f, "Socket cration/connection failed"),
+            Self::AddrInUse => write!(f, "The socket address is already in use"),
+            Self::EventChannelInitialized => {
+                write!(f, "The event channel for the daemon is already initialized")
+            }
+            Self::NoMusicLibrary => {
+                write!(f, "The provided music library directory does not exist")
+            }
+            Self::MusicLibraryNotAccessible => write!(
+                f,
+                "Could not access the music library due to a permission issue"
+            ),
+            Self::CacheDirError(e) => write!(f, "Could not initialize the cache directory: {e}"),
+            Self::DataDirError(e) => write!(f, "Could not initialize the data directory: {e}"),
+        }
+    }
+}
 
 /// Defines under which conditions should the daemon claim an occupied socket address.
 ///
@@ -172,7 +209,6 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-// TODO: This function should probably use its own error type instead of stealing from mpipc
 // TODO: I should also create a `stop` function for stopping the daemon without connecting to it
 /// Create an IPC socket listener for the daemon with the specified address.
 ///
@@ -243,7 +279,7 @@ fn get_listener(
                                 }
                             }
                             Err(e) => {
-                                if e == Error::ConnectionError {
+                                if e == mpipc::Error::ConnectionError {
                                     info!(
                                         "The other daemon is either dead or unresponsive, claiming the address"
                                     );
@@ -347,7 +383,7 @@ pub fn start(config: Config) -> Result<(), Error> {
 
     if let Err(e) = data::set_dirs(config.clone()) {
         error!("Could not set the paths: {e}");
-        return Err(Error::DataError(e));
+        return Err(e);
     }
 
     if config.socket_name == mpipc::DEFAULT_SOCKET_NAME {

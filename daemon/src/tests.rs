@@ -1,6 +1,6 @@
-use mpipc::{Error, SocketType};
+use mpipc::SocketType;
 
-use crate::{AddrClaimMode, get_listener};
+use crate::{AddrClaimMode, Error, get_listener};
 
 #[test]
 fn default_config_works() {

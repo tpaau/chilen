@@ -265,9 +265,8 @@ pub fn run_cli_command(
                 let cmd = mpipc::Command::Playback(command.into());
                 match mpipc::send_client_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
-                        Response::Playback(response) => {
-                            println!("{response}");
-                        }
+                        Response::Ok => println!("Ok"),
+                        Response::Playback(response) => println!("{response}"),
                         Response::Error(e) => {
                             error!("Playback command failed: {e}");
                             return Err(());

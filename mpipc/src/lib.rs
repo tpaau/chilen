@@ -22,47 +22,6 @@ use crate::{
 /// The default name of the socket the daemon listens on.
 pub const DEFAULT_SOCKET_NAME: &str = "DEFAULT_MUSIC_PLAYER.socket";
 
-// TODO: What the fuck is this
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum DataError {
-    PermissionError,
-    CacheDirNotAvailable,
-    DataDirNotAvailable,
-    NoMusicLibrary,
-    /// Could not get the home directory path.
-    HomeError,
-    NoPicturesInTag,
-    NoSuitablePicturesInTag,
-    CoverWriteError,
-}
-
-impl std::fmt::Display for DataError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::PermissionError => write!(
-                f,
-                "Could not perform an operation due to a permission error"
-            ),
-            Self::CacheDirNotAvailable => {
-                write!(f, "The cache directory is not readable and/or writable")
-            }
-            Self::DataDirNotAvailable => {
-                write!(f, "The data directory is not readable and/or writable")
-            }
-            Self::NoMusicLibrary => write!(f, "The music library directory does not exist"),
-            Self::HomeError => write!(f, "Could not get the home directory path"),
-            Self::NoPicturesInTag => write!(f, "No pictures were found in the audio file tag"),
-            Self::NoSuitablePicturesInTag => {
-                write!(f, "Couldn't find any suitable images in the audio file tag")
-            }
-            Self::CoverWriteError => write!(
-                f,
-                "Could not write the cover image contents to the covers cache"
-            ),
-        }
-    }
-}
-
 /// Error related to the `daemon`.
 ///
 /// Can either originate from a [Response] or from a function in [mpipc](crate).
@@ -72,29 +31,18 @@ pub enum Error {
     EncodingError,
     /// Response could not be decoded back into usable form.
     DecodingError,
-    // TODO: Remove this after a custom error type is added to `daemon`
-    /// Could not obtain the daemon socket address.
-    SocketError,
     /// Could not connect to the daemon.
     ConnectionError,
     /// Could not send the command to the daemon.
     SendingError,
     /// Error related to the music library.
     LibraryError(LibraryError),
-    /// Error related to the data and cache modules.
-    DataError(DataError),
     /// The response received from the daemon was unexpected or invalid.
     InvalidResponse,
     /// Error related to the playback module.
     PlaybackError(PlaybackError),
-    // TODO: Remove this after a custom error type is added to `daemon`
-    /// The socket address is already in use.
-    AddrInUse,
-    // TODO: Remove this after a custom error type is added to `daemon`
-    /// Emitted when the daemon event channel is already initialized when starting the daemon.
-    ///
-    /// This likely means a second daemon was started in the same context.
-    EventChannelInitialized,
+    /// Could not obtain a socket
+    SocketError(String),
 }
 
 impl std::fmt::Display for Error {
@@ -102,21 +50,16 @@ impl std::fmt::Display for Error {
         match self {
             Self::EncodingError => write!(f, "Could not encode the deamon conmmand"),
             Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
-            Self::SocketError => write!(f, "Socket cration/connection failed"),
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
             Self::SendingError => write!(f, "Could not send the command to the daemon"),
             Self::LibraryError(e) => {
                 write!(f, "{e}")
             }
-            Self::DataError(e) => write!(f, "Data error: {e}"),
             Self::InvalidResponse => {
                 write!(f, "The response from the daemon was invalid or malformed")
             }
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
-            Self::AddrInUse => write!(f, "The socket address is already in use"),
-            Self::EventChannelInitialized => {
-                write!(f, "The event channel for the daemon is already initialized")
-            }
+            Self::SocketError(e) => write!(f, "Could not obtain a socket: {e}"),
         }
     }
 }
@@ -387,7 +330,7 @@ pub fn connect_to_daemon(socket_name: &str, socket_type: &SocketType) -> Result<
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain a socket: {e}");
-            return Err(Error::SocketError);
+            return Err(Error::SocketError(e.to_string()));
         }
     };
 

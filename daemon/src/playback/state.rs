@@ -409,6 +409,7 @@ impl PlayerState {
     }
 
     // TODO: Inform mpris about track chagnges
+    // FIX: The play by index feature doesn't seem to be working (apart from setting the metadata)
     pub fn play_track(&mut self, index: usize) -> Option<&Track> {
         #[cfg(feature = "shuffle")]
         match self.shuffle_state {
