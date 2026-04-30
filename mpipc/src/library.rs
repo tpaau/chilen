@@ -81,11 +81,10 @@ pub enum LibraryCommand {
         /// If a playlist with the specified name already exists
         /// [LibraryError::PlaylistExists] will be returned.
         name: String,
-        // TODO: Update this after patching the daemon
         /// Optional list of paths to tracks to be added to the playlist.
         ///
-        /// **Note:** tracks outside of the music directory or not registered by the music player
-        /// (added after the last library reload), will be discarded.
+        /// **Note:** the `daemon` will return an error if any of the tracks are not registered in
+        /// the music library or if the vector contains duplicates.
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file.
@@ -122,11 +121,10 @@ pub enum LibraryCommand {
         /// If a playlist with the specified name doesn't exist in the music library,
         /// [LibraryError::NoSuchPlaylist] will be returned.
         name: String,
-        // TODO: Update this after patching the daemon
         /// List of paths to tracks to add to the playlist.
         ///
-        /// **Note:** tracks with paths outside of the music directory or not registered by the
-        /// music player (added after the last library reload), will be discarded.
+        /// **Note:** the `daemon` will return an error if any of the tracks are not registered in
+        /// the music library or if the vector contains duplicates.
         tracks: Vec<PathBuf>,
     },
     /// Remove tracks from a playlist.

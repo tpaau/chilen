@@ -13,7 +13,7 @@ use serde::Serialize;
 
 use crate::{
     Event,
-    data::music_lib::{
+    music_lib::{
         self, add_tracks, create_playlist, delete_playlists, get_library,
         import_playlist_from_m3u8, remove_tracks, save_library,
     },

@@ -10,7 +10,7 @@ use log::{error, info, trace, warn};
 use mpipc::library::LibraryError;
 use walkdir::WalkDir;
 
-use crate::data::{MUSIC_DIR, music_lib::Track};
+use crate::music_lib::{MUSIC_DIR, Track};
 
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,

@@ -3,7 +3,7 @@
 #![feature(doc_cfg)]
 
 mod daemon_thread;
-mod data;
+mod music_lib;
 pub mod playback;
 #[cfg(test)]
 mod tests;
@@ -26,7 +26,7 @@ pub use mpipc;
 use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_client_command};
 use serde::{Deserialize, Serialize};
 
-use crate::data::{CACHE_DIR, music_lib};
+use crate::music_lib::CACHE_DIR;
 
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = mpipc::SocketType;
@@ -381,7 +381,7 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
 pub fn start(config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
 
-    if let Err(e) = data::set_dirs(config.clone()) {
+    if let Err(e) = music_lib::set_dirs(config.clone()) {
         error!("Could not set the paths: {e}");
         return Err(e);
     }
@@ -432,8 +432,8 @@ pub fn start(config: Config) -> Result<(), Error> {
     drop(guard);
 
     loop {
-        // Launching a different daemon overwrites the `EVENT_SENDER` variable, causing the
-        // previous sender to be dropped and the `rect()` method to return an `Err(...)` type.
+        // Launching a different daemon overwrites the [EVENT_SENDER] variable, causing the
+        // previous sender to be dropped and the `recv()` method to return an [Err] type.
         let event = event_receiver.recv().unwrap();
         let mut guard = senders.write().unwrap();
         let mut dead = Vec::new();

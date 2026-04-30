@@ -26,10 +26,7 @@ use rodio::Player;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{
-        cache::indexer::index_files,
-        music_lib::{Track, get_library, tracks_from_hashes},
-    },
+    music_lib::{Track, cache::indexer::index_files, get_library, tracks_from_hashes},
     playback::state::{
         PLAYER_STATE, PlayerState, background_save_state, restore_state_from_cache,
         unwrap_state_mut, unwrap_state_ref,
@@ -108,7 +105,6 @@ impl TryFrom<PlaybackCommand> for Command {
                 Ok(Self::SetQueue(filtered_tracks))
             }
             PlaybackCommand::AppendToQueue(track_paths) => {
-                // TODO: Fail if any of the tracks are invalid
                 let tracks = get_library()?.tracks;
                 let indexed_tracks = index_files(track_paths, false)?;
                 let track_hashes = Track::hash_tracks(&indexed_tracks);

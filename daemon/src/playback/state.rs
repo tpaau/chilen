@@ -24,10 +24,7 @@ use mpipc::playback::ShuffleState;
 use rand::seq::SliceRandom;
 
 use crate::{
-    data::{
-        CACHE_DIR,
-        music_lib::{Track, get_library, tracks_from_hashes},
-    },
+    music_lib::{CACHE_DIR, Track, get_library, tracks_from_hashes},
     send_event,
 };
 

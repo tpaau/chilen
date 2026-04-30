@@ -1,4 +1,4 @@
-use crate::data::music_lib::{MusicLibrary, Playlist, Track};
+use crate::music_lib::{MusicLibrary, Playlist, Track};
 
 #[cfg(test)]
 fn unique_playlists(count: usize) -> Vec<Playlist> {

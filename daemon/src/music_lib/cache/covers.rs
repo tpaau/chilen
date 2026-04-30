@@ -10,7 +10,7 @@ use lofty::{picture::PictureType, tag::Tag};
 use log::error;
 use serde::{Deserialize, Serialize};
 
-use crate::{CACHE_DIR, data::music_lib::Track};
+use crate::{CACHE_DIR, music_lib::Track};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(crate) enum CoverError {

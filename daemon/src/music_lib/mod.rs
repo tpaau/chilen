@@ -1,6 +1,10 @@
+pub(crate) mod cache;
+#[cfg(test)]
+mod tests;
+
 use std::{
     collections::HashSet,
-    fs::{File, read},
+    fs::{File, create_dir_all, read},
     hash::{DefaultHasher, Hash, Hasher},
     io::{BufReader, Write},
     path::{Path, PathBuf},
@@ -19,12 +23,10 @@ use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{
-        DATA_DIR,
-        cache::{
-            covers::{CoverError, get_track_cover},
-            indexer::{index, index_files},
-        },
+    Error,
+    music_lib::cache::{
+        covers::{CoverError, get_track_cover},
+        indexer,
     },
     send_event,
 };
@@ -376,7 +378,7 @@ impl MusicLibrary {
         Self { playlists, tracks }
     }
 
-    pub fn get_playlist_with_name(&'_ self, name: &str) -> Option<&'_ Playlist> {
+    pub fn find_playlist(&self, name: &str) -> Option<&Playlist> {
         self.playlists
             .iter()
             .find(|&playlist| playlist.name == name)
@@ -406,13 +408,84 @@ impl MusicLibrary {
     }
 }
 
+static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
+
+pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
+pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
+pub(crate) static CACHE_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
+
 static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut data = DATA_DIR.read().unwrap().clone().unwrap();
     data.push("playlists");
     data
 });
 
-static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
+fn init_dir(dir: &PathBuf) -> Result<(), String> {
+    if dir.is_dir() {
+        let perms = match dir.metadata() {
+            Ok(md) => md.permissions(),
+            Err(e) => {
+                error!("Could not read the metadata of {dir:?}: {e}");
+                return Err(format!("Could not read the metadata of {dir:?}: {e}"));
+            }
+        };
+        if perms.readonly() {
+            error!("The directory {dir:?} is readonly");
+            return Err(format!("The directory {dir:?} is readonly"));
+        }
+        Ok(())
+    } else {
+        let exists = match dir.try_exists() {
+            Ok(exists) => exists,
+            Err(e) => {
+                error!("Can't check whether {dir:?} exists: {e}");
+                return Err(format!("Can't check whether {dir:?} exists: {e}"));
+            }
+        };
+        if exists {
+            error!("The path is not a directory: {dir:?}");
+            Err(format!("The path is not a directory: {dir:?}"))
+        } else {
+            trace!("The directory at {dir:?} does not exist. Attempting to create a new one");
+            if let Err(e) = create_dir_all(dir) {
+                error!("Could not create the directory: {e}");
+                return Err(format!("Could not create the directory: {e}"));
+            }
+            trace!("Created a new directory at {dir:?}");
+            Ok(())
+        }
+    }
+}
+
+pub(crate) fn set_dirs(config: crate::Config) -> Result<(), Error> {
+    if let Err(e) = init_dir(&config.cache_dir) {
+        error!("Coult not initialize the cache directory: {e}");
+        return Err(Error::CacheDirError(e));
+    }
+    if let Err(e) = init_dir(&config.data_dir) {
+        error!("Could not initialize the data directory: {e}");
+        return Err(Error::DataDirError(e));
+    }
+    if config.music_dir.is_dir() {
+        if let Err(e) = config.music_dir.metadata() {
+            error!("Could not read the metadata of {:?}: {e}", config.music_dir);
+            return Err(Error::MusicLibraryNotAccessible);
+        }
+    } else {
+        error!(
+            "The music library path is not a directory or does not exist: {:?}",
+            config.music_dir
+        );
+        return Err(Error::NoMusicLibrary);
+    }
+    *DATA_DIR.write().unwrap() = Some(config.data_dir);
+    *CACHE_DIR.write().unwrap() = Some(config.cache_dir);
+    *MUSIC_DIR.write().unwrap() = Some(config.music_dir);
+
+    trace!("Successfully set the paths from the daemon configuration");
+
+    Ok(())
+}
 
 pub(crate) fn get_library() -> Result<MusicLibrary, LibraryError> {
     if let Some(lib) = MUSIC_LIBRARY.read().unwrap().clone() {
@@ -485,7 +558,7 @@ pub(crate) fn load(rebuild_covers: bool) -> Result<(), LibraryError> {
 
     let time_start = SystemTime::now();
 
-    let tracks = match index(None, rebuild_covers) {
+    let tracks = match indexer::index(None, rebuild_covers) {
         Ok(tracks) => tracks,
         Err(e) => {
             return Err(e);
@@ -567,40 +640,39 @@ pub(crate) fn create_playlist(
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {
-        if lib.get_playlist_with_name(&name).is_none() {
-            let tracks = if let Some(tracks) = tracks {
-                match index_files(tracks.to_vec(), false) {
-                    Ok(tracks) => tracks,
-                    Err(e) => {
-                        error!("Got an error while indexing the provided files: {e}");
-                        return Err(e);
-                    }
-                }
-            } else {
-                Vec::new()
-            };
-
-            let lib_set: HashSet<_> = lib.tracks.iter().collect();
-            let intersecting_tracks: Vec<Track> = tracks
-                .iter()
-                .filter(|t| lib_set.contains(t))
-                .cloned()
-                .collect();
-
-            lib.playlists.push(Playlist {
-                name: name.clone(),
-                tracks: intersecting_tracks,
-            });
-            lib.playlists.sort_by_key(|p| p.name.clone());
-
-            drop(guard);
-            save_library()?;
-            trace!("Created a new playlist with name \"{name}\"");
-            Ok(())
-        } else {
+        if lib.find_playlist(&name).is_some() {
             error!("A playlist with name \"{name}\" already exists");
-            Err(LibraryError::PlaylistExists)
+            return Err(LibraryError::PlaylistExists);
         }
+        let tracks = if let Some(tracks) = tracks {
+            match indexer::index_files(tracks.to_vec(), false) {
+                Ok(tracks) => tracks,
+                Err(e) => {
+                    error!("Got an error while indexing the provided files: {e}");
+                    return Err(e);
+                }
+            }
+        } else {
+            Vec::new()
+        };
+
+        let lib_set: HashSet<_> = lib.tracks.iter().collect();
+        let intersecting_tracks: Vec<Track> = tracks
+            .iter()
+            .filter(|t| lib_set.contains(t))
+            .cloned()
+            .collect();
+
+        lib.playlists.push(Playlist {
+            name: name.clone(),
+            tracks: intersecting_tracks,
+        });
+        lib.playlists.sort_by_key(|p| p.name.clone());
+
+        drop(guard);
+        save_library()?;
+        trace!("Created a new playlist with name \"{name}\"");
+        Ok(())
     } else {
         error!("Cannot modify an uninitialized library");
         Err(LibraryError::LibraryNotInitialized)
@@ -628,7 +700,7 @@ pub(crate) fn import_playlist_from_m3u8(
     };
     let lib = &*MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = lib {
-        if lib.get_playlist_with_name(&name).is_none() {
+        if lib.find_playlist(&name).is_none() {
             todo!("Importing playlists from M3U8 is not yet supported")
             // lib.playlists.sort_by_key(|p| p.name.clone());
         } else {
@@ -659,7 +731,7 @@ pub(crate) fn delete_playlists(names: Vec<String>) -> Result<(), LibraryError> {
 // FIX: This function should fail if any of the tracks are not registered in the music library
 // TODO: This function should also accept directory paths
 pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), LibraryError> {
-    trace!("Appending tracks to playlist \"{name}\"");
+    trace!("Adding tracks to playlist \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {
@@ -671,7 +743,7 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), Library
             Some(pos) => &mut lib.playlists[pos],
             None => return Err(LibraryError::NoSuchPlaylist),
         };
-        let tracks = match index_files(tracks, false) {
+        let tracks = match indexer::index_files(tracks, false) {
             Ok(tracks) => tracks,
             Err(e) => {
                 return Err(e);
@@ -695,6 +767,7 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), Library
 /// Remove tracks by indices from a specific playlist
 pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryError> {
     trace!("Removing tracks from playlist \"{name}\"");
+
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     if let Some(lib) = guard.as_mut() {
         let playlist = match lib
