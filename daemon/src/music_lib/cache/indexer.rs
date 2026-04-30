@@ -12,9 +12,15 @@ use walkdir::WalkDir;
 
 use crate::music_lib::{MUSIC_DIR, Track};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Covers {
+    Load,
+    Rebuild,
+}
+
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
-    rebuild_covers: bool,
+    load_mode: Covers,
 ) -> Result<Vec<Track>, LibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
@@ -57,7 +63,7 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
                     return;
                 }
             };
-            if rebuild_covers {
+            if load_mode == Covers::Rebuild {
                 if let Err(e) = track.extract_cover(tag) {
                     trace!("Could not extract a cover from file {file:?}: {e}")
                 }
@@ -79,7 +85,7 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
 // TODO: Crate a custom enum to replace the `Option` enum
 pub(crate) fn index(
     music_dir: Option<PathBuf>,
-    rebuild_covers: bool,
+    load_mode: Covers,
 ) -> Result<Vec<Track>, LibraryError> {
     let music_dir = music_dir.unwrap_or(MUSIC_DIR.read().unwrap().clone().unwrap());
 
@@ -109,5 +115,5 @@ pub(crate) fn index(
         };
     }
 
-    index_files(files, rebuild_covers)
+    index_files(files, load_mode)
 }

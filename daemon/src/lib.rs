@@ -26,7 +26,7 @@ pub use mpipc;
 use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_client_command};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::CACHE_DIR;
+use crate::music_lib::{CACHE_DIR, cache::indexer::Covers};
 
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = mpipc::SocketType;
@@ -399,7 +399,7 @@ pub fn start(config: Config) -> Result<(), Error> {
     )?;
 
     thread::spawn(move || {
-        let _ = music_lib::load(true);
+        let _ = music_lib::load(Covers::Load);
         playback::init(config.playback_config);
     });
 

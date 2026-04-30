@@ -26,7 +26,7 @@ use crate::{
     Error,
     music_lib::cache::{
         covers::{CoverError, get_track_cover},
-        indexer,
+        indexer::{self, Covers},
     },
     send_event,
 };
@@ -553,12 +553,12 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
 }
 
 /// Load the music library from the playlists file.
-pub(crate) fn load(rebuild_covers: bool) -> Result<(), LibraryError> {
+pub(crate) fn load(load_mode: Covers) -> Result<(), LibraryError> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
 
-    let tracks = match indexer::index(None, rebuild_covers) {
+    let tracks = match indexer::index(None, load_mode) {
         Ok(tracks) => tracks,
         Err(e) => {
             return Err(e);
@@ -645,7 +645,7 @@ pub(crate) fn create_playlist(
             return Err(LibraryError::PlaylistExists);
         }
         let tracks = if let Some(tracks) = tracks {
-            match indexer::index_files(tracks.to_vec(), false) {
+            match indexer::index_files(tracks.to_vec(), Covers::Load) {
                 Ok(tracks) => tracks,
                 Err(e) => {
                     error!("Got an error while indexing the provided files: {e}");
@@ -743,7 +743,7 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), Library
             Some(pos) => &mut lib.playlists[pos],
             None => return Err(LibraryError::NoSuchPlaylist),
         };
-        let tracks = match indexer::index_files(tracks, false) {
+        let tracks = match indexer::index_files(tracks, Covers::Load) {
             Ok(tracks) => tracks,
             Err(e) => {
                 return Err(e);

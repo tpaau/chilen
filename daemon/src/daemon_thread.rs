@@ -14,7 +14,7 @@ use serde::Serialize;
 use crate::{
     Event,
     music_lib::{
-        self, add_tracks, create_playlist, delete_playlists, get_library,
+        self, add_tracks, cache::indexer::Covers, create_playlist, delete_playlists, get_library,
         import_playlist_from_m3u8, remove_tracks, save_library,
     },
     playback, send_event,
@@ -164,7 +164,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             }
                         }
                     },
-                    LibraryCommand::Reload => match music_lib::load(false) {
+                    LibraryCommand::Reload => match music_lib::load(Covers::Load) {
                         Ok(_) => {
                             if let Err(mpipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Ok)
@@ -180,7 +180,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             }
                         }
                     },
-                    LibraryCommand::Rebuild => match music_lib::load(true) {
+                    LibraryCommand::Rebuild => match music_lib::load(Covers::Rebuild) {
                         Ok(_) => {
                             if let Err(mpipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Ok)
