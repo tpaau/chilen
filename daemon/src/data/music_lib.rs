@@ -262,7 +262,7 @@ impl Track {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Playlist {
     pub name: String,
     pub tracks: Vec<Track>,
@@ -306,12 +306,16 @@ impl Playlist {
     }
 
     pub(crate) fn remove_tracks(&mut self, mut ids: Vec<usize>) -> Result<(), LibraryError> {
-        if let Some(_) = ids.iter().find(|i| i >= &&self.tracks.len()) {
+        ids.sort();
+        let mut unique = ids.clone();
+        unique.dedup();
+        if unique != ids {
+            return Err(LibraryError::DuplicateItems);
+        }
+        if ids.iter().find(|i| i >= &&self.tracks.len()).is_some() {
             return Err(LibraryError::IndexOutOfBounds);
         }
-        ids.dedup();
-        let remove_set: HashSet<usize> =
-            ids.into_iter().filter(|&i| i < self.tracks.len()).collect();
+        let remove_set: HashSet<usize> = ids.into_iter().collect();
         self.tracks = self
             .tracks
             .drain(..)
@@ -376,6 +380,29 @@ impl MusicLibrary {
         self.playlists
             .iter()
             .find(|&playlist| playlist.name == name)
+    }
+
+    pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), LibraryError> {
+        playlists.sort();
+        let mut unique = playlists.clone();
+        unique.dedup();
+        if unique != playlists {
+            return Err(LibraryError::DuplicateItems);
+        }
+        if playlists
+            .iter()
+            .find(|rp| self.playlists.iter().find(|p| p.name == **rp).is_some())
+            .is_none()
+        {
+            return Err(LibraryError::NoSuchPlaylist);
+        }
+        let set: HashSet<String> = playlists.into_iter().collect();
+        self.playlists = self
+            .playlists
+            .drain(..)
+            .filter_map(|p| if set.contains(&p.name) { None } else { Some(p) })
+            .collect();
+        Ok(())
     }
 }
 
@@ -564,6 +591,7 @@ pub(crate) fn create_playlist(
                 name: name.clone(),
                 tracks: intersecting_tracks,
             });
+            lib.playlists.sort_by_key(|p| p.name.clone());
 
             drop(guard);
             save_library()?;
@@ -602,6 +630,7 @@ pub(crate) fn import_playlist_from_m3u8(
     if let Some(lib) = lib {
         if lib.get_playlist_with_name(&name).is_none() {
             todo!("Importing playlists from M3U8 is not yet supported")
+            // lib.playlists.sort_by_key(|p| p.name.clone());
         } else {
             Err(LibraryError::PlaylistExists)
         }
@@ -610,29 +639,17 @@ pub(crate) fn import_playlist_from_m3u8(
     }
 }
 
-// TODO: Make this function accept multiple playlists at once and fail if any of them are not
-// present in the music library without making any changes.
-pub(crate) fn delete_playlist(name: &str, save_state: bool) -> Result<(), LibraryError> {
-    trace!("Deleting playlist with name \"{name}\"");
+pub(crate) fn delete_playlists(names: Vec<String>) -> Result<(), LibraryError> {
+    trace!("Deleting playlists: {names:?}");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
-    // FIX: This likely won't work as expected
     if let Some(lib) = guard.as_mut() {
-        match lib
-            .playlists
-            .iter()
-            .position(|playlist| playlist.name == name)
-        {
-            Some(pos) => {
-                lib.playlists.remove(pos);
-                if save_state {
-                    drop(guard);
-                    save_library()?;
-                }
-                trace!("Deleted playlist with name \"{name}\"");
+        match lib.remove_playlists(names) {
+            Ok(_) => {
+                save_library()?;
                 Ok(())
             }
-            None => Err(LibraryError::NoSuchPlaylist),
+            Err(e) => Err(e),
         }
     } else {
         Err(LibraryError::LibraryNotInitialized)
@@ -675,7 +692,6 @@ pub(crate) fn add_tracks(name: &str, tracks: Vec<PathBuf>) -> Result<(), Library
     }
 }
 
-// TODO: Add a test to make sure this removes tracks properly
 /// Remove tracks by indices from a specific playlist
 pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryError> {
     trace!("Removing tracks from playlist \"{name}\"");

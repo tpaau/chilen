@@ -14,8 +14,8 @@ use serde::Serialize;
 use crate::{
     Event,
     data::music_lib::{
-        self, add_tracks, create_playlist, delete_playlist, get_library, import_playlist_from_m3u8,
-        remove_tracks, save_library,
+        self, add_tracks, create_playlist, delete_playlists, get_library,
+        import_playlist_from_m3u8, remove_tracks, save_library,
     },
     playback, send_event,
 };
@@ -92,15 +92,11 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                         }
                     }
                     LibraryCommand::DeletePlaylists { names } => {
-                        for name in names {
-                            if let Err(e) = delete_playlist(&name, false)
-                                && let Err(mpipc::Error::SendingError) = respond(
-                                    &mut conn,
-                                    &Response::Error(mpipc::Error::LibraryError(e)),
-                                )
-                            {
-                                break;
-                            }
+                        if let Err(e) = delete_playlists(names)
+                            && let Err(mpipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
+                        {
+                            break;
                         }
                         if let Err(e) = save_library() {
                             if let Err(mpipc::Error::SendingError) =

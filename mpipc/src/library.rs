@@ -183,6 +183,8 @@ pub enum LibraryError {
     CacheError,
     /// The provided item index was out of bounds.
     IndexOutOfBounds,
+    /// The provided vector contained duplicate values.
+    DuplicateItems,
 }
 
 impl std::fmt::Display for LibraryError {
@@ -193,6 +195,7 @@ impl std::fmt::Display for LibraryError {
             Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
             Self::CacheError => write!(f, "Cache is unusable"),
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
+            Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),
         }
     }
 }

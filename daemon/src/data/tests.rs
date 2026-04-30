@@ -1,4 +1,16 @@
-use crate::data::music_lib::{Playlist, Track};
+use crate::data::music_lib::{MusicLibrary, Playlist, Track};
+
+#[cfg(test)]
+fn unique_playlists(count: usize) -> Vec<Playlist> {
+    let mut playlists = Vec::new();
+    for i in 0..count {
+        playlists.push(Playlist {
+            name: "Test".to_owned() + &i.to_string(),
+            tracks: Vec::new(),
+        });
+    }
+    playlists
+}
 
 #[test]
 fn playlist_track_removal() {
@@ -16,4 +28,29 @@ fn playlist_track_removal() {
     assert_eq!(playlist.tracks[4], tracks[6]);
     assert_eq!(playlist.tracks[5], tracks[7]);
     assert_eq!(playlist.tracks[6], tracks[9]);
+}
+
+#[test]
+fn playlist_removal() {
+    let playlists = unique_playlists(10);
+    let mut lib = MusicLibrary {
+        tracks: Vec::new(),
+        playlists: playlists.clone(),
+    };
+    for playlist in &playlists {
+        eprintln!("playlist: {}", playlist.name);
+    }
+    lib.remove_playlists(vec![
+        "Test1".to_string(),
+        "Test5".to_string(),
+        "Test8".to_string(),
+    ])
+    .unwrap();
+    assert_eq!(lib.playlists[0], playlists[0]);
+    assert_eq!(lib.playlists[1], playlists[2]);
+    assert_eq!(lib.playlists[2], playlists[3]);
+    assert_eq!(lib.playlists[3], playlists[4]);
+    assert_eq!(lib.playlists[4], playlists[6]);
+    assert_eq!(lib.playlists[5], playlists[7]);
+    assert_eq!(lib.playlists[6], playlists[9]);
 }
