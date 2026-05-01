@@ -9,7 +9,7 @@ use daemon::{AddrClaimMode, playback};
 use log::{error, info, trace};
 use mpipc::{Error, Response, SocketType, connect, library::Playlist, send_command};
 
-use crate::argparse::{Command, DaemonCommand, LibraryCommand};
+use crate::argparse::{Command, DaemonCommand, LibraryCommand, PlaylistCommand};
 
 #[cfg(feature = "gui")]
 use crate::{argparse::GuiCommand, gui};
@@ -227,9 +227,11 @@ pub fn run_cli_command(
                     panic!("GUI command execution not supported!");
                 }
             }
-            Command::Library { command } => {
+            Command::Lib { command } => {
                 let (full, debug) = match command {
-                    LibraryCommand::ListPlaylists { full, debug } => (full, debug),
+                    LibraryCommand::Playlist {
+                        command: PlaylistCommand::List { full, debug },
+                    } => (full, debug),
                     _ => (false, false),
                 };
                 match mpipc::send_command(

@@ -59,9 +59,9 @@ pub enum GuiCommand {
 }
 
 #[derive(Subcommand)]
-pub enum LibraryCommand {
+pub enum PlaylistCommand {
     /// Create a new playlist
-    NewPlaylist {
+    New {
         /// The name of the playlist
         name: String,
         /// The list of tracks to add to the new playlist
@@ -69,7 +69,7 @@ pub enum LibraryCommand {
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file
-    PlaylistFromM3U8 {
+    FromM3U8 {
         // The path to the M3U8 file to import the playlist from
         #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         m3u8_file: PathBuf,
@@ -81,9 +81,9 @@ pub enum LibraryCommand {
         name: Option<String>,
     },
     /// Delete playlist(s) from the library
-    DeletePlaylists { names: Vec<String> },
+    Delete { names: Vec<String> },
     /// Add tracks to an already existing playlist.
-    AddTracksToPlaylist {
+    AddTracks {
         /// The name of the playlist to operate on.
         name: String,
         /// The list of tracks to add.
@@ -91,14 +91,14 @@ pub enum LibraryCommand {
         tracks: Vec<PathBuf>,
     },
     /// Remove tracks from an already existing playlist.
-    RemoveTracksFromPlaylist {
+    RemoveTracks {
         /// The name of the playlist to operate on.
         name: String,
         /// The list of IDs of tracks to remove.
         ids: Vec<usize>,
     },
     /// List all playlists in the library
-    ListPlaylists {
+    List {
         /// Also list all the tracks in the playlists
         #[arg(long, short, default_value_t = false, conflicts_with = "debug")]
         full: bool,
@@ -107,35 +107,54 @@ pub enum LibraryCommand {
         #[arg(long, short, default_value_t = false, conflicts_with = "full")]
         debug: bool,
     },
-    /// Reload the cache using already cached covers.
+}
+
+impl From<PlaylistCommand> for mpipc::library::LibraryCommand {
+    fn from(value: PlaylistCommand) -> Self {
+        match value {
+            PlaylistCommand::New { name, tracks } => {
+                mpipc::library::LibraryCommand::NewPlaylist { name, tracks }
+            }
+            PlaylistCommand::FromM3U8 { name, m3u8_file } => {
+                mpipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
+            }
+            PlaylistCommand::Delete { names } => {
+                mpipc::library::LibraryCommand::DeletePlaylists { names }
+            }
+            PlaylistCommand::List { full: _, debug: _ } => {
+                mpipc::library::LibraryCommand::GetLibrary
+            }
+            PlaylistCommand::AddTracks { name, tracks } => {
+                mpipc::library::LibraryCommand::AddTracksToPlaylist { name, tracks }
+            }
+            PlaylistCommand::RemoveTracks { name, ids } => {
+                mpipc::library::LibraryCommand::RemoveTracksFromPlaylist { name, ids }
+            }
+        }
+    }
+}
+
+#[derive(Subcommand)]
+pub enum LibraryCommand {
+    /// Manage playlists in the library.
+    Playlist {
+        #[command(subcommand)]
+        command: PlaylistCommand,
+    },
+    /// Reload the music library using already cached covers if possible.
     ///
     /// This can be used for discovering newly added tracks.
     Reload,
-    /// Rebuilt the cache ignoring cached covers.
+    /// Reload the music library and rebuild the cache.
+    ///
+    /// This does not reset user-generated data like playlists.
     Rebuild,
 }
 
 impl From<LibraryCommand> for mpipc::library::LibraryCommand {
     fn from(value: LibraryCommand) -> Self {
         match value {
-            LibraryCommand::NewPlaylist { name, tracks } => {
-                mpipc::library::LibraryCommand::NewPlaylist { name, tracks }
-            }
-            LibraryCommand::PlaylistFromM3U8 { name, m3u8_file } => {
-                mpipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
-            }
-            LibraryCommand::DeletePlaylists { names } => {
-                mpipc::library::LibraryCommand::DeletePlaylists { names }
-            }
-            LibraryCommand::ListPlaylists { full: _, debug: _ } => {
-                mpipc::library::LibraryCommand::GetLibrary
-            }
-            LibraryCommand::AddTracksToPlaylist { name, tracks } => {
-                mpipc::library::LibraryCommand::AddTracksToPlaylist { name, tracks }
-            }
-            LibraryCommand::RemoveTracksFromPlaylist { name, ids } => {
-                mpipc::library::LibraryCommand::RemoveTracksFromPlaylist { name, ids }
-            }
+            LibraryCommand::Playlist { command } => command.into(),
             LibraryCommand::Reload => mpipc::library::LibraryCommand::Reload,
             LibraryCommand::Rebuild => mpipc::library::LibraryCommand::Rebuild,
         }
@@ -369,7 +388,7 @@ pub enum Command {
         command: GuiCommand,
     },
     /// Manage the library
-    Library {
+    Lib {
         #[command(subcommand)]
         command: LibraryCommand,
     },
@@ -389,7 +408,7 @@ impl TryFrom<Command> for mpipc::Command {
             Command::Gui { command: _ } => {
                 Err("Cannot convert the `GuiCommand variant".to_string())
             }
-            Command::Library { command } => Ok(mpipc::Command::Library(command.into())),
+            Command::Lib { command } => Ok(mpipc::Command::Library(command.into())),
             Command::Playback { command } => Ok(mpipc::Command::Playback(command.into())),
         }
     }
