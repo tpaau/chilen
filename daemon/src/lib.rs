@@ -22,8 +22,7 @@ use std::{
 use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-pub use mpipc;
-use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_client_command};
+use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_command};
 use serde::{Deserialize, Serialize};
 
 use crate::music_lib::{CACHE_DIR, cache::indexer::Covers};
@@ -264,7 +263,7 @@ fn get_listener(
                     }
                     AddrClaimMode::ClaimIfUnresponsive => {
                         info!("Attempting to claim the socket address");
-                        match send_client_command(Command::Ping, socket_name, socket_type) {
+                        match send_command(Command::Ping, socket_name, socket_type) {
                             Ok(response) => {
                                 if response == Response::Pong {
                                     error!(
@@ -369,8 +368,8 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
 /// `daemon` starts, and the time it takes vastly depends on the read speeds of the hard drive of
 /// the host machine and the size of the music library.
 ///
-/// **Note:** This function will block. Launch it in a separate [thread](std::thread) if you want
-/// to run the daemon in the background.
+/// **Note:** This function will block. Launch it in a separate [thread] if you want to run the
+/// `daemon` in the background.
 ///
 /// # Examples
 /// ```no_run

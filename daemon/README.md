@@ -2,11 +2,19 @@
 
 <small>Not to be confused with [MPD](https://www.musicpd.org/), which is an unrelated project.</small>
 
-This library contains data types and functions used to start the music player daemon. It does not
-include the utilities used to communicate with it. For that you will have to use `mpipc`.
+> ### Warning
+> The project is under active development, so please be wary of any bugs you may find, and expect
+> breaking API changes in the upcoming updates!
 
-The daemon listens over a namespaced socket by default, unless the host system does not support
-namespaced sockets, or if the daemon was configured to use a filesystem socket.
+This library contains data types and functions used to start and control the music player daemon.
+
+Unlike [MPD](https://www.musicpd.org/), it can be bundled with your program's binary package to
+ensure a seamless installation process for your program and a cohesive experience for the end user.
+
+The `daemon` uses a local socket to connect to its clients. The type of socket used depends on your
+platform, and the startup configuration of the `daemon`. Under the hood, the [`interprocess`] and
+[`rmp_serde`] crates are used for handling clients connections and [`mpipc1] for providing common
+data types.
 
 # Examples
 

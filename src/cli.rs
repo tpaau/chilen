@@ -7,9 +7,7 @@ use std::{
 use clap::crate_name;
 use daemon::{AddrClaimMode, playback};
 use log::{error, info, trace};
-use mpipc::{
-    Error, Response, SocketType, connect_to_daemon, library::Playlist, send_client_command,
-};
+use mpipc::{Error, Response, SocketType, connect, library::Playlist, send_command};
 
 use crate::argparse::{Command, DaemonCommand, LibraryCommand};
 
@@ -60,7 +58,7 @@ fn event_stream(
     socket_name: &str,
     socket_type: &SocketType,
 ) -> Result<(), ()> {
-    let mut conn = match connect_to_daemon(socket_name, socket_type) {
+    let mut conn = match connect(socket_name, socket_type) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("Could not start the event stream: {e}");
@@ -82,7 +80,7 @@ fn event_stream(
     }
 
     loop {
-        let response: Response = match mpipc::receive_daemon_response(&mut conn) {
+        let response: Response = match mpipc::receive_response(&mut conn) {
             Ok(response) => response,
             Err(e) => {
                 error!("Failed to receive a response from the daemon: {e}");
@@ -193,7 +191,7 @@ pub fn run_cli_command(
                     );
                 }
                 DaemonCommand::Ping => {
-                    match send_client_command(mpipc::Command::Ping, &socket_name, &socket_type) {
+                    match send_command(mpipc::Command::Ping, &socket_name, &socket_type) {
                         Ok(response) => println!("{response:?}"),
                         Err(e) => println!("{e}"),
                     }
@@ -206,7 +204,7 @@ pub fn run_cli_command(
                             return Err(());
                         }
                     };
-                    match mpipc::send_client_command(cmd, &socket_name, &socket_type) {
+                    match mpipc::send_command(cmd, &socket_name, &socket_type) {
                         Ok(response) => info!("Got a response from the daemon: {response:?}"),
                         Err(e) => {
                             print_daemon_error(e);
@@ -234,7 +232,7 @@ pub fn run_cli_command(
                     LibraryCommand::ListPlaylists { full, debug } => (full, debug),
                     _ => (false, false),
                 };
-                match mpipc::send_client_command(
+                match mpipc::send_command(
                     mpipc::Command::Library(command.into()),
                     &socket_name,
                     &socket_type,
@@ -263,7 +261,7 @@ pub fn run_cli_command(
             }
             Command::Playback { command } => {
                 let cmd = mpipc::Command::Playback(command.into());
-                match mpipc::send_client_command(cmd, &socket_name, &socket_type) {
+                match mpipc::send_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
                         Response::Ok => println!("Ok"),
                         Response::Playback(response) => println!("{response}"),

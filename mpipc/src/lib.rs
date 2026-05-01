@@ -48,7 +48,7 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EncodingError => write!(f, "Could not encode the deamon conmmand"),
+            Self::EncodingError => write!(f, "Could not encode the deamon command"),
             Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
             Self::SendingError => write!(f, "Could not send the command to the daemon"),
@@ -127,16 +127,19 @@ pub enum Command {
 pub enum SocketType {
     /// Only use a namespaced socket with no fallback.
     ///
-    /// The `daemon` will return [Error::SocketError] at startup if a socket with the
-    /// specified name already exists.
+    /// The `daemon` will throw an error at startup if a socket with the specified name already
+    /// exists.
     NamespacedOnly,
     /// Use a namespaced socket when possible, but allow a fallback to a filesystem socket.
+    ///
+    /// The `daemon` will only throw an error if it fails to create both a namespaced and
+    /// filesystem socket listener.
     #[default]
     NamespacedOrFilesystem,
     /// Only use a filesystem socket with no fallback.
     ///
-    /// The `daemon` will return [Error::AddrInUse] at startup if a socket with the specified
-    /// name already exists
+    /// The `daemon` will throw an error at startup if a socket with the specified name already
+    /// exists.
     FilesystemOnly,
 }
 
@@ -218,8 +221,8 @@ pub fn get_socket<'a>(socket_name: &'a str, mode: &SocketType) -> Result<Name<'a
 /// Connect to the daemon and immediately disconnect.
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, Command, Error};
-/// let conn = connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
+/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, Command, Error};
+/// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// let cmd = mpipc::serialize_client_command(&mpipc::Command::Disconnect).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
@@ -240,17 +243,17 @@ pub fn serialize_client_command(cmd: &Command) -> Result<Vec<u8>, Error> {
 /// # Examples
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, Command, receive_daemon_response};
-/// let conn = connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
+/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, Command, receive_response};
+/// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// let cmd = serialize_client_command(&Command::EventStream).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// loop {
-///     let response = receive_daemon_response(&mut conn).unwrap();
+///     let response = receive_response(&mut conn).unwrap();
 ///     println!("Got a response from the daemon: {response:?}");
 /// }
 /// ```
-pub fn receive_daemon_response(conn: &mut BufReader<Stream>) -> Result<Response, Error> {
+pub fn receive_response(conn: &mut BufReader<Stream>) -> Result<Response, Error> {
     match rmp_serde::from_read(conn) {
         Ok(response) => Ok(response),
         Err(e) => {
@@ -268,8 +271,8 @@ pub fn receive_daemon_response(conn: &mut BufReader<Stream>) -> Result<Response,
 /// # Examples
 /// ```no_run
 /// # use std::io::BufReader;
-/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, disconnect};
-/// let conn = connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
+/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
+/// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 ///
 /// // Do some stuff with the connection here...
@@ -292,7 +295,7 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), Error> {
         }
     }
 
-    let response = receive_daemon_response(conn)?;
+    let response = receive_response(conn)?;
 
     match response {
         Response::Error(e) => {
@@ -316,14 +319,14 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), Error> {
 /// # Examples
 /// ```no_run
 /// use std::io::BufReader;
-/// # use mpipc::{connect_to_daemon, DEFAULT_SOCKET_NAME, SocketType, disconnect};
-/// let conn = connect_to_daemon(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
+/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
+/// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// eprintln!("Connected to the daemon: {conn:?}");
 /// // Run all your commands here!
 /// disconnect(&mut conn).unwrap();
 /// ```
-pub fn connect_to_daemon(socket_name: &str, socket_type: &SocketType) -> Result<Stream, Error> {
+pub fn connect(socket_name: &str, socket_type: &SocketType) -> Result<Stream, Error> {
     trace!("Connecting to daemon on socket '{socket_name}'");
 
     let socket = match get_socket(socket_name, socket_type) {
@@ -356,8 +359,8 @@ pub fn connect_to_daemon(socket_name: &str, socket_type: &SocketType) -> Result<
 ///
 /// # Examples
 /// ```no_run
-/// # use mpipc::{send_client_command, Command, DEFAULT_SOCKET_NAME, SocketType, Response};
-/// match send_client_command(Command::Shutdown, DEFAULT_SOCKET_NAME, &SocketType::default()) {
+/// # use mpipc::{send_command, Command, DEFAULT_SOCKET_NAME, SocketType, Response};
+/// match send_command(Command::Ping, DEFAULT_SOCKET_NAME, &SocketType::default()) {
 ///     // The `Ok` variant only means the command was delivered
 ///     Ok(response) => {
 ///         match response {
@@ -369,14 +372,14 @@ pub fn connect_to_daemon(socket_name: &str, socket_type: &SocketType) -> Result<
 ///     Err(error) => panic!("Could not send a command to the daemon: {error}"),
 /// }
 /// ```
-pub fn send_client_command(
+pub fn send_command(
     cmd: Command,
     socket_name: &str,
     socket_type: &SocketType,
 ) -> Result<Response, Error> {
     trace!("Executing daemon command: {cmd:?}");
 
-    let mut conn = match connect_to_daemon(socket_name, socket_type) {
+    let mut conn = match connect(socket_name, socket_type) {
         Ok(conn) => BufReader::new(conn),
         Err(e) => {
             error!("{e}");
@@ -391,7 +394,7 @@ pub fn send_client_command(
         return Err(Error::SendingError);
     }
 
-    let response = receive_daemon_response(&mut conn)?;
+    let response = receive_response(&mut conn)?;
 
     if cmd == Command::Shutdown {
         trace!(
