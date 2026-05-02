@@ -2,7 +2,7 @@ use std::{path::PathBuf, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
-/// Struct representing a track from the [music library](crate::library::MusicLibrary).
+/// Struct representing a track from the [music library](MusicLibrary).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Track {
     /// The path to the audio file.
@@ -45,7 +45,7 @@ impl std::fmt::Display for Track {
     }
 }
 
-/// Struct representing a playlist in the [music library](crate::library::MusicLibrary).
+/// Struct representing a playlist in the [music library](MusicLibrary).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Playlist {
     /// The name of the playlist.
@@ -54,114 +54,109 @@ pub struct Playlist {
     pub name: String,
     /// The content of the playlist.
     ///
-    /// All tracks must already be in the [music library](crate::library::MusicLibrary). If a track
-    /// is removed from the library (eg. by removing an audio file from the music directory and
-    /// reloading the library), it will also be removed from all the playlists.
+    /// All tracks must already be in the [music library](MusicLibrary). If a track is removed from
+    /// the library (eg. by removing an audio file from the music directory and reloading the
+    /// library), it will also be removed from all the playlists.
     pub tracks: Vec<Track>,
 }
 
 /// Struct representing the contents of the music library.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MusicLibrary {
-    /// The list of [playlists](Playlist) in the music library.
+    /// The list of playlists in the music library.
     pub playlists: Vec<Playlist>,
-    /// The list of all [tracks](Track) in the music library.
+    /// The list of all tracks in the music library.
     pub tracks: Vec<Track>,
 }
 
-/// Subcommand of [Command](crate::Command) for managing the music library.
+/// Subcommand of [`Command`](crate::Command) for managing the music library.
+///
+/// The expected response may be different depending on the command sent. If it isn't specified in
+/// the variant documentation, assume [`Response::Ok`](crate::Response::Ok) is the expected
+/// response.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LibraryCommand {
     /// Create a new playlist, optionally with some tracks in it.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     NewPlaylist {
-        /// The name for the new playlist, must not already exist in the music library.
+        /// The name for the new playlist. Must not already exist in the music library.
         ///
-        /// If a playlist with the specified name already exists
-        /// [LibraryError::PlaylistExists] will be returned.
+        /// If a playlist with the specified name already exists,
+        /// [`LibraryError::PlaylistExists`] will be returned, and no changes to the
+        /// [music library](MusicLibrary) will be made.
         name: String,
         /// Optional list of paths to tracks to be added to the playlist.
         ///
-        /// **Note:** the `daemon` will return an error if any of the tracks are not registered in
-        /// the music library or if the vector contains duplicates.
+        /// This command will fail if any of the tracks are not registered in the
+        /// [music library](MusicLibrary), or if the list contains duplicates.
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file.
     ///
-    /// This is currently unimplemented and will cause the `daemon` to panic every time.
+    /// This is currently unimplemented and will cause the `daemon` to panic.
     PlaylistFromM3U8 {
-        /// The name for the imported playlist, must not already exist in the music library.
+        /// The name for the imported playlist. Must not already exist in the music library.
         ///
         /// If left unspecified, it will be derived from the name of the imported file.
         ///
-        /// If a playlist with the specified name already exists
-        /// [LibraryError::PlaylistExists] will be returned.
+        /// If a playlist with the specified name already exists,
+        /// [`LibraryError::PlaylistExists`] will be returned, and no changes to the
+        /// [music library](MusicLibrary) will be made.
         name: Option<String>,
         /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
     },
     /// Delete playlists from the music library.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     DeletePlaylists {
         /// List of the playlists to delete.
         ///
         /// If any of the provided playlists don't exist in the music library,
-        /// [LibraryError::NoSuchPlaylist] will be returned, and no changes to the music
-        /// library will be made.
+        /// [`LibraryError::NoSuchPlaylist`] will be returned, and no changes to the
+        /// [music library](MusicLibrary) will be made.
         names: Vec<String>,
     },
     /// Add tracks to an already existing playlist.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     AddTracksToPlaylist {
         /// The name of the playlist to add tracks to.
         ///
         /// If a playlist with the specified name doesn't exist in the music library,
-        /// [LibraryError::NoSuchPlaylist] will be returned.
+        /// [`LibraryError::NoSuchPlaylist`] will be returned, and no changes to the
+        /// [music library](MusicLibrary) will be made.
         name: String,
         /// List of paths to tracks to add to the playlist.
         ///
         /// **Note:** the `daemon` will return an error if any of the tracks are not registered in
-        /// the music library or if the vector contains duplicates.
+        /// the music library or if the list contains duplicates.
         tracks: Vec<PathBuf>,
     },
     /// Remove tracks from a playlist.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     RemoveTracksFromPlaylist {
         /// The name of the playlist to remove tracks from.
         ///
         /// If a playlist with the specified name doesn't exist in the music library,
-        /// [LibraryError::NoSuchPlaylist] will be returned.
+        /// [`LibraryError::NoSuchPlaylist`] will be returned, and no changes to the
+        /// [music library](MusicLibrary) will be made.
         name: String,
         /// The list of track indices in the playlist to remove.
         ///
         /// Eg. to remove the first track you would pass `[0]`, to remove the first three
         /// `[0, 1, 2]`, etc.
         ///
-        /// If one of the indices is out of range, the daemon will return
-        /// [LibraryError::IndexOutOfBounds]. No changes will be made.
+        /// If one or more of the indices is out of range, [`LibraryError::IndexOutOfBounds`]
+        /// will be returned, and no changes to the [music library](MusicLibrary) will be made.
         ids: Vec<usize>,
     },
-    /// Get the contents of the [music library](crate::library::MusicLibrary).
+    /// Get the contents of the [music library](MusicLibrary).
     ///
-    /// The `daemon` will respond to this with [Response::Library](crate::Response::Library) if
+    /// The `daemon` will respond to this with [`Response::Library`](crate::Response::Library) if
     /// successful.
     GetLibrary,
     /// Reload the library and rebuild the cache ignoring already cached covers.
     ///
     /// Will take more time than just reloading the cache.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Rebuild,
     /// Reload the library using cached data if possible.
     ///
     /// This can be used to discover newly added tracks.
-    ///
-    /// The `daemon` will respond to this with
-    /// [Response::Ok](crate::Response::Ok)(crate::Response::Ok) if successful.
     Reload,
 }
 
@@ -171,17 +166,19 @@ pub enum LibraryError {
     /// Could not complete the operation because a [playlist](Playlist) with the provided name
     /// already exists.
     PlaylistExists,
-    /// Could not perform the operation because the music library is not initialized.
+    /// Could not perform the operation because the [music library](MusicLibrary) is not
+    /// initialized.
     ///
     /// This can happen if a command is sent to early and the music library is not yet initialized.
     LibraryNotInitialized,
-    /// There is not playlist in the music library with the provided name.
+    /// There is no [playlist](Playlist) in the [music library](MusicLibrary) with the provided
+    /// name.
     NoSuchPlaylist,
     /// Could not get the path to the cache directory or the cache is unusable.
     CacheError,
     /// The provided item index was out of bounds.
     IndexOutOfBounds,
-    /// The provided vector contained duplicate values.
+    /// The provided list contained duplicate values.
     DuplicateItems,
 }
 

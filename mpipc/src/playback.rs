@@ -11,7 +11,9 @@ pub enum PlaybackState {
     Playing,
     /// The player is paused.
     Paused,
-    /// Audio playback is stopped. Playing will play the current track from the beginning.
+    /// The player is stopped.
+    ///
+    /// Playing will play the current track from the beginning.
     #[default]
     Stopped,
 }
@@ -26,7 +28,7 @@ impl std::fmt::Display for PlaybackState {
     }
 }
 
-/// Loop state defining the looping behavior of the player.
+/// Specifies how the player loops playback.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LoopState {
     /// The playback will stop when there are no more tracks to play.
@@ -41,7 +43,9 @@ pub enum LoopState {
 /// Shuffle state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShuffleState {
-    /// Do not shuffle the queue.
+    /// Play tracks in their original order.
+    ///
+    /// For example tracks from a playlist will be played in the order they appear in the playlist.
     #[default]
     Off,
     /// Shuffle the tracks in the queue.
@@ -85,7 +89,7 @@ impl std::fmt::Display for LoopState {
 /// Signed duration type used for seeking.
 ///
 /// This is just a bare bones type that should only be used for
-/// [seeking audio playback](PlaybackCommand::Seek), and not as a [Duration] replacement.
+/// [seeking player position](PlaybackCommand::Seek), and not as a [`Duration`] replacement.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum SignedDuration {
     Positive(Duration),
@@ -104,7 +108,7 @@ impl SignedDuration {
 
 /// Player volume.
 ///
-/// Values passed to this struct will be clamped between 0.0 (no sound at all) and 1.0 (regular
+/// Values passed to this struct will be clamped between `0.0` (no sound at all) and `1.0` (regular
 /// volume).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlayerVolume {
@@ -124,9 +128,9 @@ impl std::fmt::Display for PlayerVolume {
 }
 
 impl PlayerVolume {
-    /// Create a new [PlayerVolume] struct with the specified volume.
+    /// Create a new [`PlayerVolume`] struct with the specified volume.
     ///
-    /// The passed `volume` parameter will be clamped between 0.0 and 1.0.
+    /// The passed `volume` parameter will be clamped between `0.0` and `1.0`.
     pub fn new(volume: f64) -> Self {
         Self {
             volume: volume.clamp(0.0, 1.0),
@@ -148,8 +152,8 @@ impl PlayerVolume {
 
 /// The speed at which tracks are played.
 ///
-/// Rate of 1.0 will play tracks at their original speed, 2.0 will play them twice as fast, and 0.5
-/// will slow them to half speed.
+/// Rate of `1.0` will play tracks at their original speed, `2.0` will play them twice as fast, and
+/// `0.5` will slow them to half speed.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PlaybackRate {
     rate: f64,
@@ -248,28 +252,25 @@ impl PlaybackRate {
     }
 }
 
-/// Subcommand of [Command](crate::Command) for managing audio playback in the `daemon`.
+/// Subcommand of [`Command`](crate::Command) for managing audio playback in the `daemon`.
+///
+/// The expected response may be different depending on the command sent. If it isn't specified in
+/// the variant documentation, assume [`Response::Ok`](crate::Response::Ok) is the expected
+/// response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackCommand {
     /// Play the current track or play a track at a specific index in the queue.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Play(Option<usize>),
     /// Pause the player.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Pause,
     /// Stop the player.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Stop,
     /// Toggle between play/pause.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     TogglePlaying,
-    /// Get the [PlaybackState] of the player.
+    /// Get the [`PlaybackState`] of the player.
     ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
+    /// The daemon will respond with [`Response::PlaybackState`](crate::Response::PlaybackState) if
+    /// successful.
     GetPlaybackState,
     // TODO: Update this after patching the daemon
     /// Set a new queue for the player.
@@ -282,47 +283,34 @@ pub enum PlaybackCommand {
     ///
     /// **Note:** tracks outside of the music directory or not registered by the music player
     /// (added after the last library reload), will be discarded.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     AppendToQueue(Vec<PathBuf>),
     /// Load a playlist and append its tracks to the queue.
     ///
-    /// If there's no [Playlist](crate::library::Playlist) with the provided name present in the
-    /// [MusicLibrary](crate::library::MusicLibrary),
-    /// [LibraryError::NoSuchPlaylist](crate::library::LibraryError::NoSuchPlaylist) will be
+    /// If there's no [playlist](crate::library::Playlist) with the provided name present in the
+    /// [music library](crate::library::MusicLibrary),
+    /// [`LibraryError::NoSuchPlaylist`](crate::library::LibraryError::NoSuchPlaylist) will be
     /// returned, and no changes to the queue will be made.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     AppendPlaylist(String),
     /// Load a playlist and put its tracks in the queue.
     ///
-    /// If there's no [Playlist](crate::library::Playlist) with the provided name present in the
-    /// [MusicLibrary](crate::library::MusicLibrary),
-    /// [LibraryError::NoSuchPlaylist](crate::library::LibraryError::NoSuchPlaylist) will be
+    /// If there's no [playlist](crate::library::Playlist) with the provided name present in the
+    /// [music library](crate::library::MusicLibrary),
+    /// [`LibraryError::NoSuchPlaylist`](crate::library::LibraryError::NoSuchPlaylist) will be
     /// returned, and no changes to the queue will be made.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     SetPlaylist(String),
     /// Get the current [track](Track).
     ///
-    /// The `daemon` will respond to this with [PlaybackResponse::Track] if successful.
+    /// The `daemon` will respond to this with [`PlaybackResponse::Track`] if successful.
     GetCurrentTrack,
     /// Skip to the next track.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Next,
     /// Skip to the previous track.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Previous,
     /// Set the [loop state](LoopState) of the player.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     SetLoopState(LoopState),
     /// Get the [loop state](LoopState) of the player.
     ///
-    /// The `daemon` will respond to this with [PlaybackResponse::LoopState] if
-    /// successful.
+    /// The `daemon` will respond to this with [`PlaybackResponse::LoopState`] if successful.
     GetLoopState,
     /// Set the [playback rate](PlaybackRate) of the player.
     ///
@@ -330,53 +318,40 @@ pub enum PlaybackCommand {
     /// modification or if the specified rate value was out of the acceptable range.
     ///
     /// If the `daemon` is configured not to allow playback rate modification,
-    /// [PlaybackError::FixedRate] will be returned.
+    /// [`PlaybackError::FixedRate`] will be returned.
     ///
-    /// If the provided rate value is out of the allowed range, [PlaybackError::RateOutOfRange]
+    /// If the provided rate value is out of the allowed range, [`PlaybackError::RateOutOfRange`]
     /// will be returned.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     SetRate(f64),
     /// Get the [playback rate](PlaybackRate) of the player.
     ///
-    /// The `daemon` will respond to this with [PlaybackResponse::PlaybackRate] if
+    /// The `daemon` will respond to this with [`PlaybackResponse::PlaybackRate`] if
     /// successful.
     GetRate,
     /// Set the [shuffle state](ShuffleState) of the player.
     ///
-    /// The `daemon` will always respond to this command with [PlaybackError::ShuffleNotSupported]
+    /// The `daemon` will always respond to this command with [`PlaybackError::ShuffleNotSupported`]
     /// if it was built without shuffle support.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     SetShuffleState(ShuffleState),
     /// Get the [shuffle state](ShuffleState) of the player.
     ///
-    /// The `daemon` will always respond to this command with [ShuffleState::Off] if it was built
-    /// without shuffle support.
-    ///
-    /// The `daemon` will respond to this with [PlaybackResponse::ShuffleState] if
-    /// successful.
+    /// If the `daemon` was built without shuffle support, it will always respond to this command with
+    /// [`ShuffleState::Off`]. Otherwise, it will return [`PlaybackResponse::ShuffleState`].
     GetShuffleState,
     /// Set the position of the player.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     SetPlayerPosition(Duration),
     /// Change the player position by a time delta.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     Seek(SignedDuration),
     /// Get the position of the player.
     ///
-    /// The `daemon` will respond to this with [PlaybackResponse::PlayerPosition] if
+    /// The `daemon` will respond to this with [`PlaybackResponse::PlayerPosition`] if
     /// successful.
     GetPlayerPosition,
     /// Set the volume of the player.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok](crate::Response::Ok) if successful.
     SetPlayerVolume(PlayerVolume),
     /// Get the volume of the player.
     ///
-    /// The `daemon` will respond to this with [PlaybackResponse::PlayerVolume] if
+    /// The `daemon` will respond to this with [`PlaybackResponse::PlayerVolume`] if
     /// successful.
     GetPlayerVolume,
 }
@@ -391,7 +366,7 @@ pub enum PlaybackError {
     PlayerNotConnected,
     /// The playback state is not initialized.
     ///
-    /// This error may occur when a [PlaybackCommand] is sent to the `daemon` too early, before the
+    /// This error may occur when a [`PlaybackCommand`] is sent to the `daemon` too early, before the
     /// state is restored from cache.
     StateNotInitialized,
     /// The queue is empty.
@@ -410,13 +385,12 @@ pub enum PlaybackError {
     /// Cannot go to the previous track.
     ///
     /// This means that the current track is first in the queue and the [loop state](LoopState) is
-    /// set to [LoopState::Off].
-    /// asdfasdd
+    /// set to [`LoopState::Off`].
     CannotGoPrevious,
     /// Cannot go to the next track.
     ///
     /// This means that the current track is last in the queue and the [loop state](LoopState) is
-    /// set to [LoopState::Off].
+    /// set to [`LoopState::Off`].
     CannotGoNext,
     /// The daemon was not built with shuffle support.
     ShuffleNotSupported,
@@ -428,7 +402,7 @@ pub enum PlaybackError {
     FixedRate,
     /// The player position could not be set because the duration provided was invalid.
     ///
-    /// The player will refuse to seek by 0s to prevent unnecessary audio popping.
+    /// The player will refuse to seek by 0s to prevent audio popping.
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,
@@ -467,9 +441,8 @@ impl std::fmt::Display for PlaybackError {
     }
 }
 
-/// Response originating from the playback module of the `daemon`.
-///
-/// Used as an enum value for the [Response](crate::Response).
+/// Response originating from the playback module of the `daemon` used in
+/// ed as an enum value for th[`Response`](crate::Response).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackResponse {
     PlaybackState(PlaybackState),

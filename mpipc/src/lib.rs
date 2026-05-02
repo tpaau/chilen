@@ -20,16 +20,18 @@ use crate::{
 };
 
 /// The default name of the socket the daemon listens on.
+///
+/// This can be used for testing, but please do not use this socket name in a finished project.
 pub const DEFAULT_SOCKET_NAME: &str = "DEFAULT_MUSIC_PLAYER.socket";
 
 /// Error related to the `daemon`.
 ///
-/// Can either originate from a [Response] or from a function in [mpipc](crate).
+/// Can either originate from a [`Response`] or from a function in this crate.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Error {
-    /// The message could not be encoded before sending it.
+    /// The provided command could not be encoded.
     EncodingError,
-    /// Response could not be decoded back into usable form.
+    /// The `daemon` response could not be decoded.
     DecodingError,
     /// Could not connect to the daemon.
     ConnectionError,
@@ -64,7 +66,7 @@ impl std::fmt::Display for Error {
     }
 }
 
-/// Event from the `daemon` received in [Response::Event].
+/// Event from the `daemon` received in [`Response::Event`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Event {
     /// Sent before the `daemon` closes.
@@ -82,7 +84,7 @@ pub enum Event {
 pub enum Response {
     /// The client command was executed successfully.
     Ok,
-    /// Response to [Command::Ping].
+    /// Response to [`Command::Ping`].
     Pong,
     /// The contents of the music library.
     Library(MusicLibrary),
@@ -95,6 +97,9 @@ pub enum Response {
 }
 
 /// Command that can be executed by a `daemon` instance.
+///
+/// The expected response may be different depending on the command sent. If it isn't specified in
+/// the variant documentation, assume [`Response::Ok`] is the expected response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Command {
     /// Stop the `daemon` instance.
@@ -109,16 +114,12 @@ pub enum Command {
     /// The daemon will stop accepting requests from the connection this command was executed on.
     EventStream,
     /// Close the connection to the `daemon`.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok] if successful.
     Disconnect,
     /// Command to the playback module.
-    ///
-    /// The `daemon` will respond to this with [Response::Ok] if successful.
     Playback(PlaybackCommand),
     /// Ping the `daemon`.
     ///
-    /// The `daemon` will respond to this with [Response::Pong] if successful.
+    /// The `daemon` will respond to this with [`Response::Pong`] if successful.
     Ping,
 }
 
@@ -127,62 +128,25 @@ pub enum Command {
 pub enum SocketType {
     /// Only use a namespaced socket with no fallback.
     ///
-    /// The `daemon` will throw an error at startup if a socket with the specified name already
-    /// exists.
+    /// The connection will fail if a namespaced socket with the specified name doesn't exist.
     NamespacedOnly,
     /// Use a namespaced socket when possible, but allow a fallback to a filesystem socket.
     ///
-    /// The `daemon` will only throw an error if it fails to create both a namespaced and
-    /// filesystem socket listener.
+    /// The connection will fail if there are no namespaced or filesystem sockets with the
+    /// specified name.
     #[default]
     NamespacedOrFilesystem,
     /// Only use a filesystem socket with no fallback.
     ///
-    /// The `daemon` will throw an error at startup if a socket with the specified name already
-    /// exists.
+    /// The connection will fail if a filesystem socket with the specified name doesn't exist.
     FilesystemOnly,
 }
 
-/// Returns a filesystem path for a given socket address.
-pub fn get_fs_socket_path(socket_name: &str) -> PathBuf {
+/// Returns a filesystem path for the given socket name.
+fn get_fs_socket_path(socket_name: &str) -> PathBuf {
     let mut temp_dir = temp_dir();
     temp_dir.push(socket_name);
     temp_dir
-}
-
-/// Returns a namespaced socket for the given socket name.
-///
-/// # Examples
-/// ```
-/// # use mpipc::{get_ns_daemon_socket, DEFAULT_SOCKET_NAME};
-/// let socket = get_ns_daemon_socket(DEFAULT_SOCKET_NAME).unwrap();
-/// ```
-pub fn get_ns_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
-    match socket_name.to_ns_name::<GenericNamespaced>() {
-        Ok(socket) => Ok(socket),
-        Err(e) => {
-            error!("Could not obtain a namespaced socket: {e}");
-            Err(e)
-        }
-    }
-}
-
-/// Returns a filesystem socket for the given socket name.
-///
-/// # Examples
-/// ```
-/// # use mpipc::{get_fs_daemon_socket, DEFAULT_SOCKET_NAME};
-/// let socket = get_fs_daemon_socket(DEFAULT_SOCKET_NAME).unwrap();
-/// ```
-pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::io::Error> {
-    let socket_path = get_fs_socket_path(socket_name);
-    match socket_path.to_fs_name::<GenericFilePath>() {
-        Ok(socket) => Ok(socket),
-        Err(e) => {
-            error!("Could not obtain a filesystem socket: {e}");
-            Err(e)
-        }
-    }
 }
 
 /// Attempts to get a socket address for `daemon` IPC.
@@ -199,11 +163,11 @@ pub fn get_fs_daemon_socket<'a>(socket_name: &'a str) -> Result<Name<'a>, std::i
 /// ```
 pub fn get_socket<'a>(socket_name: &'a str, mode: &SocketType) -> Result<Name<'a>, std::io::Error> {
     match mode {
-        SocketType::NamespacedOnly => get_ns_daemon_socket(socket_name),
+        SocketType::NamespacedOnly => socket_name.to_ns_name::<GenericNamespaced>(),
         SocketType::FilesystemOnly => {
             get_fs_socket_path(socket_name).to_fs_name::<GenericFilePath>()
         }
-        SocketType::NamespacedOrFilesystem => match get_ns_daemon_socket(socket_name) {
+        SocketType::NamespacedOrFilesystem => match socket_name.to_ns_name::<GenericNamespaced>() {
             Ok(socket) => Ok(socket),
             Err(e) => {
                 info!("Could not obtain a namespaced socket: {e}");
@@ -216,18 +180,20 @@ pub fn get_socket<'a>(socket_name: &'a str, mode: &SocketType) -> Result<Name<'a
 
 /// Serialize a client command to a format that can be sent to the daemon.
 ///
+/// This uses the [`rmp_serde`] crate under the hood.
+///
 /// # Examples
 ///
 /// Connect to the daemon and immediately disconnect.
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, Command, Error};
+/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_command, Command, Error};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
-/// let cmd = mpipc::serialize_client_command(&mpipc::Command::Disconnect).unwrap();
+/// let cmd = serialize_command(&Command::Disconnect).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// ```
-pub fn serialize_client_command(cmd: &Command) -> Result<Vec<u8>, Error> {
+pub fn serialize_command(cmd: &Command) -> Result<Vec<u8>, Error> {
     let mut data = Vec::new();
     if let Err(e) = cmd.serialize(&mut rmp_serde::Serializer::new(&mut data)) {
         error!("Could not encode the client command: {e}");
@@ -243,10 +209,10 @@ pub fn serialize_client_command(cmd: &Command) -> Result<Vec<u8>, Error> {
 /// # Examples
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_client_command, Command, receive_response};
+/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_command, Command, receive_response};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
-/// let cmd = serialize_client_command(&Command::EventStream).unwrap();
+/// let cmd = serialize_command(&Command::EventStream).unwrap();
 /// conn.get_mut().write_all(&cmd).unwrap();
 /// loop {
 ///     let response = receive_response(&mut conn).unwrap();
@@ -263,10 +229,10 @@ pub fn receive_response(conn: &mut BufReader<Stream>) -> Result<Response, Error>
     }
 }
 
-/// Disconnects from the `daemon` by sending the [Command::Disconnect] command.
+/// Disconnects from the `daemon` by sending the [`Command::Disconnect`] command.
 ///
 /// This is a convenience function, its effect could be achieved using utilities already provided
-/// by [mpipc](crate).
+/// in this crate.
 ///
 /// # Examples
 /// ```no_run
@@ -285,7 +251,7 @@ pub fn receive_response(conn: &mut BufReader<Stream>) -> Result<Response, Error>
 pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), Error> {
     trace!("Closing connection with the daemon");
 
-    let data = serialize_client_command(&Command::Disconnect)?;
+    let data = serialize_command(&Command::Disconnect)?;
 
     match conn.get_mut().write_all(&data) {
         Ok(_) => {}
@@ -314,11 +280,11 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Connects to the `daemon` via a local socket and returns the connection [Stream].
+/// Connects to the `daemon` via a local socket and returns the connection [`Stream`].
 ///
 /// # Examples
 /// ```no_run
-/// use std::io::BufReader;
+/// # use std::io::BufReader;
 /// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
@@ -348,14 +314,11 @@ pub fn connect(socket_name: &str, socket_type: &SocketType) -> Result<Stream, Er
     Ok(conn)
 }
 
-/// Executes a single `daemon` command and ends the connection.
+/// Executes a single `daemon` command on a new connection and closes it.
 ///
-/// This function needs to connect to the `daemon` every time it's called, which is very
-/// inefficient.
-///
-/// **Warning:** if this function returns the [Ok] variant, this only means that the command was
-/// successfully delivered to the `daemon`. It doesn't necessarily mean that the command was
-/// executed successfully on the `daemon` side.
+/// **Warning:** if this function returns the [`Ok`] variant, this only means that the command was
+/// successfully delivered to the `daemon`. It doesn't necessarily mean it was executed
+/// successfully on the `daemon` side.
 ///
 /// # Examples
 /// ```no_run
@@ -387,7 +350,7 @@ pub fn send_command(
         }
     };
 
-    let data = serialize_client_command(&cmd)?;
+    let data = serialize_command(&cmd)?;
 
     if let Err(e) = conn.get_mut().write_all(&data) {
         error!("Failed sending the daemon command: {e}");

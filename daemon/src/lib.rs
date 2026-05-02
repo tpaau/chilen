@@ -9,7 +9,7 @@ pub mod playback;
 mod tests;
 
 use std::{
-    env::home_dir,
+    env::{home_dir, temp_dir},
     fs::remove_file,
     path::PathBuf,
     sync::{
@@ -43,6 +43,8 @@ pub enum Error {
     ///
     /// This likely means a second daemon was started in the same context.
     EventChannelInitialized,
+    /// The event channel is not initialized, which likely means that there is no daemon running.
+    NoDaemonRunning,
     NoMusicLibrary,
     MusicLibraryNotAccessible,
     CacheDirError(String),
@@ -57,6 +59,7 @@ impl std::fmt::Display for Error {
             Self::EventChannelInitialized => {
                 write!(f, "The event channel for the daemon is already initialized")
             }
+            Self::NoDaemonRunning => write!(f, "The daemon doesn't seem to be running"),
             Self::NoMusicLibrary => {
                 write!(f, "The provided music library directory does not exist")
             }
@@ -85,7 +88,7 @@ pub enum AddrClaimMode {
     ForceClaim,
 }
 
-/// Error that can be thrown by the constructors of [Config].
+/// Error originating from the [`Config`] struct.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ConfigError {
     /// The provided bus name suffix for MPRIS was invalid.
@@ -123,7 +126,7 @@ pub struct Config {
     pub addr_claim_mode: AddrClaimMode,
     /// Defines the type of socket the daemon should use.
     pub socket_type: SocketType,
-    /// Configuration options specific to the [playback] module.
+    /// Configuration options specific to the [`playback`] module.
     pub playback_config: playback::Config,
 }
 
@@ -131,7 +134,7 @@ impl Config {
     /// Get the default daemon config.
     ///
     /// For a custom music player, you probably want to create your own config from
-    /// scratch, or use the [Config::try_from_name] constructor.
+    /// scratch, or use the [`Config::try_from_name`] constructor.
     ///
     /// # Examples
     /// ```
@@ -208,14 +211,20 @@ fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
     }
 }
 
-// TODO: I should also create a `stop` function for stopping the daemon without connecting to it
+/// Returns a filesystem path for the given socket name.
+fn get_fs_socket_path(socket_name: &str) -> PathBuf {
+    let mut temp_dir = temp_dir();
+    temp_dir.push(socket_name);
+    temp_dir
+}
+
 /// Create an IPC socket listener for the daemon with the specified address.
 ///
 /// Depending on the configuration, this can either return a namespaced socket or a filesystem one.
 ///
 /// A filesystem socket will be returned if namespaced sockets are not supported, and the
-/// [SocketType] passed is [SocketType::NamespacedOrFilesystem], or if the [SocketType] value
-/// passed is [SocketType::FilesystemOnly].
+/// `socket_type` value passed is [`SocketType::NamespacedOrFilesystem`], or if the `socket_type`
+/// value passed is [`SocketType::FilesystemOnly`].
 ///
 /// The [`AddrClaimMode`] value defines under which conditions should an occupied socket address be
 /// claimed. This is only effective for filesystem sockets.
@@ -291,7 +300,7 @@ fn get_listener(
                             }
                         }
 
-                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(socket_name)) {
+                        if let Err(e) = remove_file(get_fs_socket_path(socket_name)) {
                             error!("Could not remove the old socket: {e}");
                             return Err(Error::SocketError);
                         }
@@ -309,7 +318,7 @@ fn get_listener(
                     }
                     AddrClaimMode::ForceClaim => {
                         info!("Force claiming the socket address");
-                        if let Err(e) = remove_file(mpipc::get_fs_socket_path(socket_name)) {
+                        if let Err(e) = remove_file(get_fs_socket_path(socket_name)) {
                             error!("Could not remove the old socket: {e}");
                             return Err(Error::SocketError);
                         }
@@ -357,6 +366,19 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
     }
 }
 
+/// Stop a running daemon instance.
+///
+/// This has the same effect as sending a [`Command::Shutdown`] to the `daemon`, but it bypasses
+/// the requirement to connect to it over a local socket.
+pub fn stop() -> Result<(), Error> {
+    if send_event(Event::Shutdown).is_err() {
+        error!("The daemon doesn't seem to be running");
+        Err(Error::NoDaemonRunning)
+    } else {
+        Ok(())
+    }
+}
+
 /// Start the daemon with the given config.
 ///
 /// The `daemon` usually starts listening for commands around 100ms after this function is
@@ -368,7 +390,7 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
 /// `daemon` starts, and the time it takes vastly depends on the read speeds of the hard drive of
 /// the host machine and the size of the music library.
 ///
-/// **Note:** This function will block. Launch it in a separate [thread] if you want to run the
+/// **Note:** This function will block. Launch it in a separate [`thread`] if you want to run the
 /// `daemon` in the background.
 ///
 /// # Examples
@@ -449,6 +471,9 @@ pub fn start(config: Config) -> Result<(), Error> {
         match event {
             Event::Shutdown => {
                 trace!("Received shutdown event");
+                let mut guard = EVENT_SENDER.write().unwrap();
+                *guard = None;
+                info!("Stopped.");
                 std::process::exit(0);
             }
             Event::ConnectionClosed => {

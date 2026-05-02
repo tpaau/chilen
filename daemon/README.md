@@ -13,7 +13,7 @@ ensure a seamless installation process for your program and a cohesive experienc
 
 The `daemon` uses a local socket to connect to its clients. The type of socket used depends on your
 platform, and the startup configuration of the `daemon`. Under the hood, the [`interprocess`] and
-[`rmp_serde`] crates are used for handling clients connections and [`mpipc1] for providing common
+[`rmp_serde`] crates are used for handling clients connections and [`mpipc`] for providing common
 data types.
 
 # Examples

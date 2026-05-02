@@ -66,7 +66,7 @@ fn event_stream(
         }
     };
 
-    let command = match mpipc::serialize_client_command(&mpipc::Command::EventStream) {
+    let command = match mpipc::serialize_command(&mpipc::Command::EventStream) {
         Ok(cmd) => cmd,
         Err(e) => {
             error!("Could not encode the client command: {e}");
