@@ -14,8 +14,10 @@ use serde::Serialize;
 use crate::{
     Event,
     music_lib::{
-        self, add_tracks, cache::indexer::Covers, create_playlist, delete_playlists, get_library,
-        import_playlist_from_m3u8, remove_tracks, save_library,
+        self, add_tracks,
+        cache::covers::LoadMode,
+        create_playlist, delete_playlists, import_playlist_from_m3u8, remove_tracks,
+        state::{get_library, save_library},
     },
     playback, send_event,
 };
@@ -60,7 +62,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     }
                     if let Err(e) = send_event(Event::Shutdown) {
                         error!("Could not send the event to the daemon: {e}");
-                        trace!("The connection will be closed regardles");
+                        trace!("The connection will be closed regardless");
                     }
                     break;
                 }
@@ -164,7 +166,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             }
                         }
                     },
-                    LibraryCommand::Reload => match music_lib::load(Covers::Load) {
+                    LibraryCommand::Reload => match music_lib::state::load(LoadMode::Load) {
                         Ok(_) => {
                             if let Err(mpipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Ok)
@@ -180,7 +182,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             }
                         }
                     },
-                    LibraryCommand::Rebuild => match music_lib::load(Covers::Rebuild) {
+                    LibraryCommand::Rebuild => match music_lib::state::load(LoadMode::Rebuild) {
                         Ok(_) => {
                             if let Err(mpipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Ok)

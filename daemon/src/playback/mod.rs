@@ -27,9 +27,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     music_lib::{
-        Track,
-        cache::indexer::{Covers, index_files},
-        get_library, tracks_from_hashes,
+        state::{Track, get_library},
+        tracks_from_paths,
     },
     playback::state::{
         PLAYER_STATE, PlayerState, background_save_state, restore_state_from_cache,
@@ -102,18 +101,12 @@ impl TryFrom<PlaybackCommand> for Command {
             PlaybackCommand::TogglePlaying => Ok(Self::TogglePlaying),
             PlaybackCommand::GetPlaybackState => Ok(Self::GetPlaybackState),
             PlaybackCommand::SetQueue(track_paths) => {
-                let tracks = get_library()?.tracks;
-                let indexed_tracks = index_files(track_paths, Covers::Load)?;
-                let track_hashes = Track::hash_tracks(&indexed_tracks);
-                let filtered_tracks = tracks_from_hashes(track_hashes, &tracks);
-                Ok(Self::SetQueue(filtered_tracks))
+                let tracks = tracks_from_paths(&track_paths)?;
+                Ok(Self::SetQueue(tracks))
             }
             PlaybackCommand::AppendToQueue(track_paths) => {
-                let tracks = get_library()?.tracks;
-                let indexed_tracks = index_files(track_paths, Covers::Load)?;
-                let track_hashes = Track::hash_tracks(&indexed_tracks);
-                let filtered_tracks = tracks_from_hashes(track_hashes, &tracks);
-                Ok(Self::AppendToQueue(filtered_tracks))
+                let tracks = tracks_from_paths(&track_paths)?;
+                Ok(Self::AppendToQueue(tracks))
             }
             PlaybackCommand::SetPlaylist(playlist_name) => {
                 let lib = get_library()?;

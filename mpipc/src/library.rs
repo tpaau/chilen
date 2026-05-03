@@ -161,7 +161,7 @@ pub enum LibraryCommand {
 }
 
 /// An error originating from the music library module of the `daemon`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LibraryError {
     /// Could not complete the operation because a [playlist](Playlist) with the provided name
     /// already exists.
@@ -180,6 +180,8 @@ pub enum LibraryError {
     IndexOutOfBounds,
     /// The provided list contained duplicate values.
     DuplicateItems,
+    /// The provided track is not registered in the library.
+    NoSuchTrack,
 }
 
 impl std::fmt::Display for LibraryError {
@@ -191,6 +193,9 @@ impl std::fmt::Display for LibraryError {
             Self::CacheError => write!(f, "Cache is unusable"),
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
             Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),
+            Self::NoSuchTrack => {
+                write!(f, "The provided track is not registered in the library")
+            }
         }
     }
 }

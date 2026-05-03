@@ -25,7 +25,7 @@ use log::{debug, error, info, trace, warn};
 use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_command};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{CACHE_DIR, cache::indexer::Covers};
+use crate::music_lib::{CACHE_DIR, cache::covers::LoadMode};
 
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = mpipc::SocketType;
@@ -45,8 +45,8 @@ pub enum Error {
     EventChannelInitialized,
     /// The event channel is not initialized, which likely means that there is no daemon running.
     NoDaemonRunning,
-    NoMusicLibrary,
-    MusicLibraryNotAccessible,
+    NoLibrary,
+    LibraryNotAccessible,
     CacheDirError(String),
     DataDirError(String),
 }
@@ -54,16 +54,16 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SocketError => write!(f, "Socket cration/connection failed"),
+            Self::SocketError => write!(f, "Socket creation/connection failed"),
             Self::AddrInUse => write!(f, "The socket address is already in use"),
             Self::EventChannelInitialized => {
                 write!(f, "The event channel for the daemon is already initialized")
             }
             Self::NoDaemonRunning => write!(f, "The daemon doesn't seem to be running"),
-            Self::NoMusicLibrary => {
+            Self::NoLibrary => {
                 write!(f, "The provided music library directory does not exist")
             }
-            Self::MusicLibraryNotAccessible => write!(
+            Self::LibraryNotAccessible => write!(
                 f,
                 "Could not access the music library due to a permission issue"
             ),
@@ -276,12 +276,12 @@ fn get_listener(
                             Ok(response) => {
                                 if response == Response::Pong {
                                     error!(
-                                        "The other deamon responded to the pong command, aborting"
+                                        "The other daemon responded to the pong command, aborting"
                                     );
                                     return Err(Error::AddrInUse);
                                 } else {
                                     error!(
-                                        "Got an unexpected response from the deamon: {response:?}"
+                                        "Got an unexpected response from the daemon: {response:?}"
                                     );
                                     return Err(Error::AddrInUse);
                                 }
@@ -307,7 +307,7 @@ fn get_listener(
                         let opts = ListenerOptions::new().name(socket.clone());
                         match opts.create_sync() {
                             Ok(listener) => {
-                                info!("Succesfully claimed the address");
+                                info!("Successfully claimed the address");
                                 Ok(listener)
                             }
                             Err(e) => {
@@ -325,7 +325,7 @@ fn get_listener(
                         let opts = ListenerOptions::new().name(socket.clone());
                         match opts.create_sync() {
                             Ok(listener) => {
-                                info!("Succesfully claimed the address");
+                                info!("Successfully claimed the address");
                                 Ok(listener)
                             }
                             Err(e) => {
@@ -420,7 +420,7 @@ pub fn start(config: Config) -> Result<(), Error> {
     )?;
 
     thread::spawn(move || {
-        let _ = music_lib::load(Covers::Load);
+        let _ = music_lib::state::load(LoadMode::Load);
         playback::init(config.playback_config);
     });
 
@@ -428,7 +428,7 @@ pub fn start(config: Config) -> Result<(), Error> {
 
     thread::spawn({
         let senders_clone = senders.clone();
-        info!("Listening for incomming connections");
+        info!("Listening for incoming connections");
         move || {
             for (index, conn) in listener.incoming().filter_map(handle_error).enumerate() {
                 let (ttx, trx) = channel();

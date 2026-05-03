@@ -272,17 +272,17 @@ pub enum PlaybackCommand {
     /// The daemon will respond with [`Response::PlaybackState`](crate::Response::PlaybackState) if
     /// successful.
     GetPlaybackState,
-    // TODO: Update this after patching the daemon
     /// Set a new queue for the player.
     ///
-    /// **Note:** tracks outside of the music directory or not registered by the music player
-    /// (added after the last library reload), will be discarded.
+    /// If any of the provided tracks are not registered by the music player (added after last
+    /// library reload), the daemon will return
+    /// [`LibraryError::NoSuchTrack`](crate::library::LibraryError::NoSuchTrack).
     SetQueue(Vec<PathBuf>),
-    // TODO: Update this after patching the daemon
     /// Append tracks to the queue.
     ///
-    /// **Note:** tracks outside of the music directory or not registered by the music player
-    /// (added after the last library reload), will be discarded.
+    /// If any of the provided tracks are not registered by the music player (added after last
+    /// library reload), the daemon will return
+    /// [`LibraryError::NoSuchTrack`](crate::library::LibraryError::NoSuchTrack).
     AppendToQueue(Vec<PathBuf>),
     /// Load a playlist and append its tracks to the queue.
     ///

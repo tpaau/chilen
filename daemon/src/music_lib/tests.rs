@@ -1,4 +1,6 @@
-use crate::music_lib::{MusicLibrary, Playlist, Track};
+use std::collections::HashSet;
+
+use crate::music_lib::{Playlist, Track, state::MusicLibrary};
 
 #[cfg(test)]
 fn unique_playlists(count: usize) -> Vec<Playlist> {
@@ -34,7 +36,7 @@ fn playlist_track_removal() {
 fn playlist_removal() {
     let playlists = unique_playlists(10);
     let mut lib = MusicLibrary {
-        tracks: Vec::new(),
+        tracks: HashSet::new(),
         playlists: playlists.clone(),
     };
     for playlist in &playlists {

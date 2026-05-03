@@ -2,7 +2,7 @@ use mpipc::playback::LoopState;
 #[cfg(feature = "shuffle")]
 use mpipc::playback::ShuffleState;
 
-use crate::{music_lib::Track, playback::state::PlayerState};
+use crate::{music_lib::state::Track, playback::state::PlayerState};
 
 // Higher values will reduce the chance of false positives but will increase the runtime of some
 // tests.

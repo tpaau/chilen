@@ -248,6 +248,8 @@ pub enum PlaybackCommand {
         #[arg(long, short, conflicts_with = "tracks")]
         playlist: Option<String>,
     },
+    /// Remove all tracks from the queue.
+    ClearQueue,
     /// Append a tracks to the queue.
     AppendToQueue {
         /// Paths of tracks to be appended to the queue.
@@ -327,6 +329,7 @@ impl From<PlaybackCommand> for mpipc::playback::PlaybackCommand {
                 }
                 panic!("This should never happen :)");
             }
+            PlaybackCommand::ClearQueue => mpipc::playback::PlaybackCommand::SetQueue(Vec::new()),
             PlaybackCommand::AppendToQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
                     return mpipc::playback::PlaybackCommand::AppendToQueue(tracks);

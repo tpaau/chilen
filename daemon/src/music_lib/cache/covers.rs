@@ -1,6 +1,6 @@
 use std::{
     fs::{File, create_dir_all},
-    hash::{DefaultHasher, Hash, Hasher},
+    hash::Hash,
     io::Write,
     path::PathBuf,
     sync::LazyLock,
@@ -33,6 +33,12 @@ impl std::fmt::Display for CoverError {
             Self::CoverWriteError(e) => write!(f, "Could not write the cover image to cache: {e}"),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LoadMode {
+    Load,
+    Rebuild,
 }
 
 const FRONT_COVER_PRIORITY: [PictureType; 21] = [
@@ -80,16 +86,15 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cov
 
     Err(CoverError::NoSuitablePictures)
 }
+
 pub(crate) fn get_track_cover(
-    track: &mut Track,
+    track: &Track,
     tag: &Tag,
-    ignore_cache: bool,
-) -> Result<(), CoverError> {
+    load_mode: &LoadMode,
+) -> Result<PathBuf, CoverError> {
     let pic = pick_front_cover_or_replacement(tag.pictures())?;
 
-    let mut hasher = DefaultHasher::new();
-    track.hash(&mut hasher);
-    let hash = hasher.finish();
+    let hash = track.hash_self();
 
     let cover_cache = COVERS_CACHE_DIR.clone();
     if !cover_cache.is_dir()
@@ -101,9 +106,8 @@ pub(crate) fn get_track_cover(
     let mut cover_path = cover_cache.clone();
     cover_path.push(hash.to_string());
 
-    if !ignore_cache && cover_path.is_file() {
-        track.cover_path = Some(cover_path);
-        return Ok(());
+    if load_mode == &LoadMode::Load && cover_path.is_file() {
+        return Ok(cover_path);
     }
 
     let mut file = match File::create(&cover_path) {
@@ -121,7 +125,5 @@ pub(crate) fn get_track_cover(
         return Err(CoverError::CoverWriteError(e.to_string()));
     }
 
-    track.cover_path = Some(cover_path);
-
-    Ok(())
+    Ok(cover_path)
 }

@@ -10,17 +10,11 @@ use log::{error, info, trace, warn};
 use mpipc::library::LibraryError;
 use walkdir::WalkDir;
 
-use crate::music_lib::{MUSIC_DIR, Track};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Covers {
-    Load,
-    Rebuild,
-}
+use crate::music_lib::{MUSIC_DIR, Track, cache::covers::LoadMode};
 
 pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
     files: Vec<T>,
-    load_mode: Covers,
+    load_mode: LoadMode,
 ) -> Result<Vec<Track>, LibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
@@ -63,7 +57,7 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
                     return;
                 }
             };
-            if load_mode == Covers::Rebuild {
+            if load_mode == LoadMode::Rebuild {
                 if let Err(e) = track.extract_cover(tag) {
                     trace!("Could not extract a cover from file {file:?}: {e}")
                 }
@@ -85,7 +79,7 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
 // TODO: Crate a custom enum to replace the `Option` enum
 pub(crate) fn index(
     music_dir: Option<PathBuf>,
-    load_mode: Covers,
+    load_mode: LoadMode,
 ) -> Result<Vec<Track>, LibraryError> {
     let music_dir = music_dir.unwrap_or(MUSIC_DIR.read().unwrap().clone().unwrap());
 
