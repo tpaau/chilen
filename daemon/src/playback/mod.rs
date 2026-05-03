@@ -188,7 +188,6 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), PlaybackError> {
         player.append(source);
         player.play();
         state.set_playback_state(PlaybackState::Playing);
-        state.set_player_position(Duration::default());
         background_save_state(state.clone());
         Ok(())
     } else {
@@ -285,6 +284,20 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), PlaybackError> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.set_tracks(queue);
+    let player_guard = PLAYER_HANDLE.read().unwrap();
+    let player = unwrap_player(player_guard.as_ref())?;
+    player.stop();
+    if let Some(track) = state.current() {
+        let source = match track.open_source() {
+            Ok(source) => source,
+            Err(e) => {
+                error!("Could not open audio source: {e}");
+                return Err(PlaybackError::SourceError);
+            }
+        };
+        player.append(source);
+        player.pause();
+    }
     background_save_state(state.clone());
     Ok(())
 }

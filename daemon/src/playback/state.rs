@@ -78,7 +78,6 @@ impl PlayerState {
     fn on_track_changed(&self) {
         use mpris_server::{Metadata, Property};
 
-        // mpris::set_position(Duration::default());
         let properties = vec![
             match self.current() {
                 Some(track) => Property::Metadata(track.clone().get_meta()),
@@ -185,12 +184,21 @@ impl PlayerState {
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.position = 0;
         self.tracks = tracks;
+        self.set_playback_state(PlaybackState::Stopped);
         #[cfg(feature = "shuffle")]
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
         }
         #[cfg(feature = "mpris")]
-        self.on_track_changed();
+        {
+            use mpris_server::Property;
+
+            self.on_track_changed();
+            mpris::update_properties(vec![
+                Property::CanPlay(self.can_play()),
+                Property::CanPause(self.can_pause()),
+            ]);
+        }
     }
 
     pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
@@ -368,6 +376,9 @@ impl PlayerState {
     pub fn set_playback_state(&mut self, playback_state: PlaybackState) {
         if self.playback_state != playback_state {
             self.playback_state = playback_state;
+            if self.playback_state == PlaybackState::Stopped {
+                self.set_player_position(Duration::default());
+            }
             let _ = send_event(Event::PlaybackEvent(PlaybackEvent::PlaybackStateChanged(
                 self.playback_state,
             )));
