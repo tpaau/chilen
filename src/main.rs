@@ -2,8 +2,6 @@ mod argparse;
 mod cli;
 #[cfg(feature = "gui")]
 mod gui;
-#[cfg(test)]
-mod tests;
 
 use std::process::exit;
 

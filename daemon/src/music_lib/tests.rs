@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
 };
 
+use mpipc::library::LibraryError;
+
 #[cfg(test)]
 use crate::music_lib::{
     Track,
@@ -41,11 +43,9 @@ fn playlist_track_removal() {
 #[test]
 fn playlist_removal() {
     let playlists = unique_playlists(10);
-    let mut lib = MusicLibrary {
-        tracks: HashSet::new(),
-        playlists: playlists.clone(),
-        tracks_by_path: HashMap::new(),
-    };
+    let mut lib = MusicLibrary::new_from_tracks(Vec::new());
+    lib.playlists = playlists.clone();
+
     for playlist in &playlists {
         eprintln!("playlist: {}", playlist.name);
     }
@@ -62,4 +62,59 @@ fn playlist_removal() {
     assert_eq!(lib.playlists[4], playlists[6]);
     assert_eq!(lib.playlists[5], playlists[7]);
     assert_eq!(lib.playlists[6], playlists[9]);
+}
+
+#[test]
+fn playlist_creation() {
+    let tracks = Track::unique_tracks(10);
+    let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
+
+    assert_eq!(lib.playlists.len(), 0);
+    lib.create_playlist("Test1".to_string(), &Some(vec![tracks[6].path.clone()]))
+        .unwrap();
+    assert_eq!(lib.playlists.len(), 1);
+
+    assert_eq!(
+        lib.create_playlist(lib.playlists[0].name.clone(), &None)
+            .unwrap_err(),
+        LibraryError::PlaylistExists
+    );
+    assert_eq!(lib.playlists.len(), 1);
+
+    assert_eq!(
+        lib.create_playlist("Test2".to_string(), &Some(vec!["/nonexistent/path".into()]))
+            .unwrap_err(),
+        LibraryError::NoSuchTrack
+    );
+    assert_eq!(lib.playlists.len(), 1);
+}
+
+#[test]
+fn playlist_deletion() {
+    let mut lib = MusicLibrary::new_from_tracks(Track::unique_tracks(10));
+
+    lib.create_playlist("Test1".to_string(), &None).unwrap();
+    lib.create_playlist("Test2".to_string(), &None).unwrap();
+    lib.create_playlist("Test3".to_string(), &None).unwrap();
+    assert_eq!(lib.playlists.len(), 3);
+    lib.remove_playlists(vec!["Test1".to_string()]).unwrap();
+    assert_eq!(lib.playlists.len(), 2);
+    assert_eq!(
+        lib.remove_playlists(vec![
+            "Test2".to_string(),
+            "Test2".to_string(),
+            "Test3".to_string()
+        ])
+        .unwrap_err(),
+        LibraryError::DuplicateItems
+    );
+    assert_eq!(lib.playlists.len(), 2);
+    assert_eq!(
+        lib.remove_playlists(vec!["Test1".to_string()]).unwrap_err(),
+        LibraryError::NoSuchPlaylist
+    );
+    assert_eq!(lib.playlists.len(), 2);
+    lib.remove_playlists(vec!["Test2".to_string(), "Test3".to_string()])
+        .unwrap();
+    assert_eq!(lib.playlists.len(), 0);
 }

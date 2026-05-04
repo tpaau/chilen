@@ -241,6 +241,7 @@ impl Track {
         for i in 0..size {
             let mut track = Track::new();
             track.duration = Duration::from_secs(i.try_into().unwrap());
+            track.path = format!("/test/path/{i}").into();
             tracks.push(track);
         }
         tracks
@@ -314,10 +315,8 @@ pub(crate) struct MusicLibrary {
     pub tracks: HashSet<Arc<Track>>,
     #[cfg(not(test))]
     tracks: HashSet<Arc<Track>>,
-    #[cfg(test)]
-    pub tracks_by_path: HashMap<String, Arc<Track>>,
-    #[cfg(not(test))]
     tracks_by_path: HashMap<String, Arc<Track>>,
+    tracks_by_hash: HashMap<u64, Arc<Track>>,
 }
 
 impl From<MusicLibrary> for mpipc::library::MusicLibrary {
@@ -326,7 +325,7 @@ impl From<MusicLibrary> for mpipc::library::MusicLibrary {
         let tracks = value
             .tracks
             .into_iter()
-            .map(|t| Arc::into_inner(t).unwrap().clone().into())
+            .map(|t| t.as_ref().clone().into())
             .collect();
         mpipc::library::MusicLibrary { playlists, tracks }
     }
@@ -339,15 +338,21 @@ impl MusicLibrary {
     ) -> Result<Self, LibraryError> {
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
 
-        let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        let mut path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
-            map.insert(t.path.to_string_lossy().to_string(), t.clone());
+            path_map.insert(t.path.to_string_lossy().to_string(), t.clone());
+        }
+
+        let mut hash_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        for t in tracks.iter() {
+            hash_map.insert(t.hash_self(), t.clone());
         }
 
         let mut lib = Self {
             playlists: Vec::new(),
             tracks,
-            tracks_by_path: map,
+            tracks_by_path: path_map,
+            tracks_by_hash: hash_map,
         };
 
         let mut playlists = Vec::new();
@@ -359,20 +364,27 @@ impl MusicLibrary {
         Ok(lib)
     }
 
-    fn new_from_tracks(tracks: Vec<Track>) -> Self {
+    pub fn new_from_tracks(tracks: Vec<Track>) -> Self {
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
-        let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+
+        let mut path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
-            map.insert(t.path.to_string_lossy().to_string(), t.clone());
+            path_map.insert(t.path.to_string_lossy().to_string(), t.clone());
         }
+
+        let mut hash_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        for t in tracks.iter() {
+            hash_map.insert(t.hash_self(), t.clone());
+        }
+
         Self {
             playlists: Vec::new(),
             tracks,
-            tracks_by_path: map,
+            tracks_by_path: path_map,
+            tracks_by_hash: hash_map,
         }
     }
 
-    // TODO: Add tests for this
     pub fn find_playlist(&self, name: &str) -> Option<&Playlist> {
         self.playlists
             .iter()
@@ -380,27 +392,17 @@ impl MusicLibrary {
     }
 
     pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, LibraryError> {
-        let wanted: HashSet<u64> = hashes.into_iter().collect();
-
-        // TODO: Optimize track lookup by hash
-        let tracks: Vec<Arc<Track>> = self
-            .tracks
-            .iter()
-            .filter(|t| {
-                let h = t.hash_self();
-                wanted.contains(&h)
-            })
-            .cloned()
-            .collect();
-
-        if tracks.len() != wanted.len() {
-            return Err(LibraryError::NoSuchTrack);
+        let mut tracks = Vec::with_capacity(hashes.len());
+        for hash in hashes {
+            match self.tracks_by_hash.get(&hash) {
+                Some(track) => tracks.push(track.clone()),
+                None => return Err(LibraryError::NoSuchTrack),
+            }
         }
 
         Ok(tracks)
     }
 
-    // TODO: Add tests for this
     pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), LibraryError> {
         playlists.sort();
         let mut unique = playlists.clone();
@@ -424,14 +426,12 @@ impl MusicLibrary {
         Ok(())
     }
 
-    // TODO: Add tests for this
     pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
         self.tracks_by_path
             .get(&path.to_string_lossy().to_string())
             .cloned()
     }
 
-    // TODO: Add tests for this
     pub fn create_playlist(
         &mut self,
         name: String,
@@ -506,6 +506,7 @@ impl MusicLibrary {
         Ok(())
     }
 
+    // TODO: Implement importing playlists from M3U8 files
     // TODO: Add tests for this
     pub fn import_m3u8_playlist(
         &mut self,
