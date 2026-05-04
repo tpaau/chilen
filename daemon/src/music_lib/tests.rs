@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use mpipc::library::LibraryError;
 
@@ -44,7 +41,10 @@ fn playlist_track_removal() {
 fn playlist_removal() {
     let playlists = unique_playlists(10);
     let mut lib = MusicLibrary::new_from_tracks(Vec::new());
-    lib.playlists = playlists.clone();
+    for p in playlists.iter() {
+        lib.create_playlist(p.name.clone(), &None).unwrap();
+    }
+    lib.playlists = playlists.clone().into_iter().map(Arc::new).collect();
 
     for playlist in &playlists {
         eprintln!("playlist: {}", playlist.name);
@@ -55,13 +55,20 @@ fn playlist_removal() {
         "Test8".to_string(),
     ])
     .unwrap();
-    assert_eq!(lib.playlists[0], playlists[0]);
-    assert_eq!(lib.playlists[1], playlists[2]);
-    assert_eq!(lib.playlists[2], playlists[3]);
-    assert_eq!(lib.playlists[3], playlists[4]);
-    assert_eq!(lib.playlists[4], playlists[6]);
-    assert_eq!(lib.playlists[5], playlists[7]);
-    assert_eq!(lib.playlists[6], playlists[9]);
+    let mut modified_playlists: Vec<_> = lib
+        .playlists
+        .into_iter()
+        .map(|t| t.as_ref().clone())
+        .collect();
+    modified_playlists.sort_by_key(|p| p.name.clone());
+
+    assert_eq!(modified_playlists[0], playlists[0]);
+    assert_eq!(modified_playlists[1], playlists[2]);
+    assert_eq!(modified_playlists[2], playlists[3]);
+    assert_eq!(modified_playlists[3], playlists[4]);
+    assert_eq!(modified_playlists[4], playlists[6]);
+    assert_eq!(modified_playlists[5], playlists[7]);
+    assert_eq!(modified_playlists[6], playlists[9]);
 }
 
 #[test]
@@ -75,8 +82,7 @@ fn playlist_creation() {
     assert_eq!(lib.playlists.len(), 1);
 
     assert_eq!(
-        lib.create_playlist(lib.playlists[0].name.clone(), &None)
-            .unwrap_err(),
+        lib.create_playlist("Test1".to_string(), &None).unwrap_err(),
         LibraryError::PlaylistExists
     );
     assert_eq!(lib.playlists.len(), 1);
