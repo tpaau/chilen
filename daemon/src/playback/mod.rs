@@ -108,21 +108,25 @@ impl TryFrom<PlaybackCommand> for Command {
                 let tracks = tracks_from_paths(&track_paths)?;
                 Ok(Self::AppendToQueue(tracks))
             }
-            PlaybackCommand::SetPlaylist(playlist_name) => {
+            PlaybackCommand::SetPlaylist(playlist) => {
                 let lib = get_library()?;
-                let playlist = match lib.playlists.iter().find(|p| p.name == playlist_name) {
+                let playlist = match lib.find_playlist(&playlist) {
                     Some(playlist) => playlist,
                     None => return Err(LibraryError::NoSuchPlaylist),
                 };
-                Ok(Self::SetQueue(playlist.tracks.clone()))
+                Ok(Self::SetQueue(
+                    playlist.tracks.iter().map(|t| t.as_ref().clone()).collect(),
+                ))
             }
-            PlaybackCommand::AppendPlaylist(playlist_name) => {
+            PlaybackCommand::AppendPlaylist(playlist) => {
                 let lib = get_library()?;
-                let playlist = match lib.playlists.iter().find(|p| p.name == playlist_name) {
+                let playlist = match lib.find_playlist(&playlist) {
                     Some(playlist) => playlist,
                     None => return Err(LibraryError::NoSuchPlaylist),
                 };
-                Ok(Self::AppendToQueue(playlist.tracks.clone()))
+                Ok(Self::AppendToQueue(
+                    playlist.tracks.iter().map(|t| t.as_ref().clone()).collect(),
+                ))
             }
             PlaybackCommand::GetCurrentTrack => Ok(Self::GetCurrentTrack),
             PlaybackCommand::Next => Ok(Self::Next),

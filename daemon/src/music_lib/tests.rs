@@ -1,6 +1,13 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
-use crate::music_lib::{Playlist, Track, state::MusicLibrary};
+#[cfg(test)]
+use crate::music_lib::{
+    Track,
+    state::{MusicLibrary, Playlist},
+};
 
 #[cfg(test)]
 fn unique_playlists(count: usize) -> Vec<Playlist> {
@@ -16,11 +23,10 @@ fn unique_playlists(count: usize) -> Vec<Playlist> {
 
 #[test]
 fn playlist_track_removal() {
-    let tracks = Track::unique_tracks(10);
-    let tracks_cloned = tracks.clone();
+    let tracks: Vec<_> = Track::unique_tracks(10).into_iter().map(Arc::new).collect();
     let mut playlist = Playlist {
         name: "Test".to_string(),
-        tracks: tracks_cloned,
+        tracks: tracks.clone(),
     };
     playlist.remove_tracks(vec![3, 5, 8]).unwrap();
     assert_eq!(playlist.tracks[0], tracks[0]);

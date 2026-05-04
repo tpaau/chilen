@@ -26,7 +26,7 @@ use rand::seq::SliceRandom;
 #[cfg(feature = "shuffle")]
 use crate::music_lib::state::Track;
 use crate::{
-    music_lib::{CACHE_DIR, state::get_library, tracks_from_hashes},
+    music_lib::{CACHE_DIR, tracks_from_hashes},
     send_event,
 };
 
@@ -56,20 +56,20 @@ pub(crate) struct PlayerState {
 impl TryFrom<PlayerStateRaw> for PlayerState {
     type Error = LibraryError;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
-        let tracks = get_library()?
-            .tracks
-            .into_iter()
-            .map(|t| t.as_ref().clone())
-            .collect();
-
         Ok(Self {
             position: value.position,
             player_position: value.player_position,
             player_volume: value.player_volume,
             playback_state: PlaybackState::Stopped,
-            tracks: tracks_from_hashes(value.track_hashes, &tracks)?,
+            tracks: tracks_from_hashes(value.track_hashes)?
+                .into_iter()
+                .map(|t| t.as_ref().clone())
+                .collect(),
             #[cfg(feature = "shuffle")]
-            shuffled_tracks: tracks_from_hashes(value.shuffled_track_hashes, &tracks)?,
+            shuffled_tracks: tracks_from_hashes(value.shuffled_track_hashes)?
+                .into_iter()
+                .map(|t| t.as_ref().clone())
+                .collect(),
             #[cfg(feature = "shuffle")]
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,

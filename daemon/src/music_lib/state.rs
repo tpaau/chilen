@@ -25,29 +25,28 @@ use crate::{
             covers::{CoverError, LoadMode, get_track_cover},
             indexer,
         },
-        tracks_from_hashes,
     },
     send_event,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ConfPlaylist {
-    pub name: String,
-    pub track_hashes: Vec<u64>,
+    name: String,
+    track_hashes: Vec<u64>,
 }
 
 impl From<Playlist> for ConfPlaylist {
     fn from(value: Playlist) -> Self {
         Self {
             name: value.name,
-            track_hashes: Track::hash_tracks(&value.tracks),
+            track_hashes: value.tracks.iter().map(|t| t.hash_self()).collect(),
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct ConfMusicLibrary {
-    pub playlists: Vec<ConfPlaylist>,
+    playlists: Vec<ConfPlaylist>,
 }
 
 impl From<MusicLibrary> for ConfMusicLibrary {
@@ -273,14 +272,15 @@ impl Track {
 pub(crate) struct Playlist {
     pub name: String,
     // TODO: Reduce memory usage by using `Arc` here
-    pub tracks: Vec<Track>,
+    pub tracks: Vec<Arc<Track>>,
 }
 
+// TODO: This doesn't share the track structs with the library as expected
 impl From<mpipc::library::Playlist> for Playlist {
     fn from(value: mpipc::library::Playlist) -> Self {
         let mut tracks = Vec::new();
         for track in value.tracks {
-            tracks.push(track.into());
+            tracks.push(Arc::new(track.into()));
         }
 
         Playlist {
@@ -292,25 +292,25 @@ impl From<mpipc::library::Playlist> for Playlist {
 
 impl From<Playlist> for mpipc::library::Playlist {
     fn from(value: Playlist) -> Self {
-        let mut tracks = Vec::new();
-        for track in value.tracks {
-            tracks.push(track.into());
-        }
         mpipc::library::Playlist {
             name: value.name,
-            tracks,
+            tracks: value
+                .tracks
+                .into_iter()
+                .map(|t| t.as_ref().clone().into())
+                .collect(),
         }
     }
 }
 
 impl Playlist {
     fn try_from_loaded_playlist(
+        lib: &MusicLibrary,
         loaded: ConfPlaylist,
-        tracks: &HashSet<Track>,
     ) -> Result<Self, LibraryError> {
         Ok(Self {
             name: loaded.name,
-            tracks: tracks_from_hashes(loaded.track_hashes, tracks)?,
+            tracks: lib.tracks_from_hashes(loaded.track_hashes)?,
         })
     }
 
@@ -343,9 +343,18 @@ impl Playlist {
 
 #[derive(Clone, Debug)]
 pub(crate) struct MusicLibrary {
+    #[cfg(test)]
     pub playlists: Vec<Playlist>,
+    #[cfg(not(test))]
+    playlists: Vec<Playlist>,
+    #[cfg(test)]
     pub tracks: HashSet<Arc<Track>>,
+    #[cfg(not(test))]
+    tracks: HashSet<Arc<Track>>,
+    #[cfg(test)]
     pub tracks_by_path: HashMap<String, Arc<Track>>,
+    #[cfg(not(test))]
+    tracks_by_path: HashMap<String, Arc<Track>>,
 }
 
 impl From<mpipc::library::MusicLibrary> for MusicLibrary {
@@ -390,22 +399,26 @@ impl MusicLibrary {
         loaded: ConfMusicLibrary,
         tracks: HashSet<Track>,
     ) -> Result<Self, LibraryError> {
-        let mut playlists = Vec::new();
-        for playlist in loaded.playlists {
-            playlists.push(Playlist::try_from_loaded_playlist(playlist, &tracks)?);
-        }
-
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
+
         let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
             map.insert(t.path.to_string_lossy().to_string(), t.clone());
         }
 
-        Ok(Self {
-            playlists,
+        let mut lib = Self {
+            playlists: Vec::new(),
             tracks,
             tracks_by_path: map,
-        })
+        };
+
+        let mut playlists = Vec::new();
+        for playlist in loaded.playlists {
+            playlists.push(Playlist::try_from_loaded_playlist(&lib, playlist)?);
+        }
+
+        lib.playlists = playlists;
+        Ok(lib)
     }
 
     fn new_from_tracks(tracks: Vec<Track>) -> Self {
@@ -421,10 +434,32 @@ impl MusicLibrary {
         }
     }
 
+    // TODO: Add tests for this
     pub fn find_playlist(&self, name: &str) -> Option<&Playlist> {
         self.playlists
             .iter()
             .find(|&playlist| playlist.name == name)
+    }
+
+    pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, LibraryError> {
+        let wanted: HashSet<u64> = hashes.into_iter().collect();
+
+        // TODO: Optimize track lookup by hash
+        let tracks: Vec<Arc<Track>> = self
+            .tracks
+            .iter()
+            .filter(|t| {
+                let h = t.hash_self();
+                wanted.contains(&h)
+            })
+            .cloned()
+            .collect();
+
+        if tracks.len() != wanted.len() {
+            return Err(LibraryError::NoSuchTrack);
+        }
+
+        Ok(tracks)
     }
 
     // TODO: Add tests for this
@@ -451,11 +486,112 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn find_track_by_path(&self, path: &Path) -> Option<Track> {
+    // TODO: Add tests for this
+    pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
         self.tracks_by_path
             .get(&path.to_string_lossy().to_string())
             .cloned()
-            .map(|t| t.as_ref().clone())
+    }
+
+    // TODO: Add tests for this
+    pub fn create_playlist(
+        &mut self,
+        name: String,
+        track_paths: &Option<Vec<PathBuf>>,
+    ) -> Result<(), LibraryError> {
+        trace!("Creating a new playlist \"{name}\" from a list of tracks");
+
+        if self.find_playlist(&name).is_some() {
+            error!("A playlist with name \"{name}\" already exists");
+            return Err(LibraryError::PlaylistExists);
+        }
+
+        let found_tracks = if let Some(tracks) = track_paths {
+            let mut out = Vec::with_capacity(tracks.len());
+            for path in tracks {
+                if let Some(track) = self.find_track_by_path(path) {
+                    out.push(track);
+                } else {
+                    return Err(LibraryError::NoSuchTrack);
+                }
+            }
+            out
+        } else {
+            Vec::new()
+        };
+
+        self.playlists.push(Playlist {
+            name,
+            tracks: found_tracks,
+        });
+        self.playlists.sort_by_key(|p| p.name.clone());
+        Ok(())
+    }
+
+    // TODO: Add tests for this
+    pub fn add_tracks(&mut self, playlist: &str, tracks: Vec<PathBuf>) -> Result<(), LibraryError> {
+        trace!("Adding tracks to playlist \"{playlist}\"");
+
+        // TODO: Optimize playlist lookup by name
+        let playlist_pos = match self.playlists.iter().position(|p| p.name == playlist) {
+            Some(pos) => pos,
+            None => return Err(LibraryError::NoSuchPlaylist),
+        };
+
+        let mut out = Vec::with_capacity(tracks.len());
+        for path in tracks {
+            if let Some(track) = self.find_track_by_path(&path) {
+                out.push(track.clone());
+            } else {
+                return Err(LibraryError::NoSuchTrack);
+            }
+        }
+
+        self.playlists[playlist_pos].tracks.append(&mut out);
+        Ok(())
+    }
+
+    // TODO: Add tests for this
+    pub fn remove_tracks(
+        &mut self,
+        playlist: &str,
+        tracks: Vec<usize>,
+    ) -> Result<(), LibraryError> {
+        trace!("Removing tracks from playlist \"{playlist}\"");
+
+        // TODO: Optimize playlist lookup by name
+        let pos = match self.playlists.iter().position(|p| p.name == playlist) {
+            Some(pos) => pos,
+            None => return Err(LibraryError::NoSuchPlaylist),
+        };
+        self.playlists[pos].remove_tracks(tracks)?;
+        Ok(())
+    }
+
+    // TODO: Add tests for this
+    pub fn import_m3u8_playlist(
+        &mut self,
+        playlist: &Path,
+        name: Option<String>,
+    ) -> Result<(), LibraryError> {
+        trace!("Importing a playlist from an M3U8 file at {playlist:?}");
+
+        let name = {
+            if let Some(name) = name {
+                name
+            } else {
+                match playlist.file_name() {
+                    Some(name) => name.to_string_lossy().to_string(),
+                    None => {
+                        error!(
+                            "Could not determine the name for the imported playlist, the M3U8 file path had no final component!"
+                        );
+                        return Err(LibraryError::CacheError);
+                    }
+                }
+            }
+        };
+        todo!("Importing playlists from M3U8 files is not supported!");
     }
 }
 

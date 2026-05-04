@@ -4,10 +4,9 @@ pub(crate) mod state;
 mod tests;
 
 use std::{
-    collections::HashSet,
     fs::create_dir_all,
     path::{Path, PathBuf},
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
 
 use log::{error, trace};
@@ -15,9 +14,7 @@ use mpipc::library::LibraryError;
 
 use crate::{
     Error,
-    music_lib::state::{
-        MUSIC_LIBRARY, Playlist, Track, save_library, unwrap_lib_mut, unwrap_lib_ref,
-    },
+    music_lib::state::{MUSIC_LIBRARY, Track, save_library, unwrap_lib_mut, unwrap_lib_ref},
 };
 
 pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
@@ -98,7 +95,7 @@ pub(crate) fn tracks_from_paths(track_paths: &[PathBuf]) -> Result<Vec<Track>, L
 
     for path in track_paths {
         if let Some(track) = lib.find_track_by_path(path) {
-            out.push(track);
+            out.push(track.as_ref().clone());
         } else {
             return Err(LibraryError::NoSuchTrack);
         }
@@ -107,158 +104,60 @@ pub(crate) fn tracks_from_paths(track_paths: &[PathBuf]) -> Result<Vec<Track>, L
     Ok(out)
 }
 
-pub(crate) fn tracks_from_hashes(
-    track_hashes: Vec<u64>,
-    tracks: &HashSet<Track>,
-) -> Result<Vec<Track>, LibraryError> {
-    let wanted: HashSet<u64> = track_hashes.into_iter().collect();
-
-    let tracks: Vec<Track> = tracks
-        .iter()
-        .filter(|t| {
-            let h = t.hash_self();
-            wanted.contains(&h)
-        })
-        .cloned()
-        .collect();
-
-    if tracks.len() != wanted.len() {
-        return Err(LibraryError::NoSuchTrack);
-    }
-
-    Ok(tracks)
+pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, LibraryError> {
+    let guard = MUSIC_LIBRARY.read().unwrap();
+    let lib = unwrap_lib_ref(guard.as_ref())?;
+    lib.tracks_from_hashes(hashes)
 }
 
 pub(crate) fn create_playlist(
     name: String,
     track_paths: &Option<Vec<PathBuf>>,
 ) -> Result<(), LibraryError> {
-    trace!("Creating a new playlist with name \"{name}\" from a list of tracks");
-
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
-    if lib.find_playlist(&name).is_some() {
-        error!("A playlist with name \"{name}\" already exists");
-        return Err(LibraryError::PlaylistExists);
-    }
-
-    let found_tracks = if let Some(tracks) = track_paths {
-        let mut out = Vec::with_capacity(tracks.len());
-        for path in tracks {
-            if let Some(track) = lib.find_track_by_path(path) {
-                out.push(track);
-            } else {
-                return Err(LibraryError::NoSuchTrack);
-            }
-        }
-        out
-    } else {
-        Vec::new()
-    };
-
-    lib.playlists.push(Playlist {
-        name: name.clone(),
-        tracks: found_tracks,
-    });
-    lib.playlists.sort_by_key(|p| p.name.clone());
+    lib.create_playlist(name.clone(), track_paths)?;
 
     drop(guard);
-    save_library()?;
-    trace!("Created a new playlist with name \"{name}\"");
-    Ok(())
+    save_library()
 }
 
 pub(crate) fn import_playlist_from_m3u8(
     name: Option<String>,
-    m3u8_file: &Path,
+    file: &Path,
 ) -> Result<(), LibraryError> {
-    let name = {
-        if let Some(name) = name {
-            name
-        } else {
-            match m3u8_file.file_name() {
-                Some(name) => name.to_string_lossy().to_string(),
-                None => {
-                    error!(
-                        "Could not determine the name for the imported playlist, the M3U8 file path had no final component!"
-                    );
-                    return Err(LibraryError::CacheError);
-                }
-            }
-        }
-    };
-    let guard = MUSIC_LIBRARY.read().unwrap();
-    let lib = unwrap_lib_ref(guard.as_ref())?;
-    if lib.find_playlist(&name).is_none() {
-        todo!("Importing playlists from M3U8 is not yet supported")
-        // lib.playlists.sort_by_key(|p| p.name.clone());
-    } else {
-        Err(LibraryError::PlaylistExists)
-    }
-}
-
-pub(crate) fn delete_playlists(names: Vec<String>) -> Result<(), LibraryError> {
-    trace!("Deleting playlists: {names:?}");
-
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
-    match lib.remove_playlists(names) {
-        Ok(_) => {
-            save_library()?;
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
-}
+    lib.import_m3u8_playlist(file, name)?;
 
-pub(crate) fn add_tracks(name: &str, track_paths: Vec<PathBuf>) -> Result<(), LibraryError> {
-    trace!("Adding tracks to playlist \"{name}\"");
-
-    let mut guard = MUSIC_LIBRARY.write().unwrap();
-    let lib = unwrap_lib_mut(guard.as_mut())?;
-
-    // TODO: Optimize playlist lookup by name
-    let playlist_pos = match lib
-        .playlists
-        .iter()
-        .position(|playlist| playlist.name == name)
-    {
-        Some(pos) => pos,
-        None => return Err(LibraryError::NoSuchPlaylist),
-    };
-
-    let mut out = Vec::with_capacity(track_paths.len());
-    for path in track_paths {
-        if let Some(track) = lib.find_track_by_path(&path) {
-            out.push(track.clone());
-        } else {
-            return Err(LibraryError::NoSuchTrack);
-        }
-    }
-
-    lib.playlists[playlist_pos].tracks.append(&mut out);
     drop(guard);
-    save_library()?;
-    Ok(())
+    save_library()
+}
+
+pub(crate) fn delete_playlists(playlists: Vec<String>) -> Result<(), LibraryError> {
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+    lib.remove_playlists(playlists)?;
+
+    drop(guard);
+    save_library()
+}
+
+pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), LibraryError> {
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+    lib.add_tracks(playlist, tracks)?;
+
+    drop(guard);
+    save_library()
 }
 
 /// Remove tracks by indices from a playlist
-pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryError> {
-    trace!("Removing tracks from playlist \"{name}\"");
-
+pub(crate) fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), LibraryError> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
+    lib.remove_tracks(playlist, tracks)?;
 
-    // TODO: Optimize playlist lookup by name
-    let playlist = match lib
-        .playlists
-        .iter()
-        .position(|playlist| playlist.name == name)
-    {
-        Some(pos) => &mut lib.playlists[pos],
-        None => return Err(LibraryError::NoSuchPlaylist),
-    };
-    playlist.remove_tracks(ids)?;
     drop(guard);
     save_library()?;
     Ok(())
