@@ -75,27 +75,6 @@ pub(crate) struct Track {
     pub year: Option<u32>,
 }
 
-impl From<mpipc::library::Track> for Track {
-    fn from(value: mpipc::library::Track) -> Self {
-        Track {
-            path: value.path,
-            cover_path: value.cover_path,
-            duration: value.duration,
-            artist: value.artist,
-            title: value.title,
-            album: value.album,
-            genre: value.genre,
-            comment: value.comment,
-            track: value.track,
-            track_total: value.track_total,
-            disc: value.disc,
-            disc_total: value.disc_total,
-            year: value.year,
-            lyrics: value.lyrics,
-        }
-    }
-}
-
 impl From<Track> for mpipc::library::Track {
     fn from(value: Track) -> Self {
         mpipc::library::Track {
@@ -271,23 +250,7 @@ impl Track {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Playlist {
     pub name: String,
-    // TODO: Reduce memory usage by using `Arc` here
     pub tracks: Vec<Arc<Track>>,
-}
-
-// TODO: This doesn't share the track structs with the library as expected
-impl From<mpipc::library::Playlist> for Playlist {
-    fn from(value: mpipc::library::Playlist) -> Self {
-        let mut tracks = Vec::new();
-        for track in value.tracks {
-            tracks.push(Arc::new(track.into()));
-        }
-
-        Playlist {
-            name: value.name,
-            tracks,
-        }
-    }
 }
 
 impl From<Playlist> for mpipc::library::Playlist {
@@ -355,31 +318,6 @@ pub(crate) struct MusicLibrary {
     pub tracks_by_path: HashMap<String, Arc<Track>>,
     #[cfg(not(test))]
     tracks_by_path: HashMap<String, Arc<Track>>,
-}
-
-impl From<mpipc::library::MusicLibrary> for MusicLibrary {
-    fn from(value: mpipc::library::MusicLibrary) -> Self {
-        let mut playlists = Vec::new();
-        for playlist in value.playlists {
-            playlists.push(playlist.into());
-        }
-
-        let tracks: HashSet<Arc<Track>> = value
-            .tracks
-            .into_iter()
-            .map(|t| Arc::new(t.into()))
-            .collect();
-        let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
-        for t in tracks.iter() {
-            map.insert(t.path.to_string_lossy().to_string(), t.clone());
-        }
-
-        MusicLibrary {
-            playlists,
-            tracks,
-            tracks_by_path: map,
-        }
-    }
 }
 
 impl From<MusicLibrary> for mpipc::library::MusicLibrary {
