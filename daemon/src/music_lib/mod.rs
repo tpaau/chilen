@@ -91,15 +91,14 @@ pub(crate) fn set_dirs(config: crate::Config) -> Result<(), Error> {
     Ok(())
 }
 
-// TODO: Optimize this
 pub(crate) fn tracks_from_paths(track_paths: &[PathBuf]) -> Result<Vec<Track>, LibraryError> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
     let mut out = Vec::with_capacity(track_paths.len());
 
-    for track in track_paths {
-        if let Some(track) = lib.tracks.iter().find(|t| t.path == *track) {
-            out.push(track.clone());
+    for path in track_paths {
+        if let Some(track) = lib.find_track_by_path(path) {
+            out.push(track);
         } else {
             return Err(LibraryError::NoSuchTrack);
         }
@@ -143,18 +142,16 @@ pub(crate) fn create_playlist(
         return Err(LibraryError::PlaylistExists);
     }
 
-    // TODO: Optimize this
     let found_tracks = if let Some(tracks) = track_paths {
-        tracks
-            .iter()
-            .map(|track_path| {
-                lib.tracks
-                    .iter()
-                    .find(|t| t.path == *track_path)
-                    .cloned()
-                    .ok_or(LibraryError::NoSuchTrack)
-            })
-            .collect::<Result<Vec<_>, _>>()?
+        let mut out = Vec::with_capacity(tracks.len());
+        for path in tracks {
+            if let Some(track) = lib.find_track_by_path(path) {
+                out.push(track);
+            } else {
+                return Err(LibraryError::NoSuchTrack);
+            }
+        }
+        out
     } else {
         Vec::new()
     };
@@ -219,37 +216,40 @@ pub(crate) fn add_tracks(name: &str, track_paths: Vec<PathBuf>) -> Result<(), Li
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
-    let playlist = match lib
+
+    // TODO: Optimize playlist lookup by name
+    let playlist_pos = match lib
         .playlists
         .iter()
         .position(|playlist| playlist.name == name)
     {
-        Some(pos) => &mut lib.playlists[pos],
+        Some(pos) => pos,
         None => return Err(LibraryError::NoSuchPlaylist),
     };
 
-    // TODO: Optimize this
     let mut out = Vec::with_capacity(track_paths.len());
-    for track_path in track_paths {
-        if let Some(track) = lib.tracks.iter().find(|t| t.path == track_path) {
+    for path in track_paths {
+        if let Some(track) = lib.find_track_by_path(&path) {
             out.push(track.clone());
         } else {
             return Err(LibraryError::NoSuchTrack);
         }
     }
 
-    playlist.tracks.append(&mut out);
+    lib.playlists[playlist_pos].tracks.append(&mut out);
     drop(guard);
     save_library()?;
     Ok(())
 }
 
-/// Remove tracks by indices from a specific playlist
+/// Remove tracks by indices from a playlist
 pub(crate) fn remove_tracks(name: &str, ids: Vec<usize>) -> Result<(), LibraryError> {
     trace!("Removing tracks from playlist \"{name}\"");
 
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
+
+    // TODO: Optimize playlist lookup by name
     let playlist = match lib
         .playlists
         .iter()

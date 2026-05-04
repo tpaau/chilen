@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::music_lib::{Playlist, Track, state::MusicLibrary};
 
@@ -38,6 +38,7 @@ fn playlist_removal() {
     let mut lib = MusicLibrary {
         tracks: HashSet::new(),
         playlists: playlists.clone(),
+        tracks_by_path: HashMap::new(),
     };
     for playlist in &playlists {
         eprintln!("playlist: {}", playlist.name);

@@ -1,11 +1,10 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs::{File, read},
     hash::{DefaultHasher, Hash, Hasher},
-    io::BufReader,
-    io::Write,
-    path::PathBuf,
-    sync::{LazyLock, RwLock},
+    io::{BufReader, Write},
+    path::{Path, PathBuf},
+    sync::{Arc, LazyLock, RwLock},
     time::{Duration, SystemTime},
 };
 
@@ -273,6 +272,7 @@ impl Track {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Playlist {
     pub name: String,
+    // TODO: Reduce memory usage by using `Arc` here
     pub tracks: Vec<Track>,
 }
 
@@ -341,10 +341,11 @@ impl Playlist {
     }
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct MusicLibrary {
     pub playlists: Vec<Playlist>,
-    pub tracks: HashSet<Track>,
+    pub tracks: HashSet<Arc<Track>>,
+    pub tracks_by_path: HashMap<String, Arc<Track>>,
 }
 
 impl From<mpipc::library::MusicLibrary> for MusicLibrary {
@@ -354,21 +355,32 @@ impl From<mpipc::library::MusicLibrary> for MusicLibrary {
             playlists.push(playlist.into());
         }
 
-        let tracks: HashSet<Track> = value.tracks.iter().map(|t| t.clone().into()).collect();
-        MusicLibrary { playlists, tracks }
+        let tracks: HashSet<Arc<Track>> = value
+            .tracks
+            .into_iter()
+            .map(|t| Arc::new(t.into()))
+            .collect();
+        let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        for t in tracks.iter() {
+            map.insert(t.path.to_string_lossy().to_string(), t.clone());
+        }
+
+        MusicLibrary {
+            playlists,
+            tracks,
+            tracks_by_path: map,
+        }
     }
 }
 
 impl From<MusicLibrary> for mpipc::library::MusicLibrary {
     fn from(value: MusicLibrary) -> Self {
-        let mut playlists = Vec::new();
-        let mut tracks = Vec::new();
-        for playlist in value.playlists {
-            playlists.push(playlist.into());
-        }
-        for track in value.tracks {
-            tracks.push(track.into());
-        }
+        let playlists = value.playlists.into_iter().map(|p| p.into()).collect();
+        let tracks = value
+            .tracks
+            .into_iter()
+            .map(|t| Arc::into_inner(t).unwrap().clone().into())
+            .collect();
         mpipc::library::MusicLibrary { playlists, tracks }
     }
 }
@@ -382,8 +394,31 @@ impl MusicLibrary {
         for playlist in loaded.playlists {
             playlists.push(Playlist::try_from_loaded_playlist(playlist, &tracks)?);
         }
-        let tracks: HashSet<Track> = tracks.into_iter().collect();
-        Ok(Self { playlists, tracks })
+
+        let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
+        let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        for t in tracks.iter() {
+            map.insert(t.path.to_string_lossy().to_string(), t.clone());
+        }
+
+        Ok(Self {
+            playlists,
+            tracks,
+            tracks_by_path: map,
+        })
+    }
+
+    fn new_from_tracks(tracks: Vec<Track>) -> Self {
+        let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
+        let mut map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        for t in tracks.iter() {
+            map.insert(t.path.to_string_lossy().to_string(), t.clone());
+        }
+        Self {
+            playlists: Vec::new(),
+            tracks,
+            tracks_by_path: map,
+        }
     }
 
     pub fn find_playlist(&self, name: &str) -> Option<&Playlist> {
@@ -392,6 +427,7 @@ impl MusicLibrary {
             .find(|&playlist| playlist.name == name)
     }
 
+    // TODO: Add tests for this
     pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), LibraryError> {
         playlists.sort();
         let mut unique = playlists.clone();
@@ -413,6 +449,13 @@ impl MusicLibrary {
             .filter_map(|p| if set.contains(&p.name) { None } else { Some(p) })
             .collect();
         Ok(())
+    }
+
+    pub fn find_track_by_path(&self, path: &Path) -> Option<Track> {
+        self.tracks_by_path
+            .get(&path.to_string_lossy().to_string())
+            .cloned()
+            .map(|t| t.as_ref().clone())
     }
 }
 
@@ -494,14 +537,12 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
 
     let time_start = SystemTime::now();
 
-    let tracks: HashSet<Track> = match indexer::index(None, load_mode) {
+    let tracks = match indexer::index(None, load_mode) {
         Ok(tracks) => tracks,
         Err(e) => {
             return Err(e);
         }
-    }
-    .into_iter()
-    .collect();
+    };
 
     let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));
     trace!(
@@ -547,14 +588,14 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
             }
         };
 
-        let lib = MusicLibrary::try_from_loaded_lib(lib_conf, tracks)?;
+        let lib = MusicLibrary::try_from_loaded_lib(lib_conf, tracks.into_iter().collect())?;
         let mut guard = MUSIC_LIBRARY.write().unwrap();
         *guard = Some(lib);
         drop(guard);
     } else {
         trace!("The library file does not exist, creating a new library");
         let mut guard = MUSIC_LIBRARY.write().unwrap();
-        *guard = Some(MusicLibrary::default());
+        *guard = Some(MusicLibrary::new_from_tracks(tracks));
         drop(guard);
         save_library()?;
     }

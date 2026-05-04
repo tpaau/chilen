@@ -1,1 +1,4 @@
-words = ["mpipc", "daemon", "tpaau", "IPC", "mpris", "MPRIS", "smol"]
+words = [
+  "mpipc", "daemon", "tpaau", "IPC", "mpris", "MPRIS", "smol", "calloop", "zbus", "vlc", "VLC",
+  "winit", "sctk", "wgpu"
+]

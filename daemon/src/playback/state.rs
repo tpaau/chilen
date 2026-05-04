@@ -56,7 +56,12 @@ pub(crate) struct PlayerState {
 impl TryFrom<PlayerStateRaw> for PlayerState {
     type Error = LibraryError;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
-        let tracks = get_library()?.tracks;
+        let tracks = get_library()?
+            .tracks
+            .into_iter()
+            .map(|t| t.as_ref().clone())
+            .collect();
+
         Ok(Self {
             position: value.position,
             player_position: value.player_position,
