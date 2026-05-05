@@ -757,21 +757,21 @@ pub(crate) fn unwrap_state_mut(
     }
 }
 
-fn save_state(state: PlayerState) -> Result<(), LibraryError> {
+fn save_state(state: PlayerState) -> Result<(), String> {
     let state_raw: PlayerStateRaw = state.into();
     let state_file = STATE_FILE.clone();
 
     let mut data = Vec::new();
     if let Err(e) = state_raw.serialize(&mut Serializer::new(&mut data)) {
         error!("Could not serialize the player state: {e}");
-        return Err(LibraryError::CacheError);
+        return Err(e.to_string());
     }
 
     let mut file = match File::create(state_file) {
         Ok(file) => file,
         Err(e) => {
             error!("Could not open the player state cache in write-only mode: {e}");
-            return Err(LibraryError::CacheError);
+            return Err(e.to_string());
         }
     };
 
@@ -782,7 +782,7 @@ fn save_state(state: PlayerState) -> Result<(), LibraryError> {
         }
         Err(e) => {
             error!("Could not write to the player state cache: {e}");
-            Err(LibraryError::CacheError)
+            Err(e.to_string())
         }
     }
 }
@@ -795,7 +795,7 @@ pub(crate) fn background_save_state(state: PlayerState) {
     });
 }
 
-pub(crate) fn restore_state_from_cache() -> Result<PlayerState, LibraryError> {
+pub(crate) fn restore_state_from_cache() -> Result<PlayerState, String> {
     let state_file = STATE_FILE.clone();
 
     trace!("Restoring player state from {state_file:?}");
@@ -804,7 +804,7 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, LibraryError> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the player state file exists: {e}");
-            return Err(LibraryError::CacheError);
+            return Err(e.to_string());
         }
     };
 
@@ -813,7 +813,7 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, LibraryError> {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the player state cache: {e}");
-                return Err(LibraryError::CacheError);
+                return Err(e.to_string());
             }
         };
 
@@ -821,7 +821,7 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, LibraryError> {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not decode the contents of the player state file: {e}");
-                return Err(LibraryError::CacheError);
+                return Err(e.to_string());
             }
         };
 
@@ -832,7 +832,7 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, LibraryError> {
             }
             Err(e) => {
                 error!("Could not restore player state from cache: {e}");
-                Err(e)
+                Err(e.to_string())
             }
         }
     } else {

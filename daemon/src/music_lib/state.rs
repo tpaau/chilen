@@ -23,7 +23,7 @@ use crate::{
         DATA_DIR,
         cache::{
             covers::{CoverError, LoadMode, get_track_cover},
-            indexer,
+            indexer::{self},
         },
     },
     send_event,
@@ -517,25 +517,9 @@ impl MusicLibrary {
     pub fn import_m3u8_playlist(
         &mut self,
         playlist: &Path,
-        name: Option<String>,
+        name: String,
     ) -> Result<(), LibraryError> {
         trace!("Importing a playlist from an M3U8 file at {playlist:?}");
-
-        let name = {
-            if let Some(name) = name {
-                name
-            } else {
-                match playlist.file_name() {
-                    Some(name) => name.to_string_lossy().to_string(),
-                    None => {
-                        error!(
-                            "Could not determine the name for the imported playlist, the M3U8 file path had no final component!"
-                        );
-                        return Err(LibraryError::CacheError);
-                    }
-                }
-            }
-        };
         todo!("Importing playlists from M3U8 files is not supported!");
     }
 }
@@ -600,16 +584,13 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
         let library_state = LIBRARY_FILE.clone();
 
         let mut data = Vec::new();
-        if let Err(e) = lib.serialize(&mut Serializer::new(&mut data)) {
-            error!("Could not serialize the music library: {e}");
-            return Err(LibraryError::CacheError);
-        }
+        lib.serialize(&mut Serializer::new(&mut data)).unwrap();
 
         let mut file = match File::create(library_state) {
             Ok(file) => file,
             Err(e) => {
-                error!("Could not open the library in write-only mode: {e}");
-                return Err(LibraryError::CacheError);
+                error!("Could not open the library state in write-only mode: {e}");
+                return Err(LibraryError::StateWriteFailed);
             }
         };
 
@@ -620,12 +601,12 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
             }
             Err(e) => {
                 error!("Could not write to the library: {e}");
-                Err(LibraryError::CacheError)
+                Err(LibraryError::StateWriteFailed)
             }
         }
     } else {
         error!("Cannot save the library since it is uninitialized!");
-        Err(LibraryError::CacheError)
+        Err(LibraryError::LibraryNotInitialized)
     }
 }
 
@@ -635,7 +616,7 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
 
     let time_start = SystemTime::now();
 
-    let tracks = match indexer::index(None, load_mode) {
+    let tracks = match indexer::index(load_mode) {
         Ok(tracks) => tracks,
         Err(e) => {
             return Err(e);
@@ -657,36 +638,34 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library exists: {e}");
-            return Err(LibraryError::CacheError);
+            return Err(LibraryError::StateNotReadable);
         }
     };
 
     if exists {
         trace!("Restoring the library state");
 
-        if library_state.is_dir() {
-            error!("The item at {library_state:?} must not be a directory!");
-            return Err(LibraryError::CacheError);
+        if !library_state.is_file() {
+            error!("The item at {library_state:?} must be a file!");
+            return Err(LibraryError::StateNotAFile);
         }
 
         let data = match read(library_state) {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library: {e}");
-                return Err(LibraryError::CacheError);
+                return Err(LibraryError::StateNotReadable);
             }
         };
 
-        let lib_conf = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data))
-        {
-            Ok(data) => data,
+        let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
+            Ok(data) => MusicLibrary::try_from_loaded_lib(data, tracks.into_iter().collect())?,
             Err(e) => {
                 error!("Could not decode the contents of the library state file: {e}");
-                return Err(LibraryError::CacheError);
+                MusicLibrary::new_from_tracks(tracks.into_iter().collect())
             }
         };
 
-        let lib = MusicLibrary::try_from_loaded_lib(lib_conf, tracks.into_iter().collect())?;
         let mut guard = MUSIC_LIBRARY.write().unwrap();
         *guard = Some(lib);
         drop(guard);

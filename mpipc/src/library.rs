@@ -96,12 +96,10 @@ pub enum LibraryCommand {
     PlaylistFromM3U8 {
         /// The name for the imported playlist. Must not already exist in the music library.
         ///
-        /// If left unspecified, it will be derived from the name of the imported file.
-        ///
         /// If a playlist with the specified name already exists,
         /// [`LibraryError::PlaylistExists`] will be returned, and no changes to the
         /// [music library](MusicLibrary) will be made.
-        name: Option<String>,
+        name: String,
         /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
     },
@@ -174,14 +172,18 @@ pub enum LibraryError {
     /// There is no [playlist](Playlist) in the [music library](MusicLibrary) with the provided
     /// name.
     NoSuchPlaylist,
-    /// Could not get the path to the cache directory or the cache is unusable.
-    CacheError,
     /// The provided item index was out of bounds.
     IndexOutOfBounds,
     /// The provided list contained duplicate values.
     DuplicateItems,
     /// The provided track is not registered in the library.
     NoSuchTrack,
+    /// Could not read the contents of the library state file.
+    StateNotReadable,
+    /// Could not write the library state to a file.
+    StateWriteFailed,
+    /// The library state path is not a file.
+    StateNotAFile,
 }
 
 impl std::fmt::Display for LibraryError {
@@ -190,12 +192,16 @@ impl std::fmt::Display for LibraryError {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not initialized"),
             Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
-            Self::CacheError => write!(f, "Cache is unusable"),
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
-            Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),
             Self::NoSuchTrack => {
                 write!(f, "The provided track is not registered in the library")
             }
+            Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),
+            Self::StateNotReadable => {
+                write!(f, "Could not read the contents of the library state file")
+            }
+            Self::StateWriteFailed => write!(f, "Could not write the library state to a file"),
+            Self::StateNotAFile => write!(f, "The library state path is not a file"),
         }
     }
 }

@@ -78,7 +78,7 @@ pub enum PlaylistCommand {
         /// If this is not specified, the name of the playlist will be derived from the
         /// name of the M3U8 file.
         ///
-        name: Option<String>,
+        name: String,
     },
     /// Delete playlist(s) from the library
     Delete { names: Vec<String> },

@@ -1,31 +1,23 @@
 use std::{
-    fmt::Debug,
     path::PathBuf,
     sync::{Arc, Mutex},
     thread,
 };
 
 use lofty::{file::TaggedFileExt, read_from_path};
-use log::{error, info, trace, warn};
+use log::{info, trace, warn};
 use mpipc::library::LibraryError;
 use walkdir::WalkDir;
 
 use crate::music_lib::{MUSIC_DIR, Track, cache::covers::LoadMode};
 
-pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
-    files: Vec<T>,
-    load_mode: LoadMode,
-) -> Result<Vec<Track>, LibraryError> {
+fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, LibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
 
     for file in files {
-        let file = file.into();
-        if !file.is_file() {
-            error!("Not a file: {file:?}");
-        }
+        let lock = tracks.clone();
 
-        let lock = Arc::clone(&tracks);
         handles.push(thread::spawn(move || {
             let tagged_file = match read_from_path(&file) {
                 Ok(tagged_file) => tagged_file,
@@ -77,11 +69,8 @@ pub(crate) fn index_files<T: Into<PathBuf> + Debug>(
 }
 
 // TODO: Crate a custom enum to replace the `Option` enum
-pub(crate) fn index(
-    music_dir: Option<PathBuf>,
-    load_mode: LoadMode,
-) -> Result<Vec<Track>, LibraryError> {
-    let music_dir = music_dir.unwrap_or(MUSIC_DIR.read().unwrap().clone().unwrap());
+pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, LibraryError> {
+    let music_dir = MUSIC_DIR.read().unwrap().clone().unwrap();
 
     trace!("Indexing directory: {music_dir:?}");
 
