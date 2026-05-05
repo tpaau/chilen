@@ -14,6 +14,8 @@ jobs:
           - nightly
     steps:
       - uses: actions/checkout@v4
+      - name: Install alsa-libs-devel
+        run: sudo apt install alsa-libs-devel
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
       - run: cargo build --verbose
       - run: cargo test --workspace --verbose
