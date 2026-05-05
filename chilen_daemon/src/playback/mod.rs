@@ -10,18 +10,18 @@ use std::{
     time::Duration,
 };
 
-use log::{debug, error, info, trace, warn};
 #[cfg(feature = "shuffle")]
-use mpipc::{
+use chilen_ipc::{
     Event, Response,
     playback::{
         PlaybackCommand, PlaybackRate, PlaybackState, PlayerVolume, ShuffleState, SignedDuration,
     },
 };
-use mpipc::{
+use chilen_ipc::{
     library::LibraryError,
     playback::{LoopState, PlaybackError, PlaybackResponse},
 };
+use log::{debug, error, info, trace, warn};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
 
@@ -61,6 +61,10 @@ pub struct Config {
     /// If set to true, the playback rate will be locked the value saved in cache the player state,
     /// or set to the default value of `1.0` (regular speed) if the player state is not present.
     pub allow_rate_modification: bool,
+    /// Whether the player's user interface can be brought to the front using any appropriate
+    /// mechanism available.
+    #[cfg(any(feature = "mpris", doc))]
+    pub can_raise: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -154,7 +158,7 @@ impl TryFrom<PlaybackCommand> for Command {
 static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
+pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 pub(crate) fn unwrap_player(
@@ -164,6 +168,17 @@ pub(crate) fn unwrap_player(
         Some(player) => Ok(player),
         None => Err(PlaybackError::StateNotInitialized),
     }
+}
+
+/// Set whether the daemon should allow rate modification by clients.
+pub fn set_allow_rate_modification(allow_rate_modification: bool) -> Result<(), super::Error> {
+    let mut conf_guard = CONFIG.write().unwrap();
+    let conf = match conf_guard.as_mut() {
+        Some(conf) => conf,
+        None => return Err(super::Error::ConfigNotInitialized),
+    };
+    conf.allow_rate_modification = allow_rate_modification;
+    Ok(())
 }
 
 /// Play the current track or a track at a specified index in the queue.
@@ -413,7 +428,7 @@ pub(crate) fn set_rate(rate: f64) -> Result<(), PlaybackError> {
     } else {
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = unwrap_player(player_guard.as_ref())?;
-        player.set_speed(PlaybackRate::from(rate).get_value_f32()); // Not the cleanest
+        player.set_speed(PlaybackRate::from(rate).get_value_f32());
         state.set_rate(rate);
         background_save_state(state.clone());
         Ok(())

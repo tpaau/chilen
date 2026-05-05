@@ -50,7 +50,7 @@ pub enum Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EncodingError => write!(f, "Could not encode the deamon command"),
+            Self::EncodingError => write!(f, "Could not encode the daemon command"),
             Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
             Self::ConnectionError => write!(f, "Could not connect to the daemon"),
             Self::SendingError => write!(f, "Could not send the command to the daemon"),
@@ -123,7 +123,7 @@ pub enum Command {
     Ping,
 }
 
-/// Defines the socket type to use when attempting to connect to a `deamon`.
+/// Defines the socket type to use when attempting to connect to a `daemon`.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SocketType {
     /// Only use a namespaced socket with no fallback.
@@ -153,9 +153,9 @@ fn get_fs_socket_path(socket_name: &str) -> PathBuf {
 ///
 /// # Examples
 /// ```
-/// match mpipc::get_socket(
-///     mpipc::DEFAULT_SOCKET_NAME,
-///     &mpipc::SocketType::NamespacedOrFilesystem
+/// match chilen_ipc::get_socket(
+///     chilen_ipc::DEFAULT_SOCKET_NAME,
+///     &chilen_ipc::SocketType::NamespacedOrFilesystem
 /// ) {
 ///     Ok(socket) => eprintln!("Got a socket: {socket:?}"),
 ///     Err(e) => panic!("Could not obtain a socket: {e}"),
@@ -187,7 +187,7 @@ pub fn get_socket<'a>(socket_name: &'a str, mode: &SocketType) -> Result<Name<'a
 /// Connect to the daemon and immediately disconnect.
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_command, Command, Error};
+/// # use chilen_ipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_command, Command, Error};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// let cmd = serialize_command(&Command::Disconnect).unwrap();
@@ -209,7 +209,7 @@ pub fn serialize_command(cmd: &Command) -> Result<Vec<u8>, Error> {
 /// # Examples
 /// ```no_run
 /// # use std::io::{BufReader, Write};
-/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_command, Command, receive_response};
+/// # use chilen_ipc::{connect, DEFAULT_SOCKET_NAME, SocketType, serialize_command, Command, receive_response};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// let cmd = serialize_command(&Command::EventStream).unwrap();
@@ -237,14 +237,14 @@ pub fn receive_response(conn: &mut BufReader<Stream>) -> Result<Response, Error>
 /// # Examples
 /// ```no_run
 /// # use std::io::BufReader;
-/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
+/// # use chilen_ipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 ///
 /// // Do some stuff with the connection here...
 ///
 /// match disconnect(&mut conn) {
-///     Ok(_) => eprintln!("Disconnected from the deamon!"),
+///     Ok(_) => eprintln!("Disconnected from the daemon!"),
 ///     Err(e) => panic!("Could not close the daemon connection: {e}"),
 /// }
 /// ```
@@ -285,7 +285,7 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), Error> {
 /// # Examples
 /// ```no_run
 /// # use std::io::BufReader;
-/// # use mpipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
+/// # use chilen_ipc::{connect, DEFAULT_SOCKET_NAME, SocketType, disconnect};
 /// let conn = connect(DEFAULT_SOCKET_NAME, &SocketType::default()).unwrap();
 /// let mut conn = BufReader::new(conn);
 /// eprintln!("Connected to the daemon: {conn:?}");
@@ -322,7 +322,7 @@ pub fn connect(socket_name: &str, socket_type: &SocketType) -> Result<Stream, Er
 ///
 /// # Examples
 /// ```no_run
-/// # use mpipc::{send_command, Command, DEFAULT_SOCKET_NAME, SocketType, Response};
+/// # use chilen_ipc::{send_command, Command, DEFAULT_SOCKET_NAME, SocketType, Response};
 /// match send_command(Command::Ping, DEFAULT_SOCKET_NAME, &SocketType::default()) {
 ///     // The `Ok` variant only means the command was delivered
 ///     Ok(response) => {

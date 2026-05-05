@@ -8,12 +8,12 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use chilen_ipc::library::LibraryError;
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, Tag},
 };
 use log::{error, trace};
-use mpipc::library::LibraryError;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
@@ -21,10 +21,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     music_lib::{
         DATA_DIR,
-        cache::{
-            covers::{CoverError, LoadMode, get_track_cover},
-            indexer::{self},
-        },
+        covers::{CoverError, LoadMode, get_track_cover},
+        indexer::{self},
     },
     send_event,
 };
@@ -47,9 +45,9 @@ pub(crate) struct Track {
     pub year: Option<u32>,
 }
 
-impl From<Track> for mpipc::library::Track {
+impl From<Track> for chilen_ipc::library::Track {
     fn from(value: Track) -> Self {
-        mpipc::library::Track {
+        chilen_ipc::library::Track {
             path: value.path,
             cover_path: value.cover_path,
             duration: value.duration,
@@ -226,9 +224,9 @@ pub(crate) struct Playlist {
     pub tracks: Vec<Arc<Track>>,
 }
 
-impl From<Playlist> for mpipc::library::Playlist {
+impl From<Playlist> for chilen_ipc::library::Playlist {
     fn from(value: Playlist) -> Self {
-        mpipc::library::Playlist {
+        chilen_ipc::library::Playlist {
             name: value.name,
             tracks: value
                 .tracks
@@ -307,7 +305,7 @@ pub(crate) struct MusicLibrary {
     playlists_by_name: HashMap<String, Arc<Playlist>>,
 }
 
-impl From<MusicLibrary> for mpipc::library::MusicLibrary {
+impl From<MusicLibrary> for chilen_ipc::library::MusicLibrary {
     fn from(value: MusicLibrary) -> Self {
         let playlists = value
             .playlists
@@ -319,7 +317,7 @@ impl From<MusicLibrary> for mpipc::library::MusicLibrary {
             .into_iter()
             .map(|t| t.as_ref().clone().into())
             .collect();
-        mpipc::library::MusicLibrary { playlists, tracks }
+        chilen_ipc::library::MusicLibrary { playlists, tracks }
     }
 }
 
@@ -596,7 +594,7 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
 
         match file.write_all(&data) {
             Ok(_) => {
-                let _ = send_event(mpipc::Event::LibraryChanged(lib_data.into()));
+                let _ = send_event(chilen_ipc::Event::LibraryChanged(lib_data.into()));
                 Ok(())
             }
             Err(e) => {

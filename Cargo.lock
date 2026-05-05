@@ -580,6 +580,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "chilen"
+version = "0.1.0"
+dependencies = [
+ "chilen_daemon",
+ "chilen_ipc",
+ "clap",
+ "env_logger",
+ "iced",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "chilen_daemon"
+version = "0.1.0"
+dependencies = [
+ "chilen_ipc",
+ "interprocess",
+ "lofty",
+ "log",
+ "mpris-server",
+ "rand",
+ "rmp-serde",
+ "rodio",
+ "serde",
+ "smol",
+ "walkdir",
+]
+
+[[package]]
+name = "chilen_ipc"
+version = "0.1.0"
+dependencies = [
+ "interprocess",
+ "log",
+ "rmp-serde",
+ "serde",
+]
+
+[[package]]
 name = "clap"
 version = "4.5.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -886,23 +927,6 @@ name = "cursor-icon"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
-
-[[package]]
-name = "daemon"
-version = "0.1.0"
-dependencies = [
- "interprocess",
- "lofty",
- "log",
- "mpipc",
- "mpris-server",
- "rand",
- "rmp-serde",
- "rodio",
- "serde",
- "smol",
- "walkdir",
-]
 
 [[package]]
 name = "dasp_sample"
@@ -2007,16 +2031,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mpipc"
-version = "0.1.0"
-dependencies = [
- "interprocess",
- "log",
- "rmp-serde",
- "serde",
-]
-
-[[package]]
 name = "mpris-server"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2052,20 +2066,6 @@ dependencies = [
  "web-sys",
  "windows 0.62.2",
  "zbus",
-]
-
-[[package]]
-name = "music-player"
-version = "0.1.0"
-dependencies = [
- "clap",
- "daemon",
- "env_logger",
- "iced",
- "log",
- "mpipc",
- "serde",
- "serde_json",
 ]
 
 [[package]]

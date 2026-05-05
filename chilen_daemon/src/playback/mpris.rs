@@ -4,8 +4,8 @@ use std::{
     time::Duration,
 };
 
+use chilen_ipc::playback::{LoopState, PlaybackError, PlaybackState, PlayerVolume, SignedDuration};
 use log::{error, trace};
-use mpipc::playback::{LoopState, PlaybackError, PlaybackState, PlayerVolume, SignedDuration};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::playback::{
@@ -400,7 +400,7 @@ pub(crate) fn launch_server(config: playback::Config) {
             {
                 error!("Could not set the initial server properties: {e}");
             } else {
-                trace!("Succesfully set the initial server properties");
+                trace!("Successfully set the initial server properties");
             }
 
             let mut server_guard = SERVER.write().unwrap();

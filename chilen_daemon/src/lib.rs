@@ -22,13 +22,13 @@ use std::{
 use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use mpipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_command};
+use chilen_ipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_command};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{CACHE_DIR, cache::covers::LoadMode};
+use crate::music_lib::{CACHE_DIR, covers::LoadMode};
 
 /// Defines the socket type to use when starting the daemon.
-pub type SocketType = mpipc::SocketType;
+pub type SocketType = chilen_ipc::SocketType;
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
@@ -44,11 +44,12 @@ pub enum Error {
     /// This likely means a second daemon was started in the same context.
     EventChannelInitialized,
     /// The event channel is not initialized, which likely means that there is no daemon running.
-    NoDaemonRunning,
+    DaemonNotRunning,
     NoLibrary,
     LibraryNotAccessible,
     CacheDirError(String),
     DataDirError(String),
+    ConfigNotInitialized,
 }
 
 impl std::fmt::Display for Error {
@@ -59,7 +60,7 @@ impl std::fmt::Display for Error {
             Self::EventChannelInitialized => {
                 write!(f, "The event channel for the daemon is already initialized")
             }
-            Self::NoDaemonRunning => write!(f, "The daemon doesn't seem to be running"),
+            Self::DaemonNotRunning => write!(f, "The daemon doesn't seem to be running"),
             Self::NoLibrary => {
                 write!(f, "The provided music library directory does not exist")
             }
@@ -69,6 +70,7 @@ impl std::fmt::Display for Error {
             ),
             Self::CacheDirError(e) => write!(f, "Could not initialize the cache directory: {e}"),
             Self::DataDirError(e) => write!(f, "Could not initialize the data directory: {e}"),
+            Self::ConfigNotInitialized => write!(f, "The daemon configuration is not set"),
         }
     }
 }
@@ -138,11 +140,11 @@ impl Config {
     ///
     /// # Examples
     /// ```
-    /// # use daemon;
-    /// let conf = daemon::Config::try_default().unwrap();
+    /// # use chilen_daemon;
+    /// let conf = chilen_daemon::Config::try_default().unwrap();
     /// ```
     pub fn try_default() -> Result<Self, ConfigError> {
-        Self::try_from_name("music-player", DEFAULT_SOCKET_NAME)
+        Self::try_from_name("my-player", DEFAULT_SOCKET_NAME)
     }
 
     /// Create a new config from program and socket names.
@@ -154,8 +156,8 @@ impl Config {
     ///
     /// # Examples
     /// ```
-    /// # use daemon;
-    /// let conf = daemon::Config::try_from_name("my-player", "MY_PLAYER");
+    /// # use chilen_daemon;
+    /// let conf = chilen_daemon::Config::try_from_name("my-player", "MY_PLAYER");
     /// ```
     pub fn try_from_name(name: &str, socket_name: &str) -> Result<Self, ConfigError> {
         let home_dir = match home_dir() {
@@ -196,6 +198,8 @@ impl Config {
                 #[cfg(feature = "mpris")]
                 bus_name_suffix,
                 allow_rate_modification: false,
+                #[cfg(feature = "mpris")]
+                can_raise: false,
             },
         })
     }
@@ -233,7 +237,7 @@ fn get_listener(
     socket_type: &SocketType,
     claim_mode: &AddrClaimMode,
 ) -> Result<Listener, Error> {
-    let socket = match mpipc::get_socket(socket_name, socket_type) {
+    let socket = match chilen_ipc::get_socket(socket_name, socket_type) {
         Ok(sock) => sock,
         Err(e) => {
             error!("Could not obtain the socket: {e}");
@@ -287,7 +291,7 @@ fn get_listener(
                                 }
                             }
                             Err(e) => {
-                                if e == mpipc::Error::ConnectionError {
+                                if e == chilen_ipc::Error::ConnectionError {
                                     info!(
                                         "The other daemon is either dead or unresponsive, claiming the address"
                                     );
@@ -366,14 +370,30 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
     }
 }
 
+/// Set whether clients can send raise requests to the daemon.
+#[cfg(any(feature = "mpris", doc))]
+pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
+    use crate::playback::CONFIG;
+
+    let mut conf_guard = CONFIG.write().unwrap();
+    let conf = match conf_guard.as_mut() {
+        Some(conf) => conf,
+        None => return Err(Error::ConfigNotInitialized),
+    };
+    conf.can_raise = can_raise;
+    Ok(())
+}
+
 /// Stop a running daemon instance.
 ///
 /// This has the same effect as sending a [`Command::Shutdown`] to the `daemon`, but it bypasses
 /// the requirement to connect to it over a local socket.
+///
+/// If a daemon is not running, [`Error::NoDaemonRunning`] will be returned.
 pub fn stop() -> Result<(), Error> {
     if send_event(Event::Shutdown).is_err() {
         error!("The daemon doesn't seem to be running");
-        Err(Error::NoDaemonRunning)
+        Err(Error::DaemonNotRunning)
     } else {
         Ok(())
     }
@@ -395,9 +415,9 @@ pub fn stop() -> Result<(), Error> {
 ///
 /// # Examples
 /// ```no_run
-/// # use daemon;
-/// let config = daemon::Config::try_default().unwrap();
-/// daemon::start(config).unwrap();
+/// # use chilen_daemon;
+/// let config = chilen_daemon::Config::try_default().unwrap();
+/// chilen_daemon::start(config).unwrap();
 /// ```
 pub fn start(config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
@@ -407,7 +427,7 @@ pub fn start(config: Config) -> Result<(), Error> {
         return Err(e);
     }
 
-    if config.socket_name == mpipc::DEFAULT_SOCKET_NAME {
+    if config.socket_name == chilen_ipc::DEFAULT_SOCKET_NAME {
         warn!(
             "Using the default IPC socket name. Please use a unique name outside of just testing"
         );

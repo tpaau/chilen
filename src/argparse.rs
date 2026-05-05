@@ -2,9 +2,9 @@ use std::{path::PathBuf, time::Duration};
 
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum, ValueHint};
 
+use chilen_ipc::playback::SignedDuration;
 use env_logger::Builder;
 use log::{self, trace};
-use mpipc::playback::SignedDuration;
 
 #[derive(Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
@@ -39,12 +39,12 @@ pub enum DaemonCommand {
     Ping,
 }
 
-impl TryFrom<DaemonCommand> for mpipc::Command {
+impl TryFrom<DaemonCommand> for chilen_ipc::Command {
     type Error = String;
     fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
         match value {
-            DaemonCommand::Ping => Ok(mpipc::Command::Ping),
-            _ => Err("Cannot convert variant {value:?} to a `mpipc::Command`".to_string()),
+            DaemonCommand::Ping => Ok(chilen_ipc::Command::Ping),
+            _ => Err("Cannot convert variant {value:?} to a `chilen_ipc::Command`".to_string()),
         }
     }
 }
@@ -109,26 +109,26 @@ pub enum PlaylistCommand {
     },
 }
 
-impl From<PlaylistCommand> for mpipc::library::LibraryCommand {
+impl From<PlaylistCommand> for chilen_ipc::library::LibraryCommand {
     fn from(value: PlaylistCommand) -> Self {
         match value {
             PlaylistCommand::New { name, tracks } => {
-                mpipc::library::LibraryCommand::NewPlaylist { name, tracks }
+                chilen_ipc::library::LibraryCommand::NewPlaylist { name, tracks }
             }
             PlaylistCommand::FromM3U8 { name, m3u8_file } => {
-                mpipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
+                chilen_ipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
             }
             PlaylistCommand::Delete { names } => {
-                mpipc::library::LibraryCommand::DeletePlaylists { names }
+                chilen_ipc::library::LibraryCommand::DeletePlaylists { names }
             }
             PlaylistCommand::List { full: _, debug: _ } => {
-                mpipc::library::LibraryCommand::GetLibrary
+                chilen_ipc::library::LibraryCommand::GetLibrary
             }
             PlaylistCommand::AddTracks { name, tracks } => {
-                mpipc::library::LibraryCommand::AddTracksToPlaylist { name, tracks }
+                chilen_ipc::library::LibraryCommand::AddTracksToPlaylist { name, tracks }
             }
             PlaylistCommand::RemoveTracks { name, ids } => {
-                mpipc::library::LibraryCommand::RemoveTracksFromPlaylist { name, ids }
+                chilen_ipc::library::LibraryCommand::RemoveTracksFromPlaylist { name, ids }
             }
         }
     }
@@ -151,12 +151,12 @@ pub enum LibraryCommand {
     Rebuild,
 }
 
-impl From<LibraryCommand> for mpipc::library::LibraryCommand {
+impl From<LibraryCommand> for chilen_ipc::library::LibraryCommand {
     fn from(value: LibraryCommand) -> Self {
         match value {
             LibraryCommand::Playlist { command } => command.into(),
-            LibraryCommand::Reload => mpipc::library::LibraryCommand::Reload,
-            LibraryCommand::Rebuild => mpipc::library::LibraryCommand::Rebuild,
+            LibraryCommand::Reload => chilen_ipc::library::LibraryCommand::Reload,
+            LibraryCommand::Rebuild => chilen_ipc::library::LibraryCommand::Rebuild,
         }
     }
 }
@@ -184,12 +184,12 @@ pub enum LoopState {
     Playlist,
 }
 
-impl From<LoopState> for mpipc::playback::LoopState {
+impl From<LoopState> for chilen_ipc::playback::LoopState {
     fn from(value: LoopState) -> Self {
         match value {
-            LoopState::Off => mpipc::playback::LoopState::Off,
-            LoopState::Track => mpipc::playback::LoopState::Track,
-            LoopState::Playlist => mpipc::playback::LoopState::Playlist,
+            LoopState::Off => chilen_ipc::playback::LoopState::Off,
+            LoopState::Track => chilen_ipc::playback::LoopState::Track,
+            LoopState::Playlist => chilen_ipc::playback::LoopState::Playlist,
         }
     }
 }
@@ -202,11 +202,11 @@ pub enum ShuffleState {
     Off,
 }
 
-impl From<ShuffleState> for mpipc::playback::ShuffleState {
+impl From<ShuffleState> for chilen_ipc::playback::ShuffleState {
     fn from(value: ShuffleState) -> Self {
         match value {
-            ShuffleState::On => mpipc::playback::ShuffleState::On,
-            ShuffleState::Off => mpipc::playback::ShuffleState::Off,
+            ShuffleState::On => chilen_ipc::playback::ShuffleState::On,
+            ShuffleState::Off => chilen_ipc::playback::ShuffleState::Off,
         }
     }
 }
@@ -313,66 +313,74 @@ pub enum PlaybackCommand {
     GetVolume,
 }
 
-impl From<PlaybackCommand> for mpipc::playback::PlaybackCommand {
+impl From<PlaybackCommand> for chilen_ipc::playback::PlaybackCommand {
     fn from(value: PlaybackCommand) -> Self {
         match value {
-            PlaybackCommand::Play { index } => mpipc::playback::PlaybackCommand::Play(index),
-            PlaybackCommand::Pause => mpipc::playback::PlaybackCommand::Pause,
-            PlaybackCommand::Stop => mpipc::playback::PlaybackCommand::Stop,
-            PlaybackCommand::TogglePlaying => mpipc::playback::PlaybackCommand::TogglePlaying,
-            PlaybackCommand::GetPlaybackState => mpipc::playback::PlaybackCommand::GetPlaybackState,
+            PlaybackCommand::Play { index } => chilen_ipc::playback::PlaybackCommand::Play(index),
+            PlaybackCommand::Pause => chilen_ipc::playback::PlaybackCommand::Pause,
+            PlaybackCommand::Stop => chilen_ipc::playback::PlaybackCommand::Stop,
+            PlaybackCommand::TogglePlaying => chilen_ipc::playback::PlaybackCommand::TogglePlaying,
+            PlaybackCommand::GetPlaybackState => {
+                chilen_ipc::playback::PlaybackCommand::GetPlaybackState
+            }
             PlaybackCommand::SetQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
-                    return mpipc::playback::PlaybackCommand::SetQueue(tracks);
+                    return chilen_ipc::playback::PlaybackCommand::SetQueue(tracks);
                 } else if let Some(playlist) = playlist {
-                    return mpipc::playback::PlaybackCommand::SetPlaylist(playlist);
+                    return chilen_ipc::playback::PlaybackCommand::SetPlaylist(playlist);
                 }
                 panic!("This should never happen :)");
             }
-            PlaybackCommand::ClearQueue => mpipc::playback::PlaybackCommand::SetQueue(Vec::new()),
+            PlaybackCommand::ClearQueue => {
+                chilen_ipc::playback::PlaybackCommand::SetQueue(Vec::new())
+            }
             PlaybackCommand::AppendToQueue { tracks, playlist } => {
                 if let Some(tracks) = tracks {
-                    return mpipc::playback::PlaybackCommand::AppendToQueue(tracks);
+                    return chilen_ipc::playback::PlaybackCommand::AppendToQueue(tracks);
                 } else if let Some(playlist) = playlist {
-                    return mpipc::playback::PlaybackCommand::AppendPlaylist(playlist);
+                    return chilen_ipc::playback::PlaybackCommand::AppendPlaylist(playlist);
                 }
                 panic!("This should never happen :)");
             }
-            PlaybackCommand::GetCurrentTrack => mpipc::playback::PlaybackCommand::GetCurrentTrack,
-            PlaybackCommand::Next => mpipc::playback::PlaybackCommand::Next,
-            PlaybackCommand::Previous => mpipc::playback::PlaybackCommand::Previous,
+            PlaybackCommand::GetCurrentTrack => {
+                chilen_ipc::playback::PlaybackCommand::GetCurrentTrack
+            }
+            PlaybackCommand::Next => chilen_ipc::playback::PlaybackCommand::Next,
+            PlaybackCommand::Previous => chilen_ipc::playback::PlaybackCommand::Previous,
             PlaybackCommand::SetLoopState { loop_state } => {
-                mpipc::playback::PlaybackCommand::SetLoopState(loop_state.into())
+                chilen_ipc::playback::PlaybackCommand::SetLoopState(loop_state.into())
             }
-            PlaybackCommand::GetLoopState => mpipc::playback::PlaybackCommand::GetLoopState,
+            PlaybackCommand::GetLoopState => chilen_ipc::playback::PlaybackCommand::GetLoopState,
             PlaybackCommand::SetRate { rate } => {
-                mpipc::playback::PlaybackCommand::SetRate(rate.into())
+                chilen_ipc::playback::PlaybackCommand::SetRate(rate.into())
             }
-            PlaybackCommand::GetRate => mpipc::playback::PlaybackCommand::GetRate,
+            PlaybackCommand::GetRate => chilen_ipc::playback::PlaybackCommand::GetRate,
             PlaybackCommand::SetShuffleState { shuffle_state } => {
-                mpipc::playback::PlaybackCommand::SetShuffleState(shuffle_state.into())
+                chilen_ipc::playback::PlaybackCommand::SetShuffleState(shuffle_state.into())
             }
-            PlaybackCommand::GetShuffleState => mpipc::playback::PlaybackCommand::GetShuffleState,
+            PlaybackCommand::GetShuffleState => {
+                chilen_ipc::playback::PlaybackCommand::GetShuffleState
+            }
             PlaybackCommand::SetPlayerPosition { position_secs } => {
-                mpipc::playback::PlaybackCommand::SetPlayerPosition(Duration::from_secs(
+                chilen_ipc::playback::PlaybackCommand::SetPlayerPosition(Duration::from_secs(
                     position_secs,
                 ))
             }
-            PlaybackCommand::SeekForward { secs } => mpipc::playback::PlaybackCommand::Seek(
+            PlaybackCommand::SeekForward { secs } => chilen_ipc::playback::PlaybackCommand::Seek(
                 SignedDuration::from_secs(secs.try_into().unwrap_or(i64::MAX)),
             ),
-            PlaybackCommand::SeekBackward { secs } => mpipc::playback::PlaybackCommand::Seek(
+            PlaybackCommand::SeekBackward { secs } => chilen_ipc::playback::PlaybackCommand::Seek(
                 SignedDuration::from_secs(-secs.try_into().unwrap_or(i64::MAX)),
             ),
             PlaybackCommand::GetPlayerPosition => {
-                mpipc::playback::PlaybackCommand::GetPlayerPosition
+                chilen_ipc::playback::PlaybackCommand::GetPlayerPosition
             }
             PlaybackCommand::SetVolume { volume } => {
-                mpipc::playback::PlaybackCommand::SetPlayerVolume(
-                    mpipc::playback::PlayerVolume::new(volume),
+                chilen_ipc::playback::PlaybackCommand::SetPlayerVolume(
+                    chilen_ipc::playback::PlayerVolume::new(volume),
                 )
             }
-            PlaybackCommand::GetVolume => mpipc::playback::PlaybackCommand::GetPlayerVolume,
+            PlaybackCommand::GetVolume => chilen_ipc::playback::PlaybackCommand::GetPlayerVolume,
         }
     }
 }
@@ -402,7 +410,7 @@ pub enum Command {
     },
 }
 
-impl TryFrom<Command> for mpipc::Command {
+impl TryFrom<Command> for chilen_ipc::Command {
     type Error = String;
     fn try_from(value: Command) -> Result<Self, Self::Error> {
         match value {
@@ -411,8 +419,8 @@ impl TryFrom<Command> for mpipc::Command {
             Command::Gui { command: _ } => {
                 Err("Cannot convert the `GuiCommand variant".to_string())
             }
-            Command::Lib { command } => Ok(mpipc::Command::Library(command.into())),
-            Command::Playback { command } => Ok(mpipc::Command::Playback(command.into())),
+            Command::Lib { command } => Ok(chilen_ipc::Command::Library(command.into())),
+            Command::Playback { command } => Ok(chilen_ipc::Command::Playback(command.into())),
         }
     }
 }
@@ -435,7 +443,7 @@ impl std::fmt::Display for SocketType {
     }
 }
 
-impl From<SocketType> for mpipc::SocketType {
+impl From<SocketType> for chilen_ipc::SocketType {
     fn from(value: SocketType) -> Self {
         match value {
             SocketType::NamespacedOnly => Self::NamespacedOnly,

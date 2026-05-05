@@ -1,4 +1,5 @@
-pub(crate) mod cache;
+pub(crate) mod covers;
+pub(crate) mod indexer;
 pub(crate) mod state;
 #[cfg(test)]
 mod tests;
@@ -9,8 +10,8 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use chilen_ipc::library::LibraryError;
 use log::{error, trace};
-use mpipc::library::LibraryError;
 
 use crate::{
     Error,

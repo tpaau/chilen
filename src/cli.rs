@@ -4,22 +4,22 @@ use std::{
     thread,
 };
 
+use chilen_daemon::{AddrClaimMode, playback};
+use chilen_ipc::{Error, Response, SocketType, connect, library::Playlist, send_command};
 use clap::crate_name;
-use daemon::{AddrClaimMode, playback};
 use log::{error, info, trace};
-use mpipc::{Error, Response, SocketType, connect, library::Playlist, send_command};
 
 use crate::argparse::{Command, DaemonCommand, LibraryCommand, PlaylistCommand};
 
 #[cfg(feature = "gui")]
 use crate::{argparse::GuiCommand, gui};
 
-pub const SOCKET_NAME_HEADLESS: &str = "MUSIC_PLAYER_HEADLESS.socket";
+pub const SOCKET_NAME_HEADLESS: &str = "CHILEN_HEADLESS.socket";
 
-pub const IDENTITY_HEADLESS: &str = "Prototype music player daemon";
+pub const IDENTITY_HEADLESS: &str = "Chilen daemon";
 
 #[cfg(feature = "gui")]
-pub const IDENTITY_GUI: &str = "Prototype music player user interface";
+pub const IDENTITY_GUI: &str = "Chilen";
 
 // #[cfg(feature = "gui")]
 // pub const SOCKET_NAME_GUI: &str = "MUSIC_PLAYER_GUI.socket";
@@ -66,7 +66,7 @@ fn event_stream(
         }
     };
 
-    let command = match mpipc::serialize_command(&mpipc::Command::EventStream) {
+    let command = match chilen_ipc::serialize_command(&chilen_ipc::Command::EventStream) {
         Ok(cmd) => cmd,
         Err(e) => {
             error!("Could not encode the client command: {e}");
@@ -80,7 +80,7 @@ fn event_stream(
     }
 
     loop {
-        let response: Response = match mpipc::receive_response(&mut conn) {
+        let response: Response = match chilen_ipc::receive_response(&mut conn) {
             Ok(response) => response,
             Err(e) => {
                 error!("Failed to receive a response from the daemon: {e}");
@@ -159,7 +159,7 @@ pub fn run_cli_command(
                             music
                         }
                     };
-                    let config = daemon::Config {
+                    let config = chilen_daemon::Config {
                         cache_dir,
                         data_dir,
                         music_dir,
@@ -172,9 +172,11 @@ pub fn run_cli_command(
                             #[cfg(feature = "mpris")]
                             bus_name_suffix: format!("com.dev.{}", crate_name!()),
                             allow_rate_modification,
+                            #[cfg(feature = "mpris")]
+                            can_raise: false,
                         },
                     };
-                    match daemon::start(config) {
+                    match chilen_daemon::start(config) {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => {
                             error!("Daemon failed: {e}");
@@ -191,7 +193,7 @@ pub fn run_cli_command(
                     );
                 }
                 DaemonCommand::Ping => {
-                    match send_command(mpipc::Command::Ping, &socket_name, &socket_type) {
+                    match send_command(chilen_ipc::Command::Ping, &socket_name, &socket_type) {
                         Ok(response) => println!("{response:?}"),
                         Err(e) => println!("{e}"),
                     }
@@ -204,7 +206,7 @@ pub fn run_cli_command(
                             return Err(());
                         }
                     };
-                    match mpipc::send_command(cmd, &socket_name, &socket_type) {
+                    match chilen_ipc::send_command(cmd, &socket_name, &socket_type) {
                         Ok(response) => info!("Got a response from the daemon: {response:?}"),
                         Err(e) => {
                             print_daemon_error(e);
@@ -234,8 +236,8 @@ pub fn run_cli_command(
                     } => (full, debug),
                     _ => (false, false),
                 };
-                match mpipc::send_command(
-                    mpipc::Command::Library(command.into()),
+                match chilen_ipc::send_command(
+                    chilen_ipc::Command::Library(command.into()),
                     &socket_name,
                     &socket_type,
                 ) {
@@ -262,8 +264,8 @@ pub fn run_cli_command(
                 }
             }
             Command::Playback { command } => {
-                let cmd = mpipc::Command::Playback(command.into());
-                match mpipc::send_command(cmd, &socket_name, &socket_type) {
+                let cmd = chilen_ipc::Command::Playback(command.into());
+                match chilen_ipc::send_command(cmd, &socket_name, &socket_type) {
                     Ok(response) => match response {
                         Response::Ok => println!("Ok"),
                         Response::Playback(response) => println!("{response}"),
@@ -285,10 +287,10 @@ pub fn run_cli_command(
         }
     } else {
         #[cfg(feature = "gui")]
-        trace!("No command specified, starting a deamon with GUI");
+        trace!("No command specified, starting a daemon with GUI");
 
         #[cfg(not(feature = "gui"))]
-        trace!("No command specified, starting the deamon");
+        trace!("No command specified, starting the daemon");
 
         #[cfg(feature = "gui")]
         let identity = IDENTITY_GUI.to_string();
@@ -296,14 +298,14 @@ pub fn run_cli_command(
         #[cfg(not(feature = "gui"))]
         let identity = IDENTITY_HEADLESS.to_string();
 
-        let conf = match daemon::Config::try_from_name(&identity, &socket_name) {
+        let conf = match chilen_daemon::Config::try_from_name(&identity, &socket_name) {
             Ok(conf) => conf,
             Err(e) => {
                 error!("Could not create a config for the daemon: {e}");
                 return Err(());
             }
         };
-        let handle = thread::spawn(|| match daemon::start(conf) {
+        let handle = thread::spawn(|| match chilen_daemon::start(conf) {
             Ok(_) => info!("Daemon exited"),
             Err(e) => error!("Daemon failed: {e}"),
         });

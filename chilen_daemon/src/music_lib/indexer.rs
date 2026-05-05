@@ -4,12 +4,12 @@ use std::{
     thread,
 };
 
+use chilen_ipc::library::LibraryError;
 use lofty::{file::TaggedFileExt, read_from_path};
 use log::{info, trace, warn};
-use mpipc::library::LibraryError;
 use walkdir::WalkDir;
 
-use crate::music_lib::{MUSIC_DIR, Track, cache::covers::LoadMode};
+use crate::music_lib::{MUSIC_DIR, Track, covers::LoadMode};
 
 fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, LibraryError> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
@@ -68,7 +68,6 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, L
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-// TODO: Crate a custom enum to replace the `Option` enum
 pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, LibraryError> {
     let music_dir = MUSIC_DIR.read().unwrap().clone().unwrap();
 

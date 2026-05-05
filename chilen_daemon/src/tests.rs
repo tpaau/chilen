@@ -1,4 +1,4 @@
-use mpipc::SocketType;
+use chilen_ipc::SocketType;
 
 use crate::{AddrClaimMode, Error, get_listener};
 

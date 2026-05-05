@@ -1,6 +1,9 @@
-# music-player
+# Chilen
 
 Prototype local music player, very much a WIP right now.
+
+There's currently no GUI, all interactions are either done through the provided CLI interface or via
+MPRIS if you are on Linux.
 
 
 ## Table of contents
@@ -18,12 +21,12 @@ Prototype local music player, very much a WIP right now.
 <a name="features"></a>
 ## Features
 - Blazingly fast and memory safe 🚀🦀
-- Modular design ideal for creating alternate frontents
+- Modular design ideal for creating alternate frontends
 
 
 <a name="building-from-source"></a>
 ## Building from source
-You will need to have Rust installed on your system to compile this program.
+You will need to have Rust *nightly* installed on your system to compile this program.
 
 On Linux, you will also need the development files for `alsa-libs`. They
 usually can be installed as `alsa-libs-devel`:
@@ -44,7 +47,7 @@ Then, you can run the player with `cargo`:
 cargo run -- <PLAYER_ARGUMENTS>
 ```
 
-You can find the compiled binary in `target/release/music-player`.
+You can find the compiled binary in `target/debug/chilen`.
 
 
 <a name="usage"></a>
@@ -52,8 +55,10 @@ You can find the compiled binary in `target/release/music-player`.
 
 > [!NOTE]
 > Not all commands are listed here.
+>
+> Pass the `-h|--help` option to see all available commands.
 
-Currently, the player only comes with a command-line interface. This is only to test if the deamon
+Currently, the player only comes with a command-line interface. This is only to test if the daemon
 works properly and will obviously not be the primary way of interacting with the player once it's
 finished.
 
@@ -97,6 +102,11 @@ cargo run -- playlist list
 
 <a name="usage_playback"></a>
 ### Controlling playback
+
+> [!TIP]
+> If you are on Linux, you can control audio playback with MPRIS.
+>
+> Desktop integrations for macOS and Windows are in the pipeline.
 
 **Adding tracks to the queue by paths**
 ```bash

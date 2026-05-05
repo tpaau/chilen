@@ -274,14 +274,14 @@ pub enum PlaybackCommand {
     GetPlaybackState,
     /// Set a new queue for the player.
     ///
-    /// If any of the provided tracks are not registered by the music player (added after last
-    /// library reload), the daemon will return
+    /// If any of the provided tracks are not registered by chilen (added after last library
+    /// reload), the daemon will return
     /// [`LibraryError::NoSuchTrack`](crate::library::LibraryError::NoSuchTrack).
     SetQueue(Vec<PathBuf>),
     /// Append tracks to the queue.
     ///
-    /// If any of the provided tracks are not registered by the music player (added after last
-    /// library reload), the daemon will return
+    /// If any of the provided tracks are not registered by chilen (added after last library
+    /// reload), the daemon will return
     /// [`LibraryError::NoSuchTrack`](crate::library::LibraryError::NoSuchTrack).
     AppendToQueue(Vec<PathBuf>),
     /// Load a playlist and append its tracks to the queue.

@@ -1,6 +1,6 @@
-use mpipc::playback::LoopState;
+use chilen_ipc::playback::LoopState;
 #[cfg(feature = "shuffle")]
-use mpipc::playback::ShuffleState;
+use chilen_ipc::playback::ShuffleState;
 
 use crate::{music_lib::state::Track, playback::state::PlayerState};
 

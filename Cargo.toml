@@ -1,5 +1,5 @@
 [package]
-name = "music-player"
+name = "chilen"
 version = "0.1.0"
 authors = [ "tpaau <tpaau-17db@tutamail.com" ]
 edition = "2024"
@@ -9,17 +9,17 @@ license = "LGPL-3.0-or-later"
 env_logger = "0.11.10"
 log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
-mpipc = { path = "mpipc" }
-daemon = { path = "daemon", default-features = false, features = [ "shuffle" ] }
+chilen_ipc = { path = "chilen_ipc" }
+chilen_daemon = { path = "chilen_daemon", default-features = false, features = [ "shuffle" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.149"
 iced = { version = "0.14.0", optional = true }
 
 [workspace]
-members = [ "daemon", "mpipc" ]
+members = [ "chilen_daemon", "chilen_ipc" ]
 
 [features]
-mpris = [ "daemon/mpris" ]
+mpris = [ "chilen_daemon/mpris" ]
 gui = [ "dep:iced" ]
 linux_package = [ "mpris", "gui" ]
 linux_flatpak = [ "mpris", "gui" ]

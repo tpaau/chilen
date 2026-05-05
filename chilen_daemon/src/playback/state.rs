@@ -7,19 +7,19 @@ use std::{
     time::Duration,
 };
 
-use log::{error, trace};
-use mpipc::{
+use chilen_ipc::{
     Event,
     library::LibraryError,
     playback::{
         LoopState, PlaybackError, PlaybackEvent, PlaybackRate, PlaybackState, PlayerVolume,
     },
 };
+use log::{error, trace};
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "shuffle")]
-use mpipc::playback::ShuffleState;
+use chilen_ipc::playback::ShuffleState;
 #[cfg(feature = "shuffle")]
 use rand::seq::SliceRandom;
 
@@ -153,13 +153,17 @@ impl PlayerState {
         ]
     }
 
+    #[cfg(feature = "mpris")]
+    fn rate_modification_allowed() -> bool {
+        let conf_guard = super::CONFIG.read().unwrap();
+        conf_guard.as_ref().unwrap().allow_rate_modification
+    }
+
     /// Returns the minimum playback rate taking into account whether the playback rate
     /// modification is allowed.
     #[cfg(feature = "mpris")]
     pub fn get_actual_min_rate(&self) -> f64 {
-        let conf_guard = super::CONFIG.read().unwrap();
-        let conf = conf_guard.as_ref().unwrap();
-        if conf.allow_rate_modification {
+        if Self::rate_modification_allowed() {
             self.playback_rate.get_min()
         } else {
             self.playback_rate.get_value()
@@ -170,9 +174,7 @@ impl PlayerState {
     /// modification is allowed.
     #[cfg(feature = "mpris")]
     pub fn get_actual_max_rate(&self) -> f64 {
-        let conf_guard = super::CONFIG.read().unwrap();
-        let conf = conf_guard.as_ref().unwrap();
-        if conf.allow_rate_modification {
+        if Self::rate_modification_allowed() {
             self.playback_rate.get_max()
         } else {
             self.playback_rate.get_value()
@@ -268,7 +270,7 @@ impl PlayerState {
                 self.shuffle_state,
             )));
             let _ = send_event(Event::PlaybackEvent(
-                mpipc::playback::PlaybackEvent::QueueChanged(
+                chilen_ipc::playback::PlaybackEvent::QueueChanged(
                     if self.shuffle_state == ShuffleState::On {
                         self.shuffled_tracks
                             .clone()

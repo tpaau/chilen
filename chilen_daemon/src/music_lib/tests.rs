@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use mpipc::library::LibraryError;
+use chilen_ipc::library::LibraryError;
 
 #[cfg(test)]
 use crate::music_lib::{

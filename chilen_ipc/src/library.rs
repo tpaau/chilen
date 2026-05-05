@@ -2,6 +2,7 @@ use std::{path::PathBuf, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
+// TODO: Add more tags for this
 /// Struct representing a track from the [music library](MusicLibrary).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Track {
@@ -21,6 +22,7 @@ pub struct Track {
     // TODO: Same as with artist
     /// The track genre.
     pub genre: Option<String>,
+    // TODO: Add easy access to synced lyrics
     /// Possibly synchronized lyrics text.
     pub lyrics: Option<String>,
     /// Contents of the comment tag.

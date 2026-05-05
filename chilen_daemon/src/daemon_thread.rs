@@ -7,7 +7,7 @@ use std::{
 use interprocess::local_socket::Stream;
 use log::{error, info, trace, warn};
 
-use mpipc::{Command, Response, library::LibraryCommand};
+use chilen_ipc::{Command, Response, library::LibraryCommand};
 use rmp_serde::{Serializer, from_read};
 use serde::Serialize;
 
@@ -15,18 +15,18 @@ use crate::{
     Event,
     music_lib::{
         self, add_tracks,
-        cache::covers::LoadMode,
+        covers::LoadMode,
         create_playlist, delete_playlists, import_playlist_from_m3u8, remove_tracks,
         state::{get_library, save_library},
     },
     playback, send_event,
 };
 
-fn respond(conn: &mut BufReader<&Stream>, msg: &Response) -> Result<(), mpipc::Error> {
+fn respond(conn: &mut BufReader<&Stream>, msg: &Response) -> Result<(), chilen_ipc::Error> {
     let mut data = Vec::new();
     if let Err(e) = msg.serialize(&mut Serializer::new(&mut data)) {
         error!("Could not prepare the command for the client: {e}");
-        return Err(mpipc::Error::EncodingError);
+        return Err(chilen_ipc::Error::EncodingError);
     }
 
     match conn.get_mut().write_all(&data) {
@@ -34,7 +34,7 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &Response) -> Result<(), mpipc::E
         Err(e) => {
             error!("Failed sending the response to the client: {e}");
             warn!("The client likely crashed or was closed forcefully, dropping the connection");
-            Err(mpipc::Error::SendingError)
+            Err(chilen_ipc::Error::SendingError)
         }
     }
 }
@@ -57,7 +57,8 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                 Command::Shutdown => {
                     info!("Received shutdown command from the client");
                     trace!("Closing client connection (shutdown)");
-                    if let Err(mpipc::Error::SendingError) = respond(&mut conn, &Response::Ok) {
+                    if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &Response::Ok)
+                    {
                         break;
                     }
                     if let Err(e) = send_event(Event::Shutdown) {
@@ -69,62 +70,73 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                 Command::Library(cmd) => match cmd {
                     LibraryCommand::NewPlaylist { name, tracks } => {
                         if let Err(e) = create_playlist(name, &tracks) {
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                             continue;
                         }
-                        if let Err(mpipc::Error::SendingError) = respond(&mut conn, &Response::Ok) {
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Ok)
+                        {
                             break;
                         }
                     }
                     LibraryCommand::PlaylistFromM3U8 { name, m3u8_file } => {
                         if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                             continue;
                         }
-                        if let Err(mpipc::Error::SendingError) = respond(&mut conn, &Response::Ok) {
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Ok)
+                        {
                             break;
                         }
                     }
                     LibraryCommand::DeletePlaylists { names } => {
                         if let Err(e) = delete_playlists(names)
-                            && let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
+                            && let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            )
                         {
                             break;
                         }
                         if let Err(e) = save_library() {
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                             continue;
                         }
-                        if let Err(mpipc::Error::SendingError) = respond(&mut conn, &Response::Ok) {
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Ok)
+                        {
                             break;
                         }
                     }
                     LibraryCommand::AddTracksToPlaylist { name, tracks } => {
                         match add_tracks(&name, tracks) {
                             Ok(_) => {
-                                if let Err(mpipc::Error::SendingError) =
+                                if let Err(chilen_ipc::Error::SendingError) =
                                     respond(&mut conn, &Response::Ok)
                                 {
                                     break;
                                 }
                             }
                             Err(e) => {
-                                if let Err(mpipc::Error::SendingError) = respond(
+                                if let Err(chilen_ipc::Error::SendingError) = respond(
                                     &mut conn,
-                                    &Response::Error(mpipc::Error::LibraryError(e)),
+                                    &Response::Error(chilen_ipc::Error::LibraryError(e)),
                                 ) {
                                     break;
                                 }
@@ -134,16 +146,16 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     LibraryCommand::RemoveTracksFromPlaylist { name, ids } => {
                         match remove_tracks(&name, ids) {
                             Ok(_) => {
-                                if let Err(mpipc::Error::SendingError) =
+                                if let Err(chilen_ipc::Error::SendingError) =
                                     respond(&mut conn, &Response::Ok)
                                 {
                                     break;
                                 }
                             }
                             Err(e) => {
-                                if let Err(mpipc::Error::SendingError) = respond(
+                                if let Err(chilen_ipc::Error::SendingError) = respond(
                                     &mut conn,
-                                    &Response::Error(mpipc::Error::LibraryError(e)),
+                                    &Response::Error(chilen_ipc::Error::LibraryError(e)),
                                 ) {
                                     break;
                                 }
@@ -152,48 +164,51 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     }
                     LibraryCommand::GetLibrary => match get_library() {
                         Ok(lib) => {
-                            if let Err(mpipc::Error::SendingError) =
+                            if let Err(chilen_ipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Library(lib.into()))
                             {
                                 break;
                             }
                         }
                         Err(e) => {
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                         }
                     },
                     LibraryCommand::Reload => match music_lib::state::load(LoadMode::Load) {
                         Ok(_) => {
-                            if let Err(mpipc::Error::SendingError) =
+                            if let Err(chilen_ipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Ok)
                             {
                                 break;
                             }
                         }
                         Err(e) => {
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                         }
                     },
                     LibraryCommand::Rebuild => match music_lib::state::load(LoadMode::Rebuild) {
                         Ok(_) => {
-                            if let Err(mpipc::Error::SendingError) =
+                            if let Err(chilen_ipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Ok)
                             {
                                 break;
                             }
                         }
                         Err(e) => {
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                         }
@@ -203,7 +218,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     trace!("Sending initial events to the client");
                     match get_library() {
                         Ok(lib) => {
-                            if let Err(mpipc::Error::SendingError) = respond(
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
                                 &mut conn,
                                 &Response::Event(Event::LibraryChanged(lib.into())),
                             ) {
@@ -222,7 +237,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                         }
                     };
                     for event in events {
-                        if let Err(mpipc::Error::SendingError) =
+                        if let Err(chilen_ipc::Error::SendingError) =
                             respond(&mut conn, &Response::Event(event))
                         {
                             return;
@@ -232,7 +247,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     loop {
                         match trx.recv() {
                             Ok(event) => {
-                                if let Err(mpipc::Error::SendingError) =
+                                if let Err(chilen_ipc::Error::SendingError) =
                                     respond(&mut conn, &Response::Event(event))
                                 {
                                     break;
@@ -246,7 +261,8 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                 }
                 Command::Disconnect => {
                     trace!("Thread {index} closing client connection (client request)");
-                    if let Err(mpipc::Error::SendingError) = respond(&mut conn, &Response::Ok) {
+                    if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &Response::Ok)
+                    {
                         break;
                     }
                     let _ = send_event(Event::ConnectionClosed);
@@ -254,7 +270,9 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                 }
                 Command::Ping => {
                     trace!("Got a ping command from the client, responding with pong");
-                    if let Err(mpipc::Error::SendingError) = respond(&mut conn, &Response::Pong) {
+                    if let Err(chilen_ipc::Error::SendingError) =
+                        respond(&mut conn, &Response::Pong)
+                    {
                         break;
                     }
                 }
@@ -263,9 +281,10 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                         Ok(cmd) => cmd,
                         Err(e) => {
                             error!("Could not parse the playback command: {e}");
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::LibraryError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
+                            ) {
                                 break;
                             }
                             continue;
@@ -273,15 +292,18 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     };
                     match playback::run_command(cmd) {
                         Ok(response) => {
-                            if let Err(mpipc::Error::SendingError) = respond(&mut conn, &response) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &response)
+                            {
                                 break;
                             }
                         }
                         Err(e) => {
                             error!("Could not execute the playback command: {e}");
-                            if let Err(mpipc::Error::SendingError) =
-                                respond(&mut conn, &Response::Error(mpipc::Error::PlaybackError(e)))
-                            {
+                            if let Err(chilen_ipc::Error::SendingError) = respond(
+                                &mut conn,
+                                &Response::Error(chilen_ipc::Error::PlaybackError(e)),
+                            ) {
                                 break;
                             }
                         }
