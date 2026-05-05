@@ -7,9 +7,9 @@
 This library provides common data types and functions used to communicate with the chilen daemon.
 No additional crates are required to create a simple client.
 
-Under the hood, [`chilen_ipc`] uses [`interprocess`] and [`rmp_serde`] to talk to the chilen daemon
-on a local socket. The type of socket used depends on your platform, and the startup configuration
-of the chilen daemon.
+Under the hood, [`chilen_ipc`](crate) uses [`interprocess`] and [`rmp_serde`] to talk to the chilen
+daemon on a local socket. The type of socket used depends on your platform, and the startup
+configuration of the chilen daemon.
 
 The daemon communicates by listening for [commands](Command), dispatching them, and sending back
 [responses](Response). It can also stream [events](Event) to the client whenever there is an

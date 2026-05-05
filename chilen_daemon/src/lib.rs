@@ -371,6 +371,9 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
 }
 
 /// Set whether clients can send raise requests to the daemon.
+///
+/// Will fail with [`Error::ConfigNotInitialized`](super::Error::ConfigNotInitialized) if the daemon
+/// isn't running.
 #[cfg(any(feature = "mpris", doc))]
 pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
     use crate::playback::CONFIG;
@@ -389,7 +392,7 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
 /// This has the same effect as sending a [`Command::Shutdown`] to the `daemon`, but it bypasses
 /// the requirement to connect to it over a local socket.
 ///
-/// If a daemon is not running, [`Error::NoDaemonRunning`] will be returned.
+/// If a daemon is not running, [`Error::DaemonNotRunning`] will be returned.
 pub fn stop() -> Result<(), Error> {
     if send_event(Event::Shutdown).is_err() {
         error!("The daemon doesn't seem to be running");

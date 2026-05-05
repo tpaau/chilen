@@ -269,8 +269,7 @@ pub enum PlaybackCommand {
     TogglePlaying,
     /// Get the [`PlaybackState`] of the player.
     ///
-    /// The daemon will respond with [`Response::PlaybackState`](crate::Response::PlaybackState) if
-    /// successful.
+    /// The daemon will respond with [`PlaybackResponse::PlaybackState`] if successful.
     GetPlaybackState,
     /// Set a new queue for the player.
     ///
