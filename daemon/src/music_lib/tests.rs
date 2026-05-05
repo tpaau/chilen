@@ -76,16 +76,19 @@ fn playlist_creation() {
     let tracks = Track::unique_tracks(10);
     let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
 
+    assert!(lib.find_playlist("Test1").is_none());
     assert_eq!(lib.playlists.len(), 0);
     lib.create_playlist("Test1".to_string(), &Some(vec![tracks[6].path.clone()]))
         .unwrap();
     assert_eq!(lib.playlists.len(), 1);
+    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
 
     assert_eq!(
         lib.create_playlist("Test1".to_string(), &None).unwrap_err(),
         LibraryError::PlaylistExists
     );
     assert_eq!(lib.playlists.len(), 1);
+    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
 
     assert_eq!(
         lib.create_playlist("Test2".to_string(), &Some(vec!["/nonexistent/path".into()]))
@@ -93,18 +96,26 @@ fn playlist_creation() {
         LibraryError::NoSuchTrack
     );
     assert_eq!(lib.playlists.len(), 1);
+    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
 }
 
 #[test]
 fn playlist_deletion() {
     let mut lib = MusicLibrary::new_from_tracks(Track::unique_tracks(10));
 
+    assert!(lib.find_playlist("Test1").is_none());
     lib.create_playlist("Test1".to_string(), &None).unwrap();
     lib.create_playlist("Test2".to_string(), &None).unwrap();
     lib.create_playlist("Test3".to_string(), &None).unwrap();
+    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
+    assert_eq!(lib.find_playlist("Test2").unwrap().name, "Test2");
+    assert_eq!(lib.find_playlist("Test3").unwrap().name, "Test3");
+
     assert_eq!(lib.playlists.len(), 3);
     lib.remove_playlists(vec!["Test1".to_string()]).unwrap();
     assert_eq!(lib.playlists.len(), 2);
+    assert!(lib.find_playlist("Test1").is_none());
+
     assert_eq!(
         lib.remove_playlists(vec![
             "Test2".to_string(),
@@ -115,12 +126,63 @@ fn playlist_deletion() {
         LibraryError::DuplicateItems
     );
     assert_eq!(lib.playlists.len(), 2);
+
     assert_eq!(
         lib.remove_playlists(vec!["Test1".to_string()]).unwrap_err(),
         LibraryError::NoSuchPlaylist
     );
     assert_eq!(lib.playlists.len(), 2);
+
     lib.remove_playlists(vec!["Test2".to_string(), "Test3".to_string()])
         .unwrap();
     assert_eq!(lib.playlists.len(), 0);
+    assert!(lib.find_playlist("Test1").is_none());
+    assert!(lib.find_playlist("Test2").is_none());
+    assert!(lib.find_playlist("Test3").is_none());
+}
+
+#[test]
+fn track_append() {
+    let tracks = Track::unique_tracks(10);
+    let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
+
+    lib.create_playlist("Test1".to_string(), &None).unwrap();
+    lib.add_tracks("Test1", vec![tracks[0].path.clone()])
+        .unwrap();
+    assert_eq!(
+        lib.add_tracks("Test2", vec![tracks[0].path.clone()])
+            .unwrap_err(),
+        LibraryError::NoSuchPlaylist
+    );
+    assert_eq!(
+        lib.add_tracks("Test1", vec!["/nonexistent/path".into()])
+            .unwrap_err(),
+        LibraryError::NoSuchTrack
+    );
+}
+
+#[test]
+fn lib_track_removal() {
+    let tracks = Track::unique_tracks(10);
+    let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
+
+    lib.create_playlist(
+        "Test1".to_string(),
+        &Some(vec![
+            tracks[0].path.clone(),
+            tracks[1].path.clone(),
+            tracks[2].path.clone(),
+        ]),
+    )
+    .unwrap();
+
+    lib.remove_tracks("Test1", vec![0]).unwrap();
+    assert_eq!(
+        lib.remove_tracks("Test2", vec![1]).unwrap_err(),
+        LibraryError::NoSuchPlaylist
+    );
+    assert_eq!(
+        lib.remove_tracks("Test1", vec![2]).unwrap_err(),
+        LibraryError::IndexOutOfBounds
+    );
 }

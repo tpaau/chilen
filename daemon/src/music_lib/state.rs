@@ -398,7 +398,6 @@ impl MusicLibrary {
         Ok(tracks)
     }
 
-    // TODO: Add tests for this
     pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), LibraryError> {
         playlists.sort();
         let mut unique = playlists.clone();
@@ -459,7 +458,6 @@ impl MusicLibrary {
         Ok(())
     }
 
-    // TODO: Add tests for this
     pub fn add_tracks(&mut self, name: &str, tracks: Vec<PathBuf>) -> Result<(), LibraryError> {
         trace!("Adding tracks to playlist \"{name}\"");
 
@@ -492,7 +490,6 @@ impl MusicLibrary {
         Ok(())
     }
 
-    // TODO: Add tests for this
     pub fn remove_tracks(&mut self, name: &str, tracks: Vec<usize>) -> Result<(), LibraryError> {
         trace!("Removing tracks from playlist \"{name}\"");
 
