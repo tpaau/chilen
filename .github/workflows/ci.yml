@@ -10,7 +10,8 @@ jobs:
     name: Check format
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
+
     - run: rustup component add --toolchain nightly rustfmt
     - run: cargo fmt --all --check
 
@@ -18,7 +19,7 @@ jobs:
     name: Deny
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: EmbarkStudios/cargo-deny-action@v2
 
   test:
@@ -31,13 +32,11 @@ jobs:
           - beta
           - nightly
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run:
-          sudo apt-get update -y
-          sudo apt install -y ${{ env.DEPS_APT }}
-      - name: Setup Rust
-        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+      - uses: actions/checkout@v6
+
+      - run: sudo apt-get update -y
+      - run: sudo apt install -y ${{ env.DEPS_APT }}
+      - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
       - run: cargo build --verbose
 
@@ -47,22 +46,29 @@ jobs:
       - name: Run tests with default configuration
         run: cargo test --workspace --verbose
 
-  docs:
-    name: Docs
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Generate rustdoc documentation
-        run: cargo doc --frozen --no-deps -p chilen_ipc -p chilen_daemon
+  # docs:
+  #   name: Docs
+  #   needs: test
+  #   permissions:
+  #     pages: write
+  #     id-token: write
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
 
-      - run: mkdir -p publish/
-      - run: mv ./target/doc/* ./publish/
-      - run: mv ./docs/site/* ./publish/
+  #     - run: sudo apt-get update -y
+  #     - run: sudo apt install -y ${{ env.DEPS_APT }}
 
-      - name: Deploy docs
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.PAGES_TOKEN }}
-          publish_dir: ./publish
-          force_orphan: true        
+  #     - name: Generate rustdoc documentation
+  #       run: cargo doc --no-deps -p chilen_ipc -p chilen_daemon
+
+  #     - run: mkdir -p publish/
+  #     - run: cp -r ./target/doc/* ./publish/
+
+  #     - name: Deploy
+  #       if: github.ref == 'refs/heads/main'
+  #       uses: peaceiris/actions-gh-pages@v4
+  #       with:
+  #         personal_token: ${{ secrets.PERSONAL_TOKEN }}
+  #         publish_dir: ./publish
+  #         force_orphan: true        
