@@ -5,6 +5,9 @@ Prototype local music player, very much a WIP right now.
 There's currently no GUI, all interactions are either done through the provided CLI interface or via
 MPRIS if you are on Linux.
 
+Docs:
+- [chilen_daemon](https://tpaau.github.io/chilen/chilen_daemon/)
+- [chilen_ipc](https://tpaau.github.io/chilen/chilen_ipc/)
 
 ## Table of contents
 - [Features](#features)
