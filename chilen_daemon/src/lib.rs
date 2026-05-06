@@ -372,8 +372,7 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
 
 /// Set whether clients can send raise requests to the daemon.
 ///
-/// Will fail with [`Error::ConfigNotInitialized`](super::Error::ConfigNotInitialized) if the daemon
-/// isn't running.
+/// Will fail with [`Error::ConfigNotInitialized`] if the daemon isn't running.
 #[cfg(any(feature = "mpris", doc))]
 pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
     use crate::playback::CONFIG;

@@ -1,0 +1,68 @@
+name: CI
+
+on: [push, pull_request]
+env:
+  CARGO_TERM_COLOR: always
+  DEPS_APT: libasound2-dev
+
+jobs:
+  build:
+    name: Check format
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - run: rustup component add --toolchain nightly rustfmt
+    - run: cargo fmt --all --check
+
+  cargo-deny:
+    name: Deny
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: EmbarkStudios/cargo-deny-action@v2
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toolchain:
+          - stable
+          - beta
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run:
+          sudo apt-get update -y
+          sudo apt install -y ${{ env.DEPS_APT }}
+      - name: Setup Rust
+        run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+
+      - run: cargo build --verbose
+
+      - name: Run tests with no default features
+        run: cargo test --workspace --no-default-features --verbose
+
+      - name: Run tests with default configuration
+        run: cargo test --workspace --verbose
+
+  docs:
+    name: Docs
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate rustdoc documentation
+        run: cargo doc --frozen --no-deps -p chilen_ipc -p chilen_daemon
+
+      - run: mkdir -p publish/
+      - run: mv ./target/doc/* ./publish/
+      - run: mv ./docs/site/* ./publish/
+
+      - name: Deploy docs
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.PAGES_TOKEN }}
+          publish_dir: ./publish
+          force_orphan: true        
