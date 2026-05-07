@@ -373,9 +373,7 @@ pub fn send_command(
     let response = receive_response(&mut conn)?;
 
     if cmd == Command::Shutdown {
-        trace!(
-            "Not trying to close the connection to the daemon, it will likely shut down by then"
-        );
+        trace!("Not trying to close the connection to the daemon");
     } else if let Err(e) = disconnect(&mut conn) {
         error!("Could not close the connection to the daemon: {e}");
     }

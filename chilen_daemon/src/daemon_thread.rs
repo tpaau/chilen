@@ -1,6 +1,5 @@
 use std::{
     io::{BufReader, Write},
-    sync::mpsc::Receiver,
     thread::{self, JoinHandle},
 };
 
@@ -19,8 +18,12 @@ use crate::{
         create_playlist, delete_playlists, import_playlist_from_m3u8, remove_tracks,
         state::{get_library, save_library},
     },
-    playback, send_event,
+    playback, send_event, subscribe_to_events,
 };
+
+pub(super) enum ThreadCommand {
+    Shutdown,
+}
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &Response) -> Result<(), chilen_ipc::Error> {
     let mut data = Vec::new();
@@ -39,7 +42,7 @@ fn respond(conn: &mut BufReader<&Stream>, msg: &Response) -> Result<(), chilen_i
     }
 }
 
-pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandle<()> {
+pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
     thread::spawn(move || {
         trace!("Handling client connection");
         loop {
@@ -61,8 +64,8 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     {
                         break;
                     }
-                    if let Err(e) = send_event(Event::Shutdown) {
-                        error!("Could not send the event to the daemon: {e}");
+                    if let Err(e) = crate::send_command(ThreadCommand::Shutdown) {
+                        error!("Could not send the command to the daemon: {e}");
                         trace!("The connection will be closed regardless");
                     }
                     break;
@@ -247,7 +250,7 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                     }
                     trace!("Streaming daemon events to the client");
                     loop {
-                        match trx.recv() {
+                        match subscribe_to_events().recv() {
                             Ok(event) => {
                                 if let Err(chilen_ipc::Error::SendingError) =
                                     respond(&mut conn, &Response::Event(event))

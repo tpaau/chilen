@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![feature(doc_cfg)]
+#![feature(mpmc_channel)]
 
 mod daemon_thread;
 mod music_lib;
@@ -12,25 +13,31 @@ use std::{
     env::{home_dir, temp_dir},
     fs::remove_file,
     path::PathBuf,
-    sync::{
-        Arc, LazyLock, RwLock,
-        mpsc::{self, channel},
-    },
+    sync::{Arc, LazyLock, RwLock, mpmc, mpsc},
     thread,
 };
 
 use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::ListenerExt};
 use log::{debug, error, info, trace, warn};
 
-use chilen_ipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_command};
+use chilen_ipc::{Command, DEFAULT_SOCKET_NAME, Event, Response};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{CACHE_DIR, covers::LoadMode, state};
+use crate::{
+    daemon_thread::ThreadCommand,
+    music_lib::{CACHE_DIR, covers::LoadMode, state},
+};
 
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = chilen_ipc::SocketType;
 
-static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
+static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpmc::Sender<Event>>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+static EVENT_RECEIVER: LazyLock<Arc<RwLock<Option<mpmc::Receiver<Event>>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+static COMMAND_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<ThreadCommand>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
@@ -215,6 +222,8 @@ fn cleanup() {
     trace!("Cleaning up...");
     *EVENT_SENDER.write().unwrap() = None;
     *CONFIG.write().unwrap() = None;
+    *EVENT_RECEIVER.write().unwrap() = None;
+    *COMMAND_SENDER.write().unwrap() = None;
     music_lib::cleanup();
     state::cleanup();
     playback::cleanup();
@@ -293,7 +302,7 @@ fn get_listener(
                     }
                     AddrClaimMode::ClaimIfUnresponsive => {
                         info!("Attempting to claim the socket address");
-                        match send_command(Command::Ping, socket_name, socket_type) {
+                        match chilen_ipc::send_command(Command::Ping, socket_name, socket_type) {
                             Ok(response) => {
                                 if response == Response::Pong {
                                     error!(
@@ -366,25 +375,47 @@ fn get_listener(
     }
 }
 
+pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
+    match &**COMMAND_SENDER.read().as_ref().unwrap() {
+        Some(sender) => match sender.send(command) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("Could not send the thread command to the daemon: {e}");
+                Err(e.to_string())
+            }
+        },
+        None => Err(String::from(
+            "Could ont obtain the command channel, this is expected during testing",
+        )),
+    }
+}
+
 /// Send an event to the daemon thread.
 ///
 /// Will always return an error when the daemon isn't initialized, for example during testing.
 pub(crate) fn send_event(event: Event) -> Result<(), String> {
-    match EVENT_SENDER.read().as_mut() {
-        Ok(guard) => match guard.clone() {
-            Some(guard) => match guard.send(event) {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    error!("Could not send the event to the daemon: {e}");
-                    Err(e.to_string())
-                }
-            },
-            None => Err(String::from(
-                "Could not obtain the event channel, this is expected during testing",
-            )),
+    match &**EVENT_SENDER.read().as_ref().unwrap() {
+        Some(guard) => match guard.send(event) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                error!("Could not send the event to the daemon: {e}");
+                Err(e.to_string())
+            }
         },
-        Err(e) => Err(e.to_string()),
+        None => Err(String::from(
+            "Could not obtain the event channel, this is expected during testing",
+        )),
     }
+}
+
+pub(crate) fn subscribe_to_events() -> mpmc::Receiver<Event> {
+    EVENT_RECEIVER
+        .read()
+        .as_ref()
+        .unwrap()
+        .as_ref()
+        .unwrap()
+        .clone()
 }
 
 /// Set whether clients can send raise requests to the daemon.
@@ -466,61 +497,48 @@ pub fn start(config: Config) -> Result<(), Error> {
         playback::init(config.playback_config);
     });
 
-    let senders = Arc::new(RwLock::new(Vec::new()));
-
     thread::spawn({
-        let senders_clone = senders.clone();
-        info!("Listening for incoming connections");
         move || {
             for (index, conn) in listener.incoming().filter_map(handle_error).enumerate() {
-                let (ttx, trx) = channel();
-                senders_clone.clone().write().unwrap().push(ttx);
                 // Size for `u64` is 8 bytes, and for `usize` it's 4 bytes on 32-bit and 8
                 // bytes on 64-bit, so the conversion can be done safely if I understand this
                 // correctly :)
-                daemon_thread::spawn(conn, trx, u64::try_from(index).unwrap());
+                daemon_thread::spawn(conn, u64::try_from(index).unwrap());
             }
         }
     });
 
-    let mut guard = EVENT_SENDER.write().unwrap();
-    // I could check if the sender is still connected here
-    if guard.as_ref().is_some() {
-        error!("Could not start the daemon because the event channel is already initialized");
-        info!("(Did you try to start a second daemon in the same context?)");
+    let mut sender_guard = EVENT_SENDER.write().unwrap();
+    let mut receiver_guard = EVENT_RECEIVER.write().unwrap();
+    if sender_guard.as_ref().is_some() || receiver_guard.as_ref().is_some() {
+        error!("The event channel is already initialized!");
         return Err(Error::EventChannelInitialized);
     }
-    let (event_sender, event_receiver) = mpsc::channel();
-    *guard = Some(event_sender);
-    drop(guard);
+    let (sender, receiver) = mpmc::channel();
+    *sender_guard = Some(sender);
+    *receiver_guard = Some(receiver);
+    drop(sender_guard);
+    drop(receiver_guard);
 
-    loop {
-        // Launching a different daemon overwrites the [EVENT_SENDER] variable, causing the
-        // previous sender to be dropped and the `recv()` method to return an [Err] type.
-        let event = event_receiver.recv().unwrap();
-        let mut guard = senders.write().unwrap();
-        let mut dead = Vec::new();
-        for (i, sender) in guard.iter().enumerate() {
-            if sender.send(event.clone()).is_err() {
-                debug!("Removing dead connection at {}", i);
-                dead.push(i);
-            }
-        }
-        for &ded in dead.iter().rev() {
-            guard.remove(ded);
-        }
+    let mut sender_guard = COMMAND_SENDER.write().unwrap();
+    if sender_guard.as_ref().is_some() {
+        error!("The command channel is already initialized!");
+        return Err(Error::EventChannelInitialized);
+    }
+    let (sender, receiver) = mpsc::channel();
+    *sender_guard = Some(sender);
+    drop(sender_guard);
 
-        match event {
-            Event::Shutdown => {
-                trace!("Received shutdown event");
-                cleanup();
-                info!("Stopped.");
-                return Ok(());
-            }
-            Event::ConnectionClosed => {
-                trace!("Connection with a client closed")
-            }
-            _ => {}
+    // This loop will come in handy as new commands are added
+    // loop {
+    let cmd = receiver.recv().unwrap();
+    match cmd {
+        ThreadCommand::Shutdown => {
+            trace!("Received shutdown event");
+            cleanup();
+            info!("Stopped.");
+            Ok(())
         }
     }
+    // }
 }
