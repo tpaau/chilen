@@ -260,6 +260,7 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                             }
                             Err(e) => {
                                 trace!("Could not receive an event from the daemon: {e}");
+                                break;
                             }
                         }
                     }

@@ -5,7 +5,7 @@ use std::{
 };
 
 use chilen_daemon::{AddrClaimMode, playback};
-use chilen_ipc::{Error, Response, SocketType, connect, library::Playlist, send_command};
+use chilen_ipc::{Error, Event, Response, SocketType, connect, library::Playlist, send_command};
 use clap::crate_name;
 use log::{error, info, trace};
 
@@ -80,8 +80,14 @@ fn event_stream(
     }
 
     loop {
-        let response: Response = match chilen_ipc::receive_response(&mut conn) {
-            Ok(response) => response,
+        let response = match chilen_ipc::receive_response(&mut conn) {
+            Ok(response) => match response {
+                Response::Event(event) => event,
+                _ => {
+                    error!("Got an unexpected response from the daemon: {response:?}");
+                    return Err(());
+                }
+            },
             Err(e) => {
                 error!("Failed to receive a response from the daemon: {e}");
                 return Err(());
@@ -103,6 +109,11 @@ fn event_stream(
             println!("{data}");
         } else {
             println!("{response:?}");
+        }
+
+        if response == Event::Shutdown {
+            info!("Received the shutdown event, closing the connection");
+            return Ok(());
         }
     }
 }

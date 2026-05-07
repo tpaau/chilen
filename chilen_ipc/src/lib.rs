@@ -24,14 +24,14 @@ use crate::{
 /// This can be used for testing, but please do not use this socket name in a finished project.
 pub const DEFAULT_SOCKET_NAME: &str = "DEFAULT_MUSIC_PLAYER.socket";
 
-/// Error related to the `daemon`.
+/// Error related to the daemon.
 ///
 /// Can either originate from a [`Response`] or from a function in this crate.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Error {
     /// The provided command could not be encoded.
     EncodingError,
-    /// The `daemon` response could not be decoded.
+    /// The daemon response could not be decoded.
     DecodingError,
     /// Could not connect to the daemon.
     ConnectionError,
@@ -69,10 +69,10 @@ impl std::fmt::Display for Error {
     }
 }
 
-/// Event from the `daemon` received in [`Response::Event`].
+/// Event from the daemon received in [`Response::Event`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Event {
-    /// Sent before the `daemon` closes.
+    /// Sent before the daemon closes.
     Shutdown,
     /// Sent after the contents of the music library have changed.
     LibraryChanged(MusicLibrary),
@@ -86,7 +86,7 @@ pub enum Event {
     RaiseRequested,
 }
 
-/// Response sent to a client from the `daemon`.
+/// Response sent to a client from the daemon.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Response {
     /// The client command was executed successfully.
@@ -105,30 +105,30 @@ pub enum Response {
     CanRaise(bool),
 }
 
-/// Command that can be executed by a `daemon` instance.
+/// Command that can be executed by a daemon instance.
 ///
 /// The expected response may be different depending on the command sent. If it isn't specified in
 /// the variant documentation, assume [`Response::Ok`] is the expected response.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Command {
-    /// Stop the `daemon` instance.
+    /// Stop the daemon instance.
     ///
-    /// After sending this command, the `daemon` will close almost immediately, so all connections
+    /// After sending this command, the daemon will close almost immediately, so all connections
     /// to it should be considered closed.
     Shutdown,
     /// Subcommand for managing the music library.
     Library(LibraryCommand),
-    /// Stream [events](Event) from the `daemon`.
+    /// Stream [events](Event) from the daemon.
     ///
     /// The daemon will stop accepting requests from the connection this command was executed on.
     EventStream,
-    /// Close the connection to the `daemon`.
+    /// Close the connection to the daemon.
     Disconnect,
     /// Command to the playback module.
     Playback(PlaybackCommand),
-    /// Ping the `daemon`.
+    /// Ping the daemon.
     ///
-    /// The `daemon` will respond to this with [`Response::Pong`] if successful.
+    /// The daemon will respond to this with [`Response::Pong`] if successful.
     Ping,
     /// Check if the daemon can raise.
     GetCanRaise,
@@ -136,7 +136,7 @@ pub enum Command {
     Raise,
 }
 
-/// Defines the socket type to use when attempting to connect to a `daemon`.
+/// Defines the socket type to use when attempting to connect to a daemon.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SocketType {
     /// Only use a namespaced socket with no fallback.
@@ -162,7 +162,7 @@ fn get_fs_socket_path(socket_name: &str) -> PathBuf {
     temp_dir
 }
 
-/// Attempts to get a socket address for `daemon` IPC.
+/// Attempts to get a socket address for daemon IPC.
 ///
 /// # Examples
 /// ```
@@ -242,7 +242,7 @@ pub fn receive_response(conn: &mut BufReader<Stream>) -> Result<Response, Error>
     }
 }
 
-/// Disconnects from the `daemon` by sending the [`Command::Disconnect`] command.
+/// Disconnects from the daemon by sending the [`Command::Disconnect`] command.
 ///
 /// This is a convenience function, its effect could be achieved using utilities already provided
 /// in this crate.
@@ -293,7 +293,7 @@ pub fn disconnect(conn: &mut BufReader<Stream>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Connects to the `daemon` via a local socket and returns the connection [`Stream`].
+/// Connects to the daemon via a local socket and returns the connection [`Stream`].
 ///
 /// # Examples
 /// ```no_run
@@ -327,11 +327,11 @@ pub fn connect(socket_name: &str, socket_type: &SocketType) -> Result<Stream, Er
     Ok(conn)
 }
 
-/// Executes a single `daemon` command on a new connection and closes it.
+/// Executes a single daemon command on a new connection and closes it.
 ///
 /// **Warning:** if this function returns the [`Ok`] variant, this only means that the command was
-/// successfully delivered to the `daemon`. It doesn't necessarily mean it was executed
-/// successfully on the `daemon` side.
+/// successfully delivered to the daemon. It doesn't necessarily mean it was executed
+/// successfully on the daemon side.
 ///
 /// # Examples
 /// ```no_run

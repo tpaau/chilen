@@ -94,7 +94,7 @@ pub enum LibraryCommand {
     },
     /// Import a playlist from an M3U8 file.
     ///
-    /// This is currently unimplemented and will cause the `daemon` to panic.
+    /// This is currently unimplemented and will cause the daemon to panic.
     PlaylistFromM3U8 {
         /// The name for the imported playlist. Must not already exist in the music library.
         ///
@@ -126,7 +126,7 @@ pub enum LibraryCommand {
         name: String,
         /// List of paths to tracks to add to the playlist.
         ///
-        /// **Note:** the `daemon` will return an error if any of the tracks are not registered in
+        /// **Note:** the daemon will return an error if any of the tracks are not registered in
         /// the music library or if the list contains duplicates.
         tracks: Vec<PathBuf>,
     },
@@ -149,7 +149,7 @@ pub enum LibraryCommand {
     },
     /// Get the contents of the [music library](MusicLibrary).
     ///
-    /// The `daemon` will respond to this with [`Response::Library`](crate::Response::Library) if
+    /// The daemon will respond to this with [`Response::Library`](crate::Response::Library) if
     /// successful.
     GetLibrary,
     /// Reload the library and rebuild the cache ignoring already cached covers.
@@ -162,7 +162,7 @@ pub enum LibraryCommand {
     Reload,
 }
 
-/// An error originating from the music library module of the `daemon`.
+/// An error originating from the music library module of the daemon.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum LibraryError {
     /// Could not complete the operation because a [playlist](Playlist) with the provided name

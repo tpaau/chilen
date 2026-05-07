@@ -435,12 +435,12 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
 
 /// Stop a running daemon instance.
 ///
-/// This has the same effect as sending a [`Command::Shutdown`] to the `daemon`, but it bypasses
+/// This has the same effect as sending a [`Command::Shutdown`] to the daemon, but it bypasses
 /// the requirement to connect to it over a local socket.
 ///
 /// If a daemon is not running, [`Error::DaemonNotRunning`] will be returned.
 pub fn stop() -> Result<(), Error> {
-    if send_event(Event::Shutdown).is_err() {
+    if send_command(ThreadCommand::Shutdown).is_err() {
         error!("The daemon doesn't seem to be running");
         Err(Error::DaemonNotRunning)
     } else {
@@ -452,17 +452,17 @@ pub fn stop() -> Result<(), Error> {
 // the daemon to be running work if it is and fail if it's not.
 /// Start the daemon with the given config.
 ///
-/// The `daemon` usually starts listening for commands around 100ms after this function is
+/// The daemon usually starts listening for commands around 100ms after this function is
 /// called on a low-end system, but some commands sent too early might fail if the music library
 /// isn't loaded yet, the playback module is not initialized, or if the MPRIS server hasn't started
 /// yet (if the MPRIS feature is enabled).
 ///
 /// The initialization of the music library is by far the most time-consuming process ran when the
-/// `daemon` starts, and the time it takes vastly depends on the read speeds of the hard drive of
+/// daemon starts, and the time it takes vastly depends on the read speeds of the hard drive of
 /// the host machine and the size of the music library.
 ///
 /// **Note:** This function will block. Launch it in a separate [`thread`] if you want to run the
-/// `daemon` in the background.
+/// daemon in the background.
 ///
 /// # Examples
 /// ```no_run
@@ -535,6 +535,7 @@ pub fn start(config: Config) -> Result<(), Error> {
     match cmd {
         ThreadCommand::Shutdown => {
             trace!("Received shutdown event");
+            let _ = send_event(Event::Shutdown);
             cleanup();
             info!("Stopped.");
             Ok(())

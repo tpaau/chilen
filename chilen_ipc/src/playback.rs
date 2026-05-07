@@ -252,7 +252,7 @@ impl PlaybackRate {
     }
 }
 
-/// Subcommand of [`Command`](crate::Command) for managing audio playback in the `daemon`.
+/// Subcommand of [`Command`](crate::Command) for managing audio playback in the daemon.
 ///
 /// The expected response may be different depending on the command sent. If it isn't specified in
 /// the variant documentation, assume [`Response::Ok`](crate::Response::Ok) is the expected
@@ -299,7 +299,7 @@ pub enum PlaybackCommand {
     SetPlaylist(String),
     /// Get the current [track](Track).
     ///
-    /// The `daemon` will respond to this with [`PlaybackResponse::Track`] if successful.
+    /// The daemon will respond to this with [`PlaybackResponse::Track`] if successful.
     GetCurrentTrack,
     /// Skip to the next track.
     Next,
@@ -309,14 +309,14 @@ pub enum PlaybackCommand {
     SetLoopState(LoopState),
     /// Get the [loop state](LoopState) of the player.
     ///
-    /// The `daemon` will respond to this with [`PlaybackResponse::LoopState`] if successful.
+    /// The daemon will respond to this with [`PlaybackResponse::LoopState`] if successful.
     GetLoopState,
     /// Set the [playback rate](PlaybackRate) of the player.
     ///
-    /// This command will fail if the `daemon` is configured to not allow playback rate
+    /// This command will fail if the daemon is configured to not allow playback rate
     /// modification or if the specified rate value was out of the acceptable range.
     ///
-    /// If the `daemon` is configured not to allow playback rate modification,
+    /// If the daemon is configured not to allow playback rate modification,
     /// [`PlaybackError::FixedRate`] will be returned.
     ///
     /// If the provided rate value is out of the allowed range, [`PlaybackError::RateOutOfRange`]
@@ -324,17 +324,17 @@ pub enum PlaybackCommand {
     SetRate(f64),
     /// Get the [playback rate](PlaybackRate) of the player.
     ///
-    /// The `daemon` will respond to this with [`PlaybackResponse::PlaybackRate`] if
+    /// The daemon will respond to this with [`PlaybackResponse::PlaybackRate`] if
     /// successful.
     GetRate,
     /// Set the [shuffle state](ShuffleState) of the player.
     ///
-    /// The `daemon` will always respond to this command with [`PlaybackError::ShuffleNotSupported`]
+    /// The daemon will always respond to this command with [`PlaybackError::ShuffleNotSupported`]
     /// if it was built without shuffle support.
     SetShuffleState(ShuffleState),
     /// Get the [shuffle state](ShuffleState) of the player.
     ///
-    /// If the `daemon` was built without shuffle support, it will always respond to this command with
+    /// If the daemon was built without shuffle support, it will always respond to this command with
     /// [`ShuffleState::Off`]. Otherwise, it will return [`PlaybackResponse::ShuffleState`].
     GetShuffleState,
     /// Set the position of the player.
@@ -343,19 +343,19 @@ pub enum PlaybackCommand {
     Seek(SignedDuration),
     /// Get the position of the player.
     ///
-    /// The `daemon` will respond to this with [`PlaybackResponse::PlayerPosition`] if
+    /// The daemon will respond to this with [`PlaybackResponse::PlayerPosition`] if
     /// successful.
     GetPlayerPosition,
     /// Set the volume of the player.
     SetPlayerVolume(PlayerVolume),
     /// Get the volume of the player.
     ///
-    /// The `daemon` will respond to this with [`PlaybackResponse::PlayerVolume`] if
+    /// The daemon will respond to this with [`PlaybackResponse::PlayerVolume`] if
     /// successful.
     GetPlayerVolume,
 }
 
-/// Error originating from the playback module of the `daemon`.
+/// Error originating from the playback module of the daemon.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum PlaybackError {
     /// The audio player is not connected.
@@ -365,7 +365,7 @@ pub enum PlaybackError {
     PlayerNotConnected,
     /// The playback state is not initialized.
     ///
-    /// This error may occur when a [`PlaybackCommand`] is sent to the `daemon` too early, before the
+    /// This error may occur when a [`PlaybackCommand`] is sent to the daemon too early, before the
     /// state is restored from cache.
     StateNotInitialized,
     /// The queue is empty.
@@ -440,7 +440,7 @@ impl std::fmt::Display for PlaybackError {
     }
 }
 
-/// Response originating from the playback module of the `daemon` used in
+/// Response originating from the playback module of the daemon used in
 /// ed as an enum value for th[`Response`](crate::Response).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackResponse {
@@ -470,7 +470,7 @@ impl std::fmt::Display for PlaybackResponse {
     }
 }
 
-/// Event originating from the playback module of the `daemon`.
+/// Event originating from the playback module of the daemon.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlaybackEvent {
     /// Sent when the [playback state](PlaybackState) changes, for instance when the player is

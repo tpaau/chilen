@@ -6,23 +6,23 @@
 
 This library contains data types and functions used to start and control the Chilen daemon.
 
-Unlike [MPD](https://www.musicpd.org/), Chilen daemon can be bundled with your program's binary
-package to ensure a seamless installation process for your program and a cohesive experience for the
-end user.
+Unlike [MPD](https://www.musicpd.org/), the Chilen daemon can be bundled in your player's executable
+file instead of bundling it as a separate one or relying on the user to install and additional
+program on their system.
 
 The daemon uses a local socket to connect to its clients. The type of socket used depends on your
-platform, and the startup configuration of the daemon. Under the hood, the [`interprocess`] and
-[`rmp_serde`] crates are used for handling clients connections and [`chilen_ipc`] for providing
+platform and the startup configuration of the daemon. Under the hood, [`interprocess`] and
+[`rmp_serde`] crates are used for handling clients connections, and [`chilen_ipc`] for providing
 common data types.
 
 This crate does not provide direct access to the daemon over the local socket. For such
-functionality, please refer to the `chilen_ipc` crate.
+functionality, please refer to the [`chilen_ipc`] crate.
 
 Certain interfaces with the daemon are *only* available through the use of this library, and are
 not available to regular clients connecting over the IPC socket. The program controlling the daemon
 can, for instance:
 - Stop the daemon without having to connect to it over the local socket
-- Modify some of the properties set at launch
+- Modify certain properties set at launch
 
 # Examples
 
