@@ -59,6 +59,7 @@ let config = chilen_daemon::Config {
     addr_claim_mode: AddrClaimMode::default(),
     socket_type: SocketType::default(),
     can_raise: false,
+    can_quit: true,
     playback_config: playback::Config {
         #[cfg(feature = "mpris")]
         identity: "Test Player".to_string(), // Human-readable name for the player

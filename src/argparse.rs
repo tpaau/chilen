@@ -22,9 +22,15 @@ pub enum DaemonCommand {
         /// Allow clients to modify the playback rate of the player.
         #[arg(long, short, default_value_t = false)]
         allow_rate_modification: bool,
+        /// Whether the daemon can receive raise requests from clients.
+        #[arg(long, short = 'r', num_args = 1, default_value_t = true)]
+        can_raise: bool,
+        /// Whether clients can request the daemon to quit.
+        #[arg(long, short = 'q', num_args = 1, default_value_t = true)]
+        can_quit: bool,
     },
     /// Stop the daemon process
-    Stop,
+    Quit,
     /// Stream events from the daemon. Causes the thread to stop accepting requests.
     EventStream {
         #[arg(long, short, default_value_t = false, conflicts_with = "pretty_json")]

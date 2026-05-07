@@ -60,6 +60,8 @@ pub enum Error {
     CacheDirError(String),
     DataDirError(String),
     ConfigNotInitialized,
+    /// Quit requests from external clients are not allowed
+    QuitDisabled,
 }
 
 impl std::fmt::Display for Error {
@@ -81,6 +83,7 @@ impl std::fmt::Display for Error {
             Self::CacheDirError(e) => write!(f, "Could not initialize the cache directory: {e}"),
             Self::DataDirError(e) => write!(f, "Could not initialize the data directory: {e}"),
             Self::ConfigNotInitialized => write!(f, "The daemon configuration is not set"),
+            Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
         }
     }
 }
@@ -142,6 +145,11 @@ pub struct Config {
     /// Whether the player's user interface can be brought to the front using any appropriate
     /// mechanism available.
     pub can_raise: bool,
+    /// Whether clients can request the daemon to quit.
+    ///
+    /// This only affects clients that connect to the daemon over a local socket, it does not
+    /// affect the [`stop`] function.
+    pub can_quit: bool,
     /// Configuration options specific to the [`playback`] module.
     pub playback_config: playback::Config,
 }
@@ -207,6 +215,7 @@ impl Config {
             addr_claim_mode: AddrClaimMode::default(),
             socket_type: SocketType::default(),
             can_raise: false,
+            can_quit: true,
             playback_config: playback::Config {
                 #[cfg(feature = "mpris")]
                 identity: name.to_string(),
@@ -377,6 +386,12 @@ fn get_listener(
 }
 
 pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
+    if command == ThreadCommand::Quit {
+        let guard = crate::CONFIG.read().unwrap();
+        if !guard.as_ref().unwrap().can_quit {
+            return Err(Error::QuitDisabled.to_string());
+        }
+    }
     match &**COMMAND_SENDER.read().as_ref().unwrap() {
         Some(sender) => match sender.send(command) {
             Ok(_) => Ok(()),
@@ -422,15 +437,34 @@ pub(crate) fn subscribe_to_events() -> mpmc::Receiver<Event> {
 /// Set whether clients can send raise requests to the daemon.
 ///
 /// Will fail with [`Error::ConfigNotInitialized`] if the daemon isn't running.
-#[cfg(any(feature = "mpris", doc))]
 pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
     let mut conf_guard = CONFIG.write().unwrap();
     let conf = match conf_guard.as_mut() {
         Some(conf) => conf,
         None => return Err(Error::ConfigNotInitialized),
     };
-    conf.can_raise = can_raise;
-    let _ = send_event(Event::CanRaiseChanged(conf.can_raise));
+    if conf.can_raise != can_raise {
+        conf.can_raise = can_raise;
+        let _ = send_event(Event::CanRaiseChanged(conf.can_raise));
+    }
+    Ok(())
+}
+
+/// Set whether the daemon should accept quit requests from clients.
+///
+/// This does not affect the [`stop`] function.
+///
+/// Will fail with [`Error::ConfigNotInitialized`] if the daemon isn't running.
+pub fn set_can_quit(can_quit: bool) -> Result<(), Error> {
+    let mut conf_guard = CONFIG.write().unwrap();
+    let conf = match conf_guard.as_mut() {
+        Some(conf) => conf,
+        None => return Err(Error::ConfigNotInitialized),
+    };
+    if conf.can_quit != can_quit {
+        conf.can_quit = can_quit;
+        // TODO: Send an event here
+    }
     Ok(())
 }
 
@@ -440,12 +474,25 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
 /// the requirement to connect to it over a local socket.
 ///
 /// If a daemon is not running, [`Error::DaemonNotRunning`] will be returned.
-pub fn stop() -> Result<(), Error> {
-    if send_command(ThreadCommand::Shutdown).is_err() {
+pub fn quit() -> Result<(), Error> {
+    if send_command(ThreadCommand::Quit).is_err() {
         error!("The daemon doesn't seem to be running");
         Err(Error::DaemonNotRunning)
     } else {
         Ok(())
+    }
+}
+
+/// Same as [`stop`] with an additional check to ensure an external client cannot stop the daemon
+/// if config options disallow it.
+#[cfg(feature = "mpris")]
+pub(crate) fn client_quit() -> Result<(), Error> {
+    let guard = crate::CONFIG.read().unwrap();
+    if guard.as_ref().unwrap().can_quit {
+        quit().unwrap();
+        Ok(())
+    } else {
+        Err(Error::QuitDisabled)
     }
 }
 
@@ -534,9 +581,9 @@ pub fn start(config: Config) -> Result<(), Error> {
     // loop {
     let cmd = receiver.recv().unwrap();
     match cmd {
-        ThreadCommand::Shutdown => {
-            trace!("Received shutdown event");
-            let _ = send_event(Event::Shutdown);
+        ThreadCommand::Quit => {
+            trace!("Received quit command");
+            let _ = send_event(Event::Quit);
             cleanup();
             info!("Stopped.");
             Ok(())

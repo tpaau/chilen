@@ -111,8 +111,8 @@ fn event_stream(
             println!("{response:?}");
         }
 
-        if response == Event::Shutdown {
-            info!("Received the shutdown event, closing the connection");
+        if response == Event::Quit {
+            info!("Received the quit event, closing the connection");
             return Ok(());
         }
     }
@@ -132,6 +132,8 @@ pub fn run_cli_command(
                     data_dir,
                     music_dir,
                     allow_rate_modification,
+                    can_raise,
+                    can_quit,
                 } => {
                     let home = if cache_dir.is_none() || data_dir.is_none() || music_dir.is_none() {
                         match home_dir() {
@@ -177,7 +179,8 @@ pub fn run_cli_command(
                         socket_name,
                         addr_claim_mode: AddrClaimMode::default(),
                         socket_type,
-                        can_raise: false,
+                        can_raise,
+                        can_quit,
                         playback_config: playback::Config {
                             #[cfg(feature = "mpris")]
                             identity: String::from(IDENTITY_HEADLESS),
@@ -208,13 +211,23 @@ pub fn run_cli_command(
                         Err(e) => println!("{e}"),
                     }
                 }
-                DaemonCommand::Stop => {
+                DaemonCommand::Quit => {
                     match chilen_ipc::send_command(
-                        chilen_ipc::Command::Shutdown,
+                        chilen_ipc::Command::Quit,
                         &socket_name,
                         &socket_type,
                     ) {
-                        Ok(_) => println!("Ok"),
+                        Ok(response) => match response {
+                            Response::Ok => println!("Ok"),
+                            Response::Error(e) => {
+                                error!("Could not stop the daemon: {e}");
+                                return Err(());
+                            }
+                            _ => {
+                                error!("Got an unexpected response from the daemon: {response:?}");
+                                return Err(());
+                            }
+                        },
                         Err(e) => {
                             print_daemon_error(e);
                             return Err(());
@@ -223,7 +236,7 @@ pub fn run_cli_command(
                 }
                 DaemonCommand::GetCanRaise => {
                     match chilen_ipc::send_command(
-                        chilen_ipc::Command::GetCanRaise,
+                        chilen_ipc::Command::CanRaise,
                         &socket_name,
                         &socket_type,
                     ) {

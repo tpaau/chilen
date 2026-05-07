@@ -47,6 +47,8 @@ pub enum Error {
     SocketError(String),
     /// Raise is not supported by the daemon.
     RaiseNotSupported,
+    /// Quit requests from external clients are not allowed.
+    QuitDisabled,
 }
 
 impl std::fmt::Display for Error {
@@ -65,6 +67,7 @@ impl std::fmt::Display for Error {
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
             Self::SocketError(e) => write!(f, "Could not obtain a socket: {e}"),
             Self::RaiseNotSupported => write!(f, "Raise is not supported by the daemon"),
+            Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
         }
     }
 }
@@ -72,18 +75,20 @@ impl std::fmt::Display for Error {
 /// Event from the daemon received in [`Response::Event`].
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Event {
-    /// Sent before the daemon closes.
-    Shutdown,
+    /// Sent before the daemon quits.
+    Quit,
     /// Sent after the contents of the music library have changed.
     LibraryChanged(MusicLibrary),
     /// Sent when a client disconnects from the daemon.
     ConnectionClosed,
     /// Event originating from the playback module of the daemon.
     PlaybackEvent(PlaybackEvent),
-    /// Sent when the `can_raise` property of the daemon changes.
+    /// Sent when the `can_raise` property of the daemon config changes.
     CanRaiseChanged(bool),
     /// Sent when a client requests the daemon to raise, and raising is enabled.
     RaiseRequested,
+    /// Sent when the `can_quit` property of the daemon config changes.
+    CanQuitChanged(bool),
 }
 
 /// Response sent to a client from the daemon.
@@ -103,6 +108,8 @@ pub enum Response {
     Error(Error),
     /// Response to [`Command::CanRaise`].
     CanRaise(bool),
+    /// Response to [`Command::CanQuit`].
+    CanQuit(bool),
 }
 
 /// Command that can be executed by a daemon instance.
@@ -115,7 +122,7 @@ pub enum Command {
     ///
     /// After sending this command, the daemon will close almost immediately, so all connections
     /// to it should be considered closed.
-    Shutdown,
+    Quit,
     /// Subcommand for managing the music library.
     Library(LibraryCommand),
     /// Stream [events](Event) from the daemon.
@@ -131,9 +138,11 @@ pub enum Command {
     /// The daemon will respond to this with [`Response::Pong`] if successful.
     Ping,
     /// Check if the daemon can raise.
-    GetCanRaise,
+    CanRaise,
     /// Request the daemon to raise.
     Raise,
+    /// Check if the daemon accepts quit requests from clients.
+    CanQuit,
 }
 
 /// Defines the socket type to use when attempting to connect to a daemon.
@@ -372,7 +381,7 @@ pub fn send_command(
 
     let response = receive_response(&mut conn)?;
 
-    if cmd == Command::Shutdown {
+    if cmd == Command::Quit {
         trace!("Not trying to close the connection to the daemon");
     } else if let Err(e) = disconnect(&mut conn) {
         error!("Could not close the connection to the daemon: {e}");

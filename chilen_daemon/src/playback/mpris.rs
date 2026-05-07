@@ -84,15 +84,15 @@ impl RootInterface for MprisInterface {
     }
 
     async fn quit(&self) -> MprisResult<()> {
-        match crate::stop() {
+        match crate::client_quit() {
             Ok(_) => Ok(()),
-            Err(e) => Err(MprisError::Failed(e.to_string())),
+            Err(e) => Err(MprisError::NotSupported(e.to_string())),
         }
     }
 
     async fn can_quit(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Update this after adding config options for quitting
-        Ok(true)
+        let guard = crate::CONFIG.read().unwrap();
+        Ok(guard.as_ref().unwrap().can_quit)
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {

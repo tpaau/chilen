@@ -21,8 +21,9 @@ use crate::{
     playback, send_event, subscribe_to_events,
 };
 
+#[derive(Debug, PartialEq, Eq)]
 pub(super) enum ThreadCommand {
-    Shutdown,
+    Quit,
 }
 
 fn respond(conn: &mut BufReader<&Stream>, msg: &Response) -> Result<(), chilen_ipc::Error> {
@@ -57,15 +58,29 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
             };
 
             match command {
-                Command::Shutdown => {
-                    info!("Received shutdown command from the client");
-                    trace!("Closing client connection (shutdown)");
-                    if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &Response::Ok)
-                    {
-                        break;
+                Command::Quit => {
+                    info!("Received quit command from the client");
+                    trace!("Closing client connection (quit)");
+                    let guard = crate::CONFIG.read().unwrap();
+                    if !guard.as_ref().unwrap().can_quit {
+                        error!("{}", crate::Error::QuitDisabled);
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Error(chilen_ipc::Error::QuitDisabled))
+                        {
+                            break;
+                        }
+                        continue;
+                    } else {
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Ok)
+                        {
+                            break;
+                        }
                     }
-                    if let Err(e) = crate::send_command(ThreadCommand::Shutdown) {
-                        error!("Could not send the command to the daemon: {e}");
+                    if let Err(e) = crate::send_command(ThreadCommand::Quit) {
+                        let _ =
+                            respond(&mut conn, &Response::Error(chilen_ipc::Error::QuitDisabled));
+                        error!("{e}");
                         trace!("The connection will be closed regardless");
                     }
                     break;
@@ -240,7 +255,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                         }
                     };
                     let guard = crate::CONFIG.read().unwrap();
-                    events.push(Event::CanRaiseChanged(guard.as_ref().unwrap().can_raise));
+                    let conf = guard.as_ref().unwrap();
+                    events.push(Event::CanRaiseChanged(conf.can_raise));
+                    events.push(Event::CanQuitChanged(conf.can_quit));
                     for event in events {
                         if let Err(chilen_ipc::Error::SendingError) =
                             respond(&mut conn, &Response::Event(event))
@@ -315,7 +332,7 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                         }
                     }
                 }
-                Command::GetCanRaise => {
+                Command::CanRaise => {
                     let guard = crate::CONFIG.read().unwrap();
                     if let Err(chilen_ipc::Error::SendingError) = respond(
                         &mut conn,
@@ -340,6 +357,15 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                         ) {
                             break;
                         }
+                    }
+                }
+                Command::CanQuit => {
+                    let guard = crate::CONFIG.read().unwrap();
+                    if let Err(chilen_ipc::Error::SendingError) = respond(
+                        &mut conn,
+                        &Response::CanQuit(guard.as_ref().unwrap().can_quit),
+                    ) {
+                        break;
                     }
                 }
             };
