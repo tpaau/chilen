@@ -1,6 +1,6 @@
 #[cfg(feature = "mpris")]
 mod mpris;
-mod state;
+pub(crate) mod state;
 #[cfg(test)]
 mod tests;
 
@@ -160,6 +160,11 @@ static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
 
 pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+pub(crate) fn cleanup() {
+    *PLAYER_HANDLE.write().unwrap() = None;
+    *CONFIG.write().unwrap() = None;
+}
 
 pub(crate) fn unwrap_player(
     maybe_player: Option<&rodio::Player>,

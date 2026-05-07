@@ -6,7 +6,7 @@ use chilen_ipc::playback::SignedDuration;
 use env_logger::Builder;
 use log::{self, trace};
 
-#[derive(Subcommand, PartialEq, Eq)]
+#[derive(Debug, Subcommand, PartialEq, Eq)]
 pub enum DaemonCommand {
     /// Start the daemon process
     Start {
@@ -43,8 +43,11 @@ impl TryFrom<DaemonCommand> for chilen_ipc::Command {
     type Error = String;
     fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
         match value {
+            DaemonCommand::Stop => Ok(chilen_ipc::Command::Shutdown),
             DaemonCommand::Ping => Ok(chilen_ipc::Command::Ping),
-            _ => Err("Cannot convert variant {value:?} to a `chilen_ipc::Command`".to_string()),
+            _ => Err(format!(
+                "Cannot convert variant {value:?} to a `chilen_ipc::Command`",
+            )),
         }
     }
 }

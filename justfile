@@ -11,8 +11,8 @@ test:
 check:
 	cargo fmt --check --all
 	just test
-	cargo deny check
 	just doc
+	cargo deny check
 
 fmt:
 	cargo fmt --all

@@ -25,7 +25,7 @@ use log::{debug, error, info, trace, warn};
 use chilen_ipc::{Command, DEFAULT_SOCKET_NAME, Event, Response, send_command};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{CACHE_DIR, covers::LoadMode};
+use crate::music_lib::{CACHE_DIR, covers::LoadMode, state};
 
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = chilen_ipc::SocketType;
@@ -203,6 +203,17 @@ impl Config {
             },
         })
     }
+}
+
+/// Clean up resources on shutdown.
+fn cleanup() {
+    trace!("Cleaning up...");
+    *EVENT_SENDER.write().unwrap() = None;
+    music_lib::cleanup();
+    state::cleanup();
+    playback::cleanup();
+    playback::state::cleanup();
+    trace!("Done cleaning up");
 }
 
 fn handle_error(conn: std::io::Result<Stream>) -> Option<Stream> {
@@ -401,6 +412,8 @@ pub fn stop() -> Result<(), Error> {
     }
 }
 
+// TODO: Add tests to make sure daemon can start and stop properly, and that functions that require
+// the daemon to be running work if it is and fail if it's not.
 /// Start the daemon with the given config.
 ///
 /// The `daemon` usually starts listening for commands around 100ms after this function is
@@ -493,8 +506,7 @@ pub fn start(config: Config) -> Result<(), Error> {
         match event {
             Event::Shutdown => {
                 trace!("Received shutdown event");
-                let mut guard = EVENT_SENDER.write().unwrap();
-                *guard = None;
+                cleanup();
                 info!("Stopped.");
                 std::process::exit(0);
             }

@@ -547,6 +547,10 @@ static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 
 pub(crate) static MUSIC_LIBRARY: RwLock<Option<MusicLibrary>> = RwLock::new(None);
 
+pub(crate) fn cleanup() {
+    *MUSIC_LIBRARY.write().unwrap() = None;
+}
+
 pub(crate) fn unwrap_lib_ref(
     maybe_lib: Option<&MusicLibrary>,
 ) -> Result<&MusicLibrary, LibraryError> {

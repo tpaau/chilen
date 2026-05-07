@@ -741,6 +741,10 @@ static STATE_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 pub(crate) static PLAYER_STATE: LazyLock<Arc<RwLock<Option<PlayerState>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
+pub(crate) fn cleanup() {
+    *PLAYER_STATE.write().unwrap() = None;
+}
+
 pub(crate) fn unwrap_state_ref(
     maybe_state: Option<&PlayerState>,
 ) -> Result<&PlayerState, PlaybackError> {

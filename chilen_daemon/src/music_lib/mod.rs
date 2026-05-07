@@ -22,6 +22,12 @@ pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static CACHE_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 
+pub(crate) fn cleanup() {
+    *DATA_DIR.write().unwrap() = None;
+    *MUSIC_DIR.write().unwrap() = None;
+    *CACHE_DIR.write().unwrap() = None;
+}
+
 fn init_dir(dir: &PathBuf) -> Result<(), String> {
     if dir.is_dir() {
         let perms = match dir.metadata() {
