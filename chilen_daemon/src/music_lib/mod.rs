@@ -129,7 +129,10 @@ pub(crate) fn create_playlist(
     save_library()
 }
 
-pub(crate) fn import_playlist_from_m3u8(name: String, file: &Path) -> Result<(), LibraryError> {
+pub(crate) fn import_playlist_from_m3u8(
+    name: Option<String>,
+    file: &Path,
+) -> Result<(), LibraryError> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.import_m3u8_playlist(file, name)?;

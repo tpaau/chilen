@@ -198,16 +198,13 @@ pub fn run_cli_command(
                         Err(e) => println!("{e}"),
                     }
                 }
-                _ => {
-                    let cmd = match command.try_into() {
-                        Ok(cmd) => cmd,
-                        Err(e) => {
-                            error!("Could not send the command to the daemon: {e}");
-                            return Err(());
-                        }
-                    };
-                    match chilen_ipc::send_command(cmd, &socket_name, &socket_type) {
-                        Ok(response) => info!("Got a response from the daemon: {response:?}"),
+                DaemonCommand::Stop => {
+                    match chilen_ipc::send_command(
+                        chilen_ipc::Command::Shutdown,
+                        &socket_name,
+                        &socket_type,
+                    ) {
+                        Ok(_) => println!("Ok"),
                         Err(e) => {
                             print_daemon_error(e);
                             return Err(());

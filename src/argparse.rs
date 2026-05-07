@@ -39,19 +39,6 @@ pub enum DaemonCommand {
     Ping,
 }
 
-impl TryFrom<DaemonCommand> for chilen_ipc::Command {
-    type Error = String;
-    fn try_from(value: DaemonCommand) -> Result<Self, Self::Error> {
-        match value {
-            DaemonCommand::Stop => Ok(chilen_ipc::Command::Shutdown),
-            DaemonCommand::Ping => Ok(chilen_ipc::Command::Ping),
-            _ => Err(format!(
-                "Cannot convert variant {value:?} to a `chilen_ipc::Command`",
-            )),
-        }
-    }
-}
-
 #[cfg(feature = "gui")]
 #[derive(Subcommand)]
 pub enum GuiCommand {
@@ -78,10 +65,8 @@ pub enum PlaylistCommand {
         m3u8_file: PathBuf,
         /// The name of the playlist
         ///
-        /// If this is not specified, the name of the playlist will be derived from the
-        /// name of the M3U8 file.
-        ///
-        name: String,
+        /// If left unspecified, it will be derived from the name set in the M3U8 playlist.
+        name: Option<String>,
     },
     /// Delete playlist(s) from the library
     Delete { names: Vec<String> },
@@ -411,21 +396,6 @@ pub enum Command {
         #[command(subcommand)]
         command: PlaybackCommand,
     },
-}
-
-impl TryFrom<Command> for chilen_ipc::Command {
-    type Error = String;
-    fn try_from(value: Command) -> Result<Self, Self::Error> {
-        match value {
-            Command::Daemon { command } => command.try_into(),
-            #[cfg(feature = "gui")]
-            Command::Gui { command: _ } => {
-                Err("Cannot convert the `GuiCommand variant".to_string())
-            }
-            Command::Lib { command } => Ok(chilen_ipc::Command::Library(command.into())),
-            Command::Playback { command } => Ok(chilen_ipc::Command::Playback(command.into())),
-        }
-    }
 }
 
 #[derive(Default, ValueEnum, Clone, Copy)]

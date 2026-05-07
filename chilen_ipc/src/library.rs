@@ -98,10 +98,12 @@ pub enum LibraryCommand {
     PlaylistFromM3U8 {
         /// The name for the imported playlist. Must not already exist in the music library.
         ///
+        /// If left unspecified, it will be derived from the name set in the M3U8 playlist.
+        ///
         /// If a playlist with the specified name already exists,
         /// [`LibraryError::PlaylistExists`] will be returned, and no changes to the
         /// [music library](MusicLibrary) will be made.
-        name: String,
+        name: Option<String>,
         /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
     },

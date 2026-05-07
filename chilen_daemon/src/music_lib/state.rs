@@ -515,7 +515,7 @@ impl MusicLibrary {
     pub fn import_m3u8_playlist(
         &mut self,
         playlist: &Path,
-        name: String,
+        name: Option<String>,
     ) -> Result<(), LibraryError> {
         trace!("Importing a playlist from an M3U8 file at {playlist:?}");
         todo!("Importing playlists from M3U8 files is not supported!");
