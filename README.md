@@ -3,9 +3,14 @@
 Prototype local music player, very much a WIP right now.
 
 There's currently no GUI, all interactions are either done through the provided CLI interface or via
-MPRIS if you are on Linux.
+MPRIS on Linux systems.
 
-Docs:
+Chilen is split into two libraries and one binary package in an effort to allow developers to create
+custom music players with the daemon and IPC libraries, similar to how it works with
+[MPD](https://www.musicpd.org/). This was not the original goal for Chilen, however, and it won't
+affect the usage once the project is finished.
+
+Documentation on the submodules of Chilen can be found here:
 - [chilen_daemon](https://tpaau.github.io/chilen/chilen_daemon/)
 - [chilen_ipc](https://tpaau.github.io/chilen/chilen_ipc/)
 
@@ -31,8 +36,8 @@ Docs:
 ## Building from source
 You will need to have Rust *nightly* installed on your system to compile this program.
 
-On Linux, you will also need the development files for `alsa-libs`. They
-usually can be installed as `alsa-libs-devel`:
+On Linux, you will also need the development files for `alsa-lib`. They
+usually can be installed as `alsa-lib-devel`:
 
 For Fedora Silverblue, run this:
 ```bash

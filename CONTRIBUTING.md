@@ -15,14 +15,14 @@ Project modules are managed in a
 
 The project has three main workspace members:
 - The root is a binary package with a CLI and will soon also have a GUI
-    - `chilen_daemon` - chilen daemon
-    - `chilen_ipc` - chilen daemon inter-process communication
+    - [`chilen_daemon`](https://tpaau.github.io/chilen/chilen_daemon/) - Managing the daemon
+    - [`chilen_ipc`](https://tpaau.github.io/chilen/chilen_ipc/) - Chilen daemon inter-process communication
 
 > [!NOTE]
 > This file tree is not regularly updated and may be out of date.
 
 ```
-src/                     # Chilen root
+src/                     # Binary package root
 ├── argparse.rs          # Command-line argument parsing
 ├── cli.rs               # Command-line argument execution
 ├── gui                  # GUI module
@@ -45,10 +45,10 @@ chilen_daemon/src        # Daemon library root
 │   └── tests.rs
 └── tests.rs
 
-chilen_ipc/src/         # IPC library root
-├── library.rs          # Types for music library management
-├── lib.rs              # Most common data types and functions
-└── playback.rs         # Types for playback management
+chilen_ipc/src/          # IPC library root
+├── library.rs           # Types for music library management
+├── lib.rs               # Most common data types and functions
+└── playback.rs          # Types for playback management
 ```
 
 ### Building
