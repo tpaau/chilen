@@ -515,7 +515,7 @@ pub fn start(config: Config) -> Result<(), Error> {
                 trace!("Received shutdown event");
                 cleanup();
                 info!("Stopped.");
-                std::process::exit(0);
+                return Ok(());
             }
             Event::ConnectionClosed => {
                 trace!("Connection with a client closed")
