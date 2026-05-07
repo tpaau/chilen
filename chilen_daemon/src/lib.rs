@@ -118,6 +118,7 @@ impl std::fmt::Display for ConfigError {
     }
 }
 
+// TODO: Add an option to allow external clients to stop the daemon
 /// Configuration options for the daemon.
 ///
 /// Used with the [`start`] function.

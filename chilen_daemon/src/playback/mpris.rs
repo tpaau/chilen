@@ -84,15 +84,15 @@ impl RootInterface for MprisInterface {
     }
 
     async fn quit(&self) -> MprisResult<()> {
-        // TODO: Implement quitting for Mpris clients' request
-        Err(MprisError::NotSupported(String::from(
-            "Quit is not yet implemented",
-        )))
+        match crate::stop() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(MprisError::Failed(e.to_string())),
+        }
     }
 
     async fn can_quit(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Implement quitting for Mpris clients' request
-        Ok(false)
+        // TODO: Update this after adding config options for quitting
+        Ok(true)
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
