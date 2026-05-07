@@ -65,7 +65,19 @@ fn get_response(result: Result<(), PlaybackError>) -> MprisResult<()> {
 
 impl RootInterface for MprisInterface {
     async fn raise(&self) -> MprisResult<()> {
-        // TODO: Implement raising for Mpris
+        let guard = crate::CONFIG.read().unwrap();
+        match guard.as_ref() {
+            Some(conf) => {
+                if !conf.can_raise {
+                    return Err(MprisError::NotSupported("Raise is disabled".to_string()));
+                }
+            }
+            None => {
+                return Err(MprisError::Failed(
+                    crate::Error::ConfigNotInitialized.to_string(),
+                ));
+            }
+        }
         Err(MprisError::NotSupported(String::from(
             "Raise is not yet implemented",
         )))
@@ -101,7 +113,13 @@ impl RootInterface for MprisInterface {
     }
 
     async fn can_raise(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        Ok(false) // TODO: Implement raising for Mpris
+        let guard = crate::CONFIG.read().unwrap();
+        match guard.as_ref() {
+            Some(conf) => Ok(conf.can_raise),
+            None => Err(mpris_server::zbus::fdo::Error::Failed(
+                crate::Error::ConfigNotInitialized.to_string(),
+            )),
+        }
     }
 
     async fn has_track_list(&self) -> mpris_server::zbus::fdo::Result<bool> {

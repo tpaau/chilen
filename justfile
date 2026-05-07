@@ -1,8 +1,8 @@
 doc:
-	cargo doc --frozen --no-deps --all-features
+	cargo doc --no-deps --all-features
 
 open-doc:
-	cargo doc --frozen --no-deps --all-features --open
+	cargo doc --no-deps --all-features --open
 
 test:
 	cargo test --workspace

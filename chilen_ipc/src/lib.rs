@@ -43,8 +43,10 @@ pub enum Error {
     InvalidResponse,
     /// Error related to the playback module.
     PlaybackError(PlaybackError),
-    /// Could not obtain a socket
+    /// Could not obtain a socket.
     SocketError(String),
+    /// Raise is not supported by the daemon.
+    RaiseNotSupported,
 }
 
 impl std::fmt::Display for Error {
@@ -62,6 +64,7 @@ impl std::fmt::Display for Error {
             }
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
             Self::SocketError(e) => write!(f, "Could not obtain a socket: {e}"),
+            Self::RaiseNotSupported => write!(f, "Raise is not supported by the daemon"),
         }
     }
 }
@@ -77,6 +80,10 @@ pub enum Event {
     ConnectionClosed,
     /// Event originating from the playback module of the daemon.
     PlaybackEvent(PlaybackEvent),
+    /// Sent when the `can_raise` property of the daemon changes.
+    CanRaiseChanged(bool),
+    /// Sent when a client requests the daemon to raise, and raising is enabled.
+    RaiseRequested,
 }
 
 /// Response sent to a client from the `daemon`.
@@ -94,6 +101,8 @@ pub enum Response {
     Playback(PlaybackResponse),
     /// The client command has failed.
     Error(Error),
+    /// Response to [`Command::CanRaise`].
+    CanRaise(bool),
 }
 
 /// Command that can be executed by a `daemon` instance.
@@ -121,6 +130,10 @@ pub enum Command {
     ///
     /// The `daemon` will respond to this with [`Response::Pong`] if successful.
     Ping,
+    /// Check if the daemon can raise.
+    GetCanRaise,
+    /// Request the daemon to raise.
+    Raise,
 }
 
 /// Defines the socket type to use when attempting to connect to a `daemon`.

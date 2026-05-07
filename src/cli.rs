@@ -166,14 +166,13 @@ pub fn run_cli_command(
                         socket_name,
                         addr_claim_mode: AddrClaimMode::default(),
                         socket_type,
+                        can_raise: false,
                         playback_config: playback::Config {
                             #[cfg(feature = "mpris")]
                             identity: String::from(IDENTITY_HEADLESS),
                             #[cfg(feature = "mpris")]
                             bus_name_suffix: format!("com.dev.{}", crate_name!()),
                             allow_rate_modification,
-                            #[cfg(feature = "mpris")]
-                            can_raise: false,
                         },
                     };
                     match chilen_daemon::start(config) {
@@ -205,6 +204,48 @@ pub fn run_cli_command(
                         &socket_type,
                     ) {
                         Ok(_) => println!("Ok"),
+                        Err(e) => {
+                            print_daemon_error(e);
+                            return Err(());
+                        }
+                    }
+                }
+                DaemonCommand::GetCanRaise => {
+                    match chilen_ipc::send_command(
+                        chilen_ipc::Command::GetCanRaise,
+                        &socket_name,
+                        &socket_type,
+                    ) {
+                        Ok(response) => match response {
+                            Response::CanRaise(can_raise) => println!("{can_raise}"),
+                            _ => {
+                                error!("Got an unexpected response from the daemon: {response:?}");
+                                return Err(());
+                            }
+                        },
+                        Err(e) => {
+                            print_daemon_error(e);
+                            return Err(());
+                        }
+                    }
+                }
+                DaemonCommand::Raise => {
+                    match chilen_ipc::send_command(
+                        chilen_ipc::Command::Raise,
+                        &socket_name,
+                        &socket_type,
+                    ) {
+                        Ok(response) => match response {
+                            Response::Ok => println!("Ok"),
+                            Response::Error(e) => {
+                                error!("{e}");
+                                return Err(());
+                            }
+                            _ => {
+                                error!("Got an unexpected response from the daemon: {response:?}");
+                                return Err(());
+                            }
+                        },
                         Err(e) => {
                             print_daemon_error(e);
                             return Err(());

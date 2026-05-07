@@ -37,6 +37,10 @@ pub enum DaemonCommand {
     },
     /// Ping the daemon (used for debugging)
     Ping,
+    /// Get whether the daemon's user interface can be brought to the front.
+    GetCanRaise,
+    /// Bring the user interface to the front.
+    Raise,
 }
 
 #[cfg(feature = "gui")]

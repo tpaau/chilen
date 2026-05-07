@@ -59,12 +59,8 @@ pub struct Config {
     /// Whether to allow clients to modify the playback rate of the player.
     ///
     /// If set to true, the playback rate will be locked the value saved in cache the player state,
-    /// or set to the default value of `1.0` (regular speed) if the player state is not present.
+    /// or set to the default value of `1.0` (regular speed) if it's not cached.
     pub allow_rate_modification: bool,
-    /// Whether the player's user interface can be brought to the front using any appropriate
-    /// mechanism available.
-    #[cfg(any(feature = "mpris", doc))]
-    pub can_raise: bool,
 }
 
 #[derive(Debug, Clone)]

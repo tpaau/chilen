@@ -229,13 +229,15 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             error!("Could not get the contents of the music library: {e}");
                         }
                     }
-                    let events = match playback::get_initial_events() {
+                    let mut events = match playback::get_initial_events() {
                         Ok(events) => events,
                         Err(e) => {
                             error!("Could not get the initial events: {e}");
                             continue;
                         }
                     };
+                    let guard = crate::CONFIG.read().unwrap();
+                    events.push(Event::CanRaiseChanged(guard.as_ref().unwrap().can_raise));
                     for event in events {
                         if let Err(chilen_ipc::Error::SendingError) =
                             respond(&mut conn, &Response::Event(event))
@@ -306,6 +308,33 @@ pub(crate) fn spawn(conn: Stream, trx: Receiver<Event>, index: u64) -> JoinHandl
                             ) {
                                 break;
                             }
+                        }
+                    }
+                }
+                Command::GetCanRaise => {
+                    let guard = crate::CONFIG.read().unwrap();
+                    if let Err(chilen_ipc::Error::SendingError) = respond(
+                        &mut conn,
+                        &Response::CanRaise(guard.as_ref().unwrap().can_raise),
+                    ) {
+                        break;
+                    }
+                }
+                Command::Raise => {
+                    let guard = crate::CONFIG.read().unwrap();
+                    if guard.as_ref().unwrap().can_raise {
+                        let _ = send_event(Event::RaiseRequested);
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Ok)
+                        {
+                            break;
+                        }
+                    } else {
+                        if let Err(chilen_ipc::Error::SendingError) = respond(
+                            &mut conn,
+                            &Response::Error(chilen_ipc::Error::RaiseNotSupported),
+                        ) {
+                            break;
                         }
                     }
                 }

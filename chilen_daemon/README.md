@@ -58,14 +58,13 @@ let config = chilen_daemon::Config {
     socket_name: "TEST_PLAYER.socket".to_string(),
     addr_claim_mode: AddrClaimMode::default(),
     socket_type: SocketType::default(),
+    can_raise: false,
     playback_config: playback::Config {
         #[cfg(feature = "mpris")]
         identity: "Test Player".to_string(), // Human-readable name for the player
         #[cfg(feature = "mpris")]
         bus_name_suffix: "com.dev.test-player".to_string(),
         allow_rate_modification: true,
-        #[cfg(feature = "mpris")]
-        can_raise: false,
     },
 };
 

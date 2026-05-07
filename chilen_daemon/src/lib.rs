@@ -33,6 +33,9 @@ pub type SocketType = chilen_ipc::SocketType;
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
+pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Error {
     /// Could not obtain the daemon socket address.
@@ -128,6 +131,9 @@ pub struct Config {
     pub addr_claim_mode: AddrClaimMode,
     /// Defines the type of socket the daemon should use.
     pub socket_type: SocketType,
+    /// Whether the player's user interface can be brought to the front using any appropriate
+    /// mechanism available.
+    pub can_raise: bool,
     /// Configuration options specific to the [`playback`] module.
     pub playback_config: playback::Config,
 }
@@ -192,14 +198,13 @@ impl Config {
             socket_name: socket_name.to_string(),
             addr_claim_mode: AddrClaimMode::default(),
             socket_type: SocketType::default(),
+            can_raise: false,
             playback_config: playback::Config {
                 #[cfg(feature = "mpris")]
                 identity: name.to_string(),
                 #[cfg(feature = "mpris")]
                 bus_name_suffix,
                 allow_rate_modification: false,
-                #[cfg(feature = "mpris")]
-                can_raise: false,
             },
         })
     }
@@ -209,6 +214,7 @@ impl Config {
 fn cleanup() {
     trace!("Cleaning up...");
     *EVENT_SENDER.write().unwrap() = None;
+    *CONFIG.write().unwrap() = None;
     music_lib::cleanup();
     state::cleanup();
     playback::cleanup();
@@ -386,14 +392,13 @@ pub(crate) fn send_event(event: Event) -> Result<(), String> {
 /// Will fail with [`Error::ConfigNotInitialized`] if the daemon isn't running.
 #[cfg(any(feature = "mpris", doc))]
 pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
-    use crate::playback::CONFIG;
-
     let mut conf_guard = CONFIG.write().unwrap();
     let conf = match conf_guard.as_mut() {
         Some(conf) => conf,
         None => return Err(Error::ConfigNotInitialized),
     };
     conf.can_raise = can_raise;
+    let _ = send_event(Event::CanRaiseChanged(conf.can_raise));
     Ok(())
 }
 
@@ -436,6 +441,8 @@ pub fn stop() -> Result<(), Error> {
 /// ```
 pub fn start(config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
+
+    *CONFIG.write().unwrap() = Some(config.clone());
 
     if let Err(e) = music_lib::set_dirs(config.clone()) {
         error!("Could not set the paths: {e}");
