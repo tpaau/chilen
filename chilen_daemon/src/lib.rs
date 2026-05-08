@@ -121,7 +121,6 @@ impl std::fmt::Display for ConfigError {
     }
 }
 
-// TODO: Add an option to allow external clients to stop the daemon
 /// Configuration options for the daemon.
 ///
 /// Used with the [`start`] function.
@@ -463,7 +462,7 @@ pub fn set_can_quit(can_quit: bool) -> Result<(), Error> {
     };
     if conf.can_quit != can_quit {
         conf.can_quit = can_quit;
-        // TODO: Send an event here
+        let _ = send_event(Event::CanQuitChanged(conf.can_quit));
     }
     Ok(())
 }
