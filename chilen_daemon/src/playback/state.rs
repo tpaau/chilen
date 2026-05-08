@@ -196,16 +196,19 @@ impl PlayerState {
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
         }
+        #[cfg(feature = "shuffle")]
+        let tracks = if self.shuffle_state == ShuffleState::On {
+            &self.shuffled_tracks
+        } else {
+            &self.tracks
+        };
+        #[cfg(not(feature = "shuffle"))]
+        let tracks = &self.tracks;
+        let _ = send_event(Event::PlaybackEvent(PlaybackEvent::QueueChanged(
+            tracks.clone().into_iter().map(Into::into).collect(),
+        )));
         #[cfg(feature = "mpris")]
-        {
-            use mpris_server::Property;
-
-            self.on_track_changed();
-            mpris::update_properties(vec![
-                Property::CanPlay(self.can_play()),
-                Property::CanPause(self.can_pause()),
-            ]);
-        }
+        self.on_track_changed();
     }
 
     pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
@@ -213,6 +216,32 @@ impl PlayerState {
         #[cfg(feature = "shuffle")]
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
+        }
+        #[cfg(feature = "shuffle")]
+        let tracks = if self.shuffle_state == ShuffleState::On {
+            &self.shuffled_tracks
+        } else {
+            &self.tracks
+        };
+        #[cfg(not(feature = "shuffle"))]
+        let tracks = &self.tracks;
+        let _ = send_event(Event::PlaybackEvent(PlaybackEvent::QueueChanged(
+            tracks.clone().into_iter().map(Into::into).collect(),
+        )));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::{Metadata, Property};
+
+            mpris::update_properties(vec![
+                match self.current() {
+                    Some(track) => Property::Metadata(track.clone().get_meta()),
+                    None => Property::Metadata(Metadata::new()),
+                },
+                Property::CanGoPrevious(self.can_go_previous()),
+                Property::CanGoNext(self.can_go_next()),
+                Property::CanPlay(self.can_play()),
+                Property::CanPause(self.can_pause()),
+            ]);
         }
     }
 
@@ -269,19 +298,13 @@ impl PlayerState {
             let _ = send_event(Event::PlaybackEvent(PlaybackEvent::ShuffleStateChanged(
                 self.shuffle_state,
             )));
-            let _ = send_event(Event::PlaybackEvent(
-                chilen_ipc::playback::PlaybackEvent::QueueChanged(
-                    if self.shuffle_state == ShuffleState::On {
-                        self.shuffled_tracks
-                            .clone()
-                            .into_iter()
-                            .map(Into::into)
-                            .collect()
-                    } else {
-                        self.tracks.clone().into_iter().map(Into::into).collect()
-                    },
-                ),
-            ));
+            if self.shuffle_state == ShuffleState::Off {
+                let _ = send_event(Event::PlaybackEvent(
+                    chilen_ipc::playback::PlaybackEvent::QueueChanged(
+                        self.tracks.clone().into_iter().map(Into::into).collect(),
+                    ),
+                ));
+            }
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;

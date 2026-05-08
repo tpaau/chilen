@@ -288,7 +288,6 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     {
                         break;
                     }
-                    let _ = send_event(Event::ConnectionClosed);
                     break;
                 }
                 Command::Ping => {

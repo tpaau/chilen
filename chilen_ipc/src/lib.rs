@@ -79,8 +79,6 @@ pub enum Event {
     Quit,
     /// Sent after the contents of the music library have changed.
     LibraryChanged(MusicLibrary),
-    /// Sent when a client disconnects from the daemon.
-    ConnectionClosed,
     /// Event originating from the playback module of the daemon.
     PlaybackEvent(PlaybackEvent),
     /// Sent when the `can_raise` property of the daemon config changes.

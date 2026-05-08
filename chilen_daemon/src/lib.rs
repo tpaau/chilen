@@ -34,6 +34,8 @@ pub type SocketType = chilen_ipc::SocketType;
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpmc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
+// FIX: This doesn't work well because new clients that connect to the event stream receive all of
+// the generated events, not just the ones that are relevant
 static EVENT_RECEIVER: LazyLock<Arc<RwLock<Option<mpmc::Receiver<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
