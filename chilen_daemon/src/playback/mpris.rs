@@ -66,17 +66,8 @@ fn get_response(result: Result<(), PlaybackError>) -> MprisResult<()> {
 impl RootInterface for MprisInterface {
     async fn raise(&self) -> MprisResult<()> {
         let guard = crate::CONFIG.read().unwrap();
-        match guard.as_ref() {
-            Some(conf) => {
-                if !conf.can_raise {
-                    return Err(MprisError::NotSupported("Raise is disabled".to_string()));
-                }
-            }
-            None => {
-                return Err(MprisError::Failed(
-                    crate::Error::ConfigNotInitialized.to_string(),
-                ));
-            }
+        if !guard.as_ref().unwrap().can_raise {
+            return Err(MprisError::NotSupported("Raise is disabled".to_string()));
         }
         Err(MprisError::NotSupported(String::from(
             "Raise is not yet implemented",
@@ -114,12 +105,7 @@ impl RootInterface for MprisInterface {
 
     async fn can_raise(&self) -> mpris_server::zbus::fdo::Result<bool> {
         let guard = crate::CONFIG.read().unwrap();
-        match guard.as_ref() {
-            Some(conf) => Ok(conf.can_raise),
-            None => Err(mpris_server::zbus::fdo::Error::Failed(
-                crate::Error::ConfigNotInitialized.to_string(),
-            )),
-        }
+        Ok(guard.as_ref().unwrap().can_raise)
     }
 
     async fn has_track_list(&self) -> mpris_server::zbus::fdo::Result<bool> {
@@ -131,10 +117,13 @@ impl RootInterface for MprisInterface {
     }
 
     async fn desktop_entry(&self) -> mpris_server::zbus::fdo::Result<String> {
-        // TODO: Implement returning the desktop entry
-        Err(MprisError::NotSupported(String::from(
-            "Desktop entries are not supported",
-        )))
+        let guard = crate::CONFIG.read().unwrap();
+        match &guard.as_ref().unwrap().desktop_entry {
+            Some(entry) => Ok(entry.clone()),
+            None => Err(MprisError::NotSupported(String::from(
+                "Desktop entries are not supported",
+            ))),
+        }
     }
 
     async fn supported_uri_schemes(&self) -> mpris_server::zbus::fdo::Result<Vec<String>> {

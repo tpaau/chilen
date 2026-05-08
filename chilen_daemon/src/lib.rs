@@ -40,6 +40,8 @@ static EVENT_RECEIVER: LazyLock<Arc<RwLock<Option<mpmc::Receiver<Event>>>>> =
 static COMMAND_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<ThreadCommand>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
+/// This property will always be set during daemon runtime, it is mostly safe to unwrap it in
+/// functions launched by the daemon.
 pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
@@ -149,6 +151,10 @@ pub struct Config {
     /// This only affects clients that connect to the daemon over a local socket, it does not
     /// affect the [`stop`] function.
     pub can_quit: bool,
+    /// The basename of an installed .desktop file which complies with the Desktop entry
+    /// specification, with the “.desktop” extension stripped.
+    #[cfg(feature = "mpris")]
+    pub desktop_entry: Option<String>,
     /// Configuration options specific to the [`playback`] module.
     pub playback_config: playback::Config,
 }
@@ -215,6 +221,8 @@ impl Config {
             socket_type: SocketType::default(),
             can_raise: false,
             can_quit: true,
+            #[cfg(feature = "mpris")]
+            desktop_entry: None,
             playback_config: playback::Config {
                 #[cfg(feature = "mpris")]
                 identity: name.to_string(),
@@ -229,14 +237,14 @@ impl Config {
 /// Clean up resources on shutdown.
 fn cleanup() {
     trace!("Cleaning up...");
-    *EVENT_SENDER.write().unwrap() = None;
-    *CONFIG.write().unwrap() = None;
-    *EVENT_RECEIVER.write().unwrap() = None;
-    *COMMAND_SENDER.write().unwrap() = None;
-    music_lib::cleanup();
+    music_lib::cleanup(); // The MPRIS server must go first because it unwraps `CONFIG`
     state::cleanup();
     playback::cleanup();
     playback::state::cleanup();
+    *EVENT_SENDER.write().unwrap() = None;
+    *EVENT_RECEIVER.write().unwrap() = None;
+    *COMMAND_SENDER.write().unwrap() = None;
+    *CONFIG.write().unwrap() = None;
     trace!("Done cleaning up");
 }
 

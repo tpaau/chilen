@@ -181,6 +181,8 @@ pub fn run_cli_command(
                         socket_type,
                         can_raise,
                         can_quit,
+                        #[cfg(feature = "mpris")]
+                        desktop_entry: None,
                         playback_config: playback::Config {
                             #[cfg(feature = "mpris")]
                             identity: String::from(IDENTITY_HEADLESS),
