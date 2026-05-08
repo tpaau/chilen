@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![feature(doc_cfg)]
-#![feature(mpmc_channel)]
 
 mod daemon_thread;
 mod music_lib;
@@ -13,7 +12,7 @@ use std::{
     env::{home_dir, temp_dir},
     fs::remove_file,
     path::PathBuf,
-    sync::{Arc, LazyLock, RwLock, mpmc, mpsc},
+    sync::{Arc, LazyLock, RwLock, mpsc},
     thread,
 };
 
@@ -25,20 +24,20 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     daemon_thread::ThreadCommand,
-    music_lib::{CACHE_DIR, covers::LoadMode, state},
+    music_lib::{
+        CACHE_DIR,
+        covers::LoadMode,
+        state::{self, get_library},
+    },
 };
 
 /// Defines the socket type to use when starting the daemon.
 pub type SocketType = chilen_ipc::SocketType;
 
-static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpmc::Sender<Event>>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(None)));
+static EVENT_SENDERS: LazyLock<Arc<RwLock<Vec<mpsc::Sender<Event>>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(Vec::new())));
 
-// FIX: This doesn't work well because new clients that connect to the event stream receive all of
-// the generated events, not just the ones that are relevant
-static EVENT_RECEIVER: LazyLock<Arc<RwLock<Option<mpmc::Receiver<Event>>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(None)));
-
+/// Damon thread to main daemon process communication.
 static COMMAND_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<ThreadCommand>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
@@ -243,9 +242,8 @@ fn cleanup() {
     state::cleanup();
     playback::cleanup();
     playback::state::cleanup();
-    *EVENT_SENDER.write().unwrap() = None;
-    *EVENT_RECEIVER.write().unwrap() = None;
     *COMMAND_SENDER.write().unwrap() = None;
+    *EVENT_SENDERS.write().unwrap() = Vec::new();
     *CONFIG.write().unwrap() = None;
     trace!("Done cleaning up");
 }
@@ -418,29 +416,52 @@ pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
 /// Send an event to the daemon thread.
 ///
 /// Will always return an error when the daemon isn't initialized, for example during testing.
-pub(crate) fn send_event(event: Event) -> Result<(), String> {
-    match &**EVENT_SENDER.read().as_ref().unwrap() {
-        Some(guard) => match guard.send(event) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                error!("Could not send the event to the daemon: {e}");
-                Err(e.to_string())
-            }
-        },
-        None => Err(String::from(
-            "Could not obtain the event channel, this is expected during testing",
-        )),
+pub(crate) fn send_event(event: Event) {
+    let mut senders = EVENT_SENDERS.write().unwrap();
+    let mut dead = Vec::new();
+    for (i, sender) in senders.iter().enumerate() {
+        if sender.send(event.clone()).is_err() {
+            info!("Removing dead event sender at {i}");
+            dead.push(i);
+        }
+    }
+    for ded in dead {
+        senders.swap_remove(ded);
     }
 }
 
-pub(crate) fn subscribe_to_events() -> mpmc::Receiver<Event> {
-    EVENT_RECEIVER
-        .read()
-        .as_ref()
-        .unwrap()
-        .as_ref()
-        .unwrap()
-        .clone()
+pub(crate) fn subscribe_to_events() -> mpsc::Receiver<Event> {
+    let mut events = Vec::new();
+    match get_library() {
+        Ok(lib) => {
+            events.push(Event::LibraryChanged(lib.into()));
+        }
+        Err(e) => {
+            error!("Could not get the contents of the music library: {e}");
+        }
+    }
+    match playback::get_initial_events() {
+        Ok(playback_events) => {
+            for event in playback_events {
+                events.push(event);
+            }
+        }
+        Err(e) => {
+            error!("Could not get the initial events from the playback module: {e}");
+        }
+    };
+    let guard = crate::CONFIG.read().unwrap();
+    let conf = guard.as_ref().unwrap();
+    events.push(Event::CanRaiseChanged(conf.can_raise));
+    events.push(Event::CanQuitChanged(conf.can_quit));
+    let (sender, receiver) = mpsc::channel();
+    for event in events {
+        sender.send(event).unwrap();
+    }
+    let mut guard = EVENT_SENDERS.write().unwrap();
+    let senders: &mut Vec<mpsc::Sender<Event>> = guard.as_mut();
+    senders.push(sender);
+    receiver
 }
 
 /// Set whether clients can send raise requests to the daemon.
@@ -454,7 +475,7 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
     };
     if conf.can_raise != can_raise {
         conf.can_raise = can_raise;
-        let _ = send_event(Event::CanRaiseChanged(conf.can_raise));
+        send_event(Event::CanRaiseChanged(conf.can_raise));
     }
     Ok(())
 }
@@ -472,7 +493,7 @@ pub fn set_can_quit(can_quit: bool) -> Result<(), Error> {
     };
     if conf.can_quit != can_quit {
         conf.can_quit = can_quit;
-        let _ = send_event(Event::CanQuitChanged(conf.can_quit));
+        send_event(Event::CanQuitChanged(conf.can_quit));
     }
     Ok(())
 }
@@ -565,18 +586,6 @@ pub fn start(config: Config) -> Result<(), Error> {
         }
     });
 
-    let mut sender_guard = EVENT_SENDER.write().unwrap();
-    let mut receiver_guard = EVENT_RECEIVER.write().unwrap();
-    if sender_guard.as_ref().is_some() || receiver_guard.as_ref().is_some() {
-        error!("The event channel is already initialized!");
-        return Err(Error::EventChannelInitialized);
-    }
-    let (sender, receiver) = mpmc::channel();
-    *sender_guard = Some(sender);
-    *receiver_guard = Some(receiver);
-    drop(sender_guard);
-    drop(receiver_guard);
-
     let mut sender_guard = COMMAND_SENDER.write().unwrap();
     if sender_guard.as_ref().is_some() {
         error!("The command channel is already initialized!");
@@ -586,17 +595,15 @@ pub fn start(config: Config) -> Result<(), Error> {
     *sender_guard = Some(sender);
     drop(sender_guard);
 
-    // This loop will come in handy as new commands are added
-    // loop {
     let cmd = receiver.recv().unwrap();
+    // Loop this when new commands are added
     match cmd {
         ThreadCommand::Quit => {
             trace!("Received quit command");
-            let _ = send_event(Event::Quit);
+            send_event(Event::Quit);
             cleanup();
             info!("Stopped.");
             Ok(())
         }
     }
-    // }
 }

@@ -598,7 +598,7 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
 
         match file.write_all(&data) {
             Ok(_) => {
-                let _ = send_event(chilen_ipc::Event::LibraryChanged(lib_data.into()));
+                send_event(chilen_ipc::Event::LibraryChanged(lib_data.into()));
                 Ok(())
             }
             Err(e) => {

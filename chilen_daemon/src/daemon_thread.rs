@@ -233,41 +233,10 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     },
                 },
                 Command::EventStream => {
-                    trace!("Sending initial events to the client");
-                    match get_library() {
-                        Ok(lib) => {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Event(Event::LibraryChanged(lib.into())),
-                            ) {
-                                break;
-                            }
-                        }
-                        Err(e) => {
-                            error!("Could not get the contents of the music library: {e}");
-                        }
-                    }
-                    let mut events = match playback::get_initial_events() {
-                        Ok(events) => events,
-                        Err(e) => {
-                            error!("Could not get the initial events: {e}");
-                            continue;
-                        }
-                    };
-                    let guard = crate::CONFIG.read().unwrap();
-                    let conf = guard.as_ref().unwrap();
-                    events.push(Event::CanRaiseChanged(conf.can_raise));
-                    events.push(Event::CanQuitChanged(conf.can_quit));
-                    for event in events {
-                        if let Err(chilen_ipc::Error::SendingError) =
-                            respond(&mut conn, &Response::Event(event))
-                        {
-                            return;
-                        }
-                    }
                     trace!("Streaming daemon events to the client");
+                    let stream = subscribe_to_events();
                     loop {
-                        match subscribe_to_events().recv() {
+                        match stream.recv() {
                             Ok(event) => {
                                 if let Err(chilen_ipc::Error::SendingError) =
                                     respond(&mut conn, &Response::Event(event))
@@ -343,7 +312,7 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                 Command::Raise => {
                     let guard = crate::CONFIG.read().unwrap();
                     if guard.as_ref().unwrap().can_raise {
-                        let _ = send_event(Event::RaiseRequested);
+                        send_event(Event::RaiseRequested);
                         if let Err(chilen_ipc::Error::SendingError) =
                             respond(&mut conn, &Response::Ok)
                         {
