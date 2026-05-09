@@ -235,6 +235,13 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                 Command::EventStream => {
                     trace!("Streaming daemon events to the client");
                     let stream = subscribe_to_events();
+                    if let Err(e) = subscribe_to_events()
+                        && let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Error(e))
+                    {
+                        break;
+                    }
+                    let stream = stream.unwrap();
                     loop {
                         match stream.recv() {
                             Ok(event) => {
@@ -250,6 +257,7 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                             }
                         }
                     }
+                    break;
                 }
                 Command::Disconnect => {
                     trace!("Thread {index} closing client connection (client request)");

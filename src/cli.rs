@@ -78,10 +78,19 @@ fn event_stream(
         return Err(());
     }
 
+    let mut first_iter = true;
     loop {
         let response = match chilen_ipc::receive_response(&mut conn) {
             Ok(response) => match response {
                 Response::Event(event) => event,
+                Response::Error(e) => {
+                    if first_iter {
+                        error!("Failed subscribing to the daemon event stream: {e}");
+                    } else {
+                        error!("Could not receive an event from the daemon: {e}");
+                    }
+                    return Err(());
+                }
                 _ => {
                     error!("Got an unexpected response from the daemon: {response:?}");
                     return Err(());
@@ -114,6 +123,7 @@ fn event_stream(
             info!("Received the quit event, closing the connection");
             return Ok(());
         }
+        first_iter = false;
     }
 }
 
