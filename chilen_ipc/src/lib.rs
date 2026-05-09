@@ -45,8 +45,8 @@ pub enum Error {
     PlaybackError(PlaybackError),
     /// Could not obtain a socket.
     SocketError(String),
-    /// Raise is not supported by the daemon.
-    RaiseNotSupported,
+    /// Raise is requests from external clients are not allowed.
+    RaiseDisabled,
     /// Quit requests from external clients are not allowed.
     QuitDisabled,
 }
@@ -66,7 +66,10 @@ impl std::fmt::Display for Error {
             }
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
             Self::SocketError(e) => write!(f, "Could not obtain a socket: {e}"),
-            Self::RaiseNotSupported => write!(f, "Raise is not supported by the daemon"),
+            Self::RaiseDisabled => write!(
+                f,
+                "/// Raise is requests from external clients are not allowed"
+            ),
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
         }
     }
@@ -83,8 +86,6 @@ pub enum Event {
     PlaybackEvent(PlaybackEvent),
     /// Sent when the `can_raise` property of the daemon config changes.
     CanRaiseChanged(bool),
-    /// Sent when a client requests the daemon to raise, and raising is enabled.
-    RaiseRequested,
     /// Sent when the `can_quit` property of the daemon config changes.
     CanQuitChanged(bool),
 }

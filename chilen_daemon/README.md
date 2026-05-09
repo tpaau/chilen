@@ -30,7 +30,13 @@ Starting the daemon with default config:
 ```no_run
 # use chilen_daemon;
 let config = chilen_daemon::Config::try_default().unwrap();
-chilen_daemon::start(config).unwrap();
+let (_, handle) = chilen_daemon::start(config);
+match handle.join().unwrap() {
+    Ok(_) => println!("Daemon exited"),
+    Err(e) => {
+        panic!("Daemon failed: {e}");
+    }
+}
 ```
 
 Starting the daemon with a custom config:
@@ -72,5 +78,11 @@ let config = chilen_daemon::Config {
 };
 
 // The daemon usually takes around 100ms to start listening
-chilen_daemon::start(config).unwrap();
+let (_, handle) = chilen_daemon::start(config);
+match handle.join().unwrap() {
+    Ok(_) => println!("Daemon exited"),
+    Err(e) => {
+        panic!("Daemon failed: {e}");
+    }
+}
 ```

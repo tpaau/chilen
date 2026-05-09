@@ -1,7 +1,6 @@
 use std::{
     env::home_dir,
     io::{BufReader, Write},
-    thread,
 };
 
 use chilen_daemon::{AddrClaimMode, playback};
@@ -191,7 +190,8 @@ pub fn run_cli_command(
                             allow_rate_modification,
                         },
                     };
-                    match chilen_daemon::start(config) {
+                    let (_, handle) = chilen_daemon::start(config);
+                    match handle.join().unwrap() {
                         Ok(_) => info!("Daemon exited"),
                         Err(e) => {
                             error!("Daemon failed: {e}");
@@ -369,10 +369,7 @@ pub fn run_cli_command(
                 return Err(());
             }
         };
-        let handle = thread::spawn(|| match chilen_daemon::start(conf) {
-            Ok(_) => info!("Daemon exited"),
-            Err(e) => error!("Daemon failed: {e}"),
-        });
+        let (_, handle) = chilen_daemon::start(conf);
 
         #[cfg(feature = "gui")]
         {
@@ -386,7 +383,13 @@ pub fn run_cli_command(
             };
         }
 
-        handle.join().unwrap();
+        match handle.join().unwrap() {
+            Ok(_) => info!("Daemon exited"),
+            Err(e) => {
+                error!("Daemon failed: {e}");
+                return Err(());
+            }
+        }
     }
     Ok(())
 }

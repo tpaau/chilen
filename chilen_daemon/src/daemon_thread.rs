@@ -11,18 +11,18 @@ use rmp_serde::{Serializer, from_read};
 use serde::Serialize;
 
 use crate::{
-    Event,
     music_lib::{
         self, add_tracks,
         covers::LoadMode,
         create_playlist, delete_playlists, import_playlist_from_m3u8, remove_tracks,
         state::{get_library, save_library},
     },
-    playback, send_event, subscribe_to_events,
+    playback, subscribe_to_events,
 };
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ThreadCommand {
+    Raise,
     Quit,
 }
 
@@ -311,20 +311,16 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                 }
                 Command::Raise => {
                     let guard = crate::CONFIG.read().unwrap();
-                    if guard.as_ref().unwrap().can_raise {
-                        send_event(Event::RaiseRequested);
-                        if let Err(chilen_ipc::Error::SendingError) =
-                            respond(&mut conn, &Response::Ok)
-                        {
-                            break;
+                    let response = if guard.as_ref().unwrap().can_raise {
+                        match crate::send_command(ThreadCommand::Raise) {
+                            Ok(_) => Response::Ok,
+                            Err(_) => Response::Error(chilen_ipc::Error::RaiseDisabled),
                         }
                     } else {
-                        if let Err(chilen_ipc::Error::SendingError) = respond(
-                            &mut conn,
-                            &Response::Error(chilen_ipc::Error::RaiseNotSupported),
-                        ) {
-                            break;
-                        }
+                        Response::Error(chilen_ipc::Error::RaiseDisabled)
+                    };
+                    if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &response) {
+                        break;
                     }
                 }
                 Command::CanQuit => {

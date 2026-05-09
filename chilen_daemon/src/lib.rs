@@ -13,7 +13,7 @@ use std::{
     fs::remove_file,
     path::PathBuf,
     sync::{Arc, LazyLock, RwLock, mpsc},
-    thread,
+    thread::{self, JoinHandle},
 };
 
 use interprocess::local_socket::{Listener, ListenerOptions, Stream, traits::ListenerExt};
@@ -65,6 +65,14 @@ pub enum Error {
     ConfigNotInitialized,
     /// Quit requests from external clients are not allowed
     QuitDisabled,
+    /// Raise requests are not allowed
+    RaiseDisabled,
+}
+
+/// Request sent from a client forwarded to the daemon.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Request {
+    Raise,
 }
 
 impl std::fmt::Display for Error {
@@ -87,6 +95,7 @@ impl std::fmt::Display for Error {
             Self::DataDirError(e) => write!(f, "Could not initialize the data directory: {e}"),
             Self::ConfigNotInitialized => write!(f, "The daemon configuration is not set"),
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
+            Self::RaiseDisabled => write!(f, "Raise requests are not allowed"),
         }
     }
 }
@@ -398,6 +407,11 @@ pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
         if !guard.as_ref().unwrap().can_quit {
             return Err(Error::QuitDisabled.to_string());
         }
+    } else if command == ThreadCommand::Raise {
+        let guard = crate::CONFIG.read().unwrap();
+        if !guard.as_ref().unwrap().can_raise {
+            return Err(Error::RaiseDisabled.to_string());
+        }
     }
     match &**COMMAND_SENDER.read().as_ref().unwrap() {
         Some(sender) => match sender.send(command) {
@@ -526,29 +540,44 @@ pub(crate) fn client_quit() -> Result<(), Error> {
     }
 }
 
-// TODO: Add tests to make sure daemon can start and stop properly, and that functions that require
-// the daemon to be running work if it is and fail if it's not.
 /// Start the daemon with the given config.
 ///
+/// The [`Receiver`](mpsc::Receiver) returned by this functions can be used to listen for requests
+/// that are not broadcast to all clients connected via the IPC socket. This is to ensure requests
+/// such as [`Request::Raise`] do not cause conflicts when there are multiple clients attempting to
+/// handle them all at once.
+///
 /// The daemon usually starts listening for commands around 100ms after this function is
-/// called on a low-end system, but some commands sent too early might fail if the music library
-/// isn't loaded yet, the playback module is not initialized, or if the MPRIS server hasn't started
-/// yet (if the MPRIS feature is enabled).
+/// called, but some commands sent too early might fail if the music library isn't loaded yet, the
+/// playback module is not initialized, or if the MPRIS server hasn't started yet (if the MPRIS
+/// feature is enabled).
 ///
 /// The initialization of the music library is by far the most time-consuming process ran when the
 /// daemon starts, and the time it takes vastly depends on the read speeds of the hard drive of
 /// the host machine and the size of the music library.
 ///
-/// **Note:** This function will block. Launch it in a separate [`thread`] if you want to run the
-/// daemon in the background.
+/// **Note:** This function launches the daemon in a separate thread, it doesn't block.
 ///
 /// # Examples
 /// ```no_run
 /// # use chilen_daemon;
 /// let config = chilen_daemon::Config::try_default().unwrap();
-/// chilen_daemon::start(config).unwrap();
+/// let (_, handle) = chilen_daemon::start(config);
+/// match handle.join().unwrap() {
+///     Ok(_) => println!("Daemon exited"),
+///     Err(e) => {
+///         panic!("Daemon failed: {e}");
+///     }
+/// }
 /// ```
-pub fn start(config: Config) -> Result<(), Error> {
+pub fn start(config: Config) -> (mpsc::Receiver<Request>, JoinHandle<Result<(), Error>>) {
+    let (sender, receiver) = mpsc::channel();
+    (receiver, thread::spawn(|| start_blocking(sender, config)))
+}
+
+// TODO: Add tests to make sure daemon can start and stop properly, and that functions that require
+// the daemon to be running work if it is and fail if it's not.
+fn start_blocking(request_sender: mpsc::Sender<Request>, config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
 
     *CONFIG.write().unwrap() = Some(config.clone());
@@ -595,15 +624,20 @@ pub fn start(config: Config) -> Result<(), Error> {
     *sender_guard = Some(sender);
     drop(sender_guard);
 
-    let cmd = receiver.recv().unwrap();
-    // Loop this when new commands are added
-    match cmd {
-        ThreadCommand::Quit => {
-            trace!("Received quit command");
-            send_event(Event::Quit);
-            cleanup();
-            info!("Stopped.");
-            Ok(())
+    loop {
+        let cmd = receiver.recv().unwrap();
+        match cmd {
+            ThreadCommand::Raise => {
+                trace!("Received a raise request");
+                let _ = request_sender.send(Request::Raise);
+            }
+            ThreadCommand::Quit => {
+                trace!("Received quit command");
+                send_event(Event::Quit);
+                cleanup();
+                info!("Stopped.");
+                return Ok(());
+            }
         }
     }
 }
