@@ -417,29 +417,28 @@ fn get_listener(
 
 /// Sends a command from a daemon thread to the main daemon process.
 pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
+    let conf_guard = crate::CONFIG.read().unwrap();
+    let config = match conf_guard.as_ref() {
+        Some(conf) => conf,
+        None => return Err(Error::DaemonNotRunning.to_string()),
+    };
+    let sender_guard = COMMAND_SENDER.read().unwrap();
+    let sender = match sender_guard.as_ref() {
+        Some(sender) => sender,
+        None => return Err(Error::DaemonNotRunning.to_string()),
+    };
     if command == ThreadCommand::Quit {
-        let guard = crate::CONFIG.read().unwrap();
-        if !guard.as_ref().unwrap().can_quit {
+        if !config.can_quit {
             return Err(Error::QuitDisabled.to_string());
         }
-    } else if command == ThreadCommand::Raise {
-        let guard = crate::CONFIG.read().unwrap();
-        if !guard.as_ref().unwrap().can_raise {
-            return Err(Error::RaiseDisabled.to_string());
-        }
+    } else if command == ThreadCommand::Raise && !config.can_raise {
+        return Err(Error::RaiseDisabled.to_string());
     }
-    match &**COMMAND_SENDER.read().as_ref().unwrap() {
-        Some(sender) => match sender.send(command) {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                error!("Could not send the thread command to the daemon: {e}");
-                Err(e.to_string())
-            }
-        },
-        None => Err(String::from(
-            "Could ont obtain the command channel, this is expected during testing",
-        )),
+    if let Err(e) = sender.send(command) {
+        error!("Could not send the thread command to the daemon: {e}");
+        return Err(e.to_string());
     }
+    Ok(())
 }
 
 /// Send an event to the daemon thread.

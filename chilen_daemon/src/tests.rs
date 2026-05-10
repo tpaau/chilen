@@ -1,10 +1,12 @@
 use chilen_ipc::SocketType;
 
-use crate::{AddrClaimMode, Error, get_listener};
+use crate::{
+    AddrClaimMode, Config, Error, get_listener, playback, quit, set_can_quit, set_can_raise,
+};
 
 #[test]
 fn default_config_works() {
-    crate::Config::try_default().unwrap();
+    Config::try_default().unwrap();
 }
 
 // Tests:
@@ -44,4 +46,16 @@ fn fs_addr_reclamation() {
     drop(listener);
     get_listener(socket_name, &st, &AddrClaimMode::ClaimIfUnresponsive).unwrap();
     get_listener(socket_name, &st, &AddrClaimMode::ForceClaim).unwrap();
+}
+
+// Make sure daemon functions fail but don't panic when the daemon isn't running.
+#[test]
+fn functions_dont_panic() {
+    assert_eq!(set_can_raise(false).unwrap_err(), Error::DaemonNotRunning);
+    assert_eq!(set_can_quit(false).unwrap_err(), Error::DaemonNotRunning);
+    assert_eq!(quit().unwrap_err(), Error::DaemonNotRunning);
+    assert_eq!(
+        playback::set_allow_rate_modification(false).unwrap_err(),
+        Error::DaemonNotRunning
+    );
 }
