@@ -45,7 +45,7 @@ pub enum Error {
     PlaybackError(PlaybackError),
     /// Could not obtain a socket.
     SocketError(String),
-    /// Raise is requests from external clients are not allowed.
+    /// Raise requests from external clients are not allowed.
     RaiseDisabled,
     /// Quit requests from external clients are not allowed.
     QuitDisabled,
@@ -66,10 +66,9 @@ impl std::fmt::Display for Error {
             }
             Self::PlaybackError(e) => write!(f, "Playback error: {e}"),
             Self::SocketError(e) => write!(f, "Could not obtain a socket: {e}"),
-            Self::RaiseDisabled => write!(
-                f,
-                "/// Raise is requests from external clients are not allowed"
-            ),
+            Self::RaiseDisabled => {
+                write!(f, "Raise requests from external clients are not allowed")
+            }
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
         }
     }
@@ -127,6 +126,10 @@ pub enum Command {
     /// Stream [events](Event) from the daemon.
     ///
     /// The daemon will stop accepting requests from the connection this command was executed on.
+    ///
+    /// This command may fail if initial events cannot be obtained (eg. the music library is not
+    /// initialized or the queue state is not ready). The daemon will never return an incomplete
+    /// set of initial events if some cannot be obtained.
     EventStream,
     /// Close the connection to the daemon.
     Disconnect,

@@ -173,13 +173,13 @@ pub(crate) fn unwrap_player(
 
 /// Set whether the daemon should allow rate modification by clients.
 ///
-/// Will fail with [`Error::ConfigNotInitialized`](super::Error::ConfigNotInitialized) if the daemon
-/// isn't running.
+/// Will fail with [`Error::DaemonNotRunning`](super::Error::DaemonNotRunning) if the daemon isn't
+/// running.
 pub fn set_allow_rate_modification(allow_rate_modification: bool) -> Result<(), super::Error> {
     let mut conf_guard = CONFIG.write().unwrap();
     let conf = match conf_guard.as_mut() {
         Some(conf) => conf,
-        None => return Err(super::Error::ConfigNotInitialized),
+        None => return Err(super::Error::DaemonNotRunning),
     };
     conf.allow_rate_modification = allow_rate_modification;
     Ok(())

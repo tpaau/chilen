@@ -48,7 +48,7 @@ pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Error {
-    /// Could not obtain the daemon socket address.
+    /// Socket creation failed.
     SocketError,
     /// The socket address is already in use.
     AddrInUse,
@@ -56,36 +56,48 @@ pub enum Error {
     ///
     /// This likely means a second daemon was started in the same context.
     EventChannelInitialized,
-    /// The event channel is not initialized, which likely means that there is no daemon running.
+    /// The event channel is not initialized, which likely means that the daemon isn't running.
     DaemonNotRunning,
+    /// The provided music library path is not a directory or doesn't exist.
     NoLibrary,
+    /// Cannot access the music library due to a permission issue.
     LibraryNotAccessible,
+    /// The cache directory could not be initialized.
+    ///
+    /// This is usually a result of a permission issue.
     CacheDirError(String),
+    /// The data directory could not be initialized.
+    ///
+    /// This is usually a result of a permission issue.
     DataDirError(String),
-    ConfigNotInitialized,
-    /// Quit requests from external clients are not allowed
+    /// Quit requests from external clients are not allowed.
     QuitDisabled,
-    /// Raise requests are not allowed
+    /// Raise requests are not allowed.
     RaiseDisabled,
 }
 
 /// Request sent from a client forwarded to the daemon.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Request {
+    /// Bring the media player’s user interface to the front using any appropriate mechanism
+    /// available.
     Raise,
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SocketError => write!(f, "Socket creation/connection failed"),
+            Self::SocketError => write!(f, "Socket creation failed"),
             Self::AddrInUse => write!(f, "The socket address is already in use"),
             Self::EventChannelInitialized => {
-                write!(f, "The event channel for the daemon is already initialized")
+                write!(f, "The event channel is already initialized")
             }
             Self::DaemonNotRunning => write!(f, "The daemon doesn't seem to be running"),
             Self::NoLibrary => {
-                write!(f, "The provided music library directory does not exist")
+                write!(
+                    f,
+                    "The provided music library path is not a directory or doesn't exist"
+                )
             }
             Self::LibraryNotAccessible => write!(
                 f,
@@ -93,7 +105,6 @@ impl std::fmt::Display for Error {
             ),
             Self::CacheDirError(e) => write!(f, "Could not initialize the cache directory: {e}"),
             Self::DataDirError(e) => write!(f, "Could not initialize the data directory: {e}"),
-            Self::ConfigNotInitialized => write!(f, "The daemon configuration is not set"),
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
             Self::RaiseDisabled => write!(f, "Raise requests are not allowed"),
         }
@@ -155,6 +166,9 @@ pub struct Config {
     pub socket_type: SocketType,
     /// Whether the player's user interface can be brought to the front using any appropriate
     /// mechanism available.
+    ///
+    /// Players that have no ability to raise (eg. players CLI or TUI interfaces) should set this to
+    /// false.
     pub can_raise: bool,
     /// Whether clients can request the daemon to quit.
     ///
@@ -162,7 +176,7 @@ pub struct Config {
     /// affect the [`stop`] function.
     pub can_quit: bool,
     /// The basename of an installed .desktop file which complies with the Desktop entry
-    /// specification, with the “.desktop” extension stripped.
+    /// specification, with the ".desktop" extension stripped.
     #[cfg(feature = "mpris")]
     pub desktop_entry: Option<String>,
     /// Configuration options specific to the [`playback`] module.
@@ -401,6 +415,7 @@ fn get_listener(
     }
 }
 
+/// Sends a command from a daemon thread to the main daemon process.
 pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
     if command == ThreadCommand::Quit {
         let guard = crate::CONFIG.read().unwrap();
@@ -428,8 +443,6 @@ pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
 }
 
 /// Send an event to the daemon thread.
-///
-/// Will always return an error when the daemon isn't initialized, for example during testing.
 pub(crate) fn send_event(event: Event) {
     let mut senders = EVENT_SENDERS.write().unwrap();
     let mut dead = Vec::new();
@@ -444,6 +457,7 @@ pub(crate) fn send_event(event: Event) {
     }
 }
 
+/// Subscribe to important state changes.
 pub(crate) fn subscribe_to_events() -> Result<mpsc::Receiver<Event>, chilen_ipc::Error> {
     let mut events = Vec::new();
     match get_library() {
@@ -482,12 +496,12 @@ pub(crate) fn subscribe_to_events() -> Result<mpsc::Receiver<Event>, chilen_ipc:
 
 /// Set whether clients can send raise requests to the daemon.
 ///
-/// Will fail with [`Error::ConfigNotInitialized`] if the daemon isn't running.
+/// Will fail with [`Error::DaemonNotRunning`] if the daemon isn't running.
 pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
     let mut conf_guard = CONFIG.write().unwrap();
     let conf = match conf_guard.as_mut() {
         Some(conf) => conf,
-        None => return Err(Error::ConfigNotInitialized),
+        None => return Err(Error::DaemonNotRunning),
     };
     if conf.can_raise != can_raise {
         conf.can_raise = can_raise;
@@ -500,12 +514,12 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
 ///
 /// This does not affect the [`stop`] function.
 ///
-/// Will fail with [`Error::ConfigNotInitialized`] if the daemon isn't running.
+/// Will fail with [`Error::DaemonNotRunning`] if the daemon isn't running.
 pub fn set_can_quit(can_quit: bool) -> Result<(), Error> {
     let mut conf_guard = CONFIG.write().unwrap();
     let conf = match conf_guard.as_mut() {
         Some(conf) => conf,
-        None => return Err(Error::ConfigNotInitialized),
+        None => return Err(Error::DaemonNotRunning),
     };
     if conf.can_quit != can_quit {
         conf.can_quit = can_quit;
@@ -515,9 +529,6 @@ pub fn set_can_quit(can_quit: bool) -> Result<(), Error> {
 }
 
 /// Stop a running daemon instance.
-///
-/// This has the same effect as sending a [`Command::Shutdown`] to the daemon, but it bypasses
-/// the requirement to connect to it over a local socket.
 ///
 /// If a daemon is not running, [`Error::DaemonNotRunning`] will be returned.
 pub fn quit() -> Result<(), Error> {
@@ -529,8 +540,8 @@ pub fn quit() -> Result<(), Error> {
     }
 }
 
-/// Same as [`stop`] with an additional check to ensure an external client cannot stop the daemon
-/// if config options disallow it.
+/// Same as [`stop`] with an additional checks to ensure an external client cannot stop the daemon
+/// if the configuration disallows it.
 #[cfg(feature = "mpris")]
 pub(crate) fn client_quit() -> Result<(), Error> {
     let guard = crate::CONFIG.read().unwrap();
@@ -551,12 +562,12 @@ pub(crate) fn client_quit() -> Result<(), Error> {
 ///
 /// The daemon usually starts listening for commands around 100ms after this function is
 /// called, but some commands sent too early might fail if the music library isn't loaded yet, the
-/// playback module is not initialized, or if the MPRIS server hasn't started yet (if the MPRIS
-/// feature is enabled).
+/// playback module is not initialized, or if the MPRIS server isn't running (if the MPRIS feature
+/// is enabled).
 ///
-/// The initialization of the music library is by far the most time-consuming process ran when the
-/// daemon starts, and the time it takes vastly depends on the read speeds of the hard drive of
-/// the host machine and the size of the music library.
+/// The initialization of the music library is by far the most time-consuming process during
+/// startup, and the time it takes vastly depends on the read speeds of the hard drive on the host
+/// machine and the size of the music library.
 ///
 /// **Note:** This function launches the daemon in a separate thread, it doesn't block.
 ///
