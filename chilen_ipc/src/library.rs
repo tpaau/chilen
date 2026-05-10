@@ -175,13 +175,13 @@ pub enum LibraryError {
     LibraryNotInitialized,
     /// There is no [playlist](Playlist) in the [music library](MusicLibrary) with the provided
     /// name.
-    NoSuchPlaylist,
+    UnknownPlaylist,
     /// The provided item index was out of bounds.
     IndexOutOfBounds,
     /// The provided list contained duplicate values.
     DuplicateItems,
     /// The provided track is not registered in the library.
-    NoSuchTrack,
+    UnknownTrack,
     /// Could not read the contents of the library state file.
     StateNotReadable,
     /// Could not write the library state to a file.
@@ -195,9 +195,9 @@ impl std::fmt::Display for LibraryError {
         match self {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not initialized"),
-            Self::NoSuchPlaylist => write!(f, "There is no playlist with this name"),
+            Self::UnknownPlaylist => write!(f, "There is no playlist with this name"),
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
-            Self::NoSuchTrack => {
+            Self::UnknownTrack => {
                 write!(f, "The provided track is not registered in the library")
             }
             Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),

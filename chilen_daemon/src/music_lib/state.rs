@@ -407,7 +407,7 @@ impl MusicLibrary {
         for hash in hashes {
             match self.tracks_by_hash.get(&hash) {
                 Some(track) => tracks.push(track.clone()),
-                None => return Err(LibraryError::NoSuchTrack),
+                None => return Err(LibraryError::UnknownTrack),
             }
         }
 
@@ -427,7 +427,7 @@ impl MusicLibrary {
                 self.playlists.remove(&playlist);
                 self.playlists_by_name.remove(name);
             } else {
-                return Err(LibraryError::NoSuchPlaylist);
+                return Err(LibraryError::UnknownPlaylist);
             }
         }
         Ok(())
@@ -457,7 +457,7 @@ impl MusicLibrary {
                 if let Some(track) = self.find_track_by_path(path) {
                     out.push(track);
                 } else {
-                    return Err(LibraryError::NoSuchTrack);
+                    return Err(LibraryError::UnknownTrack);
                 }
             }
             out
@@ -479,7 +479,7 @@ impl MusicLibrary {
 
         let mut playlist = match self.find_playlist(name) {
             Some(playlist) => playlist.clone(),
-            None => return Err(LibraryError::NoSuchPlaylist),
+            None => return Err(LibraryError::UnknownPlaylist),
         }
         .as_ref()
         .clone();
@@ -492,7 +492,7 @@ impl MusicLibrary {
             if let Some(track) = self.find_track_by_path(&path) {
                 out.push(track.clone());
             } else {
-                return Err(LibraryError::NoSuchTrack);
+                return Err(LibraryError::UnknownTrack);
             }
         }
 
@@ -511,7 +511,7 @@ impl MusicLibrary {
 
         let mut playlist = match self.find_playlist(name) {
             Some(playlist) => playlist,
-            None => return Err(LibraryError::NoSuchPlaylist),
+            None => return Err(LibraryError::UnknownPlaylist),
         }
         .as_ref()
         .clone();

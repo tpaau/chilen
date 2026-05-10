@@ -104,7 +104,7 @@ pub(crate) fn tracks_from_paths(track_paths: &[PathBuf]) -> Result<Vec<Track>, L
         if let Some(track) = lib.find_track_by_path(path) {
             out.push(track.as_ref().clone());
         } else {
-            return Err(LibraryError::NoSuchTrack);
+            return Err(LibraryError::UnknownTrack);
         }
     }
 

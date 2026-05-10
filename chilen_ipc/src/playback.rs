@@ -353,6 +353,9 @@ pub enum PlaybackCommand {
     /// The daemon will respond to this with [`PlaybackResponse::PlayerVolume`] if
     /// successful.
     GetPlayerVolume,
+    // TODO: Update this after support for M3U8 playlist is added
+    /// Set a track in the music library as the current queue.
+    OpenURI(String),
 }
 
 /// Error originating from the playback module of the daemon.
@@ -405,6 +408,8 @@ pub enum PlaybackError {
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,
+    /// The provided track was not found in the music library.
+    UnknownTrack,
 }
 
 impl std::fmt::Display for PlaybackError {
@@ -435,6 +440,9 @@ impl std::fmt::Display for PlaybackError {
             ),
             Self::DurationOverflow => {
                 write!(f, "Overflow detected while performing a seek operation")
+            }
+            Self::UnknownTrack => {
+                write!(f, "The provided track was not found in the music library")
             }
         }
     }

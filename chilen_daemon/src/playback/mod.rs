@@ -89,6 +89,7 @@ pub(crate) enum Command {
     GetPlayerPosition,
     SetPlayerVolume(PlayerVolume),
     GetPlayerVolume,
+    OpenURI(String),
 }
 
 impl TryFrom<PlaybackCommand> for Command {
@@ -112,7 +113,7 @@ impl TryFrom<PlaybackCommand> for Command {
                 let lib = get_library()?;
                 let playlist = match lib.find_playlist(&playlist) {
                     Some(playlist) => playlist,
-                    None => return Err(LibraryError::NoSuchPlaylist),
+                    None => return Err(LibraryError::UnknownPlaylist),
                 };
                 Ok(Self::SetQueue(
                     playlist.tracks.iter().map(|t| t.as_ref().clone()).collect(),
@@ -122,7 +123,7 @@ impl TryFrom<PlaybackCommand> for Command {
                 let lib = get_library()?;
                 let playlist = match lib.find_playlist(&playlist) {
                     Some(playlist) => playlist,
-                    None => return Err(LibraryError::NoSuchPlaylist),
+                    None => return Err(LibraryError::UnknownPlaylist),
                 };
                 Ok(Self::AppendToQueue(
                     playlist.tracks.iter().map(|t| t.as_ref().clone()).collect(),
@@ -147,6 +148,7 @@ impl TryFrom<PlaybackCommand> for Command {
             PlaybackCommand::GetPlayerPosition => Ok(Self::GetPlayerPosition),
             PlaybackCommand::SetPlayerVolume(volume) => Ok(Self::SetPlayerVolume(volume)),
             PlaybackCommand::GetPlayerVolume => Ok(Self::GetPlayerVolume),
+            PlaybackCommand::OpenURI(uri) => Ok(Self::OpenURI(uri)),
         }
     }
 }
@@ -300,6 +302,18 @@ pub(crate) fn get_playback_state() -> Result<PlaybackState, PlaybackError> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.playback_state)
+}
+
+// TODO: Implement opening M3U8 playlists once that's supported
+pub(crate) fn open_uri(uri: String) -> Result<(), PlaybackError> {
+    let track = match tracks_from_paths(&[uri.clone().into()]) {
+        Ok(track) => track,
+        Err(e) => {
+            error!("Could not open the provided URI ({uri}): {e}");
+            return Err(PlaybackError::UnknownTrack);
+        }
+    };
+    set_queue(track)
 }
 
 pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), PlaybackError> {
@@ -784,6 +798,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<Response, PlaybackError> {
                 get_player_volume()?,
             )));
         }
+        Command::OpenURI(uri) => open_uri(uri)?,
     }
 
     Ok(Response::Ok)

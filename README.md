@@ -11,8 +11,8 @@ custom music players with the daemon and IPC libraries, similar to how it works 
 affect the usage once the project is finished.
 
 Documentation on the submodules of Chilen can be found here:
-- [chilen_daemon](https://tpaau.github.io/chilen/chilen_daemon/)
-- [chilen_ipc](https://tpaau.github.io/chilen/chilen_ipc/)
+- [`chilen_daemon`](https://tpaau.github.io/chilen/chilen_daemon/)
+- [`chilen_ipc`](https://tpaau.github.io/chilen/chilen_ipc/)
 
 ## Table of contents
 - [Features](#features)
@@ -41,7 +41,7 @@ usually can be installed as `alsa-lib-devel`:
 
 For Fedora Silverblue, run this:
 ```bash
-rpm-ostree install alsa-libs-devel
+rpm-ostree install alsa-lib-devel
 ```
 
 

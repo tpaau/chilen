@@ -3,7 +3,7 @@
 ### Prerequisites
 You will need Rust nightly to build the project.
 
-Additionally, if you are on Linux, the `alsa-libs-devel` package is required.
+Additionally, if you are on Linux, the `alsa-lib-devel` package is required.
 
 Consider installing [`just`](https://github.com/casey/just) for running some of
 the development commands. This is entirely optional, though.

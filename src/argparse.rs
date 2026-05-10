@@ -309,6 +309,10 @@ pub enum PlaybackCommand {
     },
     /// Get the volume of the player.
     GetVolume,
+    OpenUri {
+        #[arg()]
+        uri: String,
+    },
 }
 
 impl From<PlaybackCommand> for chilen_ipc::playback::PlaybackCommand {
@@ -379,6 +383,7 @@ impl From<PlaybackCommand> for chilen_ipc::playback::PlaybackCommand {
                 )
             }
             PlaybackCommand::GetVolume => chilen_ipc::playback::PlaybackCommand::GetPlayerVolume,
+            PlaybackCommand::OpenUri { uri } => chilen_ipc::playback::PlaybackCommand::OpenURI(uri),
         }
     }
 }
