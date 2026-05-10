@@ -170,7 +170,19 @@ impl PlayerInterface for MprisInterface {
         track_id: mpris_server::TrackId,
         position: mpris_server::Time,
     ) -> MprisResult<()> {
-        // TODO: Perform track_id validation
+        let meta = match self.metadata().await {
+            Ok(meta) => meta,
+            Err(e) => {
+                return Err(MprisError::Failed(format!(
+                    "Could not get the metadata: {e}"
+                )));
+            }
+        };
+        if Some(track_id) != meta.trackid() {
+            return Err(MprisError::InvalidArgs(
+                "The track id provided doesn't match with the current track id".to_string(),
+            ));
+        }
         get_response(playback::set_player_position(Duration::from_millis(
             position
                 .as_millis()
@@ -261,13 +273,13 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn metadata(&self) -> MprisResult<mpris_server::Metadata> {
-        match playback::get_current_track() {
-            Ok(maybe_track) => match maybe_track {
-                Some(track) => Ok(track.get_meta()),
+        match playback::get_current_meta() {
+            Ok(maybe_meta) => match maybe_meta {
+                Some(meta) => Ok(meta),
                 None => Ok(mpris_server::Metadata::new()),
             },
             Err(e) => Err(MprisError::Failed(format!(
-                "Cannot get the current track: {e}"
+                "Cannot get the current metadata: {e}"
             ))),
         }
     }

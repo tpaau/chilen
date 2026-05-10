@@ -343,6 +343,16 @@ pub(crate) fn get_current_track() -> Result<Option<Track>, PlaybackError> {
     }
 }
 
+#[cfg(feature = "mpris")]
+pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, PlaybackError> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    match state.current() {
+        Some(track) => Ok(Some(track.get_meta(state.position))),
+        None => Ok(None),
+    }
+}
+
 pub(crate) fn skip_next() -> Result<(), PlaybackError> {
     trace!("Skipping to the next track");
     let mut state_guard = PLAYER_STATE.write().unwrap();

@@ -14,6 +14,8 @@ use lofty::{
     tag::{Accessor, ItemValue, Tag},
 };
 use log::{error, trace};
+#[cfg(feature = "mpris")]
+use mpris_server::TrackId;
 use rmp_serde::{Deserializer, Serializer};
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
@@ -145,8 +147,18 @@ impl Track {
         hashes
     }
 
+    // TODO: Am I doing this right???
     #[cfg(feature = "mpris")]
-    pub fn get_meta(self) -> mpris_server::Metadata {
+    pub fn track_id(&self, position: usize) -> TrackId {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        position.hash(&mut hasher);
+        let hash = hasher.finish();
+        TrackId::try_from(format!("/org/mpris/MediaPlayer2/TrackList/queue/{hash}")).unwrap()
+    }
+
+    #[cfg(feature = "mpris")]
+    pub fn get_meta(&self, position: usize) -> mpris_server::Metadata {
         use mpris_server::{Time, builder::MetadataBuilder};
 
         MetadataBuilder::default()
@@ -154,15 +166,21 @@ impl Track {
                 self.duration.as_nanos().try_into().unwrap_or(i64::MAX),
             ))
             .url(self.path.to_string_lossy())
-            .art_url(self.cover_path.unwrap_or_default().to_string_lossy())
-            .artist(self.artist)
-            .title(self.title.unwrap_or_default())
-            .album(self.album.unwrap_or_default())
-            .genre(self.genre)
-            .comment(self.comment)
+            .art_url(
+                self.cover_path
+                    .clone()
+                    .unwrap_or_default()
+                    .to_string_lossy(),
+            )
+            .artist(self.artist.clone())
+            .title(self.title.clone().unwrap_or_default())
+            .album(self.album.clone().unwrap_or_default())
+            .genre(self.genre.clone())
+            .comment(self.comment.clone())
             .track_number(self.track.unwrap_or(0).try_into().unwrap_or(0))
             .disc_number(self.disc.unwrap_or(0).try_into().unwrap_or(0))
-            .lyrics(self.lyrics.unwrap_or_default())
+            .lyrics(self.lyrics.clone().unwrap_or_default())
+            .trackid(self.track_id(position))
             .build()
     }
 
