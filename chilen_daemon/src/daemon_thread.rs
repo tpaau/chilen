@@ -88,10 +88,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                 Command::Library(cmd) => match cmd {
                     LibraryCommand::NewPlaylist { name, tracks } => {
                         if let Err(e) = create_playlist(name, &tracks) {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                             continue;
@@ -104,10 +103,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     }
                     LibraryCommand::PlaylistFromM3U8 { name, m3u8_file } => {
                         if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                             continue;
@@ -120,18 +118,15 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     }
                     LibraryCommand::DeletePlaylists { names } => {
                         if let Err(e) = delete_playlists(names)
-                            && let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            )
+                            && let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
                         {
                             break;
                         }
                         if let Err(e) = save_library() {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                             continue;
@@ -152,10 +147,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                                 }
                             }
                             Err(e) => {
-                                if let Err(chilen_ipc::Error::SendingError) = respond(
-                                    &mut conn,
-                                    &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                                ) {
+                                if let Err(chilen_ipc::Error::SendingError) =
+                                    respond(&mut conn, &Response::Error(e))
+                                {
                                     break;
                                 }
                             }
@@ -171,10 +165,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                                 }
                             }
                             Err(e) => {
-                                if let Err(chilen_ipc::Error::SendingError) = respond(
-                                    &mut conn,
-                                    &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                                ) {
+                                if let Err(chilen_ipc::Error::SendingError) =
+                                    respond(&mut conn, &Response::Error(e))
+                                {
                                     break;
                                 }
                             }
@@ -189,10 +182,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                             }
                         }
                         Err(e) => {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                         }
@@ -206,10 +198,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                             }
                         }
                         Err(e) => {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                         }
@@ -223,10 +214,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                             }
                         }
                         Err(e) => {
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                         }
@@ -280,10 +270,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                         Ok(cmd) => cmd,
                         Err(e) => {
                             error!("Could not parse the playback command: {e}");
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::LibraryError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                             continue;
@@ -299,10 +288,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                         }
                         Err(e) => {
                             error!("Could not execute the playback command: {e}");
-                            if let Err(chilen_ipc::Error::SendingError) = respond(
-                                &mut conn,
-                                &Response::Error(chilen_ipc::Error::PlaybackError(e)),
-                            ) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
                                 break;
                             }
                         }

@@ -8,7 +8,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use chilen_ipc::library::LibraryError;
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, Tag},
@@ -259,22 +258,22 @@ impl Playlist {
     fn try_from_loaded_playlist(
         lib: &MusicLibrary,
         loaded: ConfPlaylist,
-    ) -> Result<Self, LibraryError> {
+    ) -> Result<Self, chilen_ipc::Error> {
         Ok(Self {
             name: loaded.name,
             tracks: lib.tracks_from_hashes(loaded.track_hashes)?,
         })
     }
 
-    pub(crate) fn remove_tracks(&mut self, mut ids: Vec<usize>) -> Result<(), LibraryError> {
+    pub(crate) fn remove_tracks(&mut self, mut ids: Vec<usize>) -> Result<(), chilen_ipc::Error> {
         ids.sort();
         let mut unique = ids.clone();
         unique.dedup();
         if unique != ids {
-            return Err(LibraryError::DuplicateItems);
+            return Err(chilen_ipc::Error::DuplicateItems);
         }
         if ids.iter().find(|i| i >= &&self.tracks.len()).is_some() {
-            return Err(LibraryError::IndexOutOfBounds);
+            return Err(chilen_ipc::Error::IndexOutOfBounds);
         }
         let remove_set: HashSet<usize> = ids.into_iter().collect();
         self.tracks = self
@@ -343,7 +342,7 @@ impl MusicLibrary {
     fn try_from_loaded_lib(
         loaded: ConfMusicLibrary,
         tracks: HashSet<Track>,
-    ) -> Result<Self, LibraryError> {
+    ) -> Result<Self, chilen_ipc::Error> {
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
         let playlists: HashSet<Arc<Playlist>> = HashSet::new();
 
@@ -402,24 +401,30 @@ impl MusicLibrary {
         self.playlists_by_name.get(name)
     }
 
-    pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, LibraryError> {
+    pub fn tracks_from_hashes(
+        &self,
+        hashes: Vec<u64>,
+    ) -> Result<Vec<Arc<Track>>, chilen_ipc::Error> {
         let mut tracks = Vec::with_capacity(hashes.len());
         for hash in hashes {
             match self.tracks_by_hash.get(&hash) {
                 Some(track) => tracks.push(track.clone()),
-                None => return Err(LibraryError::UnknownTrack),
+                None => return Err(chilen_ipc::Error::UnknownTrack),
             }
         }
 
         Ok(tracks)
     }
 
-    pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), LibraryError> {
+    pub fn remove_playlists(
+        &mut self,
+        mut playlists: Vec<String>,
+    ) -> Result<(), chilen_ipc::Error> {
         playlists.sort();
         let mut unique = playlists.clone();
         unique.dedup();
         if unique != playlists {
-            return Err(LibraryError::DuplicateItems);
+            return Err(chilen_ipc::Error::DuplicateItems);
         }
 
         for name in &playlists {
@@ -427,7 +432,7 @@ impl MusicLibrary {
                 self.playlists.remove(&playlist);
                 self.playlists_by_name.remove(name);
             } else {
-                return Err(LibraryError::UnknownPlaylist);
+                return Err(chilen_ipc::Error::UnknownPlaylist);
             }
         }
         Ok(())
@@ -443,12 +448,12 @@ impl MusicLibrary {
         &mut self,
         name: String,
         track_paths: &Option<Vec<PathBuf>>,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<(), chilen_ipc::Error> {
         trace!("Creating a new playlist \"{name}\" from a list of tracks");
 
         if self.find_playlist(&name).is_some() {
             error!("A playlist with name \"{name}\" already exists");
-            return Err(LibraryError::PlaylistExists);
+            return Err(chilen_ipc::Error::PlaylistExists);
         }
 
         let tracks = if let Some(tracks) = track_paths {
@@ -457,7 +462,7 @@ impl MusicLibrary {
                 if let Some(track) = self.find_track_by_path(path) {
                     out.push(track);
                 } else {
-                    return Err(LibraryError::UnknownTrack);
+                    return Err(chilen_ipc::Error::UnknownTrack);
                 }
             }
             out
@@ -474,12 +479,16 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn add_tracks(&mut self, name: &str, tracks: Vec<PathBuf>) -> Result<(), LibraryError> {
+    pub fn add_tracks(
+        &mut self,
+        name: &str,
+        tracks: Vec<PathBuf>,
+    ) -> Result<(), chilen_ipc::Error> {
         trace!("Adding tracks to playlist \"{name}\"");
 
         let mut playlist = match self.find_playlist(name) {
             Some(playlist) => playlist.clone(),
-            None => return Err(LibraryError::UnknownPlaylist),
+            None => return Err(chilen_ipc::Error::UnknownPlaylist),
         }
         .as_ref()
         .clone();
@@ -492,7 +501,7 @@ impl MusicLibrary {
             if let Some(track) = self.find_track_by_path(&path) {
                 out.push(track.clone());
             } else {
-                return Err(LibraryError::UnknownTrack);
+                return Err(chilen_ipc::Error::UnknownTrack);
             }
         }
 
@@ -506,12 +515,16 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn remove_tracks(&mut self, name: &str, tracks: Vec<usize>) -> Result<(), LibraryError> {
+    pub fn remove_tracks(
+        &mut self,
+        name: &str,
+        tracks: Vec<usize>,
+    ) -> Result<(), chilen_ipc::Error> {
         trace!("Removing tracks from playlist \"{name}\"");
 
         let mut playlist = match self.find_playlist(name) {
             Some(playlist) => playlist,
-            None => return Err(LibraryError::UnknownPlaylist),
+            None => return Err(chilen_ipc::Error::UnknownPlaylist),
         }
         .as_ref()
         .clone();
@@ -534,7 +547,7 @@ impl MusicLibrary {
         &mut self,
         playlist: &Path,
         name: Option<String>,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<(), chilen_ipc::Error> {
         trace!("Importing a playlist from an M3U8 file at {playlist:?}");
         todo!("Importing playlists from M3U8 files is not supported!");
     }
@@ -571,29 +584,29 @@ pub(crate) fn cleanup() {
 
 pub(crate) fn unwrap_lib_ref(
     maybe_lib: Option<&MusicLibrary>,
-) -> Result<&MusicLibrary, LibraryError> {
+) -> Result<&MusicLibrary, chilen_ipc::Error> {
     match maybe_lib {
         Some(lib) => Ok(lib),
-        None => Err(LibraryError::LibraryNotInitialized),
+        None => Err(chilen_ipc::Error::LibraryNotInitialized),
     }
 }
 
 pub(crate) fn unwrap_lib_mut(
     maybe_lib: Option<&mut MusicLibrary>,
-) -> Result<&mut MusicLibrary, LibraryError> {
+) -> Result<&mut MusicLibrary, chilen_ipc::Error> {
     match maybe_lib {
         Some(lib) => Ok(lib),
-        None => Err(LibraryError::LibraryNotInitialized),
+        None => Err(chilen_ipc::Error::LibraryNotInitialized),
     }
 }
 
-pub(crate) fn get_library() -> Result<MusicLibrary, LibraryError> {
+pub(crate) fn get_library() -> Result<MusicLibrary, chilen_ipc::Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     unwrap_lib_ref(guard.as_ref()).cloned()
 }
 
 /// Save the library state to a file.
-pub(crate) fn save_library() -> Result<(), LibraryError> {
+pub(crate) fn save_library() -> Result<(), chilen_ipc::Error> {
     trace!("Saving the library state");
 
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
@@ -610,7 +623,7 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
             Ok(file) => file,
             Err(e) => {
                 error!("Could not open the library state in write-only mode: {e}");
-                return Err(LibraryError::StateWriteFailed);
+                return Err(chilen_ipc::Error::StateWriteFailed);
             }
         };
 
@@ -621,17 +634,17 @@ pub(crate) fn save_library() -> Result<(), LibraryError> {
             }
             Err(e) => {
                 error!("Could not write to the library: {e}");
-                Err(LibraryError::StateWriteFailed)
+                Err(chilen_ipc::Error::StateWriteFailed)
             }
         }
     } else {
         error!("Cannot save the library since it is uninitialized!");
-        Err(LibraryError::LibraryNotInitialized)
+        Err(chilen_ipc::Error::LibraryNotInitialized)
     }
 }
 
 /// Load the music library from the playlists file.
-pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
+pub(crate) fn load(load_mode: LoadMode) -> Result<(), chilen_ipc::Error> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
@@ -658,7 +671,7 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library exists: {e}");
-            return Err(LibraryError::StateNotReadable);
+            return Err(chilen_ipc::Error::StateNotReadable);
         }
     };
 
@@ -667,14 +680,14 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), LibraryError> {
 
         if !library_state.is_file() {
             error!("The item at {library_state:?} must be a file!");
-            return Err(LibraryError::StateNotAFile);
+            return Err(chilen_ipc::Error::StateNotAFile);
         }
 
         let data = match read(library_state) {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library: {e}");
-                return Err(LibraryError::StateNotReadable);
+                return Err(chilen_ipc::Error::StateNotReadable);
             }
         };
 

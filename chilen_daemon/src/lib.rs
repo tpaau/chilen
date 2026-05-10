@@ -465,7 +465,7 @@ pub(crate) fn subscribe_to_events() -> Result<mpsc::Receiver<Event>, chilen_ipc:
         }
         Err(e) => {
             error!("Could not get the contents of the music library: {e}");
-            return Err(chilen_ipc::Error::LibraryError(e));
+            return Err(e);
         }
     }
     match playback::get_initial_events() {
@@ -476,7 +476,7 @@ pub(crate) fn subscribe_to_events() -> Result<mpsc::Receiver<Event>, chilen_ipc:
         }
         Err(e) => {
             error!("Could not get the initial events from the playback module: {e}");
-            return Err(chilen_ipc::Error::PlaybackError(e));
+            return Err(e);
         }
     };
     let guard = crate::CONFIG.read().unwrap();

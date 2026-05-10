@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use chilen_ipc::playback::{LoopState, PlaybackError, PlaybackState, PlayerVolume, SignedDuration};
+use chilen_ipc::playback::{LoopState, PlaybackState, PlayerVolume, SignedDuration};
 use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
@@ -49,14 +49,14 @@ pub(crate) fn loop_state_from_mpris(loop_state: &mpris_server::LoopStatus) -> Lo
     }
 }
 
-fn get_error(playback_error: PlaybackError) -> MprisError {
+fn get_error(playback_error: chilen_ipc::Error) -> MprisError {
     match playback_error {
-        PlaybackError::SeekNotSupported => MprisError::NotSupported(playback_error.to_string()),
+        chilen_ipc::Error::SeekNotSupported => MprisError::NotSupported(playback_error.to_string()),
         _ => MprisError::Failed(playback_error.to_string()),
     }
 }
 
-fn get_response(result: Result<(), PlaybackError>) -> MprisResult<()> {
+fn get_response(result: Result<(), chilen_ipc::Error>) -> MprisResult<()> {
     match result {
         Ok(_) => Ok(()),
         Err(e) => Err(get_error(e)),
@@ -243,7 +243,7 @@ impl PlayerInterface for MprisInterface {
         match playback::set_rate(rate) {
             Ok(_) => Ok(()),
             Err(e) => match e {
-                PlaybackError::FixedRate => Err(mpris_server::zbus::Error::Unsupported),
+                chilen_ipc::Error::FixedRate => Err(mpris_server::zbus::Error::Unsupported),
                 _ => Err(mpris_server::zbus::Error::Failure(format!(
                     "Cannot set the playback rate: {e}"
                 ))),
@@ -264,7 +264,9 @@ impl PlayerInterface for MprisInterface {
         match playback::set_shuffle_state(shuffle.into()) {
             Ok(_) => Ok(()),
             Err(e) => match e {
-                PlaybackError::ShuffleNotSupported => Err(mpris_server::zbus::Error::Unsupported),
+                chilen_ipc::Error::ShuffleNotSupported => {
+                    Err(mpris_server::zbus::Error::Unsupported)
+                }
                 _ => Err(mpris_server::zbus::Error::Failure(format!(
                     "Cannot set the shuffle state: {e}"
                 ))),

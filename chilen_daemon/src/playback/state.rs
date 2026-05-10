@@ -9,10 +9,7 @@ use std::{
 
 use chilen_ipc::{
     Event,
-    library::LibraryError,
-    playback::{
-        LoopState, PlaybackError, PlaybackEvent, PlaybackRate, PlaybackState, PlayerVolume,
-    },
+    playback::{LoopState, PlaybackEvent, PlaybackRate, PlaybackState, PlayerVolume},
 };
 use log::{error, trace};
 use rmp_serde::{Deserializer, Serializer};
@@ -54,7 +51,7 @@ pub(crate) struct PlayerState {
 }
 
 impl TryFrom<PlayerStateRaw> for PlayerState {
-    type Error = LibraryError;
+    type Error = chilen_ipc::Error;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
         Ok(Self {
             position: value.position,
@@ -709,19 +706,19 @@ pub(crate) fn cleanup() {
 
 pub(crate) fn unwrap_state_ref(
     maybe_state: Option<&PlayerState>,
-) -> Result<&PlayerState, PlaybackError> {
+) -> Result<&PlayerState, chilen_ipc::Error> {
     match maybe_state {
         Some(state) => Ok(state),
-        None => Err(PlaybackError::StateNotInitialized),
+        None => Err(chilen_ipc::Error::StateNotInitialized),
     }
 }
 
 pub(crate) fn unwrap_state_mut(
     maybe_state: Option<&mut PlayerState>,
-) -> Result<&mut PlayerState, PlaybackError> {
+) -> Result<&mut PlayerState, chilen_ipc::Error> {
     match maybe_state {
         Some(state) => Ok(state),
-        None => Err(PlaybackError::StateNotInitialized),
+        None => Err(chilen_ipc::Error::StateNotInitialized),
     }
 }
 
