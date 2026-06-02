@@ -17,7 +17,7 @@ use crate::{
         create_playlist, delete_playlists, import_playlist_from_m3u8, remove_tracks,
         state::{get_library, save_library},
     },
-    playback, subscribe_to_events,
+    playback, raise, set_fullscreen, subscribe_to_events,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -307,14 +307,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     }
                 }
                 Command::Raise => {
-                    let guard = crate::CONFIG.read().unwrap();
-                    let response = if guard.as_ref().unwrap().can_raise {
-                        match crate::send_command(ThreadCommand::Raise) {
-                            Ok(_) => Response::Ok,
-                            Err(_) => Response::Error(chilen_ipc::Error::RaiseDisabled),
-                        }
-                    } else {
-                        Response::Error(chilen_ipc::Error::RaiseDisabled)
+                    let response = match raise() {
+                        Ok(_) => Response::Ok,
+                        Err(_) => Response::Error(chilen_ipc::Error::RaiseDisabled),
                     };
                     if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &response) {
                         break;
@@ -330,15 +325,9 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     }
                 }
                 Command::SetFullscreen(fullscreen) => {
-                    let guard = crate::CONFIG.read().unwrap();
-                    let response = if guard.as_ref().unwrap().can_set_fullscreen {
-                        // TODO: Implement going fullscreen
-                        match crate::send_command(ThreadCommand::SetFullscreen(fullscreen)) {
-                            Ok(_) => Response::Ok,
-                            Err(_) => Response::Error(chilen_ipc::Error::SetFullscreenNotSupported),
-                        }
-                    } else {
-                        Response::Error(chilen_ipc::Error::SetFullscreenNotSupported)
+                    let response = match set_fullscreen(fullscreen) {
+                        Ok(_) => Response::Ok,
+                        Err(_) => Response::Error(chilen_ipc::Error::SetFullscreenDisabled),
                     };
                     if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &response) {
                         break;

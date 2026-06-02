@@ -74,6 +74,8 @@ pub enum Error {
     QuitDisabled,
     /// Raise requests are not allowed.
     RaiseDisabled,
+    /// Toggling fullscreen mode by external clients is not allowed.
+    SetFullscreenDisabled,
 }
 
 /// Request sent from a client forwarded to the daemon.
@@ -109,6 +111,10 @@ impl std::fmt::Display for Error {
             Self::DataDirError(e) => write!(f, "Could not initialize the data directory: {e}"),
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
             Self::RaiseDisabled => write!(f, "Raise requests are not allowed"),
+            Self::SetFullscreenDisabled => write!(
+                f,
+                "Toggling fullscreen mode by external clients is not allowed"
+            ),
         }
     }
 }
@@ -496,6 +502,30 @@ pub(crate) fn subscribe_to_events() -> Result<mpsc::Receiver<Event>, chilen_ipc:
     let senders: &mut Vec<mpsc::Sender<Event>> = guard.as_mut();
     senders.push(sender);
     Ok(receiver)
+}
+
+pub(crate) fn raise() -> Result<(), Error> {
+    let guard = crate::CONFIG.read().unwrap();
+    if guard.as_ref().unwrap().can_raise {
+        match crate::send_command(ThreadCommand::Raise) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(Error::RaiseDisabled),
+        }
+    } else {
+        Err(Error::RaiseDisabled)
+    }
+}
+
+pub(crate) fn set_fullscreen(fullscreen: bool) -> Result<(), Error> {
+    let guard = crate::CONFIG.read().unwrap();
+    if guard.as_ref().unwrap().can_set_fullscreen {
+        match crate::send_command(ThreadCommand::SetFullscreen(fullscreen)) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(Error::SetFullscreenDisabled),
+        }
+    } else {
+        Err(Error::SetFullscreenDisabled)
+    }
 }
 
 /// Set whether clients can send raise requests to the daemon.

@@ -44,7 +44,7 @@ pub enum Error {
     /// Raise requests from external clients are not allowed.
     RaiseDisabled,
     /// Toggling fullscreen mode by external clients is not allowed.
-    SetFullscreenNotSupported,
+    SetFullscreenDisabled,
     /// Quit requests from external clients are not allowed.
     QuitDisabled,
     /// The audio player is not connected.
@@ -133,7 +133,7 @@ impl std::fmt::Display for Error {
             Self::RaiseDisabled => {
                 write!(f, "Raise requests from external clients are not allowed")
             }
-            Self::SetFullscreenNotSupported => write!(
+            Self::SetFullscreenDisabled => write!(
                 f,
                 "Toggling fullscreen mode by external clients is not allowed"
             ),

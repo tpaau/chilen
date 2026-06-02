@@ -542,7 +542,7 @@ impl MusicLibrary {
     }
 
     // TODO: Implement importing playlists from M3U8 files
-    // TODO: Add tests for this
+    // TEST: Add tests for this
     pub fn import_m3u8_playlist(
         &mut self,
         playlist: &Path,

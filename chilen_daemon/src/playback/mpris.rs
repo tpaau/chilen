@@ -8,9 +8,12 @@ use chilen_ipc::playback::{LoopState, PlaybackState, PlayerVolume, SignedDuratio
 use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
-use crate::playback::{
-    self, SUPPORTED_MIME_TYPES, open_uri,
-    state::{self, PLAYER_STATE},
+use crate::{
+    playback::{
+        self, SUPPORTED_MIME_TYPES, open_uri,
+        state::{self, PLAYER_STATE},
+    },
+    raise, set_fullscreen,
 };
 
 type MprisError = mpris_server::zbus::fdo::Error;
@@ -65,13 +68,10 @@ fn get_response(result: Result<(), chilen_ipc::Error>) -> MprisResult<()> {
 
 impl RootInterface for MprisInterface {
     async fn raise(&self) -> MprisResult<()> {
-        let guard = crate::CONFIG.read().unwrap();
-        if !guard.as_ref().unwrap().can_raise {
-            return Err(MprisError::NotSupported("Raise is disabled".to_string()));
+        match raise() {
+            Ok(_) => Ok(()),
+            Err(e) => Err(MprisError::NotSupported(e.to_string())),
         }
-        Err(MprisError::NotSupported(String::from(
-            "Raise is not yet implemented",
-        )))
     }
 
     async fn quit(&self) -> MprisResult<()> {
@@ -87,20 +87,23 @@ impl RootInterface for MprisInterface {
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Implement going fullscreen for Mpris clients
+        // TODO: Implement checking fullscreen mode status
+        // NOTE: This would require two-way communication with the daemon handler
         Err(MprisError::NotSupported(String::from(
             "Fullscreen is not yet implemented",
         )))
     }
 
     async fn can_set_fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Implement going fullscreen for Mpris clients
-        Ok(false)
+        let guard = crate::CONFIG.read().unwrap();
+        Ok(guard.as_ref().unwrap().can_set_fullscreen)
     }
 
     async fn set_fullscreen(&self, fullscreen: bool) -> mpris_server::zbus::Result<()> {
-        // TODO: Implement going fullscreen for Mpris clients
-        Err(mpris_server::zbus::Error::Unsupported)
+        match set_fullscreen(fullscreen) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(mpris_server::zbus::Error::Unsupported),
+        }
     }
 
     async fn can_raise(&self) -> mpris_server::zbus::fdo::Result<bool> {
