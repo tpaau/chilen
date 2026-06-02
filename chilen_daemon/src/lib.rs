@@ -587,8 +587,8 @@ pub fn start(config: Config) -> (mpsc::Receiver<Request>, JoinHandle<Result<(), 
     (receiver, thread::spawn(|| start_blocking(sender, config)))
 }
 
-// TODO: Add tests to make sure daemon can start and stop properly, and that functions that require
-// the daemon to be running work if it is and fail if it's not.
+// TODO: Add tests to make sure daemon can start and stop properly, and that the functions that
+// require the daemon to be running work if it is and fail if it's not.
 fn start_blocking(request_sender: mpsc::Sender<Request>, config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
 

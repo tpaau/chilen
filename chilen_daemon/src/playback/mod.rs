@@ -527,6 +527,36 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), chilen_ipc::
 /// position would be smaller than this value, skip to the next track.
 static SEEK_ROUND_THRESHOLD: LazyLock<Duration> = LazyLock::new(|| Duration::from_secs(1));
 
+/// Mime types supported by the music player.
+///
+/// Chilen uses the `rodio` crate for audio playback, which itself uses
+/// [Symphonia](https://github.com/pdeljanov/Symphonia) for decoding audio files. Chilen supports
+/// all audio formats Symphonia does.
+static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
+    let arr = [
+        "audio/aac",
+        "audio/32kadpcm",
+        "audio/aiff",
+        "audio/x-aiff",
+        "audio/x-caf",
+        "audio/flac",
+        "audio/matroska",
+        "audio/mpeg",
+        "audio/mp4",
+        "audio/MPA",
+        "audio/mpa-robust",
+        "audio/ogg",
+        "audio/vorbis",
+        "audio/vorbis-config",
+        "audio/vnd.wave",
+        "audio/wav",
+        "audio/wave",
+        "audio/x-wav",
+        "audio/webm",
+    ];
+    arr.into_iter().map(|t| t.to_string()).collect()
+});
+
 pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {

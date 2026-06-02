@@ -9,7 +9,7 @@ use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::playback::{
-    self,
+    self, SUPPORTED_MIME_TYPES,
     state::{self, PLAYER_STATE},
 };
 
@@ -131,8 +131,7 @@ impl RootInterface for MprisInterface {
     }
 
     async fn supported_mime_types(&self) -> mpris_server::zbus::fdo::Result<Vec<String>> {
-        // TODO: Fill in the mime types list
-        Ok(vec![String::from("audio/mp3")])
+        Ok(SUPPORTED_MIME_TYPES.to_vec())
     }
 }
 

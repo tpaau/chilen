@@ -1,5 +1,5 @@
 words = [
   "daemon", "tpaau", "IPC", "mpris", "MPRIS", "smol", "calloop", "zbus", "vlc", "VLC", "winit",
   "sctk", "wgpu", "trx", "chilen", "interprocess", "rmp", "serde", "frontends", "alsa",
-  "silverblue", "MPD", "LLM", "WIP"
+  "silverblue", "MPD", "LLM", "WIP", "ALAC", "rodio"
 ]
