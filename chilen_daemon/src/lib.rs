@@ -173,7 +173,7 @@ pub struct Config {
     /// Whether clients can request the daemon to quit.
     ///
     /// This only affects clients that connect to the daemon over a local socket, it does not
-    /// affect the [`stop`] function.
+    /// affect the [`quit`] function.
     pub can_quit: bool,
     /// The basename of an installed .desktop file which complies with the Desktop entry
     /// specification, with the ".desktop" extension stripped.
@@ -511,7 +511,7 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
 
 /// Set whether the daemon should accept quit requests from clients.
 ///
-/// This does not affect the [`stop`] function.
+/// This does not affect the [`quit`] function.
 ///
 /// Will fail with [`Error::DaemonNotRunning`] if the daemon isn't running.
 pub fn set_can_quit(can_quit: bool) -> Result<(), Error> {

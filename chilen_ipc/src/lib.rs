@@ -70,13 +70,13 @@ pub enum Error {
     SeekNotSupported,
     /// Cannot go to the previous track.
     ///
-    /// This means that the current track is first in the queue and the [loop state](LoopState) is
-    /// set to [`LoopState::Off`].
+    /// This means that the current track is first in the queue and the
+    /// [loop state](playback::LoopState) is set to [`LoopState::Off`](playback::LoopState::Off).
     CannotGoPrevious,
     /// Cannot go to the next track.
     ///
-    /// This means that the current track is last in the queue and the [loop state](LoopState) is
-    /// set to [`LoopState::Off`].
+    /// This means that the current track is last in the queue and the
+    /// [loop state](playback::LoopState) is set to [`LoopState::Off`](playback::LoopState).
     CannotGoNext,
     /// The daemon was not built with shuffle support.
     ShuffleNotSupported,
@@ -92,16 +92,16 @@ pub enum Error {
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,
-    /// Could not complete the operation because a [playlist](Playlist) with the provided name
-    /// already exists.
+    /// Could not complete the operation because a [playlist](library::Playlist) with the provided
+    /// name already exists.
     PlaylistExists,
     /// Could not perform the operation because the [music library](MusicLibrary) is not
     /// initialized.
     ///
     /// This can happen if a command is sent to early and the music library is not yet initialized.
     LibraryNotInitialized,
-    /// There is no [playlist](Playlist) in the [music library](MusicLibrary) with the provided
-    /// name.
+    /// There is no [playlist](library::Playlist) in the [music library](MusicLibrary) with the
+    /// provided name.
     UnknownPlaylist,
     /// The provided item index was out of bounds.
     IndexOutOfBounds,

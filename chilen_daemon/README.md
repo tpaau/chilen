@@ -10,6 +10,10 @@ Unlike [MPD](https://www.musicpd.org/), the Chilen daemon can be bundled in your
 file instead of bundling it as a separate one or relying on the user to install and additional
 program on their system.
 
+Chilen supports a wide range of audio formats, including AAC, ADPCM, AIFF, ALAC, CAF, FLAC, MKV,
+MP1, MP2, MP3, MP4, OGG, Vorbis, WAV, and WebM. Support is provided via the
+[Symphonia](https://github.com/pdeljanov/Symphonia) crate.
+
 The daemon uses a local socket to connect to its clients. The type of socket used depends on your
 platform and the startup configuration of the daemon. Under the hood, [`interprocess`] and
 [`rmp_serde`] crates are used for handling clients connections, and [`chilen_ipc`] for providing

@@ -274,24 +274,26 @@ pub enum PlaybackCommand {
     /// Set a new queue for the player.
     ///
     /// If any of the provided tracks are not registered by chilen (added after last library
-    /// reload), the daemon will return [`Error::UnknownTrack`].
+    /// reload), the daemon will return [`Error::UnknownTrack`](crate::Error::UnknownTrack).
     SetQueue(Vec<PathBuf>),
     /// Append tracks to the queue.
     ///
     /// If any of the provided tracks are not registered by chilen (added after last library
-    /// reload), the daemon will return [`Error::UnknownTrack`].
+    /// reload), the daemon will return [`Error::UnknownTrack`](crate::Error::UnknownTrack).
     AppendToQueue(Vec<PathBuf>),
     /// Load a playlist and append its tracks to the queue.
     ///
     /// If there's no [playlist](crate::library::Playlist) with the provided name present in the
     /// [music library](crate::library::MusicLibrary),
-    /// [`Error::UnknownPlaylist`] will be returned, and no changes to the queue will be made.
+    /// [`Error::UnknownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no changes
+    /// to the queue will be made.
     AppendPlaylist(String),
     /// Load a playlist and put its tracks in the queue.
     ///
     /// If there's no [playlist](crate::library::Playlist) with the provided name present in the
     /// [music library](crate::library::MusicLibrary),
-    /// [`Error::UnknownPlaylist`] will be returned, and no changes to the queue will be made.
+    /// [`Error::UnknownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no changes
+    /// to the queue will be made.
     SetPlaylist(String),
     /// Get the current [track](Track).
     ///
