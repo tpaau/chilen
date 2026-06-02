@@ -9,7 +9,7 @@ use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::playback::{
-    self, SUPPORTED_MIME_TYPES,
+    self, SUPPORTED_MIME_TYPES, open_uri,
     state::{self, PLAYER_STATE},
 };
 
@@ -192,10 +192,10 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn open_uri(&self, uri: String) -> MprisResult<()> {
-        // TODO: Add opening URIs
-        Err(MprisError::NotSupported(String::from(
-            "Opening URIs is not yet supported",
-        )))
+        match open_uri(uri) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(MprisError::Failed(e.to_string())),
+        }
     }
 
     async fn playback_status(&self) -> MprisResult<mpris_server::PlaybackStatus> {
