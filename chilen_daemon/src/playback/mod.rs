@@ -5,6 +5,7 @@ pub(crate) mod state;
 mod tests;
 
 use std::{
+    path::PathBuf,
     sync::{Arc, LazyLock, RwLock},
     thread,
     time::Duration,
@@ -21,6 +22,7 @@ use chilen_ipc::{
 use log::{debug, error, info, trace, warn};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
+use walkdir::WalkDir;
 
 use crate::{
     music_lib::{
@@ -99,11 +101,11 @@ impl TryFrom<PlaybackCommand> for Command {
             PlaybackCommand::TogglePlaying => Ok(Self::TogglePlaying),
             PlaybackCommand::GetPlaybackState => Ok(Self::GetPlaybackState),
             PlaybackCommand::SetQueue(track_paths) => {
-                let tracks = tracks_from_paths(&track_paths)?;
+                let tracks = tracks_from_paths(&track_paths, false)?;
                 Ok(Self::SetQueue(tracks))
             }
             PlaybackCommand::AppendToQueue(track_paths) => {
-                let tracks = tracks_from_paths(&track_paths)?;
+                let tracks = tracks_from_paths(&track_paths, false)?;
                 Ok(Self::AppendToQueue(tracks))
             }
             PlaybackCommand::SetPlaylist(playlist) => {
@@ -301,19 +303,59 @@ pub(crate) fn get_playback_state() -> Result<PlaybackState, chilen_ipc::Error> {
     Ok(state.playback_state)
 }
 
-// TODO:
-//   - Implement opening M3U8 playlists once that's supported
-//   - Implement opening directories as lists of files
-pub(crate) fn open_uri(uri: String) -> Result<(), chilen_ipc::Error> {
-    trace!("Opening URI \"{uri}\"");
-    let track = match tracks_from_paths(&[uri.clone().into()]) {
-        Ok(track) => track,
-        Err(e) => {
-            error!("Could not open the provided URI \"{uri}\": {e}");
-            return Err(chilen_ipc::Error::UnknownTrack);
+// TODO: Implement opening M3U8 playlists once that's supported
+pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
+    trace!("Opening URI {uri:?}");
+    match uri.try_exists() {
+        Ok(exists) => {
+            if !exists {
+                return Err(chilen_ipc::Error::PathDoesNotExist);
+            }
         }
-    };
-    set_queue(track)
+        Err(e) => {
+            error!("Could not check if the URI {uri:?} exists: {e}");
+            return Err(chilen_ipc::Error::PathExistenceUnknown);
+        }
+    }
+    if uri.is_dir() {
+        trace!("The provided URI {uri:?} is a directory, indexing it");
+
+        let mut files = Vec::new();
+        for result in WalkDir::new(uri).into_iter() {
+            let entry = match result {
+                Ok(entry) => entry,
+                Err(e) => {
+                    warn!("Error while trying to access the file: {e}");
+                    continue;
+                }
+            };
+
+            match entry.metadata() {
+                Ok(meta) => {
+                    if meta.is_file() {
+                        files.push(PathBuf::from(entry.path()));
+                    }
+                }
+                Err(e) => {
+                    warn!("Could not get `DirEntry` metadata: {e}");
+                    continue;
+                }
+            };
+        }
+        let tracks = tracks_from_paths(&files, true)?;
+        if tracks.is_empty() {
+            Err(chilen_ipc::Error::DirectoryWithNoTracks)
+        } else {
+            set_queue(tracks)
+        }
+    } else {
+        trace!(
+            "The provided URI {uri:?} is a file, so we're either opening an audio file or a playlist"
+        );
+        // TODO: Detect if the file is a playlist and open it
+        let track = tracks_from_paths(&[uri], false)?;
+        set_queue(track)
+    }
 }
 
 pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), chilen_ipc::Error> {
@@ -321,6 +363,10 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), chilen_ipc::Error> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.set_tracks(queue);
+    #[cfg(feature = "shuffle")]
+    if state.shuffle_state == ShuffleState::On {
+        state.shuffle();
+    }
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
     player.stop();
@@ -560,6 +606,7 @@ static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
     arr.into_iter().map(|t| t.to_string()).collect()
 });
 
+// FIX: Sometimes the MPRIS track metadata remains after the track switches because of a seek operation
 pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {
@@ -828,7 +875,7 @@ pub(crate) fn run_command(cmd: Command) -> Result<Response, chilen_ipc::Error> {
                 get_player_volume()?,
             )));
         }
-        Command::OpenURI(uri) => open_uri(uri)?,
+        Command::OpenURI(uri) => open_uri(uri.into())?,
     }
 
     Ok(Response::Ok)

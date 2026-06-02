@@ -152,6 +152,7 @@ impl std::fmt::Display for ConfigError {
     }
 }
 
+// TODO: Add a config option for reshuffling tracks on playlist repeat or something, will figure it out
 /// Configuration options for the daemon.
 ///
 /// Used with the [`start`] function.
@@ -635,8 +636,7 @@ pub fn start(config: Config) -> (mpsc::Receiver<Request>, JoinHandle<Result<(), 
     (receiver, thread::spawn(|| start_blocking(sender, config)))
 }
 
-// TODO: Add tests to make sure daemon can start and stop properly, and that the functions that
-// require the daemon to be running work if it is and fail if it's not.
+// TEST: Add tests to make sure daemon can start and stop properly
 fn start_blocking(request_sender: mpsc::Sender<Request>, config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
 

@@ -117,6 +117,12 @@ pub enum Error {
     StateWriteFailed,
     /// The library state path is not a file.
     StateNotAFile,
+    /// The provided path does not exist
+    PathDoesNotExist,
+    /// Could not check if the provided file exists.
+    PathExistenceUnknown,
+    /// Could not find any audio files in the provided directory path.
+    DirectoryWithNoTracks,
 }
 
 impl std::fmt::Display for Error {
@@ -177,6 +183,12 @@ impl std::fmt::Display for Error {
             }
             Self::StateWriteFailed => write!(f, "Could not write the library state to a file"),
             Self::StateNotAFile => write!(f, "The library state path is not a file"),
+            Self::PathDoesNotExist => write!(f, "The provided path does not exist"),
+            Self::PathExistenceUnknown => write!(f, "Could not check if the provided file exists"),
+            Self::DirectoryWithNoTracks => write!(
+                f,
+                "Could not find any audio files in the provided directory path"
+            ),
         }
     }
 }

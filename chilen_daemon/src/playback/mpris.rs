@@ -195,7 +195,7 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn open_uri(&self, uri: String) -> MprisResult<()> {
-        match open_uri(uri) {
+        match open_uri(uri.into()) {
             Ok(_) => Ok(()),
             Err(e) => Err(MprisError::Failed(e.to_string())),
         }

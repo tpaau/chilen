@@ -94,7 +94,23 @@ pub(crate) fn set_dirs(config: crate::Config) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn tracks_from_paths(track_paths: &[PathBuf]) -> Result<Vec<Track>, chilen_ipc::Error> {
+/// Find indexed tracks in the music library by their paths.
+///
+/// # Fails
+/// The function will fail if any of the provided paths are not present in the music library, and
+/// the `allow_failure` argument is set to `false`.
+///
+/// If the `allow_failure` argument is `true`, the function will iterate over all the provided paths
+/// and return only those that correspond to tracks in the music library. It might return an empty
+/// vector if no paths could be matched.
+///
+/// It might also fail if the music library is not initialized, so you should never run [`unwrap`]
+/// on the result of this function.
+pub(crate) fn tracks_from_paths(
+    track_paths: &[PathBuf],
+    // Whether nonexistent paths should result in a failure.
+    allow_failure: bool,
+) -> Result<Vec<Track>, chilen_ipc::Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
     let mut out = Vec::with_capacity(track_paths.len());
@@ -102,7 +118,7 @@ pub(crate) fn tracks_from_paths(track_paths: &[PathBuf]) -> Result<Vec<Track>, c
     for path in track_paths {
         if let Some(track) = lib.find_track_by_path(path) {
             out.push(track.as_ref().clone());
-        } else {
+        } else if !allow_failure {
             return Err(chilen_ipc::Error::UnknownTrack);
         }
     }
