@@ -142,6 +142,7 @@ pub fn run_cli_command(
                     music_dir,
                     allow_rate_modification,
                     can_raise,
+                    #[cfg(feature = "dev-commands")]
                     can_set_fullscreen,
                     can_quit,
                 } => {
@@ -190,7 +191,10 @@ pub fn run_cli_command(
                         addr_claim_mode: AddrClaimMode::default(),
                         socket_type,
                         can_raise,
+                        #[cfg(feature = "dev-commands")]
                         can_set_fullscreen,
+                        #[cfg(not(feature = "dev-commands"))]
+                        can_set_fullscreen: false,
                         can_quit,
                         #[cfg(feature = "mpris")]
                         desktop_entry: None,

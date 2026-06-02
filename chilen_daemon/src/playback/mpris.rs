@@ -192,8 +192,7 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn open_uri(&self, uri: String) -> MprisResult<()> {
-        // TODO: Implement opening URIs
-        // trace!("Opening URI \"{uri}\"");
+        // TODO: Add opening URIs
         Err(MprisError::NotSupported(String::from(
             "Opening URIs is not yet supported",
         )))

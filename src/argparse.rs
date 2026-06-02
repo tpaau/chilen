@@ -25,8 +25,8 @@ pub enum DaemonCommand {
         /// Whether the daemon can receive raise requests from clients.
         #[arg(long, short = 'r', num_args = 1, default_value_t = true)]
         can_raise: bool,
-        // TODO: This should not be available to users in the release preset
         /// Whether clients can request the daemon to toggle fullscreen mode of the user interface.
+        #[cfg(feature = "dev-commands")]
         #[arg(long, short = 'f', num_args = 1, default_value_t = true)]
         can_set_fullscreen: bool,
         /// Whether clients can request the daemon to quit.

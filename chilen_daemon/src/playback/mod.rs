@@ -301,8 +301,11 @@ pub(crate) fn get_playback_state() -> Result<PlaybackState, chilen_ipc::Error> {
     Ok(state.playback_state)
 }
 
-// TODO: Implement opening M3U8 playlists once that's supported
+// TODO:
+//   - Implement opening M3U8 playlists once that's supported
+//   - Implement opening directories as lists of files
 pub(crate) fn open_uri(uri: String) -> Result<(), chilen_ipc::Error> {
+    trace!("Opening URI \"{uri}\"");
     let track = match tracks_from_paths(&[uri.clone().into()]) {
         Ok(track) => track,
         Err(e) => {

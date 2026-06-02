@@ -19,6 +19,7 @@ iced = { version = "0.14.0", optional = true }
 members = [ "chilen_daemon", "chilen_ipc" ]
 
 [features]
+dev-commands = []
 mpris = [ "chilen_daemon/mpris" ]
 gui = [ "dep:iced" ]
 linux_package = [ "mpris", "gui" ]
