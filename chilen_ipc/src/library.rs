@@ -83,8 +83,8 @@ pub enum LibraryCommand {
         /// The name for the new playlist. Must not already exist in the music library.
         ///
         /// If a playlist with the specified name already exists,
-        /// [`LibraryError::PlaylistExists`] will be returned, and no changes to the
-        /// [music library](MusicLibrary) will be made.
+        /// [`Error::PlaylistExists`](crate::Error::PlaylistExists) will be returned, and no
+        /// changes to the [music library](MusicLibrary) will be made.
         name: String,
         /// Optional list of paths to tracks to be added to the playlist.
         ///
@@ -101,8 +101,8 @@ pub enum LibraryCommand {
         /// If left unspecified, it will be derived from the name set in the M3U8 playlist.
         ///
         /// If a playlist with the specified name already exists,
-        /// [`LibraryError::PlaylistExists`] will be returned, and no changes to the
-        /// [music library](MusicLibrary) will be made.
+        /// [`Error::PlaylistExists`](crate::Error::PlaylistExists) will be returned, and no changes
+        /// to the [music library](MusicLibrary) will be made.
         name: Option<String>,
         /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
@@ -112,7 +112,7 @@ pub enum LibraryCommand {
         /// List of the playlists to delete.
         ///
         /// If any of the provided playlists don't exist in the music library,
-        /// [`LibraryError::NoSuchPlaylist`] will be returned, and no changes to the
+        /// [`Error::UnkownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no changes to the
         /// [music library](MusicLibrary) will be made.
         names: Vec<String>,
     },
@@ -121,8 +121,8 @@ pub enum LibraryCommand {
         /// The name of the playlist to add tracks to.
         ///
         /// If a playlist with the specified name doesn't exist in the music library,
-        /// [`LibraryError::NoSuchPlaylist`] will be returned, and no changes to the
-        /// [music library](MusicLibrary) will be made.
+        /// [`Error::UnknownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no
+        /// changes to the [music library](MusicLibrary) will be made.
         name: String,
         /// List of paths to tracks to add to the playlist.
         ///
@@ -135,16 +135,17 @@ pub enum LibraryCommand {
         /// The name of the playlist to remove tracks from.
         ///
         /// If a playlist with the specified name doesn't exist in the music library,
-        /// [`LibraryError::NoSuchPlaylist`] will be returned, and no changes to the
-        /// [music library](MusicLibrary) will be made.
+        /// [`Error::UnknownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no
+        /// changes to the [music library](MusicLibrary) will be made.
         name: String,
         /// The list of track indices in the playlist to remove.
         ///
         /// Eg. to remove the first track you would pass `[0]`, to remove the first three
         /// `[0, 1, 2]`, etc.
         ///
-        /// If one or more of the indices is out of range, [`LibraryError::IndexOutOfBounds`]
-        /// will be returned, and no changes to the [music library](MusicLibrary) will be made.
+        /// If one or more of the indices is out of range,
+        /// [`Error::IndexOutOfBounds`](crate::Error::IndexOutOfBounds) will be returned, and no
+        /// changes to the [music library](MusicLibrary) will be made.
         ids: Vec<usize>,
     },
     /// Get the contents of the [music library](MusicLibrary).

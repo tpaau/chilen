@@ -274,28 +274,24 @@ pub enum PlaybackCommand {
     /// Set a new queue for the player.
     ///
     /// If any of the provided tracks are not registered by chilen (added after last library
-    /// reload), the daemon will return
-    /// [`LibraryError::NoSuchTrack`](crate::library::LibraryError::NoSuchTrack).
+    /// reload), the daemon will return [`Error::UnknownTrack`].
     SetQueue(Vec<PathBuf>),
     /// Append tracks to the queue.
     ///
     /// If any of the provided tracks are not registered by chilen (added after last library
-    /// reload), the daemon will return
-    /// [`LibraryError::NoSuchTrack`](crate::library::LibraryError::NoSuchTrack).
+    /// reload), the daemon will return [`Error::UnknownTrack`].
     AppendToQueue(Vec<PathBuf>),
     /// Load a playlist and append its tracks to the queue.
     ///
     /// If there's no [playlist](crate::library::Playlist) with the provided name present in the
     /// [music library](crate::library::MusicLibrary),
-    /// [`LibraryError::NoSuchPlaylist`](crate::library::LibraryError::NoSuchPlaylist) will be
-    /// returned, and no changes to the queue will be made.
+    /// [`Error::UnknownPlaylist`] will be returned, and no changes to the queue will be made.
     AppendPlaylist(String),
     /// Load a playlist and put its tracks in the queue.
     ///
     /// If there's no [playlist](crate::library::Playlist) with the provided name present in the
     /// [music library](crate::library::MusicLibrary),
-    /// [`LibraryError::NoSuchPlaylist`](crate::library::LibraryError::NoSuchPlaylist) will be
-    /// returned, and no changes to the queue will be made.
+    /// [`Error::UnknownPlaylist`] will be returned, and no changes to the queue will be made.
     SetPlaylist(String),
     /// Get the current [track](Track).
     ///
@@ -317,10 +313,10 @@ pub enum PlaybackCommand {
     /// modification or if the specified rate value was out of the acceptable range.
     ///
     /// If the daemon is configured not to allow playback rate modification,
-    /// [`PlaybackError::FixedRate`] will be returned.
+    /// [`Error::FixedRate`](crate::Error::FixedRate) will be returned.
     ///
-    /// If the provided rate value is out of the allowed range, [`PlaybackError::RateOutOfRange`]
-    /// will be returned.
+    /// If the provided rate value is out of the allowed range,
+    /// [`Error::RateOutOfRange`](crate::Error::RateOutOfRange) will be returned.
     SetRate(f64),
     /// Get the [playback rate](PlaybackRate) of the player.
     ///
@@ -329,8 +325,9 @@ pub enum PlaybackCommand {
     GetRate,
     /// Set the [shuffle state](ShuffleState) of the player.
     ///
-    /// The daemon will always respond to this command with [`PlaybackError::ShuffleNotSupported`]
-    /// if it was built without shuffle support.
+    /// The daemon will always respond to this command with
+    /// [`Error::ShuffleNotSupported`](crate::Error::ShuffleNotSupported) if it was built without
+    /// shuffle support.
     SetShuffleState(ShuffleState),
     /// Get the [shuffle state](ShuffleState) of the player.
     ///

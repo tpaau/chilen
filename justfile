@@ -1,8 +1,8 @@
 doc:
-	cargo doc --no-deps --all-features
+	cargo doc --no-deps -p chilen_daemon -p chilen_ipc --all-features
 
 open-doc:
-	cargo doc --no-deps --all-features --open
+	cargo doc --no-deps -p chilen_daemon -p chilen_ipc --all-features --open
 
 test:
 	cargo test --workspace
