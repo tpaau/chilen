@@ -142,6 +142,7 @@ pub fn run_cli_command(
                     music_dir,
                     allow_rate_modification,
                     can_raise,
+                    can_set_fullscreen,
                     can_quit,
                 } => {
                     let home = if cache_dir.is_none() || data_dir.is_none() || music_dir.is_none() {
@@ -189,6 +190,7 @@ pub fn run_cli_command(
                         addr_claim_mode: AddrClaimMode::default(),
                         socket_type,
                         can_raise,
+                        can_set_fullscreen,
                         can_quit,
                         #[cfg(feature = "mpris")]
                         desktop_entry: None,
@@ -200,6 +202,7 @@ pub fn run_cli_command(
                             allow_rate_modification,
                         },
                     };
+                    // TODO: Handle the stream and log events for debugging
                     let (_, handle) = chilen_daemon::start(config);
                     match handle.join().unwrap() {
                         Ok(_) => info!("Daemon exited"),
@@ -265,9 +268,51 @@ pub fn run_cli_command(
                         }
                     }
                 }
+                DaemonCommand::GetCanSetFullscreen => {
+                    match chilen_ipc::send_command(
+                        chilen_ipc::Command::CanSetFullscreen,
+                        &socket_name,
+                        &socket_type,
+                    ) {
+                        Ok(response) => match response {
+                            Response::CanSetFullscreen(can_raise) => println!("{can_raise}"),
+                            _ => {
+                                error!("Got an unexpected response from the daemon: {response:?}");
+                                return Err(());
+                            }
+                        },
+                        Err(e) => {
+                            print_daemon_error(e);
+                            return Err(());
+                        }
+                    }
+                }
                 DaemonCommand::Raise => {
                     match chilen_ipc::send_command(
                         chilen_ipc::Command::Raise,
+                        &socket_name,
+                        &socket_type,
+                    ) {
+                        Ok(response) => match response {
+                            Response::Ok => println!("Ok"),
+                            Response::Error(e) => {
+                                error!("{e}");
+                                return Err(());
+                            }
+                            _ => {
+                                error!("Got an unexpected response from the daemon: {response:?}");
+                                return Err(());
+                            }
+                        },
+                        Err(e) => {
+                            print_daemon_error(e);
+                            return Err(());
+                        }
+                    }
+                }
+                DaemonCommand::SetFullscreen { fullscreen } => {
+                    match chilen_ipc::send_command(
+                        chilen_ipc::Command::SetFullscreen(fullscreen),
                         &socket_name,
                         &socket_type,
                     ) {
@@ -379,6 +424,7 @@ pub fn run_cli_command(
                 return Err(());
             }
         };
+        // TODO: Handle the stream and log events for debugging
         let (_, handle) = chilen_daemon::start(conf);
 
         #[cfg(feature = "gui")]

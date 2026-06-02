@@ -69,6 +69,7 @@ let config = chilen_daemon::Config {
     addr_claim_mode: AddrClaimMode::default(),
     socket_type: SocketType::default(),
     can_raise: false,
+    can_set_fullscreen: false,
     can_quit: true,
     #[cfg(feature = "mpris")]
     desktop_entry: None,

@@ -23,6 +23,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum ThreadCommand {
     Raise,
+    SetFullscreen(bool),
     Quit,
 }
 
@@ -314,6 +315,30 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                         }
                     } else {
                         Response::Error(chilen_ipc::Error::RaiseDisabled)
+                    };
+                    if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &response) {
+                        break;
+                    }
+                }
+                Command::CanSetFullscreen => {
+                    let guard = crate::CONFIG.read().unwrap();
+                    if let Err(chilen_ipc::Error::SendingError) = respond(
+                        &mut conn,
+                        &Response::CanSetFullscreen(guard.as_ref().unwrap().can_set_fullscreen),
+                    ) {
+                        break;
+                    }
+                }
+                Command::SetFullscreen(fullscreen) => {
+                    let guard = crate::CONFIG.read().unwrap();
+                    let response = if guard.as_ref().unwrap().can_set_fullscreen {
+                        // TODO: Implement going fullscreen
+                        match crate::send_command(ThreadCommand::SetFullscreen(fullscreen)) {
+                            Ok(_) => Response::Ok,
+                            Err(_) => Response::Error(chilen_ipc::Error::SetFullscreenNotSupported),
+                        }
+                    } else {
+                        Response::Error(chilen_ipc::Error::SetFullscreenNotSupported)
                     };
                     if let Err(chilen_ipc::Error::SendingError) = respond(&mut conn, &response) {
                         break;

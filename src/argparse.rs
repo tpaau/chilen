@@ -1,6 +1,6 @@
 use std::{path::PathBuf, time::Duration};
 
-use clap::{ArgGroup, Parser, Subcommand, ValueEnum, ValueHint};
+use clap::{ArgAction, ArgGroup, Parser, Subcommand, ValueEnum, ValueHint};
 
 use chilen_ipc::playback::SignedDuration;
 use env_logger::Builder;
@@ -25,6 +25,10 @@ pub enum DaemonCommand {
         /// Whether the daemon can receive raise requests from clients.
         #[arg(long, short = 'r', num_args = 1, default_value_t = true)]
         can_raise: bool,
+        // TODO: This should not be available to users in the release preset
+        /// Whether clients can request the daemon to toggle fullscreen mode of the user interface.
+        #[arg(long, short = 'f', num_args = 1, default_value_t = true)]
+        can_set_fullscreen: bool,
         /// Whether clients can request the daemon to quit.
         #[arg(long, short = 'q', num_args = 1, default_value_t = true)]
         can_quit: bool,
@@ -43,10 +47,17 @@ pub enum DaemonCommand {
     },
     /// Ping the daemon (used for debugging)
     Ping,
-    /// Get whether the daemon's user interface can be brought to the front.
+    /// Check whether the daemon's user interface can be brought to the front.
     GetCanRaise,
     /// Bring the user interface to the front.
     Raise,
+    /// Check whether clients can toggle fullscreen mode of the user interface.
+    GetCanSetFullscreen,
+    /// Toggle fullscreen mode of the user interface.
+    SetFullscreen {
+        #[arg(action = ArgAction::Set)]
+        fullscreen: bool,
+    },
 }
 
 #[cfg(feature = "gui")]

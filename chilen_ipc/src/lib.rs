@@ -43,6 +43,8 @@ pub enum Error {
     SocketError(String),
     /// Raise requests from external clients are not allowed.
     RaiseDisabled,
+    /// Toggling fullscreen mode by external clients is not allowed.
+    SetFullscreenNotSupported,
     /// Quit requests from external clients are not allowed.
     QuitDisabled,
     /// The audio player is not connected.
@@ -131,6 +133,10 @@ impl std::fmt::Display for Error {
             Self::RaiseDisabled => {
                 write!(f, "Raise requests from external clients are not allowed")
             }
+            Self::SetFullscreenNotSupported => write!(
+                f,
+                "Toggling fullscreen mode by external clients is not allowed"
+            ),
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
             Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
             Self::StateNotInitialized => write!(f, "The playback state is not initialized"),
@@ -186,6 +192,8 @@ pub enum Event {
     PlaybackEvent(PlaybackEvent),
     /// Sent when the `can_raise` property of the daemon config changes.
     CanRaiseChanged(bool),
+    /// Sent when the `can_go_fullscreen` property of the daemon config changes.
+    CanGoFullscreenChanged(bool),
     /// Sent when the `can_quit` property of the daemon config changes.
     CanQuitChanged(bool),
 }
@@ -207,6 +215,8 @@ pub enum Response {
     Error(Error),
     /// Response to [`Command::CanRaise`].
     CanRaise(bool),
+    /// Response to [`Command::CanSetFullscreen`].
+    CanSetFullscreen(bool),
     /// Response to [`Command::CanQuit`].
     CanQuit(bool),
 }
@@ -244,6 +254,10 @@ pub enum Command {
     CanRaise,
     /// Request the daemon to raise.
     Raise,
+    /// Check if clients can toggle fullscreen mode on daemon's user interface.
+    CanSetFullscreen,
+    /// Toggle fullscreen mode for the daemon's user interface.
+    SetFullscreen(bool),
     /// Check if the daemon accepts quit requests from clients.
     CanQuit,
 }

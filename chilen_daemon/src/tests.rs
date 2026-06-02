@@ -2,6 +2,7 @@ use chilen_ipc::SocketType;
 
 use crate::{
     AddrClaimMode, Config, Error, get_listener, playback, quit, set_can_quit, set_can_raise,
+    set_can_set_fullscreen,
 };
 
 #[test]
@@ -50,8 +51,12 @@ fn fs_addr_reclamation() {
 
 // Make sure daemon functions fail but don't panic when the daemon isn't running.
 #[test]
-fn functions_dont_panic() {
+fn daemon_functions_fail() {
     assert_eq!(set_can_raise(false).unwrap_err(), Error::DaemonNotRunning);
+    assert_eq!(
+        set_can_set_fullscreen(false).unwrap_err(),
+        Error::DaemonNotRunning
+    );
     assert_eq!(set_can_quit(false).unwrap_err(), Error::DaemonNotRunning);
     assert_eq!(quit().unwrap_err(), Error::DaemonNotRunning);
     assert_eq!(

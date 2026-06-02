@@ -79,9 +79,11 @@ pub enum Error {
 /// Request sent from a client forwarded to the daemon.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Request {
-    /// Bring the media player’s user interface to the front using any appropriate mechanism
+    /// Bring the music player’s user interface to the front using any appropriate mechanism
     /// available.
     Raise,
+    /// Set whether the music player's user interface is displayed in full screen mode.
+    SetFullscreen(bool),
 }
 
 impl std::fmt::Display for Error {
@@ -170,6 +172,8 @@ pub struct Config {
     /// Players that have no ability to raise (eg. players CLI or TUI interfaces) should set this to
     /// false.
     pub can_raise: bool,
+    // Whether clients can request the daemon to display the user interface in fullscreen mode.
+    pub can_set_fullscreen: bool,
     /// Whether clients can request the daemon to quit.
     ///
     /// This only affects clients that connect to the daemon over a local socket, it does not
@@ -245,6 +249,7 @@ impl Config {
             socket_type: SocketType::default(),
             can_raise: false,
             can_quit: true,
+            can_set_fullscreen: false,
             #[cfg(feature = "mpris")]
             desktop_entry: None,
             playback_config: playback::Config {
@@ -509,6 +514,19 @@ pub fn set_can_raise(can_raise: bool) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn set_can_set_fullscreen(can_set_fullscreen: bool) -> Result<(), Error> {
+    let mut conf_guard = CONFIG.write().unwrap();
+    let conf = match conf_guard.as_mut() {
+        Some(conf) => conf,
+        None => return Err(Error::DaemonNotRunning),
+    };
+    if conf.can_set_fullscreen != can_set_fullscreen {
+        conf.can_set_fullscreen = can_set_fullscreen;
+        send_event(Event::CanGoFullscreenChanged(conf.can_raise));
+    }
+    Ok(())
+}
+
 /// Set whether the daemon should accept quit requests from clients.
 ///
 /// This does not affect the [`quit`] function.
@@ -642,6 +660,10 @@ fn start_blocking(request_sender: mpsc::Sender<Request>, config: Config) -> Resu
             ThreadCommand::Raise => {
                 trace!("Received a raise request");
                 let _ = request_sender.send(Request::Raise);
+            }
+            ThreadCommand::SetFullscreen(fullscreen) => {
+                trace!("Received request to set fullscreen to: {fullscreen}");
+                let _ = request_sender.send(Request::SetFullscreen(fullscreen));
             }
             ThreadCommand::Quit => {
                 trace!("Received quit command");
