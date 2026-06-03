@@ -210,6 +210,7 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), chilen_ipc::Error> {
         };
         player.stop();
         player.append(source);
+        // TODO: Add a 10ms fade out to prevent audio popping
         player.play();
         state.set_playback_state(PlaybackState::Playing);
         background_save_state(state.clone());
@@ -337,7 +338,7 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
                     }
                 }
                 Err(e) => {
-                    warn!("Could not get `DirEntry` metadata: {e}");
+                    warn!("Could not get path metadata: {e}");
                     continue;
                 }
             };
@@ -562,6 +563,9 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), chilen_ipc::
         skip_next()
     } else if let Err(e) = player.try_seek(position) {
         error!("Could not set player position: {e}");
+        // Prevent MPRIS from showing incorrect data if seek is not supported
+        #[cfg(feature = "mpris")]
+        mpris::set_position(state.player_position);
         Err(chilen_ipc::Error::SeekNotSupported)
     } else {
         state.set_player_position(position);
@@ -606,7 +610,7 @@ static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
     arr.into_iter().map(|t| t.to_string()).collect()
 });
 
-// FIX: Sometimes the MPRIS track metadata remains after the track switches because of a seek operation
+// FIX: Sometimes the MPRIS track metadata remains after the track switches in a seek operation
 pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {
@@ -622,8 +626,6 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
         SignedDuration::Positive(positive_dur) => {
             if positive_dur == Duration::default() {
                 info!("Refusing to seek by 0s");
-                #[cfg(feature = "mpris")]
-                mpris::set_position(state.player_position);
                 return Err(chilen_ipc::Error::InvalidDuration);
             }
             let sum = match positive_dur.checked_add(player.get_pos()) {

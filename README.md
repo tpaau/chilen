@@ -5,10 +5,9 @@ Prototype local music player, very much a WIP right now.
 There's currently no GUI, all interactions are either done through the provided CLI interface or via
 MPRIS on Linux systems.
 
-Chilen is split into two libraries and one binary package in an effort to allow developers to create
-custom music players with the daemon and IPC libraries, similar to how it works with
-[MPD](https://www.musicpd.org/). This was not the original goal for Chilen, however, and it won't
-affect the usage once the project is finished.
+Chilen is split into two libraries and one binary package in an effort to allow developers for
+creating custom music players, similar to [MPD](https://www.musicpd.org/). This was not the original
+goal for Chilen, however, and it won't affect the usage of the app once it's finished.
 
 Documentation on the submodules of Chilen can be found here:
 - [`chilen_daemon`](https://tpaau.github.io/chilen/chilen_daemon/)
@@ -30,6 +29,7 @@ Documentation on the submodules of Chilen can be found here:
 ## Features
 - Blazingly fast and memory safe 🚀🦀
 - Modular design ideal for creating alternate frontends
+- Support for a wide range of audio codecs
 
 
 <a name="building-from-source"></a>

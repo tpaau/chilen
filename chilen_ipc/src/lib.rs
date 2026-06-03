@@ -90,7 +90,7 @@ pub enum Error {
     FixedRate,
     /// The player position could not be set because the duration provided was invalid.
     ///
-    /// The player will refuse to seek by 0s to prevent audio popping.
+    /// The player will additionally refuse to seek by 0s to prevent audio popping.
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,

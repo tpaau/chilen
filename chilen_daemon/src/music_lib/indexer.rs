@@ -90,7 +90,7 @@ pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, chilen_ipc::Error
                 }
             }
             Err(e) => {
-                warn!("Could not get `DirEntry` metadata: {e}");
+                warn!("Could not get path metadata: {e}");
                 continue;
             }
         };
