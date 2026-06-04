@@ -117,12 +117,20 @@ pub enum Error {
     StateWriteFailed,
     /// The library state path is not a file.
     StateNotAFile,
-    /// The provided path does not exist
+    /// The provided path does not exist or access to it was denied.
     PathDoesNotExist,
     /// Could not check if the provided file exists.
     PathExistenceUnknown,
     /// Could not find any audio files in the provided directory path.
     DirectoryWithNoTracks,
+    /// The M3U8 playlist is a master playlist, not a media playlist.
+    ///
+    /// Please provide a media playlist instead.
+    NotMediaPlaylist,
+    /// Could not parse the M3U8 playlist.
+    ///
+    /// Please make sure that the playlist has the correct format and is not corrupted.
+    PlaylistParsingError,
 }
 
 impl std::fmt::Display for Error {
@@ -183,12 +191,20 @@ impl std::fmt::Display for Error {
             }
             Self::StateWriteFailed => write!(f, "Could not write the library state to a file"),
             Self::StateNotAFile => write!(f, "The library state path is not a file"),
-            Self::PathDoesNotExist => write!(f, "The provided path does not exist"),
+            Self::PathDoesNotExist => write!(
+                f,
+                "The provided path does not exist or access to it was denied"
+            ),
             Self::PathExistenceUnknown => write!(f, "Could not check if the provided file exists"),
             Self::DirectoryWithNoTracks => write!(
                 f,
                 "Could not find any audio files in the provided directory path"
             ),
+            Self::NotMediaPlaylist => write!(
+                f,
+                "The provided M3U8 playlist is a master playlist, not a media playlist"
+            ),
+            Self::PlaylistParsingError => write!(f, "Could not parse the M3U8 playlist"),
         }
     }
 }

@@ -353,7 +353,9 @@ pub enum PlaybackCommand {
     /// successful.
     GetPlayerVolume,
     // TODO: Update this after support for M3U8 playlist is added
-    /// Set a track in the music library as the current queue.
+    /// Set a track or a directory with tracks as the current queue.
+    ///
+    /// Tracks outside of the music library will be ignored.
     OpenURI(String),
 }
 

@@ -27,9 +27,10 @@ Documentation on the submodules of Chilen can be found here:
 
 <a name="features"></a>
 ## Features
-- Blazingly fast and memory safe 🚀🦀
-- Modular design ideal for creating alternate frontends
+- Fully offline and blazingly fast 🚀🦀
+- Proper desktop integration
 - Support for a wide range of audio codecs
+- Modular design ideal for creating alternate frontends
 
 
 <a name="building-from-source"></a>

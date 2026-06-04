@@ -462,6 +462,7 @@ impl MusicLibrary {
                 if let Some(track) = self.find_track_by_path(path) {
                     out.push(track);
                 } else {
+                    error!("The track {path:?} was not found in the music library");
                     return Err(chilen_ipc::Error::UnknownTrack);
                 }
             }
@@ -541,15 +542,75 @@ impl MusicLibrary {
         Ok(())
     }
 
+    /// Returns the default playlist name ("New Playlist").
+    ///
+    /// If a playlist with the default name exists, then a number will be added to the end of the
+    /// playlist name so it's unique, eg. "New Playlist 1", "New Playlist 2", etc.
+    fn get_default_playlist_name(&self) -> String {
+        let mut i = 0;
+        let mut playlist_name = DEFAULT_PLAYLIST_NAME.to_string();
+        while self.find_playlist(&playlist_name).is_none() {
+            i += 1;
+            playlist_name = format!("{DEFAULT_PLAYLIST_NAME} {i}");
+        }
+        playlist_name
+    }
+
     // TODO: Implement importing playlists from M3U8 files
     // TEST: Add tests for this
     pub fn import_m3u8_playlist(
         &mut self,
-        playlist: &Path,
+        path: &Path,
         name: Option<String>,
     ) -> Result<(), chilen_ipc::Error> {
-        trace!("Importing a playlist from an M3U8 file at {playlist:?}");
-        todo!("Importing playlists from M3U8 files is not supported!");
+        trace!("Importing a playlist from an M3U8 file at {path:?}");
+        let bytes = match read(path) {
+            Ok(data) => data,
+            Err(e) => {
+                error!("Could not read the playlist file at {path:?}: {e}");
+                return Err(chilen_ipc::Error::PathDoesNotExist);
+            }
+        };
+        match m3u8_rs::parse_playlist(&bytes) {
+            Ok((_, m3u8_rs::Playlist::MasterPlaylist(_))) => {
+                error!("The playlist {path:?} is a master playlist, not a media playlist");
+                Err(chilen_ipc::Error::NotMediaPlaylist)
+            }
+            Ok((_, m3u8_rs::Playlist::MediaPlaylist(pl))) => {
+                let base_path = path.parent().unwrap_or(Path::new("./"));
+                let track_paths: Vec<_> = pl
+                    .segments
+                    .into_iter()
+                    .map(|s| {
+                        trace!("Base path: {base_path:?}");
+                        trace!("URI: \"{}\"", s.uri);
+                        let mut path = PathBuf::from(base_path);
+                        for component in PathBuf::from(s.uri.clone()).components() {
+                            trace!("Component: {component:?}")
+                        }
+                        path.push(PathBuf::from(s.uri).components());
+                        trace!("Combined: {path:?}");
+                        path
+                    })
+                    .collect();
+                let name = match name {
+                    Some(n) => n,
+                    None => {
+                        if let Some(path) = path.file_name() {
+                            let path = path.to_string_lossy().to_string();
+                            path.strip_suffix(".m3u8").unwrap_or(&path).to_string()
+                        } else {
+                            self.get_default_playlist_name()
+                        }
+                    }
+                };
+                self.create_playlist(name, &Some(track_paths))
+            }
+            Err(e) => {
+                error!("Could not parse the M3U8 playlist: {e}");
+                Err(chilen_ipc::Error::PlaylistParsingError)
+            }
+        }
     }
 }
 
@@ -569,6 +630,8 @@ impl From<MusicLibrary> for ConfMusicLibrary {
         }
     }
 }
+
+const DEFAULT_PLAYLIST_NAME: &str = "New Playlist";
 
 static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut data = DATA_DIR.read().unwrap().clone().unwrap();

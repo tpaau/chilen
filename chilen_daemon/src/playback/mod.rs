@@ -210,7 +210,6 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), chilen_ipc::Error> {
         };
         player.stop();
         player.append(source);
-        // TODO: Add a 10ms fade out to prevent audio popping
         player.play();
         state.set_playback_state(PlaybackState::Playing);
         background_save_state(state.clone());
@@ -249,6 +248,8 @@ pub(crate) fn pause() -> Result<(), chilen_ipc::Error> {
     if player.is_paused() {
         Err(chilen_ipc::Error::PlayerPaused)
     } else {
+        // FIX: Audio popping by adding a 10ms fade out effect here
+        // NOTE: This is a missing feature in Rodio, see https://github.com/RustAudio/rodio/issues/889
         player.pause();
         let mut state_guard = PLAYER_STATE.write().unwrap();
         let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -304,7 +305,6 @@ pub(crate) fn get_playback_state() -> Result<PlaybackState, chilen_ipc::Error> {
     Ok(state.playback_state)
 }
 
-// TODO: Implement opening M3U8 playlists once that's supported
 pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
     trace!("Opening URI {uri:?}");
     match uri.try_exists() {
@@ -585,6 +585,7 @@ static SEEK_ROUND_THRESHOLD: LazyLock<Duration> = LazyLock::new(|| Duration::fro
 /// Chilen uses the `rodio` crate for audio playback, which itself uses
 /// [Symphonia](https://github.com/pdeljanov/Symphonia) for decoding audio files. Chilen supports
 /// all audio formats Symphonia does.
+#[cfg(feature = "mpris")]
 static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
     let arr = [
         "audio/aac",
