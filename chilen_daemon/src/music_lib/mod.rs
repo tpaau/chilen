@@ -5,7 +5,7 @@ pub(crate) mod state;
 mod tests;
 
 use std::{
-    fs::create_dir_all,
+    fs::{create_dir_all, read},
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
@@ -20,12 +20,6 @@ use crate::{
 pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static CACHE_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
-
-pub(crate) fn cleanup() {
-    *DATA_DIR.write().unwrap() = None;
-    *MUSIC_DIR.write().unwrap() = None;
-    *CACHE_DIR.write().unwrap() = None;
-}
 
 fn init_dir(dir: &PathBuf) -> Result<(), String> {
     if dir.is_dir() {
@@ -62,6 +56,12 @@ fn init_dir(dir: &PathBuf) -> Result<(), String> {
             Ok(())
         }
     }
+}
+
+pub(crate) fn cleanup() {
+    *DATA_DIR.write().unwrap() = None;
+    *MUSIC_DIR.write().unwrap() = None;
+    *CACHE_DIR.write().unwrap() = None;
 }
 
 pub(crate) fn set_dirs(config: crate::Config) -> Result<(), Error> {
@@ -132,6 +132,40 @@ pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, ch
     lib.tracks_from_hashes(hashes)
 }
 
+pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ipc::Error> {
+    trace!("Loading an M3U8 playlist from {path:?}");
+    let bytes = match read(path) {
+        Ok(data) => data,
+        Err(e) => {
+            error!("Could not read the playlist file at {path:?}: {e}");
+            return Err(chilen_ipc::Error::PathDoesNotExist);
+        }
+    };
+    match m3u8_rs::parse_playlist(&bytes) {
+        Ok((_, m3u8_rs::Playlist::MasterPlaylist(_))) => {
+            error!("The playlist {path:?} is a master playlist, not a media playlist");
+            Err(chilen_ipc::Error::NotMediaPlaylist)
+        }
+        Ok((_, m3u8_rs::Playlist::MediaPlaylist(pl))) => {
+            let base_path = path.parent().unwrap_or(Path::new("./"));
+            let track_paths: Vec<_> = pl
+                .segments
+                .into_iter()
+                .map(|s| {
+                    let mut path = PathBuf::from(base_path);
+                    path.push(PathBuf::from(s.uri).components());
+                    path
+                })
+                .collect();
+            Ok(track_paths)
+        }
+        Err(e) => {
+            error!("Could not parse the M3U8 playlist: {e}");
+            Err(chilen_ipc::Error::PlaylistParsingError)
+        }
+    }
+}
+
 pub(crate) fn create_playlist(
     name: String,
     track_paths: &Option<Vec<PathBuf>>,
@@ -146,7 +180,7 @@ pub(crate) fn create_playlist(
 
 pub(crate) fn import_playlist_from_m3u8(
     name: Option<String>,
-    file: &Path,
+    file: &PathBuf,
 ) -> Result<(), chilen_ipc::Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;

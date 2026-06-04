@@ -24,6 +24,7 @@ use crate::{
         DATA_DIR,
         covers::{CoverError, LoadMode, get_track_cover},
         indexer::{self},
+        tracks_from_m3u8,
     },
     send_event,
 };
@@ -556,61 +557,26 @@ impl MusicLibrary {
         playlist_name
     }
 
-    // TODO: Implement importing playlists from M3U8 files
     // TEST: Add tests for this
     pub fn import_m3u8_playlist(
         &mut self,
-        path: &Path,
+        path: &PathBuf,
         name: Option<String>,
     ) -> Result<(), chilen_ipc::Error> {
         trace!("Importing a playlist from an M3U8 file at {path:?}");
-        let bytes = match read(path) {
-            Ok(data) => data,
-            Err(e) => {
-                error!("Could not read the playlist file at {path:?}: {e}");
-                return Err(chilen_ipc::Error::PathDoesNotExist);
+        let tracks = tracks_from_m3u8(path)?;
+        let name = match name {
+            Some(n) => n,
+            None => {
+                if let Some(path) = path.file_name() {
+                    let path = path.to_string_lossy().to_string();
+                    path.strip_suffix(".m3u8").unwrap_or(&path).to_string()
+                } else {
+                    self.get_default_playlist_name()
+                }
             }
         };
-        match m3u8_rs::parse_playlist(&bytes) {
-            Ok((_, m3u8_rs::Playlist::MasterPlaylist(_))) => {
-                error!("The playlist {path:?} is a master playlist, not a media playlist");
-                Err(chilen_ipc::Error::NotMediaPlaylist)
-            }
-            Ok((_, m3u8_rs::Playlist::MediaPlaylist(pl))) => {
-                let base_path = path.parent().unwrap_or(Path::new("./"));
-                let track_paths: Vec<_> = pl
-                    .segments
-                    .into_iter()
-                    .map(|s| {
-                        trace!("Base path: {base_path:?}");
-                        trace!("URI: \"{}\"", s.uri);
-                        let mut path = PathBuf::from(base_path);
-                        for component in PathBuf::from(s.uri.clone()).components() {
-                            trace!("Component: {component:?}")
-                        }
-                        path.push(PathBuf::from(s.uri).components());
-                        trace!("Combined: {path:?}");
-                        path
-                    })
-                    .collect();
-                let name = match name {
-                    Some(n) => n,
-                    None => {
-                        if let Some(path) = path.file_name() {
-                            let path = path.to_string_lossy().to_string();
-                            path.strip_suffix(".m3u8").unwrap_or(&path).to_string()
-                        } else {
-                            self.get_default_playlist_name()
-                        }
-                    }
-                };
-                self.create_playlist(name, &Some(track_paths))
-            }
-            Err(e) => {
-                error!("Could not parse the M3U8 playlist: {e}");
-                Err(chilen_ipc::Error::PlaylistParsingError)
-            }
-        }
+        self.create_playlist(name, &Some(tracks))
     }
 }
 

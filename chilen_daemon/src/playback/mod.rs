@@ -27,7 +27,7 @@ use walkdir::WalkDir;
 use crate::{
     music_lib::{
         state::{Track, get_library},
-        tracks_from_paths,
+        tracks_from_m3u8, tracks_from_paths,
     },
     playback::state::{
         PLAYER_STATE, PlayerState, background_save_state, restore_state_from_cache,
@@ -305,6 +305,8 @@ pub(crate) fn get_playback_state() -> Result<PlaybackState, chilen_ipc::Error> {
     Ok(state.playback_state)
 }
 
+// TEST: Add tests for this
+/// Opens a URI that can either be a track, a directory with tracks, or an M3U8 playlist file.
 pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
     trace!("Opening URI {uri:?}");
     match uri.try_exists() {
@@ -353,7 +355,13 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
         trace!(
             "The provided URI {uri:?} is a file, so we're either opening an audio file or a playlist"
         );
-        // TODO: Detect if the file is a playlist and open it
+        if let Ok(paths) = tracks_from_m3u8(&uri) {
+            trace!("Loaded M3U8 playlist {uri:?}");
+            let tracks = tracks_from_paths(&paths, true)?;
+            return set_queue(tracks);
+        } else {
+            trace!("The file does not appear to be an M3U8 playlist");
+        }
         let track = tracks_from_paths(&[uri], false)?;
         set_queue(track)
     }
@@ -580,6 +588,7 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), chilen_ipc::
 /// position would be smaller than this value, skip to the next track.
 static SEEK_ROUND_THRESHOLD: LazyLock<Duration> = LazyLock::new(|| Duration::from_secs(1));
 
+// TODO: Add mime type(s) for M3U8 files (if it makes sense)
 /// Mime types supported by the music player.
 ///
 /// Chilen uses the `rodio` crate for audio playback, which itself uses

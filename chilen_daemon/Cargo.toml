@@ -17,6 +17,7 @@ rmp-serde = "1.3.1"
 rodio = { version = "0.22.2", features = [ "64bit" ] }
 rand = { version = "0.10.1", optional = true }
 smol = {version = "2.0.2", optional = true }
+# TODO: Create a simple M3U8 parser and generator to replace this
 m3u8-rs = { path = "./m3u8-rs" }
 
 [features]

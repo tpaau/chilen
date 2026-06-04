@@ -352,8 +352,7 @@ pub enum PlaybackCommand {
     /// The daemon will respond to this with [`PlaybackResponse::PlayerVolume`] if
     /// successful.
     GetPlayerVolume,
-    // TODO: Update this after support for M3U8 playlist is added
-    /// Set a track or a directory with tracks as the current queue.
+    /// Set a track, a directory with tracks or an M3U8 playlist as the current queue.
     ///
     /// Tracks outside of the music library will be ignored.
     OpenURI(String),
