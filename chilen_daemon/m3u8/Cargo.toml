@@ -1,0 +1,9 @@
+[package]
+name = "m3u8"
+version = "0.1.0"
+edition = "2024"
+authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
+license = "LGPL-3.0-or-later"
+
+[dependencies]
+nom = "8.0.0"

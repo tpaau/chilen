@@ -87,6 +87,7 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cov
     Err(CoverError::NoSuitablePictures)
 }
 
+// TODO: Add quality options
 pub(crate) fn get_track_cover(
     track: &Track,
     tag: &Tag,

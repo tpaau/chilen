@@ -1,7 +1,7 @@
 [package]
 name = "chilen_daemon"
 version = "0.1.0"
-authors = [ "tpaau <tpaau17db@tutamail.com" ]
+authors = [ "tpaau <tpaau17db@tutamail.com>" ]
 edition = "2024"
 license = "LGPL-3.0-or-later"
 
