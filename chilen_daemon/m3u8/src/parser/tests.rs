@@ -1,4 +1,115 @@
-use crate::parser::{self, Line, ParsedTag};
+use std::{sync::LazyLock, time::Duration};
+
+use crate::{
+    MediaPlaylist, MediaSegment,
+    parser::{
+        self, IGNORED_TAGS, IGNORED_TAGS_WITH_VALUES, Line, MULTIVARIANT_TAGS, ParsedTag,
+        UNIQUE_IGNORED_TAGS, parse_media_playlist,
+    },
+};
+
+static SIMPLE_PLAYLIST: LazyLock<MediaPlaylist> = LazyLock::new(|| MediaPlaylist {
+    segments: vec![
+        MediaSegment {
+            uri: "/some/nonexistent/path".to_string(),
+            duration: Duration::from_secs(67),
+            title: Some("Title".to_string()),
+        },
+        MediaSegment {
+            uri: "/doesnt/matter".to_string(),
+            duration: Duration::from_secs(24310),
+            title: None,
+        },
+        MediaSegment {
+            uri: "./AAAAAAAA".to_string(),
+            duration: Duration::from_secs(10123),
+            title: Some("AAAAAA".to_string()),
+        },
+        MediaSegment {
+            uri: "/some/other/path".to_string(),
+            duration: Duration::from_secs(10923),
+            title: Some("ZZZ, AAA".to_string()),
+        },
+    ],
+});
+
+#[test]
+fn tags_start_correctly() {
+    let mut tags: Vec<&str> = Vec::new();
+    for s in [
+        IGNORED_TAGS,
+        UNIQUE_IGNORED_TAGS,
+        IGNORED_TAGS_WITH_VALUES,
+        MULTIVARIANT_TAGS,
+    ] {
+        tags.extend_from_slice(s);
+    }
+    for tag in tags {
+        eprintln!("{tag}");
+        assert_eq!(&tag[..4], "#EXT");
+    }
+}
+
+#[test]
+fn tags_overlap_properly() {
+    for tag in IGNORED_TAGS_WITH_VALUES {
+        eprintln!("{tag}");
+        assert!(IGNORED_TAGS.contains(tag) || UNIQUE_IGNORED_TAGS.contains(tag));
+    }
+    for tag in MULTIVARIANT_TAGS {
+        eprintln!("{tag}");
+        assert!(!IGNORED_TAGS.contains(tag) && !UNIQUE_IGNORED_TAGS.contains(tag));
+    }
+    for tag in IGNORED_TAGS {
+        eprintln!("{tag}");
+        assert!(!UNIQUE_IGNORED_TAGS.contains(tag));
+    }
+}
+
+#[test]
+fn all_tags_covered() {
+    let tags = [
+        "#EXT-X-VERSION",
+        "#EXT-X-INDEPENDENT-SEGMENTS",
+        "#EXT-X-START",
+        "#EXT-X-DEFINE",
+        "#EXT-X-TARGETDURATION",
+        "#EXT-X-MEDIA-SEQUENCE",
+        "#EXT-X-DISCONTINUITY-SEQUENCE",
+        // "#EXT-X-ENDLIST", // Handled by the parser
+        "#EXT-X-PLAYLIST-TYPE",
+        "#EXT-X-I-FRAMES-ONLY",
+        "#EXT-X-PART-INF",
+        "#EXT-X-SERVER-CONTROL",
+        // "#EXTINF", // Handled by the parser
+        "#EXT-X-BYTERANGE",
+        "#EXT-X-DISCONTINUITY",
+        "#EXT-X-KEY",
+        "#EXT-X-MAP",
+        "#EXT-X-PROGRAM-DATE-TIME",
+        // "#EXT-X-GAP", // Handled by the parser
+        "#EXT-X-BITRATE",
+        "#EXT-X-PART",
+        "#EXT-X-DATERANGE",
+        "#EXT-X-SKIP",
+        "#EXT-X-PRELOAD-HINT",
+        "#EXT-X-RENDITION-REPORT",
+        "#EXT-X-MEDIA",
+        "#EXT-X-STREAM-INF",
+        "#EXT-X-I-FRAME-STREAM-INF",
+        "#EXT-X-SESSION-DATA",
+        "#EXT-X-SESSION-KEY",
+        "#EXT-X-CONTENT-STEERING",
+    ];
+    for tag in tags {
+        eprintln!("{tag}");
+        assert!(
+            IGNORED_TAGS.contains(&tag)
+                || UNIQUE_IGNORED_TAGS.contains(&tag)
+                || MULTIVARIANT_TAGS.contains(&tag)
+        )
+    }
+}
 
 #[test]
 fn newline() {
@@ -55,14 +166,6 @@ fn opt_whitespace() {
         parser::opt_whitespace("no whitespace :("),
         Ok(("no whitespace :(", ""))
     );
-}
-
-#[test]
-fn non_newline_whitespace() {
-    assert_eq!(parser::non_newline_whitespace(" "), Ok(("", " ")));
-    assert_eq!(parser::non_newline_whitespace("\n"), Ok(("\n", "")));
-    assert_eq!(parser::non_newline_whitespace("\t  \n"), Ok(("\n", "\t  ")));
-    assert_eq!(parser::non_newline_whitespace("\n   "), Ok(("\n   ", "")));
 }
 
 #[test]
@@ -164,21 +267,36 @@ fn parse_line_tag() {
 #[test]
 fn parse_line_path() {
     let i = "/some/path, ./another/path";
-    assert_eq!(parser::parse_line(i), Ok(("", Line::Path(i.to_string()))));
+    assert_eq!(
+        parser::parse_line(i),
+        Ok(("", Line::Segment(i.to_string())))
+    );
 }
+
+// #EXTM3U
+// #Test comment
+// #EXTINF:67, Title
+// /some/nonexistent/path
+// #EXTINF:24310
+// /doesnt/matter
+// #EXTINF:10123, AAAAAA
+// ./AAAAAAAA
+// #EXTINF:10923, ZZZ, AAA
+// /some/other/path
 
 #[test]
 fn parse_lines() {
     let expected = vec![
         Line::Tag("#EXTM3U".to_string()),
         Line::Comment("#Test comment".to_string()),
-        Line::Tag("#EXTINF:67, Artist - Track".to_string()),
-        Line::Path("/some/nonexistent/path".to_string()),
+        Line::Tag("#EXTINF:67, Title".to_string()),
+        Line::Segment("/some/nonexistent/path".to_string()),
         Line::Tag("#EXTINF:24310".to_string()),
-        Line::Path("/doesnt/matter".to_string()),
+        Line::Segment("/doesnt/matter".to_string()),
         Line::Tag("#EXTINF:10123, AAAAAA".to_string()),
-        Line::Path("./AAAAAAAA".to_string()),
-        Line::Path("/some/other/path/wihtout/extinf".to_string()),
+        Line::Segment("./AAAAAAAA".to_string()),
+        Line::Tag("#EXTINF:10923, ZZZ, AAA".to_string()),
+        Line::Segment("/some/other/path".to_string()),
     ];
     assert_eq!(
         parser::parse_lines(include_str!("../../assets/simple.m3u8")),
@@ -191,4 +309,18 @@ fn parse_lines() {
 }
 
 #[test]
-fn tags() {}
+fn multivariant_tags_fail() {
+    let base = include_str!("../../assets/simple.m3u8").to_string();
+    for tag in MULTIVARIANT_TAGS {
+        let pl = base.clone() + tag;
+        // TODO: Playlist fails because it contains a multivariant tag
+    }
+}
+
+#[test]
+fn parsing_works() {
+    assert_eq!(
+        parse_media_playlist(include_str!("../../assets/simple.m3u8")),
+        Ok(("", SIMPLE_PLAYLIST.clone()))
+    );
+}

@@ -1,9 +1,10 @@
 #EXTM3U
 #Test comment
-#EXTINF:67, Artist - Track
+#EXTINF:67, Title
 /some/nonexistent/path
 #EXTINF:24310
 /doesnt/matter
 #EXTINF:10123, AAAAAA
 ./AAAAAAAA
-/some/other/path/wihtout/extinf
+#EXTINF:10923, ZZZ, AAA
+/some/other/path

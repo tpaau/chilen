@@ -6,7 +6,7 @@ use std::time::Duration;
 
 /// Media segment from a [media playlist](Playlist).
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct Track {
+pub struct MediaSegment {
     pub uri: String,
     pub duration: Duration,
     pub title: Option<String>,
@@ -14,16 +14,16 @@ pub struct Track {
 
 /// A media playlist containing [audio tracks](Track).
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct Playlist {
-    tracks: Vec<Track>,
+pub struct MediaPlaylist {
+    segments: Vec<MediaSegment>,
 }
 
-impl Playlist {
+impl MediaPlaylist {
     /// Serialize the playlist struct to an M3U8 playlist.
     pub fn serialize(self) -> String {
         let mut content = String::from("#EXTM3U");
 
-        for track in self.tracks {
+        for track in self.segments {
             match track.title {
                 Some(title) => {
                     content += &format!(

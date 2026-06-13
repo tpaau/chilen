@@ -1,15 +1,19 @@
-#EXTM3U
+#EXTM3U 
 
-#Test comment
+#Test comment   
+#EXTINF:67, Title 
+/some/nonexistent/path 
 
-#EXTINF:67, Artist - Track    
-/some/nonexistent/path
-#EXTINF:24310 
+#EXTINF:24310     
 /doesnt/matter 
-#EXTINF:10123, AAAAAA
-./AAAAAAAA
-		
 
 
 
-/some/other/path/wihtout/extinf  
+
+#EXTINF:10123, AAAAAA 
+./AAAAAAAA   
+#EXTINF:10923, ZZZ, AAA
+
+/some/other/path 
+
+
