@@ -3,7 +3,7 @@ use std::{sync::LazyLock, time::Duration};
 use crate::{
     MediaPlaylist, MediaSegment,
     parser::{
-        self, IGNORED_TAGS, IGNORED_TAGS_WITH_VALUES, Line, MULTIVARIANT_TAGS, ParsedTag,
+        self, Extinf, IGNORED_TAGS, IGNORED_TAGS_WITH_VALUES, Line, MULTIVARIANT_TAGS, ParsedTag,
         UNIQUE_IGNORED_TAGS, parse_media_playlist,
     },
 };
@@ -213,6 +213,51 @@ fn parse_tag_value() {
 }
 
 #[test]
+fn parse_extinf_value() {
+    assert_eq!(
+        parser::parse_extinf_value("67, Example Artist, Example Title"),
+        Ok((
+            "",
+            Extinf {
+                duration: Duration::from_secs(67),
+                title: Some("Example Artist, Example Title".to_string())
+            }
+        ))
+    );
+    assert_eq!(
+        parser::parse_extinf_value("69"),
+        Ok((
+            "",
+            Extinf {
+                duration: Duration::from_secs(69),
+                title: None,
+            }
+        ))
+    );
+    assert_eq!(
+        parser::parse_extinf_value("420,                  Title"),
+        Ok((
+            "",
+            Extinf {
+                duration: Duration::from_secs(420),
+                title: Some("Title".to_string()),
+            }
+        ))
+    );
+    assert_eq!(
+        parser::parse_extinf_value(format!("{},Long Track", u32::MAX).as_str()),
+        Ok((
+            "",
+            Extinf {
+                duration: Duration::from_secs(u32::MAX.into()),
+                title: Some("Long Track".to_string()),
+            }
+        ))
+    );
+    // TODO: Error cases
+}
+
+#[test]
 fn parse_line_comments() {
     assert_eq!(
         parser::parse_line("#COMMENT"),
@@ -272,17 +317,6 @@ fn parse_line_path() {
         Ok(("", Line::Segment(i.to_string())))
     );
 }
-
-// #EXTM3U
-// #Test comment
-// #EXTINF:67, Title
-// /some/nonexistent/path
-// #EXTINF:24310
-// /doesnt/matter
-// #EXTINF:10123, AAAAAA
-// ./AAAAAAAA
-// #EXTINF:10923, ZZZ, AAA
-// /some/other/path
 
 #[test]
 fn parse_lines() {

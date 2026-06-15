@@ -129,7 +129,6 @@ pub(crate) fn parse_tag_value(i: &str) -> IResult<&str, ParsedTag> {
     }
 }
 
-// TODO: Test this
 pub(crate) fn parse_extinf_value(i: &str) -> IResult<&str, Extinf> {
     match take_until::<_, &str, nom::error::Error<&str>>(",")(i) {
         Ok((title, d)) => {
