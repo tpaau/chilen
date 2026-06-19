@@ -6,7 +6,7 @@ use std::{collections::HashSet, time::Duration};
 use nom::{
     AsChar, Finish, IResult, Parser,
     branch::alt,
-    bytes::complete::{tag, take_until, take_while, take_while1},
+    bytes::complete::{tag, take_while, take_while1},
     character::complete::char,
     combinator::{map, peek},
     error::{ContextError, context},
@@ -105,7 +105,7 @@ pub(crate) fn newline_or_end(i: &str) -> IResult<&str, &str, VerboseError<&str>>
     if i.is_empty() {
         Ok(("", ""))
     } else {
-        newline(i)
+        context("newline_or_end", newline).parse(i)
     }
 }
 
@@ -118,61 +118,36 @@ pub(crate) fn opt_whitespace(i: &str) -> IResult<&str, &str, VerboseError<&str>>
 }
 
 pub(crate) fn split_tag_value<'a>(i: &'a str) -> SplitTag<'a> {
-    match take_until::<_, &str, nom::error::Error<&str>>(":")(i) {
-        Ok((i, t)) => {
-            let (v, _) = tag::<_, &str, nom::error::Error<&str>>(":")(i).unwrap();
-            SplitTag {
-                tag: t,
-                value: Some(v),
-            }
+    if let Some((t, v)) = i.split_once(':') {
+        SplitTag {
+            tag: t,
+            value: Some(v),
         }
-        Err(_) => SplitTag {
+    } else {
+        SplitTag {
             tag: i,
             value: None,
-        },
+        }
     }
 }
 
 pub(crate) fn parse_f64(i: &str) -> IResult<&str, f64, VerboseError<&str>> {
-    match take_while1::<_, &str, VerboseError<&str>>(|c: char| c.is_ascii_digit())(i).finish() {
-        Ok((i, v)) => match v.parse::<f64>() {
-            Ok(v) => Ok((i, v)),
-            Err(_) => Err(nom::Err::Error(VerboseError {
-                errors: vec![(i, VerboseErrorKind::Context("parse_f64"))],
-            })),
-        },
-        Err(e) => Err(nom::Err::Error(VerboseError::add_context(
-            i,
-            "parse_f64",
-            e,
-        ))),
+    let (i, v) = context("parse_f64", take_while1(|c: char| c.is_ascii_digit())).parse(i)?;
+    match v.parse::<f64>() {
+        Ok(v) => Ok((i, v)),
+        Err(_) => Err(nom::Err::Error(VerboseError {
+            errors: vec![(i, VerboseErrorKind::Context("parse_f64"))],
+        })),
     }
 }
 
 pub(crate) fn parse_extinf_value(input: &str) -> IResult<&str, Extinf, VerboseError<&str>> {
-    let (i, dur) = match parse_f64(input).finish() {
-        Ok((i, dur)) => (i, dur),
-        Err(e) => {
-            return Err(nom::Err::Error(VerboseError::add_context(
-                input,
-                "parse_extinf_value",
-                e,
-            )));
-        }
-    };
+    let (i, dur) = context("parse_extinf_value", parse_f64).parse(input)?;
+
     match char::<&str, VerboseError<&str>>(',')(i) {
         Ok((i, _)) => match till_newline(i) {
             Ok((i, t)) => {
-                let t = match opt_whitespace(t).finish() {
-                    Ok((t, _)) => t,
-                    Err(e) => {
-                        return Err(nom::Err::Error(VerboseError::add_context(
-                            input,
-                            "parse_extinf_value",
-                            e,
-                        )));
-                    }
-                };
+                let (t, _) = context("parse_extinf_value", opt_whitespace).parse(t)?;
                 if t.is_empty() {
                     return Err(nom::Err::Error(VerboseError {
                         errors: vec![(input, VerboseErrorKind::Context("parse_extinf_value"))],
@@ -188,16 +163,16 @@ pub(crate) fn parse_extinf_value(input: &str) -> IResult<&str, Extinf, VerboseEr
             }
             Err(e) => Err(e),
         },
-        Err(_) => match till_newline(i) {
-            Ok((i, _)) => Ok((
+        Err(_) => {
+            let (i, _) = context("parse_extinf_value", till_newline).parse(i)?;
+            Ok((
                 i,
                 Extinf {
                     duration: Duration::from_secs_f64(dur),
                     title: None,
                 },
-            )),
-            Err(e) => Err(e),
-        },
+            ))
+        }
     }
 }
 
@@ -258,26 +233,16 @@ pub(crate) fn parse_lines<'a>(
 }
 
 pub(crate) fn extm3u_tag(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
-    match tag::<&str, &str, VerboseError<&str>>("#EXTM3U")(i).finish() {
-        Ok((i, o)) => {
-            let (i, _) = newline_or_end(i)?;
-            Ok((i, o))
-        }
-        Err(e) => Err(nom::Err::Error(VerboseError::add_context(
-            i,
-            "extm3u_tag",
-            e,
-        ))),
-    }
+    context("extm3u_tag", terminated(tag("#EXTM3U"), newline_or_end)).parse(i)
 }
 
-pub(crate) fn no_multivariant_tag(tag: &str) -> Result<(), VerboseError<&str>> {
+pub(crate) fn no_multivariant_tag(tag: &str) -> IResult<&str, &str, VerboseError<&str>> {
     if MULTIVARIANT_TAGS.contains(&tag) {
-        Err(VerboseError {
+        Err(nom::Err::Error(VerboseError {
             errors: vec![(tag, VerboseErrorKind::Context("no_multivariant_tag"))],
-        })
+        }))
     } else {
-        Ok(())
+        Ok(("", tag))
     }
 }
 
@@ -292,16 +257,7 @@ pub(crate) fn tag_has_value<'a>(tag: &SplitTag<'a>) -> Result<(), VerboseError<&
 }
 
 pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, VerboseError<&str>> {
-    let i = match extm3u_tag(input).finish() {
-        Ok((i, _)) => i,
-        Err(e) => {
-            return Err(nom::Err::Error(VerboseError::add_context(
-                input,
-                "parse_media_playlist",
-                e,
-            )));
-        }
-    };
+    let (i, _) = context("parse_media_playlist", extm3u_tag).parse(input)?;
     if i.is_empty() {
         return Ok((
             i,
@@ -319,15 +275,8 @@ pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, Verbose
     for line in lines.into_iter() {
         match line {
             Line::Tag(t) => {
-                eprintln!("Tag: {t}");
                 let tag = split_tag_value(t);
-                if let Err(e) = no_multivariant_tag(tag.tag) {
-                    return Err(nom::Err::Error(VerboseError::add_context(
-                        input,
-                        "parse_media_playlist",
-                        e,
-                    )));
-                }
+                context("parse_media_playlist", no_multivariant_tag).parse(tag.tag)?;
                 if UNIQUE_IGNORED_TAGS.contains(&tag.tag) {
                     if seen_unique_tags.contains(tag.tag) {
                         return Err(nom::Err::Error(VerboseError {
@@ -369,16 +318,11 @@ pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, Verbose
                     endlist = true;
                 } else if tag.tag == "#EXTINF" {
                     if let Some(value) = tag.value {
-                        match parse_extinf_value(value).finish() {
-                            Ok((_, value)) => extinf = Some(value),
-                            Err(e) => {
-                                return Err(nom::Err::Error(VerboseError::add_context(
-                                    value,
-                                    "parse_media_playlist",
-                                    e,
-                                )));
-                            }
-                        };
+                        extinf = Some(
+                            context("parse_media_playlist", parse_extinf_value)
+                                .parse(value)?
+                                .1,
+                        );
                     } else {
                         return Err(nom::Err::Error(VerboseError {
                             errors: vec![(

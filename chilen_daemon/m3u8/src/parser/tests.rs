@@ -132,13 +132,19 @@ fn newline_or_end() {
     assert_eq!(
         parser::newline_or_end("aa"),
         Err(nom::Err::Error(VerboseError {
-            errors: vec![("aa", VerboseErrorKind::Nom(ErrorKind::TakeWhile1))]
+            errors: vec![
+                ("aa", VerboseErrorKind::Nom(ErrorKind::TakeWhile1)),
+                ("aa", VerboseErrorKind::Context("newline_or_end"))
+            ]
         }))
     );
     assert_eq!(
         parser::newline_or_end("aa\n"),
         Err(nom::Err::Error(VerboseError {
-            errors: vec![("aa\n", VerboseErrorKind::Nom(ErrorKind::TakeWhile1))]
+            errors: vec![
+                ("aa\n", VerboseErrorKind::Nom(ErrorKind::TakeWhile1)),
+                ("aa\n", VerboseErrorKind::Context("newline_or_end"))
+            ]
         }))
     );
 }
@@ -411,7 +417,11 @@ fn extm3u_tag() {
     assert_eq!(
         parser::extm3u_tag("#EXTM3Ua"),
         Err(nom::Err::Error(VerboseError {
-            errors: vec![("a", VerboseErrorKind::Nom(ErrorKind::TakeWhile1))]
+            errors: vec![
+                ("a", VerboseErrorKind::Nom(ErrorKind::TakeWhile1)),
+                ("a", VerboseErrorKind::Context("newline_or_end")),
+                ("#EXTM3Ua", VerboseErrorKind::Context("extm3u_tag"))
+            ]
         }))
     );
 }
@@ -426,10 +436,7 @@ fn multivariant_tags_fail() {
             Err(nom::Err::Error(VerboseError {
                 errors: vec![
                     (*tag, VerboseErrorKind::Context("no_multivariant_tag")),
-                    (
-                        content.as_str(),
-                        VerboseErrorKind::Context("parse_media_playlist")
-                    )
+                    (*tag, VerboseErrorKind::Context("parse_media_playlist"))
                 ]
             }))
         );
