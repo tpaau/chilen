@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Duration};
 
 use log::trace;
 
-/// Media segment from a [media playlist](Playlist).
+/// Media segment from a [media playlist](MediaPlaylist).
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct MediaSegment {
     pub uri: PathBuf,
@@ -14,7 +14,7 @@ pub struct MediaSegment {
     pub title: Option<String>,
 }
 
-/// A media playlist containing [audio tracks](Track).
+/// A media playlist containing [media segments](MediaSegment).
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct MediaPlaylist {
     pub segments: Vec<MediaSegment>,
