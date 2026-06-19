@@ -4,13 +4,13 @@ mod tests;
 use std::{collections::HashSet, time::Duration};
 
 use nom::{
-    AsChar, Finish, IResult, Parser,
+    AsChar, IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_while, take_while1},
     character::complete::char,
     combinator::{map, peek},
     error::{ContextError, context},
-    sequence::{preceded, terminated},
+    sequence::{pair, preceded, terminated},
 };
 use nom_language::error::{VerboseError, VerboseErrorKind};
 
@@ -233,7 +233,17 @@ pub(crate) fn parse_lines<'a>(
 }
 
 pub(crate) fn extm3u_tag(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
-    context("extm3u_tag", terminated(tag("#EXTM3U"), newline_or_end)).parse(i)
+    context(
+        "extm3u_tag",
+        terminated(
+            tag("#EXTM3U"),
+            pair(
+                take_while(|c: char| c.is_ascii_whitespace() && !c.is_newline()),
+                newline_or_end,
+            ),
+        ),
+    )
+    .parse(i)
 }
 
 pub(crate) fn no_multivariant_tag(tag: &str) -> IResult<&str, &str, VerboseError<&str>> {
@@ -256,8 +266,8 @@ pub(crate) fn tag_has_value<'a>(tag: &SplitTag<'a>) -> Result<(), VerboseError<&
     }
 }
 
-pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, VerboseError<&str>> {
-    let (i, _) = context("parse_media_playlist", extm3u_tag).parse(input)?;
+pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseError<&str>> {
+    let (i, _) = context("parse_media_playlist", extm3u_tag).parse(i)?;
     if i.is_empty() {
         return Ok((
             i,
@@ -290,7 +300,7 @@ pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, Verbose
                             && let Err(e) = tag_has_value(&tag)
                         {
                             return Err(nom::Err::Error(VerboseError::add_context(
-                                input,
+                                tag.tag,
                                 "parse_media_playlist",
                                 e,
                             )));
@@ -302,7 +312,7 @@ pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, Verbose
                     && let Err(e) = tag_has_value(&tag)
                 {
                     return Err(nom::Err::Error(VerboseError::add_context(
-                        input,
+                        tag.tag,
                         "parse_media_playlist",
                         e,
                     )));

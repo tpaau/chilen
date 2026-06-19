@@ -1,13 +1,13 @@
 use std::{sync::LazyLock, time::Duration};
 
-use nom::{Finish, error::ErrorKind};
-use nom_language::error::{VerboseError, VerboseErrorKind, convert_error};
+use nom::error::ErrorKind;
+use nom_language::error::{VerboseError, VerboseErrorKind};
 
 use crate::{
     MediaPlaylist, MediaSegment,
     parser::{
         self, Extinf, IGNORED_TAGS, IGNORED_TAGS_WITH_VALUES, Line, MULTIVARIANT_TAGS, SplitTag,
-        UNIQUE_IGNORED_TAGS, parse_media_playlist,
+        UNIQUE_IGNORED_TAGS,
     },
 };
 
@@ -35,6 +35,11 @@ static SIMPLE_PLAYLIST: LazyLock<MediaPlaylist> = LazyLock::new(|| MediaPlaylist
         },
     ],
 });
+
+const SIMPLE_PLAYLIST_FILES: [&str; 2] = [
+    include_str!("../../assets/simple.m3u8"),
+    include_str!("../../assets/simple-w-whitespace.m3u8"),
+];
 
 #[test]
 fn tags_start_correctly() {
@@ -373,7 +378,18 @@ fn parse_segment() {
 
 #[test]
 fn parse_line() {
-    // TEST: Test parse_line
+    assert_eq!(
+        parser::parse_line("#EXTHELLO"),
+        Ok(("", Line::Tag("#EXTHELLO")))
+    );
+    assert_eq!(
+        parser::parse_line("#SOME COMMENT"),
+        Ok(("", Line::Comment("#SOME COMMENT")))
+    );
+    assert_eq!(
+        parser::parse_line("Other stuff"),
+        Ok(("", Line::Segment("Other stuff")))
+    );
 }
 
 #[test]
@@ -427,16 +443,56 @@ fn extm3u_tag() {
 }
 
 #[test]
-fn multivariant_tags_fail() {
-    let base = include_str!("../../assets/simple.m3u8").to_string();
+fn no_multivariant_tag() {
     for tag in MULTIVARIANT_TAGS {
-        let content = base.clone() + tag;
         assert_eq!(
-            parser::parse_media_playlist(content.as_str()),
+            parser::no_multivariant_tag(tag),
+            Err(nom::Err::Error(VerboseError {
+                errors: vec![(*tag, VerboseErrorKind::Context("no_multivariant_tag"))]
+            }))
+        );
+    }
+    let mut tags: Vec<&str> = Vec::new();
+    for s in [IGNORED_TAGS, UNIQUE_IGNORED_TAGS] {
+        tags.extend_from_slice(s);
+    }
+    for tag in tags {
+        assert_eq!(parser::no_multivariant_tag(tag), Ok(("", tag)));
+    }
+}
+
+#[test]
+fn multivariant_tags_fail() {
+    for pl in SIMPLE_PLAYLIST_FILES {
+        for tag in MULTIVARIANT_TAGS {
+            let content = pl.to_string() + tag;
+            assert_eq!(
+                parser::parse_media_playlist(content.as_str()),
+                Err(nom::Err::Error(VerboseError {
+                    errors: vec![
+                        (*tag, VerboseErrorKind::Context("no_multivariant_tag")),
+                        (*tag, VerboseErrorKind::Context("parse_media_playlist"))
+                    ]
+                }))
+            );
+        }
+    }
+}
+
+#[test]
+fn missing_extm3u_fails() {
+    for pl in SIMPLE_PLAYLIST_FILES {
+        let pl = pl.lines().skip(1).collect::<Vec<_>>().join("\n");
+        assert_eq!(
+            parser::parse_media_playlist(&pl),
             Err(nom::Err::Error(VerboseError {
                 errors: vec![
-                    (*tag, VerboseErrorKind::Context("no_multivariant_tag")),
-                    (*tag, VerboseErrorKind::Context("parse_media_playlist"))
+                    (pl.as_str(), VerboseErrorKind::Nom(ErrorKind::Tag)),
+                    (pl.as_str(), VerboseErrorKind::Context("extm3u_tag")),
+                    (
+                        pl.as_str(),
+                        VerboseErrorKind::Context("parse_media_playlist")
+                    )
                 ]
             }))
         );
@@ -444,50 +500,87 @@ fn multivariant_tags_fail() {
 }
 
 #[test]
-fn missing_extm3u_fails() {
-    let simple = include_str!("../../assets/simple.m3u8")
-        .lines()
-        .skip(1)
-        .collect::<Vec<_>>()
-        .join("\n");
-    assert_eq!(
-        parser::parse_media_playlist(&simple),
-        Err(nom::Err::Error(VerboseError {
-            errors: vec![
-                (simple.as_str(), VerboseErrorKind::Nom(ErrorKind::Tag)),
-                (simple.as_str(), VerboseErrorKind::Context("extm3u_tag")),
-                (
-                    simple.as_str(),
-                    VerboseErrorKind::Context("parse_media_playlist")
-                )
-            ]
-        }))
-    );
-    // panic!(
-    //     "{}",
-    //     convert_error(
-    //         simple.as_str(),
-    //         parser::parse_media_playlist(&simple).finish().unwrap_err()
-    //     )
-    // );
+fn duplicate_unique_ignored_tags_fail() {
+    for pl in SIMPLE_PLAYLIST_FILES {
+        for tag in UNIQUE_IGNORED_TAGS {
+            let tag = if IGNORED_TAGS_WITH_VALUES.contains(tag) {
+                tag.to_string() + ":a"
+            } else {
+                tag.to_string()
+            };
+            let tag = tag.as_str();
+            assert_eq!(
+                parser::parse_media_playlist((pl.to_string() + tag).as_str()),
+                Ok(("", SIMPLE_PLAYLIST.clone()))
+            );
+        }
+        for tag in UNIQUE_IGNORED_TAGS {
+            let og_tag = *tag;
+            let tag = if IGNORED_TAGS_WITH_VALUES.contains(tag) {
+                tag.to_string() + ":a"
+            } else {
+                tag.to_string()
+            };
+            let tag = tag.as_str();
+            assert_eq!(
+                parser::parse_media_playlist((pl.to_string() + tag + "\n" + tag).as_str()),
+                Err(nom::Err::Error(VerboseError {
+                    errors: vec![(og_tag, VerboseErrorKind::Context("parse_media_playlist"))]
+                }))
+            );
+        }
+    }
 }
 
 #[test]
-fn duplicate_unique_ignored_tags_fail() {}
-
-#[test]
-fn ignored_tags_with_missing_values_fail() {}
+fn ignored_tags_with_missing_values_fail() {
+    for pl in SIMPLE_PLAYLIST_FILES {
+        for tag in IGNORED_TAGS_WITH_VALUES {
+            let pl = pl.to_string() + tag;
+            assert_eq!(
+                parser::parse_media_playlist(&pl),
+                Err(nom::Err::Error(VerboseError {
+                    errors: vec![
+                        (*tag, VerboseErrorKind::Context("tag_has_value")),
+                        (*tag, VerboseErrorKind::Context("parse_media_playlist"))
+                    ]
+                }))
+            );
+        }
+    }
+}
 
 #[test]
 fn entry_with_no_extinf_fails() {}
 
 #[test]
-fn unknown_tags_fail() {}
+fn unknown_tags_fail() {
+    let unknown_tags = [
+        "#EXTUNKNOWN",
+        "#EXTFAIL",
+        "#EXTJUNK",
+        "#EXTHELLO",
+        "#EXT_HELLO_world",
+    ];
+    for pl in SIMPLE_PLAYLIST_FILES {
+        for tag in unknown_tags {
+            let pl = pl.to_string() + tag;
+            assert_eq!(
+                parser::parse_media_playlist(&pl),
+                Err(nom::Err::Error(VerboseError {
+                    errors: vec![(tag, VerboseErrorKind::Context("parse_media_playlist"))]
+                }))
+            );
+        }
+    }
+}
 
 #[test]
-fn parsing_works() {
-    assert_eq!(
-        parse_media_playlist(include_str!("../../assets/simple.m3u8")),
-        Ok(("", SIMPLE_PLAYLIST.clone()))
-    );
+fn parse_media_playlist() {
+    for pl in SIMPLE_PLAYLIST_FILES {
+        assert_eq!(
+            parser::parse_media_playlist(pl),
+            Ok(("", SIMPLE_PLAYLIST.clone()))
+        );
+    }
 }
