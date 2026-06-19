@@ -134,19 +134,16 @@ pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, ch
 
 pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ipc::Error> {
     trace!("Loading an M3U8 playlist from {path:?}");
-    let bytes = match read(path) {
+    let data = match read(path) {
         Ok(data) => data,
         Err(e) => {
             error!("Could not read the playlist file at {path:?}: {e}");
             return Err(chilen_ipc::Error::PathDoesNotExist);
         }
     };
-    match m3u8_rs::parse_playlist(&bytes) {
-        Ok((_, m3u8_rs::Playlist::MasterPlaylist(_))) => {
-            error!("The playlist {path:?} is a master playlist, not a media playlist");
-            Err(chilen_ipc::Error::NotMediaPlaylist)
-        }
-        Ok((_, m3u8_rs::Playlist::MediaPlaylist(pl))) => {
+    let content = String::from_utf8_lossy(&data);
+    match m3u8::parser::parse_media_playlist(&content) {
+        Ok((_, pl)) => {
             let base_path = path.parent().unwrap_or(Path::new("./"));
             let track_paths: Vec<_> = pl
                 .segments
@@ -160,10 +157,22 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ip
             Ok(track_paths)
         }
         Err(e) => {
-            error!("Could not parse the M3U8 playlist: {e}");
+            error!("Could not parse the M3U playlist: {e}");
             Err(chilen_ipc::Error::PlaylistParsingError)
         }
     }
+    // match m3u8_rs::parse_playlist(&bytes) {
+    //     Ok((_, m3u8_rs::Playlist::MasterPlaylist(_))) => {
+    //         error!("The playlist {path:?} is a master playlist, not a media playlist");
+    //         Err(chilen_ipc::Error::NotMediaPlaylist)
+    //     }
+    //     Ok((_, m3u8_rs::Playlist::MediaPlaylist(pl))) => {
+    //     }
+    //     Err(e) => {
+    //         error!("Could not parse the M3U8 playlist: {e}");
+    //         Err(chilen_ipc::Error::PlaylistParsingError)
+    //     }
+    // }
 }
 
 pub(crate) fn create_playlist(

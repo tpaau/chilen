@@ -123,10 +123,6 @@ pub enum Error {
     PathExistenceUnknown,
     /// Could not find any audio files in the provided directory path.
     DirectoryWithNoTracks,
-    /// The M3U8 playlist is a master playlist, not a media playlist.
-    ///
-    /// Please provide a media playlist instead.
-    NotMediaPlaylist,
     /// Could not parse the M3U8 playlist.
     ///
     /// Please make sure that the playlist has the correct format and is not corrupted.
@@ -199,10 +195,6 @@ impl std::fmt::Display for Error {
             Self::DirectoryWithNoTracks => write!(
                 f,
                 "Could not find any audio files in the provided directory path"
-            ),
-            Self::NotMediaPlaylist => write!(
-                f,
-                "The provided M3U8 playlist is a master playlist, not a media playlist"
             ),
             Self::PlaylistParsingError => write!(f, "Could not parse the M3U8 playlist"),
         }

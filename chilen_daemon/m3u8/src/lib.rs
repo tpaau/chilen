@@ -15,7 +15,7 @@ pub struct MediaSegment {
 /// A media playlist containing [audio tracks](Track).
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct MediaPlaylist {
-    segments: Vec<MediaSegment>,
+    pub segments: Vec<MediaSegment>,
 }
 
 impl MediaPlaylist {

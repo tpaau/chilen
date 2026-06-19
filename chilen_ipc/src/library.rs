@@ -93,8 +93,6 @@ pub enum LibraryCommand {
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file.
-    ///
-    /// This is currently unimplemented and will cause the daemon to panic.
     PlaylistFromM3U8 {
         /// The name for the imported playlist. Must not already exist in the music library.
         ///
@@ -120,7 +118,7 @@ pub enum LibraryCommand {
     AddTracksToPlaylist {
         /// The name of the playlist to add tracks to.
         ///
-        /// If a playlist with the specified name doesn't exist in the music library,
+        /// If no such playlist exists in the music library,
         /// [`Error::UnknownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no
         /// changes to the [music library](MusicLibrary) will be made.
         name: String,
