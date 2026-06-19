@@ -290,66 +290,79 @@ fn parse_extinf_value() {
 
 #[test]
 fn parse_tag() {
-    // TODO: Use parse_tag instead
-    // TODO: Negative cases
+    assert_eq!(parser::parse_tag("#EXTM3U"), Ok(("", Line::Tag("#EXTM3U"))));
     assert_eq!(
-        parser::parse_line("#EXTM3U"),
+        parser::parse_tag("#EXTM3U\n"),
         Ok(("", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
-        parser::parse_line("#EXTM3U\n"),
+        parser::parse_tag("#EXTM3U\n\n"),
         Ok(("", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
-        parser::parse_line("#EXTM3U\n\n"),
-        Ok(("", Line::Tag("#EXTM3U")))
-    );
-    assert_eq!(
-        parser::parse_line("#EXTM3U\n\n\n#COMMENT"),
+        parser::parse_tag("#EXTM3U\n\n\n#COMMENT"),
         Ok(("#COMMENT", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
-        parser::parse_line("\n#EXTM3U\n\n\n#COMMENT"),
+        parser::parse_tag("\n#EXTM3U\n\n\n#COMMENT"),
         Ok(("#COMMENT", Line::Tag("#EXTM3U")))
+    );
+    assert_eq!(
+        parser::parse_tag("#AAA"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                ("#AAA", VerboseErrorKind::Nom(ErrorKind::Tag)),
+                ("#AAA", VerboseErrorKind::Context("parse_tag"))
+            ]
+        }))
     );
 }
 
 #[test]
 fn parse_comment() {
-    // TODO: Use parse_comment instead
-    // TODO: Negative cases
     assert_eq!(
-        parser::parse_line("#COMMENT"),
+        parser::parse_comment("#COMMENT"),
         Ok(("", Line::Comment("#COMMENT")))
     );
     assert_eq!(
-        parser::parse_line("#COMMENT\n"),
+        parser::parse_comment("#COMMENT\n"),
         Ok(("", Line::Comment("#COMMENT")))
     );
     assert_eq!(
-        parser::parse_line("#COMMENT\n\n\n"),
+        parser::parse_comment("#COMMENT\n\n\n"),
         Ok(("", Line::Comment("#COMMENT")))
     );
     assert_eq!(
-        parser::parse_line("#COMMENT\n#ANOTHER COMMENT"),
+        parser::parse_comment("#COMMENT\n#ANOTHER COMMENT"),
         Ok(("#ANOTHER COMMENT", Line::Comment("#COMMENT")))
     );
     assert_eq!(
-        parser::parse_line("#COMMENT\n\n\n\n#ANOTHER COMMENT"),
+        parser::parse_comment("#COMMENT\n\n\n\n#ANOTHER COMMENT"),
         Ok(("#ANOTHER COMMENT", Line::Comment("#COMMENT")))
     );
     assert_eq!(
-        parser::parse_line("\n#TEST"),
+        parser::parse_comment("\n#TEST"),
         Ok(("", Line::Comment("#TEST")))
+    );
+    assert_eq!(
+        parser::parse_comment("#EXTEST"),
+        Ok(("", Line::Comment("#EXTEST")))
+    );
+    assert_eq!(
+        parser::parse_comment("AAAA"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                ("AAAA", VerboseErrorKind::Nom(ErrorKind::Tag)),
+                ("AAAA", VerboseErrorKind::Context("parse_comment"))
+            ]
+        }))
     );
 }
 
 #[test]
 fn parse_segment() {
-    // TODO: Use parse_segment instead
-    // TODO: Negative cases
     let i = "/some/path";
-    assert_eq!(parser::parse_line(i), Ok(("", Line::Segment(i))));
+    assert_eq!(parser::parse_segment(i), Ok(("", Line::Segment(i))));
 }
 
 #[test]

@@ -205,7 +205,10 @@ pub(crate) fn parse_tag<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseErr
     context(
         "parse_tag",
         map(
-            terminated(preceded(peek(tag("#EXT")), till_newline), newline_or_end),
+            terminated(
+                preceded(preceded(opt_whitespace, peek(tag("#EXT"))), till_newline),
+                newline_or_end,
+            ),
             |line: &'a str| Line::Tag(line.trim_end()),
         ),
     )
@@ -216,7 +219,10 @@ pub(crate) fn parse_comment<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, Verbos
     context(
         "parse_comment",
         map(
-            terminated(preceded(peek(tag("#")), till_newline), newline_or_end),
+            terminated(
+                preceded(preceded(opt_whitespace, peek(tag("#"))), till_newline),
+                newline_or_end,
+            ),
             |line: &'a str| Line::Comment(line.trim_end()),
         ),
     )
@@ -226,23 +232,16 @@ pub(crate) fn parse_comment<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, Verbos
 pub(crate) fn parse_segment<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseError<&'a str>> {
     context(
         "parse_segment",
-        map(terminated(till_newline, newline_or_end), |line: &'a str| {
-            Line::Segment(line.trim_end())
-        }),
+        map(
+            terminated(preceded(opt_whitespace, till_newline), newline_or_end),
+            |line: &'a str| Line::Segment(line.trim_end()),
+        ),
     )
     .parse(i)
 }
 
 pub(crate) fn parse_line<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseError<&'a str>> {
-    let (i, _) = opt_whitespace(i)?;
-    context(
-        "parse_line",
-        preceded(
-            opt_whitespace,
-            alt((parse_tag, parse_comment, parse_segment)),
-        ),
-    )
-    .parse(i)
+    context("parse_line", alt((parse_tag, parse_comment, parse_segment))).parse(i)
 }
 
 pub(crate) fn parse_lines<'a>(
