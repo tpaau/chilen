@@ -1,4 +1,4 @@
-use std::{sync::LazyLock, time::Duration};
+use std::{path::PathBuf, sync::LazyLock, time::Duration};
 
 use nom::error::ErrorKind;
 use nom_language::error::{VerboseError, VerboseErrorKind};
@@ -14,22 +14,22 @@ use crate::{
 static SIMPLE_PLAYLIST: LazyLock<MediaPlaylist> = LazyLock::new(|| MediaPlaylist {
     segments: vec![
         MediaSegment {
-            uri: "/some/nonexistent/path".to_string(),
+            uri: PathBuf::from("/some/nonexistent/path"),
             duration: Duration::from_secs(67),
             title: Some("Title".to_string()),
         },
         MediaSegment {
-            uri: "/doesnt/matter".to_string(),
+            uri: PathBuf::from("/doesnt/matter"),
             duration: Duration::from_secs(24310),
             title: None,
         },
         MediaSegment {
-            uri: "./AAAAAAAA".to_string(),
+            uri: PathBuf::from("./AAAAAAAA"),
             duration: Duration::from_secs(10123),
             title: Some("AAAAAA".to_string()),
         },
         MediaSegment {
-            uri: "/some/other/path".to_string(),
+            uri: PathBuf::from("/some/other/path"),
             duration: Duration::from_secs(10923),
             title: Some("ZZZ, AAA".to_string()),
         },
@@ -554,7 +554,7 @@ fn ignored_tags_with_missing_values_fail() {
 fn entry_with_no_extinf_fails() {}
 
 #[test]
-fn unknown_tags_fail() {
+fn unknown_tags_dont_fail() {
     let unknown_tags = [
         "#EXTUNKNOWN",
         "#EXTFAIL",
@@ -567,9 +567,7 @@ fn unknown_tags_fail() {
             let pl = pl.to_string() + tag;
             assert_eq!(
                 parser::parse_media_playlist(&pl),
-                Err(nom::Err::Error(VerboseError {
-                    errors: vec![(tag, VerboseErrorKind::Context("parse_media_playlist"))]
-                }))
+                Ok(("", SIMPLE_PLAYLIST.clone()))
             );
         }
     }

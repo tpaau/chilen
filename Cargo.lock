@@ -1968,6 +1968,7 @@ checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
 name = "m3u8"
 version = "0.1.0"
 dependencies = [
+ "log",
  "nom",
  "nom-language",
 ]

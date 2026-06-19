@@ -127,6 +127,10 @@ pub enum Error {
     ///
     /// Please make sure that the playlist has the correct format and is not corrupted.
     PlaylistParsingError,
+    /// Could not export the playlist to M3U8.
+    ///
+    /// This likely either means that the specified file path doesn't exists or is not writable.
+    PlaylistExportFailed,
 }
 
 impl std::fmt::Display for Error {
@@ -197,6 +201,7 @@ impl std::fmt::Display for Error {
                 "Could not find any audio files in the provided directory path"
             ),
             Self::PlaylistParsingError => write!(f, "Could not parse the M3U8 playlist"),
+            Self::PlaylistExportFailed => write!(f, "Could not export the playlist to M3U8"),
         }
     }
 }

@@ -14,7 +14,8 @@ use crate::{
     music_lib::{
         self, add_tracks,
         covers::LoadMode,
-        create_playlist, delete_playlists, import_playlist_from_m3u8, remove_tracks,
+        create_playlist, delete_playlists, export_playlist_to_m3u8, import_playlist_from_m3u8,
+        remove_tracks,
         state::{get_library, save_library},
     },
     playback, raise, set_fullscreen, subscribe_to_events,
@@ -104,6 +105,21 @@ pub(crate) fn spawn(conn: Stream, index: u64) -> JoinHandle<()> {
                     }
                     LibraryCommand::PlaylistFromM3U8 { name, m3u8_file } => {
                         if let Err(e) = import_playlist_from_m3u8(name, &m3u8_file) {
+                            if let Err(chilen_ipc::Error::SendingError) =
+                                respond(&mut conn, &Response::Error(e))
+                            {
+                                break;
+                            }
+                            continue;
+                        }
+                        if let Err(chilen_ipc::Error::SendingError) =
+                            respond(&mut conn, &Response::Ok)
+                        {
+                            break;
+                        }
+                    }
+                    LibraryCommand::ExportPlaylistToM3U { name, path } => {
+                        if let Err(e) = export_playlist_to_m3u8(name, path) {
                             if let Err(chilen_ipc::Error::SendingError) =
                                 respond(&mut conn, &Response::Error(e))
                             {

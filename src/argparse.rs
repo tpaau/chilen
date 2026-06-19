@@ -80,14 +80,21 @@ pub enum PlaylistCommand {
         tracks: Option<Vec<PathBuf>>,
     },
     /// Import a playlist from an M3U8 file
-    FromM3U8 {
-        // The path to the M3U8 file to import the playlist from
+    Import {
+        /// The path to the M3U8 file to import the playlist from
         #[arg(value_parser = is_file, value_hint = ValueHint::FilePath)]
         m3u8_file: PathBuf,
         /// The name of the playlist
         ///
         /// If left unspecified, it will be derived from the name set in the M3U8 playlist.
         name: Option<String>,
+    },
+    /// Export a playlist as an M3U8 file.
+    Export {
+        /// The name of the playlist to export
+        name: String,
+        /// The path to export the playlist to
+        path: PathBuf,
     },
     /// Delete playlist(s) from the library
     Delete { names: Vec<String> },
@@ -124,8 +131,11 @@ impl From<PlaylistCommand> for chilen_ipc::library::LibraryCommand {
             PlaylistCommand::New { name, tracks } => {
                 chilen_ipc::library::LibraryCommand::NewPlaylist { name, tracks }
             }
-            PlaylistCommand::FromM3U8 { name, m3u8_file } => {
+            PlaylistCommand::Import { name, m3u8_file } => {
                 chilen_ipc::library::LibraryCommand::PlaylistFromM3U8 { name, m3u8_file }
+            }
+            PlaylistCommand::Export { name, path } => {
+                chilen_ipc::library::LibraryCommand::ExportPlaylistToM3U { name, path }
             }
             PlaylistCommand::Delete { names } => {
                 chilen_ipc::library::LibraryCommand::DeletePlaylists { names }

@@ -5,12 +5,14 @@ pub(crate) mod state;
 mod tests;
 
 use std::{
-    fs::{create_dir_all, read},
+    fs::{File, create_dir_all, read},
+    io::Write,
     path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
 
 use log::{error, trace};
+use m3u8::{MediaPlaylist, MediaSegment};
 
 use crate::{
     Error,
@@ -132,6 +134,7 @@ pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, ch
     lib.tracks_from_hashes(hashes)
 }
 
+// TEST: Check if import works correctly
 pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ipc::Error> {
     trace!("Loading an M3U8 playlist from {path:?}");
     let data = match read(path) {
@@ -150,7 +153,7 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ip
                 .into_iter()
                 .map(|s| {
                     let mut path = PathBuf::from(base_path);
-                    path.push(PathBuf::from(s.uri).components());
+                    path.push(s.uri.components());
                     path
                 })
                 .collect();
@@ -161,18 +164,44 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ip
             Err(chilen_ipc::Error::PlaylistParsingError)
         }
     }
-    // match m3u8_rs::parse_playlist(&bytes) {
-    //     Ok((_, m3u8_rs::Playlist::MasterPlaylist(_))) => {
-    //         error!("The playlist {path:?} is a master playlist, not a media playlist");
-    //         Err(chilen_ipc::Error::NotMediaPlaylist)
-    //     }
-    //     Ok((_, m3u8_rs::Playlist::MediaPlaylist(pl))) => {
-    //     }
-    //     Err(e) => {
-    //         error!("Could not parse the M3U8 playlist: {e}");
-    //         Err(chilen_ipc::Error::PlaylistParsingError)
-    //     }
-    // }
+}
+
+// TEST: Check if export work correctly
+pub(crate) fn export_playlist_to_m3u8(
+    name: String,
+    path: PathBuf,
+) -> Result<(), chilen_ipc::Error> {
+    trace!("Exporting a playlist to an M3U8 file in {path:?}");
+    let guard = MUSIC_LIBRARY.read().unwrap();
+    let lib = unwrap_lib_ref(guard.as_ref())?;
+    let pl = match lib.find_playlist(&name) {
+        Some(pl) => pl,
+        None => return Err(chilen_ipc::Error::UnknownPlaylist),
+    };
+    let segments = pl
+        .tracks
+        .iter()
+        .map(|t| MediaSegment {
+            uri: t.path.clone(),
+            duration: t.duration,
+            title: t.title.clone(),
+        })
+        .collect();
+    let media_playlist = MediaPlaylist { segments };
+    let mut file = match File::create(path) {
+        Ok(file) => file,
+        Err(e) => {
+            error!("Could not open the m3u8 export file for writing: {e}");
+            return Err(chilen_ipc::Error::PlaylistExportFailed);
+        }
+    };
+    match file.write_all(media_playlist.serialize().as_bytes()) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("Could not write the playlist contents to a file: {e}");
+            Err(chilen_ipc::Error::PlaylistExportFailed)
+        }
+    }
 }
 
 pub(crate) fn create_playlist(

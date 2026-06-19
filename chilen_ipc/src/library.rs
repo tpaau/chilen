@@ -105,6 +105,17 @@ pub enum LibraryCommand {
         /// The path to the M3U8 file to import.
         m3u8_file: PathBuf,
     },
+    /// Export a playlist from the music library as an M3U8 file.
+    ExportPlaylistToM3U {
+        /// The name of the playlist to export.
+        ///
+        /// /// If no such playlist exists in the music library,
+        /// [`Error::UnknownPlaylist`](crate::Error::UnknownPlaylist) will be returned, and no
+        /// changes to the [music library](MusicLibrary) will be made.
+        name: String,
+        /// File path to which export the playlist file.
+        path: PathBuf,
+    },
     /// Delete playlists from the music library.
     DeletePlaylists {
         /// List of the playlists to delete.

@@ -18,7 +18,7 @@ fmt:
 	cargo fmt --all
 
 loc:
-	cloc src/ chilen_ipc/src/ chilen_daemon/src/
+	cloc src/ chilen_ipc/src/ chilen_daemon/src/ chilen_daemon/m3u8/src/
 
 release:
 	cargo build --release
