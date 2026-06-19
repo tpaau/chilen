@@ -178,15 +178,27 @@ pub(crate) fn export_playlist_to_m3u8(
         Some(pl) => pl,
         None => return Err(chilen_ipc::Error::UnknownPlaylist),
     };
+    let guard = crate::CONFIG.read().unwrap();
+    let music_dir = &guard.as_ref().unwrap().music_dir;
     let segments = pl
         .tracks
         .iter()
         .map(|t| MediaSegment {
-            uri: t.path.clone(),
+            uri: {
+                if path.parent() == Some(music_dir) {
+                    match t.path.strip_prefix(music_dir) {
+                        Ok(path) => path.to_path_buf(),
+                        Err(_) => path.clone(),
+                    }
+                } else {
+                    t.path.clone()
+                }
+            },
             duration: t.duration,
             title: t.title.clone(),
         })
         .collect();
+    drop(guard);
     let media_playlist = MediaPlaylist { segments };
     let mut file = match File::create(path) {
         Ok(file) => file,
