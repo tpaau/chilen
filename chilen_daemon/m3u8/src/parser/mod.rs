@@ -4,9 +4,15 @@ mod tests;
 use std::{collections::HashSet, time::Duration};
 
 use nom::{
-    AsChar, IResult,
+    AsChar, Finish, IResult, Parser,
+    branch::alt,
     bytes::complete::{tag, take_until, take_while, take_while1},
+    character::complete::char,
+    combinator::{map, peek},
+    error::{ContextError, context},
+    sequence::{preceded, terminated},
 };
+use nom_language::error::{VerboseError, VerboseErrorKind};
 
 use crate::{MediaPlaylist, MediaSegment};
 
@@ -17,16 +23,16 @@ pub(crate) struct Extinf {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct ParsedTag {
-    tag: String,
-    value: Option<String>,
+pub(crate) struct SplitTag<'a> {
+    tag: &'a str,
+    value: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum Line {
-    Tag(String),
-    Comment(String),
-    Segment(String),
+pub(crate) enum Line<'a> {
+    Tag(&'a str),
+    Comment(&'a str),
+    Segment(&'a str),
 }
 
 /// Tags ignored by the parser.
@@ -91,11 +97,11 @@ pub(crate) const MULTIVARIANT_TAGS: &[&str] = &[
     "#EXT-X-CONTENT-STEERING",
 ];
 
-pub(crate) fn newline(i: &str) -> IResult<&str, &str> {
+pub(crate) fn newline(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
     take_while1(|c: char| c.is_newline())(i)
 }
 
-pub(crate) fn newline_or_end(i: &str) -> IResult<&str, &str> {
+pub(crate) fn newline_or_end(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
     if i.is_empty() {
         Ok(("", ""))
     } else {
@@ -103,87 +109,145 @@ pub(crate) fn newline_or_end(i: &str) -> IResult<&str, &str> {
     }
 }
 
-pub(crate) fn opt_whitespace(i: &str) -> IResult<&str, &str> {
+pub(crate) fn till_newline(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    take_while::<_, &str, VerboseError<&str>>(|c: char| !c.is_newline())(i)
+}
+
+pub(crate) fn opt_whitespace(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
     take_while(|c: char| c.is_ascii_whitespace())(i)
 }
 
-pub(crate) fn parse_tag_value(i: &str) -> IResult<&str, ParsedTag> {
+pub(crate) fn split_tag_value<'a>(i: &'a str) -> SplitTag<'a> {
     match take_until::<_, &str, nom::error::Error<&str>>(":")(i) {
         Ok((i, t)) => {
-            let (v, _) = tag(":")(i)?;
-            Ok((
-                "",
-                ParsedTag {
-                    tag: t.to_string(),
-                    value: Some(v.to_string()),
-                },
-            ))
+            let (v, _) = tag::<_, &str, nom::error::Error<&str>>(":")(i).unwrap();
+            SplitTag {
+                tag: t,
+                value: Some(v),
+            }
         }
-        Err(_) => Ok((
-            "",
-            ParsedTag {
-                tag: i.to_string(),
-                value: None,
-            },
-        )),
+        Err(_) => SplitTag {
+            tag: i,
+            value: None,
+        },
     }
 }
 
-pub(crate) fn parse_extinf_value(i: &str) -> IResult<&str, Extinf> {
-    match take_until::<_, &str, nom::error::Error<&str>>(",")(i) {
-        Ok((title, d)) => {
-            let (title, _) = tag(",")(title)?;
-            if title.is_empty() {
-                panic!("The value separator \",\" is present but the title wasn't provided")
-            }
-            let duration = match d.parse::<f64>() {
-                Ok(d) => Duration::from_secs_f64(d),
-                Err(e) => panic!("Couldn't parse the duration as f64: {e}"),
-            };
-            Ok((
-                "",
-                Extinf {
-                    duration,
-                    title: Some(title.trim().to_string()),
-                },
-            ))
+pub(crate) fn parse_f64(i: &str) -> IResult<&str, f64, VerboseError<&str>> {
+    match take_while1::<_, &str, VerboseError<&str>>(|c: char| c.is_ascii_digit())(i).finish() {
+        Ok((i, v)) => match v.parse::<f64>() {
+            Ok(v) => Ok((i, v)),
+            Err(_) => Err(nom::Err::Error(VerboseError {
+                errors: vec![(i, VerboseErrorKind::Context("parse_f64"))],
+            })),
+        },
+        Err(e) => Err(nom::Err::Error(VerboseError::add_context(
+            i,
+            "parse_f64",
+            e,
+        ))),
+    }
+}
+
+pub(crate) fn parse_extinf_value(input: &str) -> IResult<&str, Extinf, VerboseError<&str>> {
+    let (i, dur) = match parse_f64(input).finish() {
+        Ok((i, dur)) => (i, dur),
+        Err(e) => {
+            return Err(nom::Err::Error(VerboseError::add_context(
+                input,
+                "parse_extinf_value",
+                e,
+            )));
         }
-        Err(_) => {
-            let duration = Duration::from_secs_f64(match i.parse::<f64>() {
-                Ok(d) => d,
-                Err(e) => panic!("Could not parse the duration: {e}"),
-            });
-            Ok((
-                "",
+    };
+    match char::<&str, VerboseError<&str>>(',')(i) {
+        Ok((i, _)) => match till_newline(i) {
+            Ok((i, t)) => {
+                let t = match opt_whitespace(t).finish() {
+                    Ok((t, _)) => t,
+                    Err(e) => {
+                        return Err(nom::Err::Error(VerboseError::add_context(
+                            input,
+                            "parse_extinf_value",
+                            e,
+                        )));
+                    }
+                };
+                if t.is_empty() {
+                    return Err(nom::Err::Error(VerboseError {
+                        errors: vec![(input, VerboseErrorKind::Context("parse_extinf_value"))],
+                    }));
+                }
+                Ok((
+                    i,
+                    Extinf {
+                        duration: Duration::from_secs_f64(dur),
+                        title: Some(t.to_string()),
+                    },
+                ))
+            }
+            Err(e) => Err(e),
+        },
+        Err(_) => match till_newline(i) {
+            Ok((i, _)) => Ok((
+                i,
                 Extinf {
-                    duration,
+                    duration: Duration::from_secs_f64(dur),
                     title: None,
                 },
-            ))
-        }
+            )),
+            Err(e) => Err(e),
+        },
     }
 }
 
-pub(crate) fn parse_line(i: &str) -> IResult<&str, Line> {
+pub(crate) fn parse_tag<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseError<&'a str>> {
+    context(
+        "parse_tag",
+        map(
+            terminated(preceded(peek(tag("#EXT")), till_newline), newline_or_end),
+            |line: &'a str| Line::Tag(line.trim_end()),
+        ),
+    )
+    .parse(i)
+}
+
+pub(crate) fn parse_comment<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseError<&'a str>> {
+    context(
+        "parse_comment",
+        map(
+            terminated(preceded(peek(tag("#")), till_newline), newline_or_end),
+            |line: &'a str| Line::Comment(line.trim_end()),
+        ),
+    )
+    .parse(i)
+}
+
+pub(crate) fn parse_segment<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseError<&'a str>> {
+    context(
+        "parse_segment",
+        map(terminated(till_newline, newline_or_end), |line: &'a str| {
+            Line::Segment(line.trim_end())
+        }),
+    )
+    .parse(i)
+}
+
+pub(crate) fn parse_line<'a>(i: &'a str) -> IResult<&'a str, Line<'a>, VerboseError<&'a str>> {
     let (i, _) = opt_whitespace(i)?;
-    if tag::<&str, &str, nom::error::Error<&str>>("#")(i).is_ok() {
-        if tag::<&str, &str, nom::error::Error<&str>>("#EXT")(i).is_ok() {
-            let (i, o) = take_while(|c: char| !c.is_newline())(i)?;
-            let (i, _) = newline_or_end(i)?;
-            Ok((i, Line::Tag(o.trim_end().to_string())))
-        } else {
-            let (i, o) = take_while(|c: char| !c.is_newline())(i)?;
-            let (i, _) = newline_or_end(i)?;
-            Ok((i, Line::Comment(o.trim_end().to_string())))
-        }
-    } else {
-        let (i, o) = take_while(|c: char| !c.is_newline())(i)?;
-        let (i, _) = newline_or_end(i)?;
-        Ok((i, Line::Segment(o.trim_end().to_string())))
-    }
+    context(
+        "parse_line",
+        preceded(
+            opt_whitespace,
+            alt((parse_tag, parse_comment, parse_segment)),
+        ),
+    )
+    .parse(i)
 }
 
-pub(crate) fn parse_lines(i: &str) -> IResult<&str, Vec<Line>> {
+pub(crate) fn parse_lines<'a>(
+    i: &'a str,
+) -> IResult<&'a str, Vec<Line<'a>>, VerboseError<&'a str>> {
     let mut i = i;
     let mut lines = Vec::new();
     while !i.is_empty() {
@@ -194,82 +258,161 @@ pub(crate) fn parse_lines(i: &str) -> IResult<&str, Vec<Line>> {
     Ok((i, lines))
 }
 
-pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist> {
+pub(crate) fn extm3u_tag(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
+    match tag::<&str, &str, VerboseError<&str>>("#EXTM3U")(i).finish() {
+        Ok((i, o)) => {
+            let (i, _) = newline_or_end(i)?;
+            Ok((i, o))
+        }
+        Err(e) => Err(nom::Err::Error(VerboseError::add_context(
+            i,
+            "extm3u_tag",
+            e,
+        ))),
+    }
+}
+
+pub(crate) fn no_multivariant_tag(tag: &str) -> Result<(), VerboseError<&str>> {
+    if MULTIVARIANT_TAGS.contains(&tag) {
+        Err(VerboseError {
+            errors: vec![(tag, VerboseErrorKind::Context("no_multivariant_tag"))],
+        })
+    } else {
+        Ok(())
+    }
+}
+
+pub(crate) fn tag_has_value<'a>(tag: &SplitTag<'a>) -> Result<(), VerboseError<&'a str>> {
+    if tag.value.is_some() {
+        Ok(())
+    } else {
+        Err(VerboseError {
+            errors: vec![(tag.tag, VerboseErrorKind::Context("tag_has_value"))],
+        })
+    }
+}
+
+pub fn parse_media_playlist(input: &str) -> IResult<&str, MediaPlaylist, VerboseError<&str>> {
+    let i = match extm3u_tag(input).finish() {
+        Ok((i, _)) => i,
+        Err(e) => {
+            return Err(nom::Err::Error(VerboseError::add_context(
+                input,
+                "parse_media_playlist",
+                e,
+            )));
+        }
+    };
+    if i.is_empty() {
+        return Ok((
+            i,
+            MediaPlaylist {
+                segments: Vec::new(),
+            },
+        ));
+    }
     let (_, lines) = parse_lines(i)?;
     let mut seen_unique_tags: HashSet<_> = HashSet::new();
     let mut endlist = false; // Stop parsing media segments
     let mut extinf = None; // The last encountered #EXTINF tag content
     let mut gap = false; // Ignore the next media segment
     let mut segments = Vec::new();
-    for (i, line) in lines.into_iter().enumerate() {
-        if i == 0 {
-            if line != Line::Tag("#EXTM3U".to_string()) {
-                panic!("The first line in an M3U playlist must be the #EXTM3U tag");
-            }
-        } else {
-            match line {
-                Line::Tag(t) => {
-                    eprintln!("Tag: {t}");
-                    let (_, tag) = parse_tag_value(t.as_str()).unwrap();
-                    if MULTIVARIANT_TAGS.contains(&tag.tag.as_str()) {
-                        panic!("Found a multivariant tag in a media playlist: {}", tag.tag);
-                    } else if UNIQUE_IGNORED_TAGS.contains(&tag.tag.as_str()) {
-                        if seen_unique_tags.contains(tag.tag.as_str()) {
-                            panic!(
-                                "Tag \"{}\" must not be specified more than once in a playlist",
-                                tag.tag
-                            )
-                        } else {
-                            if IGNORED_TAGS_WITH_VALUES.contains(&tag.tag.as_str())
-                                && tag.value.is_none()
-                            {
-                                panic!("Tag requires a value: \"{}\"", tag.tag)
-                            }
-                            seen_unique_tags.insert(tag.tag);
-                        }
-                    } else if IGNORED_TAGS.contains(&tag.tag.as_str())
-                        && IGNORED_TAGS_WITH_VALUES.contains(&tag.tag.as_str())
-                        && tag.value.is_none()
-                    {
-                        panic!("Tag requires a value: \"{}\"", tag.tag)
-                    } else if tag.tag == "#EXT-X-ENDLIST" {
-                        if tag.value.is_some() {
-                            panic!("Unexpected value for \"{}\"", tag.tag);
-                        }
-                        endlist = true;
-                    } else if tag.tag == "#EXTINF" {
-                        if let Some(value) = tag.value {
-                            match parse_extinf_value(&value) {
-                                Ok((_, value)) => extinf = Some(value),
-                                Err(e) => {
-                                    panic!("Could not parse the #EXTINF tag value: {e}");
-                                }
-                            }
-                        } else {
-                            panic!("Expected a value after \"#EXTINF\"");
-                        }
-                    } else if tag.tag == "#EXT-X-GAP" {
-                        gap = true;
-                    } else {
-                        panic!("Unknown tag: \"{}\"", tag.tag);
-                    }
+    for line in lines.into_iter() {
+        match line {
+            Line::Tag(t) => {
+                eprintln!("Tag: {t}");
+                let tag = split_tag_value(t);
+                if let Err(e) = no_multivariant_tag(tag.tag) {
+                    return Err(nom::Err::Error(VerboseError::add_context(
+                        input,
+                        "parse_media_playlist",
+                        e,
+                    )));
                 }
-                Line::Segment(uri) => {
-                    if endlist || gap {
-                        continue;
-                    }
-                    if let Some(ref inf) = extinf {
-                        segments.push(MediaSegment {
-                            uri,
-                            duration: inf.duration,
-                            title: inf.title.clone(),
-                        });
+                if UNIQUE_IGNORED_TAGS.contains(&tag.tag) {
+                    if seen_unique_tags.contains(tag.tag) {
+                        return Err(nom::Err::Error(VerboseError {
+                            errors: vec![(
+                                tag.tag,
+                                VerboseErrorKind::Context("parse_media_playlist"),
+                            )],
+                        }));
                     } else {
-                        panic!("The media segment was not prepended with an \"#EXTINF\" tag");
+                        if IGNORED_TAGS_WITH_VALUES.contains(&tag.tag)
+                            && let Err(e) = tag_has_value(&tag)
+                        {
+                            return Err(nom::Err::Error(VerboseError::add_context(
+                                input,
+                                "parse_media_playlist",
+                                e,
+                            )));
+                        }
+                        seen_unique_tags.insert(tag.tag);
                     }
+                } else if IGNORED_TAGS.contains(&tag.tag)
+                    && IGNORED_TAGS_WITH_VALUES.contains(&tag.tag)
+                    && let Err(e) = tag_has_value(&tag)
+                {
+                    return Err(nom::Err::Error(VerboseError::add_context(
+                        input,
+                        "parse_media_playlist",
+                        e,
+                    )));
+                } else if tag.tag == "#EXT-X-ENDLIST" {
+                    if tag.value.is_some() {
+                        return Err(nom::Err::Error(VerboseError {
+                            errors: vec![(
+                                tag.tag,
+                                VerboseErrorKind::Context("parse_media_playlist"),
+                            )],
+                        }));
+                    }
+                    endlist = true;
+                } else if tag.tag == "#EXTINF" {
+                    if let Some(value) = tag.value {
+                        match parse_extinf_value(value).finish() {
+                            Ok((_, value)) => extinf = Some(value),
+                            Err(e) => {
+                                return Err(nom::Err::Error(VerboseError::add_context(
+                                    value,
+                                    "parse_media_playlist",
+                                    e,
+                                )));
+                            }
+                        };
+                    } else {
+                        return Err(nom::Err::Error(VerboseError {
+                            errors: vec![(
+                                tag.tag,
+                                VerboseErrorKind::Context("parse_media_playlist"),
+                            )],
+                        }));
+                    }
+                } else if tag.tag == "#EXT-X-GAP" {
+                    gap = true;
+                } else {
+                    return Err(nom::Err::Error(VerboseError {
+                        errors: vec![(tag.tag, VerboseErrorKind::Context("parse_media_playlist"))],
+                    }));
                 }
-                Line::Comment(c) => eprintln!("Comment: {c}"),
             }
+            Line::Segment(uri) => {
+                if endlist || gap {
+                    continue;
+                }
+                if let Some(ref inf) = extinf {
+                    segments.push(MediaSegment {
+                        uri: uri.to_string(),
+                        duration: inf.duration,
+                        title: inf.title.clone(),
+                    });
+                } else {
+                    return Err(nom::Err::Error(VerboseError {
+                        errors: vec![(uri, VerboseErrorKind::Context("parse_media_playlist"))],
+                    }));
+                }
+            }
+            Line::Comment(_) => {}
         }
     }
     Ok(("", MediaPlaylist { segments }))

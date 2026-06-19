@@ -6,4 +6,5 @@ authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
 license = "LGPL-3.0-or-later"
 
 [dependencies]
-nom = "8.0.0"
+nom = { version = "8.0.0" }
+nom-language = "0.1.0"

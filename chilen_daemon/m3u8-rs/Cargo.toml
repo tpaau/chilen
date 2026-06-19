@@ -10,7 +10,7 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-nom = { version = "7", optional = true }
+nom = { version = "7.0.0", optional = true }
 chrono = { version = "0.4", default-features = false, features = [ "std" ] }
 
 [features]

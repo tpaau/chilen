@@ -1,9 +1,12 @@
 use std::{sync::LazyLock, time::Duration};
 
+use nom::{Finish, error::ErrorKind};
+use nom_language::error::{VerboseError, VerboseErrorKind, convert_error};
+
 use crate::{
     MediaPlaylist, MediaSegment,
     parser::{
-        self, Extinf, IGNORED_TAGS, IGNORED_TAGS_WITH_VALUES, Line, MULTIVARIANT_TAGS, ParsedTag,
+        self, Extinf, IGNORED_TAGS, IGNORED_TAGS_WITH_VALUES, Line, MULTIVARIANT_TAGS, SplitTag,
         UNIQUE_IGNORED_TAGS, parse_media_playlist,
     },
 };
@@ -119,20 +122,6 @@ fn newline() {
         parser::newline("\n\nsome\nfunny\ntext\n"),
         Ok(("some\nfunny\ntext\n", "\n\n"))
     );
-    assert_eq!(
-        parser::newline_or_end("7"),
-        Err(nom::Err::Error(nom::error::Error::new(
-            "7",
-            nom::error::ErrorKind::TakeWhile1
-        )))
-    );
-    assert_eq!(
-        parser::newline_or_end("7\n"),
-        Err(nom::Err::Error(nom::error::Error::new(
-            "7\n",
-            nom::error::ErrorKind::TakeWhile1
-        )))
-    );
 }
 
 #[test]
@@ -142,17 +131,15 @@ fn newline_or_end() {
     assert_eq!(parser::newline_or_end("\naaaa\n"), Ok(("aaaa\n", "\n")));
     assert_eq!(
         parser::newline_or_end("aa"),
-        Err(nom::Err::Error(nom::error::Error::new(
-            "aa",
-            nom::error::ErrorKind::TakeWhile1
-        )))
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![("aa", VerboseErrorKind::Nom(ErrorKind::TakeWhile1))]
+        }))
     );
     assert_eq!(
         parser::newline_or_end("aa\n"),
-        Err(nom::Err::Error(nom::error::Error::new(
-            "aa\n",
-            nom::error::ErrorKind::TakeWhile1
-        )))
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![("aa\n", VerboseErrorKind::Nom(ErrorKind::TakeWhile1))]
+        }))
     );
 }
 
@@ -166,58 +153,68 @@ fn opt_whitespace() {
         parser::opt_whitespace("no whitespace :("),
         Ok(("no whitespace :(", ""))
     );
+    assert_eq!(parser::opt_whitespace(""), Ok(("", "")));
 }
 
 #[test]
-fn parse_tag_value() {
+fn opt_split_whitespace() {
     assert_eq!(
-        parser::parse_tag_value("#SOME_TAG:67"),
-        Ok((
-            "",
-            ParsedTag {
-                tag: "#SOME_TAG".to_string(),
-                value: Some("67".to_string())
-            }
-        ))
+        parser::split_tag_value("#SOME_TAG:67"),
+        SplitTag {
+            tag: "#SOME_TAG",
+            value: Some("67")
+        }
     );
     assert_eq!(
-        parser::parse_tag_value("aslkfdjlaskfd"),
-        Ok((
-            "",
-            ParsedTag {
-                tag: "aslkfdjlaskfd".to_string(),
-                value: None
-            }
-        ))
+        parser::split_tag_value("aslkfdjlaskfd"),
+        SplitTag {
+            tag: "aslkfdjlaskfd",
+            value: None
+        }
     );
     assert_eq!(
-        parser::parse_tag_value(""),
-        Ok((
-            "",
-            ParsedTag {
-                tag: "".to_string(),
-                value: None
-            }
-        ))
+        parser::split_tag_value(""),
+        SplitTag {
+            tag: "",
+            value: None
+        }
     );
     assert_eq!(
-        parser::parse_tag_value(":a"),
-        Ok((
-            "",
-            ParsedTag {
-                tag: "".to_string(),
-                value: Some("a".to_string())
-            }
-        ))
+        parser::split_tag_value(":a"),
+        SplitTag {
+            tag: "",
+            value: Some("a")
+        }
+    );
+    assert_eq!(
+        parser::split_tag_value("aaa:test\ntest"),
+        SplitTag {
+            tag: "aaa",
+            value: Some("test\ntest")
+        }
+    );
+}
+
+#[test]
+fn parse_f64() {
+    assert_eq!(parser::parse_f64("128,aaaa"), Ok((",aaaa", 128.0)));
+    assert_eq!(
+        parser::parse_f64("test"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                ("test", VerboseErrorKind::Nom(ErrorKind::TakeWhile1)),
+                ("test", VerboseErrorKind::Context("parse_f64"))
+            ]
+        }))
     );
 }
 
 #[test]
 fn parse_extinf_value() {
     assert_eq!(
-        parser::parse_extinf_value("67, Example Artist, Example Title"),
+        parser::parse_extinf_value("67, Example Artist, Example Title\nhello"),
         Ok((
-            "",
+            "\nhello",
             Extinf {
                 duration: Duration::from_secs(67),
                 title: Some("Example Artist, Example Title".to_string())
@@ -254,83 +251,125 @@ fn parse_extinf_value() {
             }
         ))
     );
-    // TODO: Error cases
+    assert_eq!(
+        parser::parse_extinf_value("aa,aaa"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                ("aa,aaa", VerboseErrorKind::Nom(ErrorKind::TakeWhile1)),
+                ("aa,aaa", VerboseErrorKind::Context("parse_f64")),
+                ("aa,aaa", VerboseErrorKind::Context("parse_extinf_value"))
+            ]
+        }))
+    );
+    assert_eq!(
+        parser::parse_extinf_value(",hello"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                (",hello", VerboseErrorKind::Nom(ErrorKind::TakeWhile1)),
+                (",hello", VerboseErrorKind::Context("parse_f64")),
+                (",hello", VerboseErrorKind::Context("parse_extinf_value"))
+            ]
+        }))
+    );
+    assert_eq!(
+        parser::parse_extinf_value("1984,"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![("1984,", VerboseErrorKind::Context("parse_extinf_value"))]
+        }))
+    );
+    assert_eq!(
+        parser::parse_extinf_value("666,\nhello"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![(
+                "666,\nhello",
+                VerboseErrorKind::Context("parse_extinf_value")
+            )]
+        }))
+    );
 }
 
 #[test]
-fn parse_line_comments() {
-    assert_eq!(
-        parser::parse_line("#COMMENT"),
-        Ok(("", Line::Comment("#COMMENT".to_string())))
-    );
-    assert_eq!(
-        parser::parse_line("#COMMENT\n"),
-        Ok(("", Line::Comment("#COMMENT".to_string())))
-    );
-    assert_eq!(
-        parser::parse_line("#COMMENT\n\n\n"),
-        Ok(("", Line::Comment("#COMMENT".to_string())))
-    );
-    assert_eq!(
-        parser::parse_line("#COMMENT\n#ANOTHER COMMENT"),
-        Ok(("#ANOTHER COMMENT", Line::Comment("#COMMENT".to_string())))
-    );
-    assert_eq!(
-        parser::parse_line("#COMMENT\n\n\n\n#ANOTHER COMMENT"),
-        Ok(("#ANOTHER COMMENT", Line::Comment("#COMMENT".to_string())))
-    );
-    assert_eq!(
-        parser::parse_line("\n#TEST"),
-        Ok(("", Line::Comment("#TEST".to_string())))
-    );
-}
-
-#[test]
-fn parse_line_tag() {
+fn parse_tag() {
+    // TODO: Use parse_tag instead
+    // TODO: Negative cases
     assert_eq!(
         parser::parse_line("#EXTM3U"),
-        Ok(("", Line::Tag("#EXTM3U".to_string())))
+        Ok(("", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
         parser::parse_line("#EXTM3U\n"),
-        Ok(("", Line::Tag("#EXTM3U".to_string())))
+        Ok(("", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
         parser::parse_line("#EXTM3U\n\n"),
-        Ok(("", Line::Tag("#EXTM3U".to_string())))
+        Ok(("", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
         parser::parse_line("#EXTM3U\n\n\n#COMMENT"),
-        Ok(("#COMMENT", Line::Tag("#EXTM3U".to_string())))
+        Ok(("#COMMENT", Line::Tag("#EXTM3U")))
     );
     assert_eq!(
         parser::parse_line("\n#EXTM3U\n\n\n#COMMENT"),
-        Ok(("#COMMENT", Line::Tag("#EXTM3U".to_string())))
+        Ok(("#COMMENT", Line::Tag("#EXTM3U")))
     );
 }
 
 #[test]
-fn parse_line_path() {
-    let i = "/some/path, ./another/path";
+fn parse_comment() {
+    // TODO: Use parse_comment instead
+    // TODO: Negative cases
     assert_eq!(
-        parser::parse_line(i),
-        Ok(("", Line::Segment(i.to_string())))
+        parser::parse_line("#COMMENT"),
+        Ok(("", Line::Comment("#COMMENT")))
     );
+    assert_eq!(
+        parser::parse_line("#COMMENT\n"),
+        Ok(("", Line::Comment("#COMMENT")))
+    );
+    assert_eq!(
+        parser::parse_line("#COMMENT\n\n\n"),
+        Ok(("", Line::Comment("#COMMENT")))
+    );
+    assert_eq!(
+        parser::parse_line("#COMMENT\n#ANOTHER COMMENT"),
+        Ok(("#ANOTHER COMMENT", Line::Comment("#COMMENT")))
+    );
+    assert_eq!(
+        parser::parse_line("#COMMENT\n\n\n\n#ANOTHER COMMENT"),
+        Ok(("#ANOTHER COMMENT", Line::Comment("#COMMENT")))
+    );
+    assert_eq!(
+        parser::parse_line("\n#TEST"),
+        Ok(("", Line::Comment("#TEST")))
+    );
+}
+
+#[test]
+fn parse_segment() {
+    // TODO: Use parse_segment instead
+    // TODO: Negative cases
+    let i = "/some/path";
+    assert_eq!(parser::parse_line(i), Ok(("", Line::Segment(i))));
+}
+
+#[test]
+fn parse_line() {
+    // TEST: Test parse_line
 }
 
 #[test]
 fn parse_lines() {
     let expected = vec![
-        Line::Tag("#EXTM3U".to_string()),
-        Line::Comment("#Test comment".to_string()),
-        Line::Tag("#EXTINF:67, Title".to_string()),
-        Line::Segment("/some/nonexistent/path".to_string()),
-        Line::Tag("#EXTINF:24310".to_string()),
-        Line::Segment("/doesnt/matter".to_string()),
-        Line::Tag("#EXTINF:10123, AAAAAA".to_string()),
-        Line::Segment("./AAAAAAAA".to_string()),
-        Line::Tag("#EXTINF:10923, ZZZ, AAA".to_string()),
-        Line::Segment("/some/other/path".to_string()),
+        Line::Tag("#EXTM3U"),
+        Line::Comment("#Test comment"),
+        Line::Tag("#EXTINF:67, Title"),
+        Line::Segment("/some/nonexistent/path"),
+        Line::Tag("#EXTINF:24310"),
+        Line::Segment("/doesnt/matter"),
+        Line::Tag("#EXTINF:10123, AAAAAA"),
+        Line::Segment("./AAAAAAAA"),
+        Line::Tag("#EXTINF:10923, ZZZ, AAA"),
+        Line::Segment("/some/other/path"),
     ];
     assert_eq!(
         parser::parse_lines(include_str!("../../assets/simple.m3u8")),
@@ -343,13 +382,87 @@ fn parse_lines() {
 }
 
 #[test]
+fn extm3u_tag() {
+    assert_eq!(parser::extm3u_tag("#EXTM3U"), Ok(("", "#EXTM3U")));
+    assert_eq!(parser::extm3u_tag("#EXTM3U\n\n\n"), Ok(("", "#EXTM3U")));
+    assert_eq!(parser::extm3u_tag("#EXTM3U\n\na"), Ok(("a", "#EXTM3U")));
+    assert_eq!(
+        parser::extm3u_tag("#EXTM3"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                ("#EXTM3", VerboseErrorKind::Nom(ErrorKind::Tag)),
+                ("#EXTM3", VerboseErrorKind::Context("extm3u_tag"))
+            ]
+        }))
+    );
+    assert_eq!(
+        parser::extm3u_tag("#EXTM3Ua"),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![("a", VerboseErrorKind::Nom(ErrorKind::TakeWhile1))]
+        }))
+    );
+}
+
+#[test]
 fn multivariant_tags_fail() {
     let base = include_str!("../../assets/simple.m3u8").to_string();
     for tag in MULTIVARIANT_TAGS {
-        let pl = base.clone() + tag;
-        // TODO: Playlist fails because it contains a multivariant tag
+        let content = base.clone() + tag;
+        assert_eq!(
+            parser::parse_media_playlist(content.as_str()),
+            Err(nom::Err::Error(VerboseError {
+                errors: vec![
+                    (*tag, VerboseErrorKind::Context("no_multivariant_tag")),
+                    (
+                        content.as_str(),
+                        VerboseErrorKind::Context("parse_media_playlist")
+                    )
+                ]
+            }))
+        );
     }
 }
+
+#[test]
+fn missing_extm3u_fails() {
+    let simple = include_str!("../../assets/simple.m3u8")
+        .lines()
+        .skip(1)
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert_eq!(
+        parser::parse_media_playlist(&simple),
+        Err(nom::Err::Error(VerboseError {
+            errors: vec![
+                (simple.as_str(), VerboseErrorKind::Nom(ErrorKind::Tag)),
+                (simple.as_str(), VerboseErrorKind::Context("extm3u_tag")),
+                (
+                    simple.as_str(),
+                    VerboseErrorKind::Context("parse_media_playlist")
+                )
+            ]
+        }))
+    );
+    // panic!(
+    //     "{}",
+    //     convert_error(
+    //         simple.as_str(),
+    //         parser::parse_media_playlist(&simple).finish().unwrap_err()
+    //     )
+    // );
+}
+
+#[test]
+fn duplicate_unique_ignored_tags_fail() {}
+
+#[test]
+fn ignored_tags_with_missing_values_fail() {}
+
+#[test]
+fn entry_with_no_extinf_fails() {}
+
+#[test]
+fn unknown_tags_fail() {}
 
 #[test]
 fn parsing_works() {
