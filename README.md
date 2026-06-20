@@ -23,6 +23,7 @@ Documentation on the submodules of Chilen can be found here:
 - [FAQ](#faq)
     - [Is this a rewrite/clone of MPD?](#faq_mpd)
 - [Inspiration](#inspiration)
+- [Contributing](#contributing)
 
 
 <a name="features"></a>
@@ -174,3 +175,7 @@ I tried to install MPD once but I ran into a dependency hell :P
 <a name="inspiration"></a>
 ## Inspiration
 - [Auxio](https://github.com/OxygenCobalt/Auxio): A music player that just works
+
+<a name="contributing"></a>
+## Contributing
+See [CONTRIBUTING](https://github.com/tpaau/chilen/blob/main/CONTRIBUTING.md).
