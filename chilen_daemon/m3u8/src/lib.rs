@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 pub mod parser;
 #[cfg(test)]
 mod tests;
@@ -21,13 +22,6 @@ pub struct MediaPlaylist {
 }
 
 impl MediaPlaylist {
-    /// Create a new empty playlist.
-    pub fn new() -> Self {
-        Self {
-            segments: Vec::new(),
-        }
-    }
-
     /// Serialize the playlist struct to an M3U8 playlist.
     pub fn serialize(self) -> String {
         trace!("Serializing media playlist to String");
