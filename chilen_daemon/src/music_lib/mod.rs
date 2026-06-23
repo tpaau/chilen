@@ -258,7 +258,7 @@ pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), chi
     save_library()
 }
 
-/// Remove tracks by indices from a playlist
+/// Remove tracks by indices from a playlist.
 pub(crate) fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), chilen_ipc::Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;

@@ -35,6 +35,7 @@ impl std::fmt::Display for CoverError {
     }
 }
 
+// TODO: None mode for when cover extraction or caching is not necessary (testing)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LoadMode {
     Load,

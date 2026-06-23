@@ -557,7 +557,7 @@ impl MusicLibrary {
         playlist_name
     }
 
-    // TEST: Add tests for this
+    // TEST: Check if importing M3U8 files works correctly
     pub fn import_m3u8_playlist(
         &mut self,
         path: &PathBuf,
@@ -728,9 +728,7 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), chilen_ipc::Error> {
             }
         };
 
-        let mut guard = MUSIC_LIBRARY.write().unwrap();
-        *guard = Some(lib);
-        drop(guard);
+        *MUSIC_LIBRARY.write().unwrap() = Some(lib);
     } else {
         trace!("The library file does not exist, creating a new library");
         let mut guard = MUSIC_LIBRARY.write().unwrap();

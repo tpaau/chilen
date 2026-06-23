@@ -152,7 +152,7 @@ impl TryFrom<PlaybackCommand> for Command {
     }
 }
 
-static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
+pub(crate) static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
@@ -737,6 +737,7 @@ pub(crate) fn init(config: Config) {
 
     state.send_initial_events();
 
+    // TODO: Allow setting custom sinks
     let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
         Ok(sink) => sink,
         Err(e) => {

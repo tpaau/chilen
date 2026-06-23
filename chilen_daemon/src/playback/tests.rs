@@ -1,8 +1,17 @@
-use chilen_ipc::playback::LoopState;
+use std::time::Duration;
+
 #[cfg(feature = "shuffle")]
 use chilen_ipc::playback::ShuffleState;
+use chilen_ipc::playback::{LoopState, PlaybackState};
 
-use crate::{music_lib::state::Track, playback::state::PlayerState};
+use crate::{
+    music_lib::state::{Track, get_library},
+    playback::{
+        PLAYER_HANDLE, set_queue,
+        state::{PLAYER_STATE, PlayerState},
+    },
+    tests::setup_test_env,
+};
 
 // Higher values will reduce the chance of false positives but will increase the runtime of some
 // tests.
@@ -177,4 +186,21 @@ fn shuffle_track_stays_the_same() {
             }
         }
     }
+}
+
+#[test]
+fn test_set_queue() {
+    setup_test_env();
+    let lib = get_library().expect("Couldn't get the music library");
+    let tracks: Vec<_> = lib.tracks.into_iter().map(|t| t.as_ref().clone()).collect();
+    set_queue(tracks.clone()).expect("Couldn't set the track queue");
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = state_guard.as_mut().unwrap();
+    let player_guard = PLAYER_HANDLE.read().unwrap();
+    let player = player_guard.as_ref().unwrap();
+    assert!(player.is_paused());
+    assert_eq!(state.playback_state, PlaybackState::Stopped);
+    assert_eq!(state.player_position, Duration::default());
+    assert_eq!(state.position, 0);
+    assert_eq!(state.tracks, tracks);
 }
