@@ -5,6 +5,7 @@ mod tests;
 
 use std::{path::PathBuf, time::Duration};
 
+#[cfg(feature = "log")]
 use log::trace;
 
 /// Media segment from a [media playlist](MediaPlaylist).
@@ -24,6 +25,7 @@ pub struct MediaPlaylist {
 impl MediaPlaylist {
     /// Serialize the playlist struct to an M3U8 playlist.
     pub fn serialize(self) -> String {
+        #[cfg(feature = "log")]
         trace!("Serializing media playlist to String");
         let mut content = String::from("#EXTM3U");
 
@@ -45,6 +47,7 @@ impl MediaPlaylist {
                 }
             }
         }
+        #[cfg(feature = "log")]
         trace!("Done serializing the media playlist");
         content
     }

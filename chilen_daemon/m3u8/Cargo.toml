@@ -6,10 +6,11 @@ authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
 license = "MIT"
 
 [dependencies]
-log = "0.4.32"
+log = { version = "0.4.32", optional = true }
 nom = { version = "8.0.0", optional = true }
 nom-language = { version = "0.1.0", optional = true }
 
 [features]
 parser = [ "dep:nom", "dep:nom-language" ]
-default = [ "parser" ]
+log = [ "dep:log" ]
+default = [ "parser", "log" ]

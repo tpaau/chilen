@@ -3,6 +3,7 @@ mod tests;
 
 use std::{collections::HashSet, path::PathBuf, time::Duration};
 
+#[cfg(feature = "log")]
 use log::{error, trace, warn};
 use nom::{
     AsChar, IResult, Parser,
@@ -137,6 +138,7 @@ pub(crate) fn parse_f64(i: &str) -> IResult<&str, f64, VerboseError<&str>> {
     match v.parse::<f64>() {
         Ok(v) => Ok((i, v)),
         Err(e) => {
+            #[cfg(feature = "log")]
             error!("Could not parse the string as f64: {e}");
             Err(nom::Err::Error(VerboseError {
                 errors: vec![(i, VerboseErrorKind::Context("parse_f64"))],
@@ -152,6 +154,7 @@ pub(crate) fn parse_extinf_value(input: &str) -> IResult<&str, Extinf, VerboseEr
             Ok((i, t)) => {
                 let (t, _) = context("parse_extinf_value", opt_whitespace).parse(t)?;
                 if t.is_empty() {
+                    #[cfg(feature = "log")]
                     error!("The \",\" separator is present, but no title was provided");
                     return Err(nom::Err::Error(VerboseError {
                         errors: vec![(input, VerboseErrorKind::Context("parse_extinf_value"))],
@@ -252,6 +255,7 @@ pub(crate) fn extm3u_tag(i: &str) -> IResult<&str, &str, VerboseError<&str>> {
 
 pub(crate) fn no_multivariant_tag(tag: &str) -> IResult<&str, &str, VerboseError<&str>> {
     if MULTIVARIANT_TAGS.contains(&tag) {
+        #[cfg(feature = "log")]
         error!("Encountered a multivariant tag \"{tag}\" in a media playlist");
         Err(nom::Err::Error(VerboseError {
             errors: vec![(tag, VerboseErrorKind::Context("no_multivariant_tag"))],
@@ -265,6 +269,7 @@ pub(crate) fn tag_has_value<'a>(tag: &SplitTag<'a>) -> Result<(), VerboseError<&
     if tag.value.is_some() {
         Ok(())
     } else {
+        #[cfg(feature = "log")]
         error!("Expected a value for tag \"{}\"", tag.tag);
         Err(VerboseError {
             errors: vec![(tag.tag, VerboseErrorKind::Context("tag_has_value"))],
@@ -273,6 +278,7 @@ pub(crate) fn tag_has_value<'a>(tag: &SplitTag<'a>) -> Result<(), VerboseError<&
 }
 
 pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseError<&str>> {
+    #[cfg(feature = "log")]
     trace!("Parsing media playlist");
     let (i, _) = context("parse_media_playlist", extm3u_tag).parse(i)?;
     if i.is_empty() {
@@ -296,6 +302,7 @@ pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseErro
                 context("parse_media_playlist", no_multivariant_tag).parse(tag.tag)?;
                 if UNIQUE_IGNORED_TAGS.contains(&tag.tag) {
                     if seen_unique_tags.contains(tag.tag) {
+                        #[cfg(feature = "log")]
                         error!(
                             "Tag \"{}\" must not appear more than once in a playlist",
                             tag.tag
@@ -344,6 +351,7 @@ pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseErro
                                 .1,
                         );
                     } else {
+                        #[cfg(feature = "log")]
                         error!("Expected a value for tag \"{}\"", tag.tag);
                         return Err(nom::Err::Error(VerboseError {
                             errors: vec![(
@@ -355,6 +363,7 @@ pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseErro
                 } else if tag.tag == "#EXT-X-GAP" {
                     gap = true;
                 } else {
+                    #[cfg(feature = "log")]
                     warn!("Unknown tag: {}, ignoring", tag.tag);
                 }
             }
@@ -369,6 +378,7 @@ pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseErro
                         title: inf.title.clone(),
                     });
                 } else {
+                    #[cfg(feature = "log")]
                     error!("No \"#EXTINF\" tag before a media segment");
                     return Err(nom::Err::Error(VerboseError {
                         errors: vec![(uri, VerboseErrorKind::Context("parse_media_playlist"))],
@@ -378,6 +388,7 @@ pub fn parse_media_playlist(i: &str) -> IResult<&str, MediaPlaylist, VerboseErro
             Line::Comment(_) => {}
         }
     }
+    #[cfg(feature = "log")]
     trace!("Parsed the media playlist");
     Ok(("", MediaPlaylist { segments }))
 }
