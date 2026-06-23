@@ -48,13 +48,22 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, c
                     return;
                 }
             };
-            if load_mode == LoadMode::Rebuild {
-                if let Err(e) = track.extract_cover(tag) {
-                    trace!("Could not extract a cover from file {file:?}: {e}")
+
+            match load_mode {
+                #[cfg(test)]
+                LoadMode::None => {}
+                LoadMode::Load => {
+                    if let Err(e) = track.get_cover(tag) {
+                        trace!("Could not obtain a cover from file {file:?}: {e}")
+                    }
                 }
-            } else if let Err(e) = track.get_cover(tag) {
-                trace!("Could not obtain a cover from file {file:?}: {e}")
+                LoadMode::Rebuild => {
+                    if let Err(e) = track.extract_cover(tag) {
+                        trace!("Could not extract a cover from file {file:?}: {e}")
+                    }
+                }
             }
+
             track.path = file;
             lock.lock().unwrap().push(track)
         }));

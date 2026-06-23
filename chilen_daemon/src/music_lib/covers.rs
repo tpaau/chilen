@@ -35,10 +35,17 @@ impl std::fmt::Display for CoverError {
     }
 }
 
-// TODO: None mode for when cover extraction or caching is not necessary (testing)
+/// Track cover art caching mode used when indexing the music library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LoadMode {
+    /// Don't cache cover arts.
+    ///
+    /// This should only be used for testing.
+    #[cfg(test)]
+    None,
+    /// Use cached cover art images when possible.
     Load,
+    /// Discard cached cover art images and extract them when indexing.
     Rebuild,
 }
 
