@@ -4,32 +4,32 @@ mod tests;
 use std::time::Duration;
 
 use nom::{
-    AsChar, IResult, Parser,
+    AsChar, Finish, IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_till, take_while},
-    character::complete::{char, line_ending, space0},
-    combinator::{eof, map, recognize},
+    character::complete::{char, digit1, line_ending, space0},
+    combinator::{eof, map, map_res, recognize},
     multi::{many0, many1},
     number::complete::float,
-    sequence::{delimited, preceded},
+    sequence::{delimited, terminated},
 };
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct IDTag<'a> {
-    key: &'a str,
-    value: &'a str,
+    pub key: &'a str,
+    pub value: &'a str,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct TimestampedSegment<'a> {
-    timestamp: Duration,
-    content: &'a str,
+    pub timestamp: Duration,
+    pub content: &'a str,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct TimestampedTag<'a> {
-    timestamp: Duration,
-    segments: Vec<TimestampedSegment<'a>>,
+    pub timestamp: Duration,
+    pub segments: Vec<TimestampedSegment<'a>>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -51,9 +51,24 @@ fn till_a2_tag(i: &str) -> IResult<&str, &str> {
     take_till(|c: char| c == '<' || c == '\n')(i)
 }
 
-fn timestamp(i: &str) -> IResult<&str, Duration> {
+pub(crate) fn timestamp(i: &str) -> IResult<&str, Duration> {
     let (i, (minutes, _, seconds)) = (float, char(':'), float).parse(i)?;
     Ok((i, Duration::from_secs_f32(seconds + minutes * 60.0)))
+}
+
+fn unsigned_int(i: &str) -> IResult<&str, u32> {
+    map_res(digit1, str::parse).parse(i)
+}
+
+pub(crate) fn offset(i: &str) -> IResult<&str, i64> {
+    terminated(
+        alt((
+            map((char('+'), unsigned_int), |(_, num)| num as i64),
+            map((char('-'), unsigned_int), |(_, num)| -(num as i64)),
+        )),
+        eof,
+    )
+    .parse(i)
 }
 
 fn standard_timestamp(i: &str) -> IResult<&str, Duration> {
@@ -133,6 +148,7 @@ fn parse_line<'a>(i: &'a str) -> IResult<&'a str, Line<'a>> {
     .parse(i)
 }
 
-pub(crate) fn parse<'a>(i: &'a str) -> IResult<&'a str, Vec<Line<'a>>> {
-    many0(parse_line).parse(i)
+pub(crate) fn parse<'a>(i: &'a str) -> Result<Vec<Line<'a>>, nom::error::Error<&'a str>> {
+    let (_, (lines, _)) = (many0(parse_line), eof).parse(i).finish()?;
+    Ok(lines)
 }

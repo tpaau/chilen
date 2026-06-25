@@ -63,6 +63,36 @@ fn timestamp() {
 }
 
 #[test]
+fn int() {
+    assert_eq!(parser::unsigned_int("420"), Ok(("", 420)));
+    assert_eq!(parser::unsigned_int("69.0"), Ok((".0", 69)));
+    assert_eq!(
+        parser::unsigned_int("-67"),
+        Err(nom::Err::Error(nom::error::Error::new(
+            "-67",
+            ErrorKind::Digit
+        )))
+    );
+}
+
+#[test]
+fn offset() {
+    assert_eq!(parser::offset("+1337"), Ok(("", 1337)));
+    assert_eq!(parser::offset("-1984"), Ok(("", -1984)));
+    assert_eq!(
+        parser::offset("+2137.1"),
+        Err(nom::Err::Error(nom::error::Error::new(
+            ".1",
+            ErrorKind::Eof
+        )))
+    );
+    assert_eq!(
+        parser::offset("+69a"),
+        Err(nom::Err::Error(nom::error::Error::new("a", ErrorKind::Eof)))
+    );
+}
+
+#[test]
 fn standard_timestamp() {
     assert_eq!(
         parser::standard_timestamp("[11:53.20]"),
@@ -376,91 +406,88 @@ fn standard_line() {
 
 #[test]
 fn parse() {
-    let expected = Ok((
-        "",
-        vec![
-            Line::ID(IDTag {
-                key: "ti",
-                value: "example",
-            }),
-            Line::ID(IDTag {
-                key: "ar",
-                value: "tpaau",
-            }),
-            Line::ID(IDTag {
-                key: "al",
-                value: "lrc_rs",
-            }),
-            Line::ID(IDTag {
-                key: "au",
-                value: "aaa",
-            }),
-            Line::ID(IDTag {
-                key: "lr",
-                value: "help",
-            }),
-            Line::ID(IDTag {
-                key: "length",
-                value: "420:17",
-            }),
-            Line::ID(IDTag {
-                key: "by",
-                value: "Helix",
-            }),
-            Line::ID(IDTag {
-                key: "offset",
-                value: "+100",
-            }),
-            Line::ID(IDTag {
-                key: "tool",
-                value: "me",
-            }),
-            Line::ID(IDTag {
-                key: "re",
-                value: "me1",
-            }),
-            Line::ID(IDTag {
-                key: "ve",
-                value: "1.0.0",
-            }),
-            Line::Comment("Hello, this is a comment"),
-            Line::Tag(TimestampedTag {
+    let expected = Ok(vec![
+        Line::ID(IDTag {
+            key: "ti",
+            value: "example",
+        }),
+        Line::ID(IDTag {
+            key: "ar",
+            value: "tpaau",
+        }),
+        Line::ID(IDTag {
+            key: "al",
+            value: "lrc_rs",
+        }),
+        Line::ID(IDTag {
+            key: "au",
+            value: "aaa",
+        }),
+        Line::ID(IDTag {
+            key: "lr",
+            value: "help",
+        }),
+        Line::ID(IDTag {
+            key: "length",
+            value: "420:17",
+        }),
+        Line::ID(IDTag {
+            key: "by",
+            value: "Helix",
+        }),
+        Line::ID(IDTag {
+            key: "offset",
+            value: "+100",
+        }),
+        Line::ID(IDTag {
+            key: "tool",
+            value: "me",
+        }),
+        Line::ID(IDTag {
+            key: "re",
+            value: "me1",
+        }),
+        Line::ID(IDTag {
+            key: "ve",
+            value: "1.0.0",
+        }),
+        Line::Comment("Hello, this is a comment"),
+        Line::Tag(TimestampedTag {
+            timestamp: Duration::from_secs_f32(12.1),
+            segments: vec![TimestampedSegment {
                 timestamp: Duration::from_secs_f32(12.1),
-                segments: vec![TimestampedSegment {
-                    timestamp: Duration::from_secs_f32(12.1),
-                    content: "Hello, this is an example line that will appear at 12.1s",
-                }],
-            }),
-            Line::Tag(TimestampedTag {
+                content: "Hello, this is an example line that will appear at 12.1s",
+            }],
+        }),
+        Line::Tag(TimestampedTag {
+            timestamp: Duration::from_secs_f32(16.7),
+            segments: vec![TimestampedSegment {
                 timestamp: Duration::from_secs_f32(16.7),
-                segments: vec![TimestampedSegment {
-                    timestamp: Duration::from_secs_f32(16.7),
-                    content: "You can also trim them numbers and it still works",
-                }],
-            }),
-            Line::Tag(TimestampedTag {
-                timestamp: Duration::from_secs_f32(22.0),
-                segments: vec![
-                    TimestampedSegment {
-                        timestamp: Duration::from_secs_f32(22.5),
-                        content: "Line segments ",
-                    },
-                    TimestampedSegment {
-                        timestamp: Duration::from_secs_f32(23.9),
-                        content: "can also have ",
-                    },
-                    TimestampedSegment {
-                        timestamp: Duration::from_secs_f32(25.1),
-                        content: "timestamps :)",
-                    },
-                ],
-            }),
-            Line::Tag(TimestampedTag {
-                timestamp: Duration::from_secs_f32(28.8),
-                segments: Vec::new(),
-            }),
-        ],
-    ));
+                content: "You can also trim them numbers and it still works",
+            }],
+        }),
+        Line::Tag(TimestampedTag {
+            timestamp: Duration::from_secs_f32(22.0),
+            segments: vec![
+                TimestampedSegment {
+                    timestamp: Duration::from_secs_f32(22.5),
+                    content: "Line segments ",
+                },
+                TimestampedSegment {
+                    timestamp: Duration::from_secs_f32(23.9),
+                    content: "can also have ",
+                },
+                TimestampedSegment {
+                    timestamp: Duration::from_secs_f32(25.1),
+                    content: "timestamps :)",
+                },
+            ],
+        }),
+        Line::Tag(TimestampedTag {
+            timestamp: Duration::from_secs_f32(28.8),
+            segments: Vec::new(),
+        }),
+    ]);
     assert_eq!(
         parser::parse(include_str!("../../assets/example.lrc")),
         expected

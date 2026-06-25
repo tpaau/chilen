@@ -1,6 +1,5 @@
 pub(crate) mod covers;
 pub(crate) mod indexer;
-mod lyrics;
 pub(crate) mod state;
 #[cfg(test)]
 mod tests;
