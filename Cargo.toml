@@ -29,5 +29,6 @@ default = [ "mpris", "gui" ]
 members = [
   "chilen_daemon",
   "chilen_daemon/m3u8",
+  "chilen_daemon/lrc_rs",
   "chilen_ipc"
 ]

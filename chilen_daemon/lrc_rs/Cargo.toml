@@ -1,0 +1,15 @@
+[package]
+name = "lrc_rs"
+version = "0.1.0"
+edition = "2024"
+authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
+license = "MIT"
+
+[dependencies]
+log = { version = "0.4.33", optional = true }
+nom = { version = "8.0.0", optional = true }
+
+[features]
+default = [ "parser", "log" ]
+parser = [ "dep:nom" ]
+log = [ "dep:log" ]

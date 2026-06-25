@@ -117,11 +117,13 @@ impl TryFrom<&TaggedFile> for Track {
 }
 
 impl Track {
+    /// Set the cover art from cache or extract it from the source file.
     pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CoverError> {
         self.cover_path = Some(get_track_cover(self, tag, &LoadMode::Load)?);
         Ok(())
     }
 
+    /// Extract the cover art from the source file discarding the cache contents.
     pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), CoverError> {
         self.cover_path = Some(get_track_cover(self, tag, &LoadMode::Rebuild)?);
         Ok(())
