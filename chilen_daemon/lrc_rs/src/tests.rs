@@ -1,6 +1,6 @@
 use std::{sync::LazyLock, time::Duration};
 
-use crate::{LRCTool, LineTag, Lyrics, LyricsAccess, SegmentTag, SyncedLyrics};
+use crate::{LRCTool, LineTag, LyricsAccess, SegmentTag, SyncedLyrics};
 
 static PARSED_EXAMPLE: LazyLock<SyncedLyrics> = LazyLock::new(|| SyncedLyrics {
     title: Some("example".to_string()),
@@ -59,8 +59,8 @@ static PARSED_EXAMPLE: LazyLock<SyncedLyrics> = LazyLock::new(|| SyncedLyrics {
 #[test]
 fn parse() {
     assert_eq!(
-        Lyrics::parse(include_str!("../assets/example.lrc")),
-        Ok(Lyrics::Synced(Box::new(PARSED_EXAMPLE.clone())))
+        SyncedLyrics::parse(include_str!("../assets/example.lrc")),
+        Ok(PARSED_EXAMPLE.clone())
     );
 }
 
@@ -68,7 +68,7 @@ fn parse() {
 fn to_unsynced() {
     let unsynced = include_str!("../assets/example-w-out-sync.txt");
     assert_eq!(
-        Lyrics::Unsynced(PARSED_EXAMPLE.clone().to_unsynced().to_string()),
-        Lyrics::Unsynced(unsynced.to_string())
+        PARSED_EXAMPLE.clone().to_unsynced().to_string(),
+        unsynced.to_string()
     );
 }

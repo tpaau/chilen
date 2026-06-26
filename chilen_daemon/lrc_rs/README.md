@@ -5,7 +5,6 @@ Robust crate for working with synced lyrics content in the LRC format.
 ## Features
 - Reliable parser built with the [`nom`](https://crates.io/crates/nom) crate
 - Coverage for all the ID tags and comment tags
-- Automatic synced lyrics detection
 - Support for tags from the A2 extension
 - Easy serialization
 - Simple conversion between synced and unsynced lyrics

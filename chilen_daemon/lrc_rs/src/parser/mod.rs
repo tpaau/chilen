@@ -39,11 +39,11 @@ pub(crate) enum Line<'a> {
     Comment(&'a str),
 }
 
-pub fn till_newline(i: &str) -> IResult<&str, &str> {
+pub(crate) fn till_newline(i: &str) -> IResult<&str, &str> {
     take_while(|c: char| !c.is_newline())(i)
 }
 
-pub fn newline_or_end(i: &str) -> IResult<&str, &str> {
+pub(crate) fn newline_or_end(i: &str) -> IResult<&str, &str> {
     alt((recognize(many1(line_ending)), eof)).parse(i)
 }
 

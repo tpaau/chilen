@@ -14,6 +14,53 @@ pub use nom::error::ErrorKind;
 #[cfg(feature = "log")]
 use log::warn;
 
+/// Error indicating why lyrics couldn't be parsed as LRC.
+#[cfg(feature = "parser")]
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum ParseError<'a> {
+    /// An overflow occurred while offsetting timestamps with the value of the LRC `offset` tag
+    /// (eg. `[offset: +100]`).
+    ///
+    /// Try adjusting the offset value or removing the offset tag.
+    TimestampOffsetOverflow,
+    /// Encountered an ID tag with an unknown key.
+    ///
+    /// Remove the broken tag.
+    UnknownKey(&'a str),
+    /// Parsing failed due to a syntax error.
+    Nom {
+        /// The input for which the error occurred.
+        input: &'a str,
+        /// The error code.
+        error: nom::error::ErrorKind,
+    },
+}
+
+#[cfg(feature = "parser")]
+impl<'a> From<nom::error::Error<&'a str>> for ParseError<'a> {
+    fn from(value: nom::error::Error<&'a str>) -> Self {
+        Self::Nom {
+            input: value.input,
+            error: value.code,
+        }
+    }
+}
+
+#[cfg(feature = "parser")]
+impl<'a> std::fmt::Display for ParseError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TimestampOffsetOverflow => {
+                write!(f, "An overflow occurred while offsetting a timestamp")
+            }
+            Self::UnknownKey(key) => write!(f, "Unknown ID tag key: \"{key}\""),
+            Self::Nom { input, error } => {
+                write!(f, "Couldn't parse the lyrics at `{input}`: {error:?}`")
+            }
+        }
+    }
+}
+
 /// Accessor trait for synced lyrics.
 pub trait LyricsAccess: Sized {
     /// Returns unsynced lyrics without timestamps or additional metadata.
@@ -150,85 +197,6 @@ impl LyricsAccess for SyncedLyrics {
 }
 
 impl SyncedLyrics {
-    /// Checks if the lyrics contain any tags from the A2 extension.
-    ///
-    /// If the enhanced LRC format is used, [line tags](LineTag) may contain more than one segment.
-    pub fn is_enhanced_lrc(&self) -> bool {
-        for line in &self.lines {
-            if line.segments.is_empty() {
-                #[cfg(feature = "log")]
-                warn!("Line segments list is empty, skipping");
-                continue;
-            } else if line.segments.len() > 1 || line.timestamp < line.segments[0].timestamp {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Serialize the struct to LRC format.
-    pub fn serialize(self) -> String {
-        todo!()
-    }
-}
-
-/// Error indicating why lyrics couldn't be parsed as LRC.
-#[derive(Clone, PartialEq, Eq, Debug)]
-#[cfg(feature = "parser")]
-pub enum ParseError<'a> {
-    /// An overflow occurred while offsetting timestamps with the value of the LRC `offset` tag
-    /// (eg. `[offset: +100]`).
-    ///
-    /// Try adjusting the offset value or removing the offset tag.
-    TimestampOffsetOverflow,
-    /// Encountered an ID tag with an unknown key.
-    ///
-    /// Remove the broken tag.
-    UnknownKey(&'a str),
-    /// Parsing failed due to a syntax error.
-    Nom {
-        /// The input for which the error occurred.
-        input: &'a str,
-        /// The error code.
-        error: nom::error::ErrorKind,
-    },
-}
-
-#[cfg(feature = "parser")]
-impl<'a> From<nom::error::Error<&'a str>> for ParseError<'a> {
-    fn from(value: nom::error::Error<&'a str>) -> Self {
-        Self::Nom {
-            input: value.input,
-            error: value.code,
-        }
-    }
-}
-
-#[cfg(feature = "parser")]
-impl<'a> std::fmt::Display for ParseError<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::TimestampOffsetOverflow => {
-                write!(f, "An overflow occurred while offsetting a timestamp")
-            }
-            Self::UnknownKey(key) => write!(f, "Unknown ID tag key: \"{key}\""),
-            Self::Nom { input, error } => {
-                write!(f, "Couldn't parse the lyrics at `{input}`: {error:?}`")
-            }
-        }
-    }
-}
-
-/// Lyrics data, can either by synced or unsynced
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum Lyrics {
-    /// Lyrics without timestamps
-    Unsynced(String),
-    /// Lyrics with time syncing
-    Synced(Box<SyncedLyrics>),
-}
-
-impl Lyrics {
     #[cfg(feature = "parser")]
     fn parse_len<'a>(i: &'a str) -> Result<Duration, ParseError<'a>> {
         use nom::{Parser, combinator::eof};
@@ -255,12 +223,30 @@ impl Lyrics {
         }
     }
 
-    /// Parses lyrics data as either synced or unsynced lyrics.
+    /// Checks if the lyrics contain any tags from the A2 extension.
     ///
-    /// It first tries to parse lyrics as LRC, if it fails it returns the input as unsynced lyrics
-    /// and a [`ParseError`] to indicate why the data couldn't be parsed as synced lyrics.
+    /// If the enhanced LRC format is used, [line tags](LineTag) may contain more than one segment.
+    pub fn is_enhanced_lrc(&self) -> bool {
+        for line in &self.lines {
+            if line.segments.is_empty() {
+                #[cfg(feature = "log")]
+                warn!("Line segments list is empty, skipping");
+                continue;
+            } else if line.segments.len() > 1 || line.timestamp < line.segments[0].timestamp {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Serialize the struct to LRC format.
+    pub fn serialize(self) -> String {
+        todo!()
+    }
+
+    /// Parses LRC lyrics data.
     #[cfg(feature = "parser")]
-    pub fn parse<'a>(input: &'a str) -> Result<Lyrics, (Lyrics, ParseError<'a>)> {
+    pub fn parse<'a>(input: &'a str) -> Result<Self, ParseError<'a>> {
         match parser::parse(input) {
             Ok(lines) => {
                 use crate::parser::Line;
@@ -296,23 +282,20 @@ impl Lyrics {
                         "al" => album = Some(tag.value.to_string()),
                         "au" => author = Some(tag.value.to_string()),
                         "lr" => lyricist = Some(tag.value.to_string()),
-                        "length" => match Self::parse_len(tag.value) {
-                            Ok(l) => length = Some(l),
-                            Err(e) => return Err((Lyrics::Unsynced(input.to_string()), e)),
-                        },
+                        "length" => {
+                            let l = Self::parse_len(tag.value)?;
+                            length = Some(l)
+                        }
                         "by" => file_author = Some(tag.value.to_string()),
-                        "offset" => match Self::parse_offset(tag.value) {
-                            Ok(l) => offset = Some(l),
-                            Err(e) => return Err((Lyrics::Unsynced(input.to_string()), e)),
-                        },
+                        "offset" => {
+                            let l = Self::parse_offset(tag.value)?;
+                            offset = Some(l)
+                        }
                         "re" | "tool" => tool_name = Some(tag.value.to_string()),
                         "ve" => tool_version = Some(tag.value.to_string()),
                         _ => {
                             warn!("Unknown ID tag key \"{}\"", tag.key);
-                            return Err((
-                                Lyrics::Unsynced(input.to_string()),
-                                ParseError::UnknownKey(tag.key),
-                            ));
+                            return Err(ParseError::UnknownKey(tag.key));
                         }
                     }
                 }
@@ -330,7 +313,7 @@ impl Lyrics {
                     }
                 };
                 let lines = if let Some(offset) = offset {
-                    let lines: Result<Vec<_>, _> = lines
+                    let lines: Result<Vec<_>, ParseError<'a>> = lines
                         .into_iter()
                         .filter_map(|l| if let Line::Tag(t) = l { Some(t) } else { None })
                         .map(|t| t.into())
@@ -339,10 +322,7 @@ impl Lyrics {
                             Ok(t)
                         })
                         .collect();
-                    match lines {
-                        Ok(l) => l,
-                        Err(e) => return Err((Lyrics::Unsynced(input.to_string()), e)),
-                    }
+                    lines?
                 } else {
                     lines
                         .into_iter()
@@ -350,7 +330,7 @@ impl Lyrics {
                         .map(|t| t.into())
                         .collect()
                 };
-                Ok(Lyrics::Synced(Box::new(SyncedLyrics {
+                Ok(SyncedLyrics {
                     title,
                     artist,
                     album,
@@ -361,21 +341,13 @@ impl Lyrics {
                     file_author,
                     comments,
                     lines,
-                })))
+                })
             }
             Err(e) => {
                 #[cfg(feature = "log")]
                 warn!("Couldn't parse the LRC content: {e}");
-                Err((Lyrics::Unsynced(input.to_string()), ParseError::from(e)))
+                Err(ParseError::from(e))
             }
-        }
-    }
-
-    /// Returns the content of unsynced lyrics or serializes synced lyrics to LRC format.
-    pub fn serialize(self) -> String {
-        match self {
-            Self::Unsynced(l) => l,
-            Self::Synced(l) => l.serialize(),
         }
     }
 }
