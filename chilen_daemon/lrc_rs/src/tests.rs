@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::{LRCTool, Lyrics, SyncedLyrics, TimestampedLine, TimestampedSegment, duration_offset};
+use crate::{LRCTool, LineTag, Lyrics, SegmentTag, SyncedLyrics, duration_offset};
 
 // [ti: example]
 // [ar: tpaau]
@@ -35,38 +35,38 @@ fn parse() {
         }),
         comments: vec!["Hello, this is a comment".to_string()],
         lines: vec![
-            TimestampedLine {
+            LineTag {
                 timestamp: duration_offset(Duration::from_secs_f32(12.1), 100).unwrap(),
-                segments: vec![TimestampedSegment {
+                segments: vec![SegmentTag {
                     timestamp: duration_offset(Duration::from_secs_f32(12.1), 100).unwrap(),
                     content: "Hello, this is an example line that will appear at 12.1s".to_string(),
                 }],
             },
-            TimestampedLine {
+            LineTag {
                 timestamp: duration_offset(Duration::from_secs_f32(16.7), 100).unwrap(),
-                segments: vec![TimestampedSegment {
+                segments: vec![SegmentTag {
                     timestamp: duration_offset(Duration::from_secs_f32(16.7), 100).unwrap(),
                     content: "You can also trim them numbers and it still works".to_string(),
                 }],
             },
-            TimestampedLine {
+            LineTag {
                 timestamp: duration_offset(Duration::from_secs_f32(22.0), 100).unwrap(),
                 segments: vec![
-                    TimestampedSegment {
+                    SegmentTag {
                         timestamp: duration_offset(Duration::from_secs_f32(22.5), 100).unwrap(),
                         content: "Line segments ".to_string(),
                     },
-                    TimestampedSegment {
+                    SegmentTag {
                         timestamp: duration_offset(Duration::from_secs_f32(23.9), 100).unwrap(),
                         content: "can also have ".to_string(),
                     },
-                    TimestampedSegment {
+                    SegmentTag {
                         timestamp: duration_offset(Duration::from_secs_f32(25.1), 100).unwrap(),
                         content: "timestamps :)".to_string(),
                     },
                 ],
             },
-            TimestampedLine {
+            LineTag {
                 timestamp: duration_offset(Duration::from_secs_f32(28.8), 100).unwrap(),
                 segments: Vec::new(),
             },
