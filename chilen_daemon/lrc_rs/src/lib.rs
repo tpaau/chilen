@@ -83,7 +83,7 @@ impl<'a> From<parser::TimestampedTag<'a>> for LineTag {
 impl LyricsAccess for LineTag {
     fn to_unsynced(self) -> String {
         let segments: Vec<_> = self.segments.into_iter().map(|s| s.content).collect();
-        segments.join(" ")
+        segments.join("")
     }
 
     fn lyrics_at(&self, timestamp: Duration) -> Option<&str> {
@@ -377,7 +377,6 @@ impl Lyrics {
     }
 }
 
-#[cfg(feature = "parser")]
 pub(crate) fn duration_offset<'a>(
     dur: Duration,
     offset_ms: i64,

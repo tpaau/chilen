@@ -1,0 +1,3 @@
+Hello, this is an example line that will appear at 12.1s
+You can also trim them numbers and it still works
+Line segments can also have timestamps :)

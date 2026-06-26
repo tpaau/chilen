@@ -1,23 +1,6 @@
 use std::time::Duration;
 
-use crate::{LRCTool, LineTag, Lyrics, SegmentTag, SyncedLyrics, duration_offset};
-
-// [ti: example]
-// [ar: tpaau]
-// [al: lrc_rs]
-// [au: aaa]
-// [lr: help]
-// [length: 420:17]
-// [by: Helix]
-// [offset: +100]
-// [tool: me]
-// [re: me1]
-// [ve: 1.0.0]
-// [#: Hello, this is a comment]
-// [00:12.10] Hello, this is an example line that will appear at 12.1s
-// [0:16.7] You can also trim them numbers and it still works
-// [00:22.00] <00:22.50> Line segments <00:23.90> can also have <00:25.10> timestamps :)
-// [00:28.80]
+use crate::{LRCTool, LineTag, Lyrics, LyricsAccess, SegmentTag, SyncedLyrics, duration_offset};
 
 #[test]
 fn parse() {
@@ -76,4 +59,19 @@ fn parse() {
         Lyrics::parse(include_str!("../assets/example.lrc")),
         expected
     );
+}
+
+#[test]
+fn to_unsynced() {
+    let (parsed_unsynced, _) =
+        Lyrics::parse(include_str!("../assets/example-w-out-sync.txt")).unwrap_err();
+    let parsed_synced = Lyrics::parse(include_str!("../assets/example.lrc")).unwrap();
+    if let Lyrics::Synced(synced) = parsed_synced {
+        assert_eq!(
+            Lyrics::Unsynced(synced.to_unsynced().to_string()),
+            parsed_unsynced
+        );
+    } else {
+        panic!()
+    }
 }
