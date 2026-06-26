@@ -92,6 +92,7 @@ impl LyricsAccess for LineTag {
 }
 
 impl LineTag {
+    #[cfg(feature = "parser")]
     fn offset<'a>(&mut self, offset_ms: i64) -> Result<(), ParseError<'a>> {
         self.timestamp = duration_offset(self.timestamp, offset_ms)?;
         for segment in self.segments.iter_mut() {
@@ -193,6 +194,7 @@ pub enum ParseError<'a> {
     },
 }
 
+#[cfg(feature = "parser")]
 impl<'a> From<nom::error::Error<&'a str>> for ParseError<'a> {
     fn from(value: nom::error::Error<&'a str>) -> Self {
         Self::Nom {
@@ -202,6 +204,7 @@ impl<'a> From<nom::error::Error<&'a str>> for ParseError<'a> {
     }
 }
 
+#[cfg(feature = "parser")]
 impl<'a> std::fmt::Display for ParseError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -377,6 +380,7 @@ impl Lyrics {
     }
 }
 
+#[cfg(feature = "parser")]
 pub(crate) fn duration_offset<'a>(
     dur: Duration,
     offset_ms: i64,
