@@ -19,6 +19,7 @@ rand = { version = "0.10.1", optional = true }
 smol = {version = "2.0.2", optional = true }
 m3u8 = { path = "./m3u8" }
 nom = "8.0.0"
+lrc_rs = { version = "0.1.2", features = [ "serde" ] }
 
 [features]
 mpris = [ "dep:mpris-server", "dep:smol" ]

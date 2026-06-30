@@ -601,6 +601,7 @@ dependencies = [
  "interprocess",
  "lofty",
  "log",
+ "lrc_rs",
  "m3u8",
  "mpris-server",
  "nom",
@@ -618,6 +619,7 @@ version = "0.1.0"
 dependencies = [
  "interprocess",
  "log",
+ "lrc_rs",
  "rmp-serde",
  "serde",
 ]
@@ -1958,6 +1960,17 @@ name = "log"
 version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
+
+[[package]]
+name = "lrc_rs"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2475a09c0189731fb2e827611bd142a043257c7c1b436f8cc31a797470fb08e0"
+dependencies = [
+ "log",
+ "nom",
+ "serde",
+]
 
 [[package]]
 name = "lru"

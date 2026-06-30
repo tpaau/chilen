@@ -8,11 +8,13 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use chilen_ipc::library::Lyrics;
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, Tag},
 };
 use log::{error, trace};
+use lrc_rs::SyncedLyrics;
 #[cfg(feature = "mpris")]
 use mpris_server::TrackId;
 use rmp_serde::{Deserializer, Serializer};
@@ -38,7 +40,7 @@ pub(crate) struct Track {
     pub title: Option<String>,
     pub album: Option<String>,
     pub genre: Option<String>,
-    pub lyrics: Option<String>,
+    pub lyrics: Option<Lyrics>,
     pub comment: Option<String>,
     pub track: Option<u32>,
     pub track_total: Option<u32>,
@@ -63,7 +65,7 @@ impl From<Track> for chilen_ipc::library::Track {
             disc: value.disc,
             disc_total: value.disc_total,
             year: value.year,
-            lyrics: value.lyrics,
+            lyrics: { value.lyrics },
         }
     }
 }
@@ -91,10 +93,19 @@ impl TryFrom<&TaggedFile> for Track {
 
         let lyrics = match tag.get(&lofty::tag::ItemKey::Lyrics) {
             Some(tag_item) => match tag_item.value() {
-                ItemValue::Text(lyrics) => Some(lyrics.clone()),
+                ItemValue::Text(lyrics) => Some(lyrics),
                 _ => None,
             },
             None => None,
+        };
+
+        let lyrics = if let Some(lyrics) = lyrics {
+            match SyncedLyrics::parse(lyrics) {
+                Ok(synced_lyrics) => Some(Lyrics::Synced(Box::new(synced_lyrics))),
+                Err(_) => Some(Lyrics::Unsynced(lyrics.to_string())),
+            }
+        } else {
+            None
         };
 
         Ok(Track {
@@ -181,7 +192,17 @@ impl Track {
             .comment(self.comment.clone())
             .track_number(self.track.unwrap_or(0).try_into().unwrap_or(0))
             .disc_number(self.disc.unwrap_or(0).try_into().unwrap_or(0))
-            .lyrics(self.lyrics.clone().unwrap_or_default())
+            .lyrics(match &self.lyrics {
+                Some(lyrics) => {
+                    use lrc_rs::LyricsAccess;
+
+                    match lyrics {
+                        Lyrics::Synced(synced) => synced.clone().to_unsynced(),
+                        Lyrics::Unsynced(unsynced) => unsynced.to_string(),
+                    }
+                }
+                None => String::new(),
+            })
             .trackid(self.track_id(position))
             .build()
     }

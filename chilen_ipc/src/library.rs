@@ -1,6 +1,16 @@
 use std::{path::PathBuf, time::Duration};
 
+use lrc_rs::SyncedLyrics;
 use serde::{Deserialize, Serialize};
+
+/// Lyrics data. Can be either synced or unsynced.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Lyrics {
+    /// Synced lyrics parsed from the LRC format.
+    Synced(Box<SyncedLyrics>),
+    /// Unsynced lyrics as a string.
+    Unsynced(String),
+}
 
 // TODO: Add more tags for this
 /// Struct representing a track from the [music library](MusicLibrary).
@@ -22,9 +32,8 @@ pub struct Track {
     // TODO: Same as with artist
     /// The track genre.
     pub genre: Option<String>,
-    // TODO: Add easy access to synced lyrics
     /// Possibly synchronized lyrics text.
-    pub lyrics: Option<String>,
+    pub lyrics: Option<Lyrics>,
     /// Contents of the comment tag.
     pub comment: Option<String>,
     pub track: Option<u32>,
