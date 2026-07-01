@@ -1963,11 +1963,10 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "lrc_rs"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2475a09c0189731fb2e827611bd142a043257c7c1b436f8cc31a797470fb08e0"
+checksum = "5cde06005c53a8fcf5316f8de1a56d6b56217483b96cf0f5558027957cbf7860"
 dependencies = [
- "log",
  "nom",
  "serde",
 ]

@@ -695,6 +695,7 @@ pub(crate) fn save_library() -> Result<(), chilen_ipc::Error> {
     }
 }
 
+// FIX: This function hangs if if the `MusicLibrary` struct changes (and can't be deserialized)
 /// Load the music library from the playlists file.
 pub(crate) fn load(load_mode: LoadMode) -> Result<(), chilen_ipc::Error> {
     trace!("Loading the music library");
@@ -744,9 +745,19 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), chilen_ipc::Error> {
         };
 
         let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
-            Ok(data) => MusicLibrary::try_from_loaded_lib(data, tracks.into_iter().collect())?,
+            Ok(data) => {
+                match MusicLibrary::try_from_loaded_lib(data, tracks.clone().into_iter().collect())
+                {
+                    Ok(lib) => lib,
+                    Err(e) => {
+                        error!("Could not open the music library: {e}");
+                        MusicLibrary::new_from_tracks(tracks.into_iter().collect())
+                    }
+                }
+            }
             Err(e) => {
                 error!("Could not decode the contents of the library state file: {e}");
+                trace!("Creating a new library");
                 MusicLibrary::new_from_tracks(tracks.into_iter().collect())
             }
         };
@@ -754,11 +765,9 @@ pub(crate) fn load(load_mode: LoadMode) -> Result<(), chilen_ipc::Error> {
         *MUSIC_LIBRARY.write().unwrap() = Some(lib);
     } else {
         trace!("The library file does not exist, creating a new library");
-        let mut guard = MUSIC_LIBRARY.write().unwrap();
-        *guard = Some(MusicLibrary::new_from_tracks(tracks));
-        drop(guard);
-        save_library()?;
+        *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
     }
+    save_library()?;
 
     let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));
     trace!(
