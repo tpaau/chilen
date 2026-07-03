@@ -352,7 +352,7 @@ impl From<PlaybackCommand> for chilen_ipc::playback::PlaybackCommand {
                 } else if let Some(playlist) = playlist {
                     return chilen_ipc::playback::PlaybackCommand::SetPlaylist(playlist);
                 }
-                panic!("This should never happen :)");
+                unreachable!()
             }
             PlaybackCommand::ClearQueue => {
                 chilen_ipc::playback::PlaybackCommand::SetQueue(Vec::new())
@@ -363,7 +363,7 @@ impl From<PlaybackCommand> for chilen_ipc::playback::PlaybackCommand {
                 } else if let Some(playlist) = playlist {
                     return chilen_ipc::playback::PlaybackCommand::AppendPlaylist(playlist);
                 }
-                panic!("This should never happen :)");
+                unreachable!()
             }
             PlaybackCommand::GetCurrentTrack => {
                 chilen_ipc::playback::PlaybackCommand::GetCurrentTrack
