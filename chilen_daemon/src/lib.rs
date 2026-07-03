@@ -448,10 +448,10 @@ pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
     Ok(())
 }
 
+// TEST: Has been a cause of many crashes
 /// Send an event to the daemon thread.
 pub(crate) fn send_event(event: Event) {
     let mut senders = EVENT_SENDERS.write().unwrap();
-    // TEST: Has been a cause of many crashes
     let mut dead = Vec::new();
     for (i, sender) in senders.iter().enumerate() {
         if sender.send(event.clone()).is_err() {

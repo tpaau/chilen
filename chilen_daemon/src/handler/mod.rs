@@ -1,4 +1,27 @@
-//! Test description of the module.
+//! Module providing a way for the handler to send events to the daemon.
+//!
+//! The program launching the daemon using the [`start`](crate::start) function is its handler. The
+//! handler can manage the daemon in ways other clients (programs that connect to the daemon over
+//! the IPC socket) can't.
+//!
+//! This is because all clients can't respond to certain requests at the same time, as it would
+//! result in a conflict. Let's say there are several clients all connected to the same daemon. If
+//! the daemon was prompted to focus the main window of the app on the desktop, it wouldn't know
+//! what to do.
+//!
+//! So it instead forwards that request to the handler, which can then manage it. There is always
+//! only one handler, so no conflicts.
+//!
+//! A handler can still be a client, there is nothing preventing it from accessing the IPC. In fact,
+//! this is the main way programs should communicate with the daemon, including the handler. The
+//! exclusive connection is just there so that some commands that require one central entity can be
+//! handled cleanly.
+//!
+//! If you are creating an app that connects to an external Chilen daemon as a frontend then you
+//! won't be able to receive [requests](Request) from it.
+
+mod state;
+
 use std::{
     sync::{
         Arc, LazyLock, RwLock,
@@ -7,13 +30,25 @@ use std::{
     thread,
 };
 
-use log::{error, info, trace, warn};
-use serde::{Deserialize, Serialize, ser::Error};
+use log::{error, trace, warn};
+use serde::{Deserialize, Serialize};
 
-/// Something that happened on the side of the handler that the daemon should be aware of.
+/// Represents the fullscreen state of the handler window.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FullscreenState {
+    /// The main window is currently occupying the entire screen.
+    Fullscreen,
+    /// The main window isn't filling the entire screen.
+    Windowed,
+    /// The handler doesn't have a GUI or there is no fullscreen mode (eg. in a TUI app).
+    #[default]
+    Unsupported,
+}
+
+/// Event sent from the handler to the daemon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Event {
-    FullscreenChanged { is_fullscreen: bool },
+    FullscreenChanged(FullscreenState),
 }
 
 /// Request sent from a client forwarded to the daemon.
@@ -38,7 +73,11 @@ fn start_event_listener() {
 
     loop {
         match er.recv() {
-            Ok(event) => todo!("Handle events"),
+            Ok(event) => match event {
+                Event::FullscreenChanged(state) => {
+                    state::set_fullscreen(state);
+                }
+            },
             Err(_) => {
                 trace!("The mpsc channel closed, assuming we're cleaning up");
                 return;
