@@ -3,6 +3,7 @@
 #![feature(doc_cfg)]
 
 mod daemon_thread;
+pub mod handler;
 mod music_lib;
 pub mod playback;
 #[cfg(test)]
@@ -24,6 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     daemon_thread::ThreadCommand,
+    handler::{Request, send_request},
     music_lib::{
         CACHE_DIR,
         covers::LoadMode,
@@ -78,15 +80,7 @@ pub enum Error {
     SetFullscreenDisabled,
 }
 
-/// Request sent from a client forwarded to the daemon.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Request {
-    /// Bring the music player’s user interface to the front using any appropriate mechanism
-    /// available.
-    Raise,
-    /// Set whether the music player's user interface is displayed in full screen mode.
-    SetFullscreen(bool),
-}
+impl std::error::Error for Error {}
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -277,6 +271,7 @@ fn cleanup() {
     state::cleanup();
     playback::cleanup();
     playback::state::cleanup();
+    handler::cleanup();
     *COMMAND_SENDER.write().unwrap() = None;
     *EVENT_SENDERS.write().unwrap() = Vec::new();
     *CONFIG.write().unwrap() = None;
@@ -456,6 +451,7 @@ pub(crate) fn send_command(command: ThreadCommand) -> Result<(), String> {
 /// Send an event to the daemon thread.
 pub(crate) fn send_event(event: Event) {
     let mut senders = EVENT_SENDERS.write().unwrap();
+    // TEST: Has been a cause of many crashes
     let mut dead = Vec::new();
     for (i, sender) in senders.iter().enumerate() {
         if sender.send(event.clone()).is_err() {
@@ -463,8 +459,8 @@ pub(crate) fn send_event(event: Event) {
             dead.push(i);
         }
     }
-    for ded in dead {
-        senders.swap_remove(ded);
+    for (i, ded) in dead.iter().enumerate() {
+        senders.swap_remove(ded - i);
     }
 }
 
@@ -632,12 +628,12 @@ pub(crate) fn client_quit() -> Result<(), Error> {
 /// }
 /// ```
 pub fn start(config: Config) -> (mpsc::Receiver<Request>, JoinHandle<Result<(), Error>>) {
-    let (sender, receiver) = mpsc::channel();
-    (receiver, thread::spawn(|| start_blocking(sender, config)))
+    let receiver = handler::init();
+    (receiver, thread::spawn(|| start_blocking(config)))
 }
 
 // TEST: Add tests to make sure daemon can start and stop properly
-fn start_blocking(request_sender: mpsc::Sender<Request>, config: Config) -> Result<(), Error> {
+fn start_blocking(config: Config) -> Result<(), Error> {
     debug!("Starting daemon on \"{}\"", config.socket_name);
 
     *CONFIG.write().unwrap() = Some(config.clone());
@@ -689,11 +685,11 @@ fn start_blocking(request_sender: mpsc::Sender<Request>, config: Config) -> Resu
         match cmd {
             ThreadCommand::Raise => {
                 trace!("Received a raise request");
-                let _ = request_sender.send(Request::Raise);
+                handler::send_request(Request::Raise);
             }
             ThreadCommand::SetFullscreen(fullscreen) => {
                 trace!("Received request to set fullscreen to: {fullscreen}");
-                let _ = request_sender.send(Request::SetFullscreen(fullscreen));
+                handler::send_request(Request::SetFullscreen { fullscreen });
             }
             ThreadCommand::Quit => {
                 trace!("Received quit command");
