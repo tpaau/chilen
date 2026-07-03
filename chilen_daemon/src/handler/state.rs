@@ -10,6 +10,7 @@ use crate::handler::FullscreenState;
 
 #[derive(Default)]
 struct State {
+    // TODO: Shouldn't this be initialized from the CONFIG?
     fullscreen: FullscreenState,
 }
 

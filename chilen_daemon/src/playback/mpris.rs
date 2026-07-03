@@ -9,6 +9,7 @@ use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::{
+    handler::{self, FullscreenState},
     playback::{
         self, SUPPORTED_MIME_TYPES, open_uri,
         state::{self, PLAYER_STATE},
@@ -87,11 +88,13 @@ impl RootInterface for MprisInterface {
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Implement checking fullscreen mode status
-        // NOTE: This would require two-way communication with the daemon handler
-        Err(MprisError::NotSupported(String::from(
-            "Fullscreen is not yet implemented",
-        )))
+        match handler::state::fullscreen() {
+            FullscreenState::Fullscreen => Ok(true),
+            FullscreenState::Windowed => Ok(false),
+            FullscreenState::Unsupported => Err(MprisError::NotSupported(
+                "Fullscreen mode is not supported by the handler".to_string(),
+            )),
+        }
     }
 
     async fn can_set_fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {

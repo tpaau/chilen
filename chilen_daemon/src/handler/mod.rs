@@ -20,7 +20,7 @@
 //! If you are creating an app that connects to an external Chilen daemon as a frontend then you
 //! won't be able to receive [requests](Request) from it.
 
-mod state;
+pub(crate) mod state;
 
 use std::{
     sync::{
