@@ -3,7 +3,7 @@ name = "chilen"
 version = "0.1.0"
 authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
 edition = "2024"
-license = "LGPL-3.0-or-later"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 env_logger = "0.11.10"
