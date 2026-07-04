@@ -14,7 +14,10 @@ use std::{
 use log::{error, trace};
 use m3u8::{MediaPlaylist, MediaSegment};
 
-use crate::music_lib::state::{MUSIC_LIBRARY, Track, save_library, unwrap_lib_mut, unwrap_lib_ref};
+use crate::{
+    Error,
+    music_lib::state::{MUSIC_LIBRARY, Track, save_library, unwrap_lib_mut, unwrap_lib_ref},
+};
 
 pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
@@ -109,7 +112,7 @@ pub(crate) fn tracks_from_paths(
     track_paths: &[PathBuf],
     // Whether nonexistent paths should result in a failure.
     allow_failure: bool,
-) -> Result<Vec<Track>, chilen_ipc::Error> {
+) -> Result<Vec<Track>, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
     let mut out = Vec::with_capacity(track_paths.len());
@@ -118,27 +121,27 @@ pub(crate) fn tracks_from_paths(
         if let Some(track) = lib.find_track_by_path(path) {
             out.push(track.as_ref().clone());
         } else if !allow_failure {
-            return Err(chilen_ipc::Error::UnknownTrack);
+            return Err(Error::UnknownTrack);
         }
     }
 
     Ok(out)
 }
 
-pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, chilen_ipc::Error> {
+pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
     lib.tracks_from_hashes(hashes)
 }
 
 // TEST: Check if import works correctly
-pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ipc::Error> {
+pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
     trace!("Loading an M3U8 playlist from {path:?}");
     let data = match read(path) {
         Ok(data) => data,
         Err(e) => {
             error!("Could not read the playlist file at {path:?}: {e}");
-            return Err(chilen_ipc::Error::PathDoesNotExist);
+            return Err(Error::PathDoesNotExist);
         }
     };
     let content = String::from_utf8_lossy(&data);
@@ -158,22 +161,19 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, chilen_ip
         }
         Err(e) => {
             error!("Could not parse the M3U playlist: {e}");
-            Err(chilen_ipc::Error::PlaylistParsingError)
+            Err(Error::PlaylistParsingError)
         }
     }
 }
 
 // TEST: Check if export work correctly
-pub(crate) fn export_playlist_to_m3u8(
-    name: String,
-    path: PathBuf,
-) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(), Error> {
     trace!("Exporting a playlist to an M3U8 file in {path:?}");
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
     let pl = match lib.find_playlist(&name) {
         Some(pl) => pl,
-        None => return Err(chilen_ipc::Error::UnknownPlaylist),
+        None => return Err(Error::UnknownPlaylist),
     };
     let music_dir = MUSIC_DIR.read().unwrap().as_ref().unwrap().clone();
     let segments = pl
@@ -200,14 +200,14 @@ pub(crate) fn export_playlist_to_m3u8(
         Ok(file) => file,
         Err(e) => {
             error!("Could not open the m3u8 export file for writing: {e}");
-            return Err(chilen_ipc::Error::PlaylistExportFailed);
+            return Err(Error::PlaylistExportFailed);
         }
     };
     match file.write_all(media_playlist.serialize().as_bytes()) {
         Ok(_) => Ok(()),
         Err(e) => {
             error!("Could not write the playlist contents to a file: {e}");
-            Err(chilen_ipc::Error::PlaylistExportFailed)
+            Err(Error::PlaylistExportFailed)
         }
     }
 }
@@ -215,7 +215,7 @@ pub(crate) fn export_playlist_to_m3u8(
 pub(crate) fn create_playlist(
     name: String,
     track_paths: &Option<Vec<PathBuf>>,
-) -> Result<(), chilen_ipc::Error> {
+) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.create_playlist(name.clone(), track_paths)?;
@@ -224,10 +224,7 @@ pub(crate) fn create_playlist(
     save_library()
 }
 
-pub(crate) fn import_playlist_from_m3u8(
-    name: Option<String>,
-    file: &PathBuf,
-) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn import_playlist_from_m3u8(name: Option<String>, file: &PathBuf) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.import_m3u8_playlist(file, name)?;
@@ -236,7 +233,7 @@ pub(crate) fn import_playlist_from_m3u8(
     save_library()
 }
 
-pub(crate) fn delete_playlists(playlists: Vec<String>) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn delete_playlists(playlists: Vec<String>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.remove_playlists(playlists)?;
@@ -245,7 +242,7 @@ pub(crate) fn delete_playlists(playlists: Vec<String>) -> Result<(), chilen_ipc:
     save_library()
 }
 
-pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.add_tracks(playlist, tracks)?;
@@ -255,7 +252,7 @@ pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), chi
 }
 
 /// Remove tracks by indices from a playlist.
-pub(crate) fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.remove_tracks(playlist, tracks)?;

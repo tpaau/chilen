@@ -4,12 +4,12 @@ use std::{
     time::Duration,
 };
 
-use chilen_ipc::playback::{LoopState, PlaybackState, PlayerVolume, SignedDuration};
 use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::playback::{
-    self, SUPPORTED_MIME_TYPES, open_uri,
+    self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
+    open_uri,
     state::{self, PLAYER_STATE},
 };
 
@@ -49,14 +49,14 @@ pub(crate) fn loop_state_from_mpris(loop_state: &mpris_server::LoopStatus) -> Lo
     }
 }
 
-fn get_error(playback_error: chilen_ipc::Error) -> MprisError {
+fn get_error(playback_error: Error) -> MprisError {
     match playback_error {
-        chilen_ipc::Error::SeekNotSupported => MprisError::NotSupported(playback_error.to_string()),
+        Error::SeekNotSupported => MprisError::NotSupported(playback_error.to_string()),
         _ => MprisError::Failed(playback_error.to_string()),
     }
 }
 
-fn get_response(result: Result<(), chilen_ipc::Error>) -> MprisResult<()> {
+fn get_response(result: Result<(), Error>) -> MprisResult<()> {
     match result {
         Ok(_) => Ok(()),
         Err(e) => Err(get_error(e)),
@@ -222,24 +222,11 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn rate(&self) -> MprisResult<mpris_server::PlaybackRate> {
-        match playback::get_rate() {
-            Ok(rate) => Ok(mpris_server::PlaybackRate::from(rate.get_value())),
-            Err(e) => Err(MprisError::Failed(format!(
-                "Cannot set the playback rate: {e}"
-            ))),
-        }
+        Ok(mpris_server::PlaybackRate::from(1))
     }
 
     async fn set_rate(&self, rate: mpris_server::PlaybackRate) -> mpris_server::zbus::Result<()> {
-        match playback::set_rate(rate) {
-            Ok(_) => Ok(()),
-            Err(e) => match e {
-                chilen_ipc::Error::FixedRate => Err(mpris_server::zbus::Error::Unsupported),
-                _ => Err(mpris_server::zbus::Error::Failure(format!(
-                    "Cannot set the playback rate: {e}"
-                ))),
-            },
-        }
+        Err(mpris_server::zbus::Error::Unsupported)
     }
 
     async fn shuffle(&self) -> MprisResult<bool> {
@@ -255,9 +242,7 @@ impl PlayerInterface for MprisInterface {
         match playback::set_shuffle_state(shuffle.into()) {
             Ok(_) => Ok(()),
             Err(e) => match e {
-                chilen_ipc::Error::ShuffleNotSupported => {
-                    Err(mpris_server::zbus::Error::Unsupported)
-                }
+                Error::ShuffleNotSupported => Err(mpris_server::zbus::Error::Unsupported),
                 _ => Err(mpris_server::zbus::Error::Failure(format!(
                     "Cannot set the shuffle state: {e}"
                 ))),
@@ -307,21 +292,11 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn minimum_rate(&self) -> MprisResult<mpris_server::PlaybackRate> {
-        match playback::get_rate() {
-            Ok(rate) => Ok(mpris_server::PlaybackRate::from(rate.get_min())),
-            Err(e) => Err(MprisError::Failed(format!(
-                "Cannot get the maximum playback rate: {e}"
-            ))),
-        }
+        Ok(mpris_server::PlaybackRate::from(1))
     }
 
     async fn maximum_rate(&self) -> MprisResult<mpris_server::PlaybackRate> {
-        match playback::get_rate() {
-            Ok(rate) => Ok(mpris_server::PlaybackRate::from(rate.get_max())),
-            Err(e) => Err(MprisError::Failed(format!(
-                "Cannot get the maximum playback rate: {e}"
-            ))),
-        }
+        Ok(mpris_server::PlaybackRate::from(1))
     }
 
     async fn can_go_next(&self) -> MprisResult<bool> {

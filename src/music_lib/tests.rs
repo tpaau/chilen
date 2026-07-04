@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
 #[cfg(test)]
-use crate::music_lib::{
-    Track,
-    state::{MusicLibrary, Playlist},
+use crate::{
+    Error,
+    music_lib::{
+        Track,
+        state::{MusicLibrary, Playlist},
+    },
 };
 
 #[cfg(test)]
@@ -83,7 +86,7 @@ fn playlist_creation() {
 
     assert_eq!(
         lib.create_playlist("Test1".to_string(), &None).unwrap_err(),
-        chilen_ipc::Error::PlaylistExists
+        Error::PlaylistExists
     );
     assert_eq!(lib.playlists.len(), 1);
     assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
@@ -91,7 +94,7 @@ fn playlist_creation() {
     assert_eq!(
         lib.create_playlist("Test2".to_string(), &Some(vec!["/nonexistent/path".into()]))
             .unwrap_err(),
-        chilen_ipc::Error::UnknownTrack
+        Error::UnknownTrack
     );
     assert_eq!(lib.playlists.len(), 1);
     assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
@@ -121,13 +124,13 @@ fn playlist_deletion() {
             "Test3".to_string()
         ])
         .unwrap_err(),
-        chilen_ipc::Error::DuplicateItems
+        Error::DuplicateItems
     );
     assert_eq!(lib.playlists.len(), 2);
 
     assert_eq!(
         lib.remove_playlists(vec!["Test1".to_string()]).unwrap_err(),
-        chilen_ipc::Error::UnknownPlaylist
+        Error::UnknownPlaylist
     );
     assert_eq!(lib.playlists.len(), 2);
 
@@ -150,12 +153,12 @@ fn track_append() {
     assert_eq!(
         lib.add_tracks("Test2", vec![tracks[0].path.clone()])
             .unwrap_err(),
-        chilen_ipc::Error::UnknownPlaylist
+        Error::UnknownPlaylist
     );
     assert_eq!(
         lib.add_tracks("Test1", vec!["/nonexistent/path".into()])
             .unwrap_err(),
-        chilen_ipc::Error::UnknownTrack
+        Error::UnknownTrack
     );
 }
 
@@ -177,10 +180,10 @@ fn lib_track_removal() {
     lib.remove_tracks("Test1", vec![0]).unwrap();
     assert_eq!(
         lib.remove_tracks("Test2", vec![1]).unwrap_err(),
-        chilen_ipc::Error::UnknownPlaylist
+        Error::UnknownPlaylist
     );
     assert_eq!(
         lib.remove_tracks("Test1", vec![2]).unwrap_err(),
-        chilen_ipc::Error::IndexOutOfBounds
+        Error::IndexOutOfBounds
     );
 }

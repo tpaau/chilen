@@ -7,16 +7,17 @@ use std::{
     time::Duration,
 };
 
-use chilen_ipc::playback::{LoopState, PlaybackRate, PlaybackState, PlayerVolume};
 use log::{error, trace};
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
-use chilen_ipc::playback::ShuffleState;
 use rand::seq::SliceRandom;
 
-use crate::music_lib::state::Track;
-use crate::music_lib::{CACHE_DIR, tracks_from_hashes};
+use crate::{
+    Error,
+    music_lib::{CACHE_DIR, state::Track, tracks_from_hashes},
+    playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
+};
 
 #[cfg(feature = "mpris")]
 use crate::playback::mpris;
@@ -36,11 +37,10 @@ pub(crate) struct PlayerState {
     pub shuffled_tracks: Vec<Track>,
     pub shuffle_state: ShuffleState,
     pub loop_state: LoopState,
-    pub playback_rate: PlaybackRate,
 }
 
 impl TryFrom<PlayerStateRaw> for PlayerState {
-    type Error = chilen_ipc::Error;
+    type Error = Error;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
         Ok(Self {
             position: value.position,
@@ -57,7 +57,6 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
                 .collect(),
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
-            playback_rate: value.playback_rate,
         })
     }
 }
@@ -98,11 +97,8 @@ impl PlayerState {
         vec![
             Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
             Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
-            Property::Rate(self.playback_rate.get_value()),
             Property::Shuffle(self.shuffle_state.into()),
             Property::Volume(self.player_volume.get()),
-            Property::MinimumRate(self.get_actual_min_rate()),
-            Property::MaximumRate(self.get_actual_max_rate()),
             Property::CanGoNext(self.can_go_next()),
             Property::CanGoPrevious(self.can_go_previous()),
             Property::CanPlay(self.can_play()),
@@ -118,28 +114,6 @@ impl PlayerState {
     #[cfg(feature = "mpris")]
     fn rate_modification_allowed() -> bool {
         false
-    }
-
-    /// Returns the minimum playback rate taking into account whether the playback rate
-    /// modification is allowed.
-    #[cfg(feature = "mpris")]
-    pub fn get_actual_min_rate(&self) -> f64 {
-        if Self::rate_modification_allowed() {
-            self.playback_rate.get_min()
-        } else {
-            self.playback_rate.get_value()
-        }
-    }
-
-    /// Returns the maximum playback rate taking into account whether the playback rate
-    /// modification is allowed.
-    #[cfg(feature = "mpris")]
-    pub fn get_actual_max_rate(&self) -> f64 {
-        if Self::rate_modification_allowed() {
-            self.playback_rate.get_max()
-        } else {
-            self.playback_rate.get_value()
-        }
     }
 
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
@@ -279,23 +253,6 @@ impl PlayerState {
                     Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
                     Property::CanGoPrevious(self.can_go_previous()),
                     Property::CanGoNext(self.can_go_next()),
-                ];
-                mpris::update_properties(properties);
-            }
-        }
-    }
-
-    pub fn set_rate(&mut self, rate: f64) {
-        if self.playback_rate.get_value() != rate {
-            self.playback_rate.set_value(rate);
-            #[cfg(feature = "mpris")]
-            {
-                use mpris_server::Property;
-
-                let properties = vec![
-                    Property::Rate(self.playback_rate.get_value()),
-                    Property::MinimumRate(self.get_actual_min_rate()),
-                    Property::MaximumRate(self.get_actual_max_rate()),
                 ];
                 mpris::update_properties(properties);
             }
@@ -498,7 +455,6 @@ struct PlayerStateRaw {
     shuffled_track_hashes: Vec<u64>,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
-    playback_rate: PlaybackRate,
 }
 
 impl From<PlayerState> for PlayerStateRaw {
@@ -513,7 +469,6 @@ impl From<PlayerState> for PlayerStateRaw {
             shuffled_track_hashes,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
-            playback_rate: value.playback_rate,
         }
     }
 }
@@ -527,21 +482,19 @@ static STATE_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 pub(crate) static PLAYER_STATE: LazyLock<Arc<RwLock<Option<PlayerState>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-pub(crate) fn unwrap_state_ref(
-    maybe_state: Option<&PlayerState>,
-) -> Result<&PlayerState, chilen_ipc::Error> {
+pub(crate) fn unwrap_state_ref(maybe_state: Option<&PlayerState>) -> Result<&PlayerState, Error> {
     match maybe_state {
         Some(state) => Ok(state),
-        None => Err(chilen_ipc::Error::StateNotInitialized),
+        None => Err(Error::StateNotInitialized),
     }
 }
 
 pub(crate) fn unwrap_state_mut(
     maybe_state: Option<&mut PlayerState>,
-) -> Result<&mut PlayerState, chilen_ipc::Error> {
+) -> Result<&mut PlayerState, Error> {
     match maybe_state {
         Some(state) => Ok(state),
-        None => Err(chilen_ipc::Error::StateNotInitialized),
+        None => Err(Error::StateNotInitialized),
     }
 }
 

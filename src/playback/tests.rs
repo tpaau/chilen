@@ -1,12 +1,9 @@
 use std::time::Duration;
 
-use chilen_ipc::playback::ShuffleState;
-use chilen_ipc::playback::{LoopState, PlaybackState};
-
 use crate::{
     music_lib::state::{Track, get_library},
     playback::{
-        PLAYER_HANDLE, set_queue,
+        LoopState, PLAYER_HANDLE, PlaybackState, ShuffleState, set_queue,
         state::{PLAYER_STATE, PlayerState},
     },
     tests::setup_test_env,

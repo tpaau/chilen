@@ -11,16 +11,13 @@ use std::{
     time::Duration,
 };
 
-use chilen_ipc::playback::LoopState;
-use chilen_ipc::playback::{
-    PlaybackRate, PlaybackState, PlayerVolume, ShuffleState, SignedDuration,
-};
 use log::{debug, error, info, trace, warn};
 use rodio::Player;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use crate::{
+    Error,
     music_lib::{state::Track, tracks_from_m3u8, tracks_from_paths},
     playback::state::{
         PLAYER_STATE, PlayerState, background_save_state, restore_state_from_cache,
@@ -28,45 +25,164 @@ use crate::{
     },
 };
 
-/// Configuration options specific to the [`playback`](crate::playback) module.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Config {
-    /// A friendly name to identify the media player to users (eg: “VLC media player”).
+/// Playback state of the player.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlaybackState {
+    /// The player is playing.
+    Playing,
+    /// The player is paused.
+    Paused,
+    /// The player is stopped.
     ///
-    /// This should usually match the name found in .desktop files.
-    #[cfg(any(feature = "mpris", doc))]
-    pub identity: String,
-    /// The bus name suffix to be used with MPRIS.
+    /// Playing will play the current track from the beginning.
+    #[default]
+    Stopped,
+}
+
+impl std::fmt::Display for PlaybackState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Playing => write!(f, "Playing"),
+            Self::Paused => write!(f, "Paused"),
+            Self::Stopped => write!(f, "Stopped"),
+        }
+    }
+}
+
+/// Specifies how the player loops playback.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LoopState {
+    /// The playback will stop when there are no more tracks to play.
+    #[default]
+    Off,
+    /// The current track will start again from the beginning once it has finished playing.
+    Track,
+    /// The playback will loop through the entire queue.
+    Playlist,
+}
+
+/// Shuffle state of the player.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ShuffleState {
+    /// Play tracks in their original order.
     ///
-    /// The resulting bus name will be `org.mpris.MediaPlayer2.<bus_name_suffix>`, where
-    /// `<bus_name_suffix>` must be a unique identifier, such as one based on a UNIX process id.
-    /// For example, this could be:
+    /// For example tracks from a playlist will be played in the order they appear in the playlist.
+    #[default]
+    Off,
+    /// Shuffle the tracks in the queue.
+    On,
+}
+
+impl From<ShuffleState> for bool {
+    fn from(s: ShuffleState) -> bool {
+        match s {
+            ShuffleState::Off => false,
+            ShuffleState::On => true,
+        }
+    }
+}
+
+impl From<bool> for ShuffleState {
+    fn from(value: bool) -> Self {
+        if value { Self::On } else { Self::Off }
+    }
+}
+
+impl std::fmt::Display for ShuffleState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::On => write!(f, "On"),
+        }
+    }
+}
+
+impl std::fmt::Display for LoopState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Off => write!(f, "Off"),
+            Self::Track => write!(f, "Track"),
+            Self::Playlist => write!(f, "Playlist"),
+        }
+    }
+}
+
+/// Signed duration type used for seeking.
+///
+/// This is just a bare bones type that should only be used for
+/// [seeking player position](PlaybackCommand::Seek), and not as a [`Duration`] replacement.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum SignedDuration {
+    Positive(Duration),
+    Negative(Duration),
+}
+
+impl SignedDuration {
+    pub fn from_secs<T: Into<i64> + Copy>(secs: T) -> SignedDuration {
+        if secs.into() < 0 {
+            SignedDuration::Negative(Duration::from_secs(secs.into().abs().try_into().unwrap()))
+        } else {
+            SignedDuration::Positive(Duration::from_secs(secs.into().abs().try_into().unwrap()))
+        }
+    }
+}
+
+/// Player volume.
+///
+/// Values passed to this struct will be clamped between `0.0` (no sound at all) and `1.0` (regular
+/// volume).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PlayerVolume {
+    volume: f64,
+}
+
+impl Default for PlayerVolume {
+    fn default() -> Self {
+        Self { volume: 1.0 }
+    }
+}
+
+impl std::fmt::Display for PlayerVolume {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Player volume: {}", self.volume)
+    }
+}
+
+impl PlayerVolume {
+    /// Create a new [`PlayerVolume`] struct with the specified volume.
     ///
-    /// - `org.mpris.MediaPlayer2.vlc.instance7389`
+    /// The passed `volume` parameter will be clamped between `0.0` and `1.0`.
+    pub fn new(volume: f64) -> Self {
+        Self {
+            volume: volume.clamp(0.0, 1.0),
+        }
+    }
+
+    /// Set the volume.
     ///
-    /// **Note:** According to the D-Bus specification, the unique identifier “must only contain
-    /// the ASCII characters \[A-Z\]\[a-z\]\[0-9\]_-” and “must not begin with a digit”.
-    #[cfg(any(feature = "mpris", doc))]
-    pub bus_name_suffix: String,
+    /// The passed `volume` parameter will be clamped between 0.0 and 1.0.
+    pub fn set(&mut self, volume: f64) {
+        self.volume = volume.clamp(0.0, 1.0);
+    }
+
+    /// Get the wrapped value.
+    pub fn get(&self) -> f64 {
+        self.volume
+    }
 }
 
 pub(crate) static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-pub(crate) static CONFIG: LazyLock<Arc<RwLock<Option<Config>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(None)));
-
-pub(crate) fn unwrap_player(
-    maybe_player: Option<&rodio::Player>,
-) -> Result<&rodio::Player, chilen_ipc::Error> {
+pub(crate) fn unwrap_player(maybe_player: Option<&rodio::Player>) -> Result<&rodio::Player, Error> {
     match maybe_player {
         Some(player) => Ok(player),
-        None => Err(chilen_ipc::Error::StateNotInitialized),
+        None => Err(Error::StateNotInitialized),
     }
 }
 
 /// Play the current track or a track at a specified index in the queue.
-pub(crate) fn play(index: Option<usize>) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn play(index: Option<usize>) -> Result<(), Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
     let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -77,14 +193,14 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), chilen_ipc::Error> {
             Some(track) => track,
             None => {
                 error!("No track at index {id}");
-                return Err(chilen_ipc::Error::NoTrackAtIndex(id));
+                return Err(Error::NoTrackAtIndex(id));
             }
         };
         let source = match track.open_source() {
             Ok(source) => source,
             Err(e) => {
                 error!("Could not open audio source: {e}");
-                return Err(chilen_ipc::Error::SourceError);
+                return Err(Error::SourceError);
             }
         };
         player.stop();
@@ -96,21 +212,21 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), chilen_ipc::Error> {
     } else {
         trace!("Playing the current media");
         if !player.is_paused() && !player.empty() {
-            Err(chilen_ipc::Error::PlayerPlaying)
+            Err(Error::PlayerPlaying)
         } else if player.empty() {
             if let Some(track) = state.current() {
                 let source = match track.open_source() {
                     Ok(source) => source,
                     Err(e) => {
                         error!("Could not open audio source: {e}");
-                        return Err(chilen_ipc::Error::SourceError);
+                        return Err(Error::SourceError);
                     }
                 };
                 player.append(source);
                 state.set_playback_state(PlaybackState::Playing);
                 Ok(())
             } else {
-                Err(chilen_ipc::Error::QueueEmpty)
+                Err(Error::QueueEmpty)
             }
         } else {
             player.play();
@@ -120,12 +236,12 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), chilen_ipc::Error> {
     }
 }
 
-pub(crate) fn pause() -> Result<(), chilen_ipc::Error> {
+pub(crate) fn pause() -> Result<(), Error> {
     trace!("Pausing the current media");
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = player_guard.as_ref().unwrap();
     if player.is_paused() {
-        Err(chilen_ipc::Error::PlayerPaused)
+        Err(Error::PlayerPaused)
     } else {
         // FIX: Audio popping by adding a 10ms fade out effect here
         // NOTE: This is a missing feature in Rodio, see https://github.com/RustAudio/rodio/issues/889
@@ -137,12 +253,12 @@ pub(crate) fn pause() -> Result<(), chilen_ipc::Error> {
     }
 }
 
-pub(crate) fn stop() -> Result<(), chilen_ipc::Error> {
+pub(crate) fn stop() -> Result<(), Error> {
     trace!("Stopping the playback");
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = player_guard.as_ref().unwrap();
     if player.empty() {
-        Err(chilen_ipc::Error::PlayerStopped)
+        Err(Error::PlayerStopped)
     } else {
         player.stop();
         let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -152,7 +268,7 @@ pub(crate) fn stop() -> Result<(), chilen_ipc::Error> {
     }
 }
 
-pub(crate) fn toggle_playing() -> Result<(), chilen_ipc::Error> {
+pub(crate) fn toggle_playing() -> Result<(), Error> {
     trace!("Toggling playback state");
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
@@ -172,13 +288,13 @@ pub(crate) fn toggle_playing() -> Result<(), chilen_ipc::Error> {
                 drop(state_guard);
                 play(Some(pos))
             } else {
-                Err(chilen_ipc::Error::QueueEmpty)
+                Err(Error::QueueEmpty)
             }
         }
     }
 }
 
-pub(crate) fn get_playback_state() -> Result<PlaybackState, chilen_ipc::Error> {
+pub(crate) fn get_playback_state() -> Result<PlaybackState, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.playback_state)
@@ -186,17 +302,17 @@ pub(crate) fn get_playback_state() -> Result<PlaybackState, chilen_ipc::Error> {
 
 // TEST: Add tests for this
 /// Opens a URI that can either be a track, a directory with tracks, or an M3U8 playlist file.
-pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn open_uri(uri: PathBuf) -> Result<(), Error> {
     trace!("Opening URI {uri:?}");
     match uri.try_exists() {
         Ok(exists) => {
             if !exists {
-                return Err(chilen_ipc::Error::PathDoesNotExist);
+                return Err(Error::PathDoesNotExist);
             }
         }
         Err(e) => {
             error!("Could not check if the URI {uri:?} exists: {e}");
-            return Err(chilen_ipc::Error::PathExistenceUnknown);
+            return Err(Error::PathExistenceUnknown);
         }
     }
     if uri.is_dir() {
@@ -226,7 +342,7 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
         }
         let tracks = tracks_from_paths(&files, true)?;
         if tracks.is_empty() {
-            Err(chilen_ipc::Error::DirectoryWithNoTracks)
+            Err(Error::DirectoryWithNoTracks)
         } else {
             set_queue(tracks)
         }
@@ -246,7 +362,7 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), chilen_ipc::Error> {
     }
 }
 
-pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), Error> {
     trace!("Setting a new queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -262,7 +378,7 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), chilen_ipc::Error> {
             Ok(source) => source,
             Err(e) => {
                 error!("Could not open audio source: {e}");
-                return Err(chilen_ipc::Error::SourceError);
+                return Err(Error::SourceError);
             }
         };
         player.append(source);
@@ -272,7 +388,7 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), chilen_ipc::Error> {
     Ok(())
 }
 
-pub(crate) fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), Error> {
     trace!("Appending tracks to queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -281,7 +397,7 @@ pub(crate) fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), chilen_ipc::
     Ok(())
 }
 
-pub(crate) fn get_current_track() -> Result<Option<Track>, chilen_ipc::Error> {
+pub(crate) fn get_current_track() -> Result<Option<Track>, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     match state.current() {
@@ -291,7 +407,7 @@ pub(crate) fn get_current_track() -> Result<Option<Track>, chilen_ipc::Error> {
 }
 
 #[cfg(feature = "mpris")]
-pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, chilen_ipc::Error> {
+pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     match state.current() {
@@ -300,7 +416,7 @@ pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, chile
     }
 }
 
-pub(crate) fn skip_next() -> Result<(), chilen_ipc::Error> {
+pub(crate) fn skip_next() -> Result<(), Error> {
     trace!("Skipping to the next track");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -310,7 +426,7 @@ pub(crate) fn skip_next() -> Result<(), chilen_ipc::Error> {
             Ok(source) => source,
             Err(e) => {
                 error!("Could not open audio source: {e}");
-                return Err(chilen_ipc::Error::SourceError);
+                return Err(Error::SourceError);
             }
         };
         background_save_state(state.clone());
@@ -324,14 +440,14 @@ pub(crate) fn skip_next() -> Result<(), chilen_ipc::Error> {
         Ok(())
     } else if state.is_empty() {
         info!("Cannot skip to the next track, queue is empty");
-        Err(chilen_ipc::Error::QueueEmpty)
+        Err(Error::QueueEmpty)
     } else {
         info!("Cannot skip to the next track");
-        Err(chilen_ipc::Error::CannotGoNext)
+        Err(Error::CannotGoNext)
     }
 }
 
-pub(crate) fn skip_previous() -> Result<(), chilen_ipc::Error> {
+pub(crate) fn skip_previous() -> Result<(), Error> {
     trace!("Skipping to the previous track");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -341,7 +457,7 @@ pub(crate) fn skip_previous() -> Result<(), chilen_ipc::Error> {
             Ok(source) => source,
             Err(e) => {
                 error!("Could not open audio source: {e}");
-                return Err(chilen_ipc::Error::SourceError);
+                return Err(Error::SourceError);
             }
         };
         background_save_state(state.clone());
@@ -355,14 +471,14 @@ pub(crate) fn skip_previous() -> Result<(), chilen_ipc::Error> {
         Ok(())
     } else if state.is_empty() {
         info!("Cannot go to the previous track, queue is empty");
-        Err(chilen_ipc::Error::QueueEmpty)
+        Err(Error::QueueEmpty)
     } else {
         info!("Cannot go to the previous track");
-        Err(chilen_ipc::Error::CannotGoPrevious)
+        Err(Error::CannotGoPrevious)
     }
 }
 
-pub(crate) fn set_loop_state(loop_state: LoopState) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn set_loop_state(loop_state: LoopState) -> Result<(), Error> {
     trace!("Setting loop state to {loop_state:?}");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -371,34 +487,13 @@ pub(crate) fn set_loop_state(loop_state: LoopState) -> Result<(), chilen_ipc::Er
     Ok(())
 }
 
-pub(crate) fn get_loop_state() -> Result<LoopState, chilen_ipc::Error> {
+pub(crate) fn get_loop_state() -> Result<LoopState, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.loop_state)
 }
 
-pub(crate) fn set_rate(rate: f64) -> Result<(), chilen_ipc::Error> {
-    let mut state_guard = PLAYER_STATE.write().unwrap();
-    let state = unwrap_state_mut(state_guard.as_mut())?;
-    if !state.playback_rate.is_in_range(rate) {
-        Err(chilen_ipc::Error::RateOutOfRange)
-    } else {
-        let player_guard = PLAYER_HANDLE.read().unwrap();
-        let player = unwrap_player(player_guard.as_ref())?;
-        player.set_speed(PlaybackRate::from(rate).get_value_f32());
-        state.set_rate(rate);
-        background_save_state(state.clone());
-        Ok(())
-    }
-}
-
-pub(crate) fn get_rate() -> Result<PlaybackRate, chilen_ipc::Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.playback_rate)
-}
-
-pub(crate) fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), Error> {
     trace!("Setting shuffle state to {shuffle_state:?}");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -408,29 +503,29 @@ pub(crate) fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), chile
     Ok(())
 }
 
-pub(crate) fn get_shuffle_state() -> Result<ShuffleState, chilen_ipc::Error> {
+pub(crate) fn get_shuffle_state() -> Result<ShuffleState, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.shuffle_state)
 }
 
-pub(crate) fn set_player_position(position: Duration) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn set_player_position(position: Duration) -> Result<(), Error> {
     trace!("Setting player position to {:?}", position.as_secs());
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     if state.playback_state == PlaybackState::Stopped {
-        return Err(chilen_ipc::Error::PlayerStopped);
+        return Err(Error::PlayerStopped);
     }
     let player = match player_guard.as_ref() {
         Some(player) => player,
         None => {
             warn!("Cannot set player position, player is not connected");
-            return Err(chilen_ipc::Error::PlayerNotConnected);
+            return Err(Error::PlayerNotConnected);
         }
     };
     if player.empty() {
-        Err(chilen_ipc::Error::QueueEmpty)
+        Err(Error::QueueEmpty)
     } else if let Some(track) = state.current()
         && position > track.duration
     {
@@ -440,7 +535,7 @@ pub(crate) fn set_player_position(position: Duration) -> Result<(), chilen_ipc::
         // Prevent MPRIS from showing incorrect data if seek is not supported
         #[cfg(feature = "mpris")]
         mpris::set_position(state.player_position);
-        Err(chilen_ipc::Error::SeekNotSupported)
+        Err(Error::SeekNotSupported)
     } else {
         state.set_player_position(position);
         Ok(())
@@ -487,13 +582,13 @@ static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
 });
 
 // FIX: Sometimes the MPRIS track metadata remains after the track switches in a seek operation
-pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn seek(delta: SignedDuration) -> Result<(), Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {
         Some(player) => player,
         None => {
             warn!("Cannot seek, the player is not connected");
-            return Err(chilen_ipc::Error::PlayerNotConnected);
+            return Err(Error::PlayerNotConnected);
         }
     };
     let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -502,13 +597,13 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
         SignedDuration::Positive(positive_dur) => {
             if positive_dur == Duration::default() {
                 info!("Refusing to seek by 0s");
-                return Err(chilen_ipc::Error::InvalidDuration);
+                return Err(Error::InvalidDuration);
             }
             let sum = match positive_dur.checked_add(player.get_pos()) {
                 Some(sum) => sum,
                 None => {
                     error!("Overflow detected while seeking, aborting");
-                    return Err(chilen_ipc::Error::DurationOverflow);
+                    return Err(Error::DurationOverflow);
                 }
             };
             if let Some(track) = state.current()
@@ -524,14 +619,14 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
         SignedDuration::Negative(negative_dur) => {
             if negative_dur == Duration::default() {
                 info!("Refusing to seek by 0s");
-                return Err(chilen_ipc::Error::InvalidDuration);
+                return Err(Error::InvalidDuration);
             }
             trace!("Seeking player by -{negative_dur:?}");
             let sub = match player.get_pos().checked_sub(negative_dur) {
                 Some(sub) => sub,
                 None => {
                     error!("Overflow detected while seeking");
-                    return Err(chilen_ipc::Error::DurationOverflow);
+                    return Err(Error::DurationOverflow);
                 }
             };
             if sub < *SEEK_ROUND_THRESHOLD {
@@ -543,20 +638,20 @@ pub(crate) fn seek(delta: SignedDuration) -> Result<(), chilen_ipc::Error> {
     };
     if let Err(e) = player.try_seek(pos) {
         error!("Could not set player position: {e}");
-        Err(chilen_ipc::Error::SeekNotSupported)
+        Err(Error::SeekNotSupported)
     } else {
         state.set_player_position(pos);
         Ok(())
     }
 }
 
-pub(crate) fn get_player_position() -> Result<Duration, chilen_ipc::Error> {
+pub(crate) fn get_player_position() -> Result<Duration, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.player_position)
 }
 
-pub(crate) fn set_player_volume(volume: PlayerVolume) -> Result<(), chilen_ipc::Error> {
+pub(crate) fn set_player_volume(volume: PlayerVolume) -> Result<(), Error> {
     trace!("Setting player volume to {:?}", volume);
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
@@ -568,7 +663,7 @@ pub(crate) fn set_player_volume(volume: PlayerVolume) -> Result<(), chilen_ipc::
     Ok(())
 }
 
-pub(crate) fn get_player_volume() -> Result<PlayerVolume, chilen_ipc::Error> {
+pub(crate) fn get_player_volume() -> Result<PlayerVolume, Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
     Ok(PlayerVolume::new(player.volume()))
@@ -640,7 +735,6 @@ pub(crate) fn init(
         state.player_position = Duration::default();
         player.append(source);
         player.pause();
-        player.set_speed(state.playback_rate.get_value_f32());
         drop(player_guard);
     }
     drop(state_guard);
@@ -687,28 +781,28 @@ pub(crate) fn init(
 }
 
 #[cfg(feature = "mpris")]
-pub(crate) fn can_play() -> Result<bool, chilen_ipc::Error> {
+pub(crate) fn can_play() -> Result<bool, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.can_play())
 }
 
 #[cfg(feature = "mpris")]
-pub(crate) fn can_pause() -> Result<bool, chilen_ipc::Error> {
+pub(crate) fn can_pause() -> Result<bool, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.playback_state == PlaybackState::Playing)
 }
 
 #[cfg(feature = "mpris")]
-pub(crate) fn can_go_next() -> Result<bool, chilen_ipc::Error> {
+pub(crate) fn can_go_next() -> Result<bool, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.can_go_next())
 }
 
 #[cfg(feature = "mpris")]
-pub(crate) fn can_go_previous() -> Result<bool, chilen_ipc::Error> {
+pub(crate) fn can_go_previous() -> Result<bool, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.can_go_previous())

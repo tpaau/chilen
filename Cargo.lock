@@ -584,7 +584,6 @@ name = "chilen"
 version = "0.1.0"
 dependencies = [
  "chilen_daemon",
- "chilen_ipc",
  "clap",
  "dirs",
  "env_logger",

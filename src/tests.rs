@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use chilen_ipc::playback::PlayerVolume;
 use rodio::Player;
 
 use crate::{
@@ -11,7 +10,7 @@ use crate::{
         state::{MUSIC_LIBRARY, MusicLibrary},
     },
     playback::{
-        PLAYER_HANDLE,
+        PLAYER_HANDLE, PlayerVolume,
         state::{PLAYER_STATE, PlayerState},
     },
 };

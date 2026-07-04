@@ -8,9 +8,12 @@ use lofty::{file::TaggedFileExt, read_from_path};
 use log::{info, trace, warn};
 use walkdir::WalkDir;
 
-use crate::music_lib::{MUSIC_DIR, Track, covers::LoadMode};
+use crate::{
+    Error,
+    music_lib::{MUSIC_DIR, Track, covers::LoadMode},
+};
 
-fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, chilen_ipc::Error> {
+fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, Error> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
 
@@ -76,7 +79,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, c
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, chilen_ipc::Error> {
+pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, Error> {
     let music_dir = MUSIC_DIR.read().unwrap().clone().unwrap();
 
     trace!("Indexing directory: {music_dir:?}");
