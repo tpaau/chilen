@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     daemon_thread::ThreadCommand,
-    handler::{Request, send_request},
+    handler::Request,
     music_lib::{
         CACHE_DIR,
         covers::LoadMode,
@@ -146,6 +146,7 @@ impl std::fmt::Display for ConfigError {
     }
 }
 
+// TODO: Move this and other config-related stuff to a separate module
 // TODO: Add a config option for reshuffling tracks on playlist repeat or something, will figure it out
 /// Configuration options for the daemon.
 ///

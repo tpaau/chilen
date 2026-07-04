@@ -20,6 +20,9 @@
 //! If you are creating an app that connects to an external Chilen daemon as a frontend then you
 //! won't be able to receive [requests](Request) from it.
 
+// TODO: Is this module really necessary? Can't we just move state here and have `fullscreen` and
+// `set_fullscreen` in `lib.rs`???
+
 pub(crate) mod state;
 
 use std::{
