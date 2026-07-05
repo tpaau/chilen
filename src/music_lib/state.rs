@@ -21,7 +21,7 @@ use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Error,
+    Error, gui,
     music_lib::{
         DATA_DIR,
         covers::{CoverError, LoadMode, get_track_cover},
@@ -449,6 +449,15 @@ impl MusicLibrary {
         });
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(name, playlist);
+        gui::playlist_view::send_event(gui::playlist_view::Event::PlaylistsChanged(
+            self.playlists
+                .iter()
+                .map(|p| gui::playlist_view::Playlist {
+                    name: p.name.clone(),
+                    num_tracks: p.tracks.len(),
+                })
+                .collect(),
+        ));
         Ok(())
     }
 
@@ -589,6 +598,11 @@ pub(crate) fn unwrap_lib_mut(
 pub(crate) fn get_library() -> Result<MusicLibrary, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     unwrap_lib_ref(guard.as_ref()).cloned()
+}
+
+pub(crate) fn get_playlists() -> Result<Vec<Arc<Playlist>>, Error> {
+    let lib = get_library()?;
+    Ok(lib.playlists.into_iter().collect())
 }
 
 /// Save the library state to a file.

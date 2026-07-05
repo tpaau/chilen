@@ -111,11 +111,6 @@ impl PlayerState {
         ]
     }
 
-    #[cfg(feature = "mpris")]
-    fn rate_modification_allowed() -> bool {
-        false
-    }
-
     pub fn set_tracks(&mut self, tracks: Vec<Track>) {
         self.position = 0;
         self.tracks = tracks;

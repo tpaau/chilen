@@ -5,11 +5,11 @@ mod playback;
 #[cfg(test)]
 mod tests;
 
-use std::{env::home_dir, process::exit};
+use std::{env::home_dir, process::exit, thread};
 
 use dirs::{cache_dir, data_dir};
 
-use log::error;
+use log::{error, info};
 
 use crate::{
     argparse::parse_args,
@@ -21,22 +21,6 @@ use crate::{
 /// Can either originate from a [`Response`] or from a function in this crate.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
-    /// The provided command could not be encoded.
-    EncodingError,
-    /// The daemon response could not be decoded.
-    DecodingError,
-    /// Could not connect to the daemon.
-    ConnectionError,
-    /// Could not send the command to the daemon.
-    SendingError,
-    /// The response received from the daemon was unexpected or invalid.
-    InvalidResponse,
-    /// Could not obtain a socket.
-    SocketError(String),
-    /// Raise requests from external clients are not allowed.
-    RaiseDisabled,
-    /// Toggling fullscreen mode by external clients is not allowed.
-    SetFullscreenDisabled,
     /// Quit requests from external clients are not allowed.
     QuitDisabled,
     /// The audio player is not connected.
@@ -130,21 +114,6 @@ impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EncodingError => write!(f, "Could not encode the daemon command"),
-            Self::DecodingError => write!(f, "Could not decode the response from the daemon"),
-            Self::ConnectionError => write!(f, "Could not connect to the daemon"),
-            Self::SendingError => write!(f, "Could not send the command to the daemon"),
-            Self::InvalidResponse => {
-                write!(f, "The response from the daemon was invalid or malformed")
-            }
-            Self::SocketError(e) => write!(f, "Could not obtain a socket: {e}"),
-            Self::RaiseDisabled => {
-                write!(f, "Raise requests from external clients are not allowed")
-            }
-            Self::SetFullscreenDisabled => write!(
-                f,
-                "Toggling fullscreen mode by external clients is not allowed"
-            ),
             Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
             Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
             Self::StateNotInitialized => write!(f, "The playback state is not initialized"),
@@ -238,13 +207,25 @@ fn main() {
         }
     };
     set_dirs(data_dir, cache_dir, music_dir).unwrap();
-    music_lib::state::load(LoadMode::Load).unwrap();
-    playback::init(
-        #[cfg(feature = "mpris")]
-        "Chilen".to_string(),
-        #[cfg(feature = "mpris")]
-        "dev.tpaau.Chilen".to_string(),
-    );
+    if let Err(e) = music_lib::state::load(LoadMode::Load) {
+        error!("Could not load the music library: {e}");
+        exit(1)
+    }
 
-    gui::start().unwrap();
+    thread::spawn(|| {
+        playback::init(
+            #[cfg(feature = "mpris")]
+            "Chilen".to_string(),
+            #[cfg(feature = "mpris")]
+            "dev.tpaau.Chilen".to_string(),
+        );
+    });
+
+    match gui::start() {
+        Ok(_) => info!("Main window closed, exiting"),
+        Err(e) => {
+            error!("GUI stopped unexpectedly: {e}");
+            exit(1);
+        }
+    }
 }

@@ -742,6 +742,8 @@ pub(crate) fn init(
     #[cfg(feature = "mpris")]
     mpris::launch_server(identity, bus_name_suffix);
 
+    trace!("Playback module initialized");
+
     let mut initial_iter = true;
     let sleep_duration = Duration::from_millis(100);
     loop {
