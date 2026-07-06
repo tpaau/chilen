@@ -9,7 +9,6 @@ license = "GPL-3.0-or-later"
 env_logger = "0.11.10"
 log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
-chilen_daemon = { path = "chilen_daemon", default-features = false, features = [ "shuffle" ] }
 # TODO: Use a lighter setup instead
 rmp-serde = "1.3.1"
 serde = { version = "1.0.228", features = [ "derive" ] }
@@ -18,7 +17,7 @@ iced = { version = "0.14.0" }
 lofty = "0.24.0"
 walkdir = "2.5.0"
 m3u8 = { path = "m3u8" }
-rodio = "0.22.2"
+rodio = { version = "0.22.2", features = [ "64bit" ] }
 rand = "0.10.2"
 mpris-server = "0.10.0"
 lrc_rs = { version = "0.1.3", default-features = false, features = [ "parser" ] }

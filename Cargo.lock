@@ -583,16 +583,15 @@ dependencies = [
 name = "chilen"
 version = "0.1.0"
 dependencies = [
- "chilen_daemon",
  "clap",
  "dirs",
  "env_logger",
  "iced",
- "lofty 0.24.0",
+ "lofty",
  "log",
  "lrc_rs",
  "m3u8",
- "mpris-server 0.10.0",
+ "mpris-server",
  "rand",
  "rmp-serde",
  "rodio",
@@ -600,37 +599,6 @@ dependencies = [
  "serde_json",
  "smol",
  "walkdir",
-]
-
-[[package]]
-name = "chilen_daemon"
-version = "0.1.0"
-dependencies = [
- "chilen_ipc",
- "interprocess",
- "lofty 0.22.4",
- "log",
- "lrc_rs",
- "m3u8",
- "mpris-server 0.9.0",
- "nom",
- "rand",
- "rmp-serde",
- "rodio",
- "serde",
- "smol",
- "walkdir",
-]
-
-[[package]]
-name = "chilen_ipc"
-version = "0.1.0"
-dependencies = [
- "interprocess",
- "log",
- "lrc_rs",
- "rmp-serde",
- "serde",
 ]
 
 [[package]]
@@ -998,12 +966,6 @@ checksum = "ab8ecd87370524b461f8557c119c405552c396ed91fc0a8eec68679eab26f94a"
 dependencies = [
  "libloading",
 ]
-
-[[package]]
-name = "doctest-file"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aac81fa3e28d21450aa4d2ac065992ba96a1d7303efbce51a95f4fd175b67562"
 
 [[package]]
 name = "document-features"
@@ -1765,19 +1727,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "interprocess"
-version = "2.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d941b405bd2322993887859a8ee6ac9134945a24ec5ec763a8a962fc64dfec2d"
-dependencies = [
- "doctest-file",
- "libc",
- "recvmsg",
- "widestring",
- "windows-sys 0.52.0",
-]
-
-[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1972,21 +1921,6 @@ dependencies = [
 
 [[package]]
 name = "lofty"
-version = "0.22.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca260c51a9c71f823fbfd2e6fbc8eb2ee09834b98c00763d877ca8bfa85cde3e"
-dependencies = [
- "byteorder",
- "data-encoding",
- "flate2",
- "lofty_attr 0.11.1",
- "log",
- "ogg_pager",
- "paste",
-]
-
-[[package]]
-name = "lofty"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dec4feeff6c7d75093278133a06e827d7af6d2bfe20b0f331f9d10338a5ec7ca"
@@ -1994,21 +1928,10 @@ dependencies = [
  "byteorder",
  "data-encoding",
  "flate2",
- "lofty_attr 0.12.0",
+ "lofty_attr",
  "log",
  "ogg_pager",
  "paste",
-]
-
-[[package]]
-name = "lofty_attr"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed9983e64b2358522f745c1251924e3ab7252d55637e80f6a0a3de642d6a9efc"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -2035,7 +1958,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5cde06005c53a8fcf5316f8de1a56d6b56217483b96cf0f5558027957cbf7860"
 dependencies = [
  "nom",
- "serde",
 ]
 
 [[package]]
@@ -2118,19 +2040,6 @@ checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
  "simd-adler32",
-]
-
-[[package]]
-name = "mpris-server"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "392ce2be7224867869df37e473f28871ab0ff725c0014f1b196ba56a38aea9a8"
-dependencies = [
- "async-channel",
- "futures-channel",
- "serde",
- "trait-variant",
- "zbus",
 ]
 
 [[package]]
@@ -3052,12 +2961,6 @@ dependencies = [
  "core_maths",
  "font-types",
 ]
-
-[[package]]
-name = "recvmsg"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3edd4d5d42c92f0a659926464d4cce56b562761267ecf0f469d85b7de384175"
 
 [[package]]
 name = "redox_syscall"
@@ -4426,12 +4329,6 @@ dependencies = [
  "thiserror 2.0.17",
  "web-sys",
 ]
-
-[[package]]
-name = "widestring"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72069c3113ab32ab29e5584db3c6ec55d416895e60715417b5b883a357c3e471"
 
 [[package]]
 name = "winapi"
