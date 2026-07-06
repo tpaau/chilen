@@ -16,14 +16,14 @@ pub enum Message {
 
 #[derive(Default)]
 struct State {
-    playlists: Vec<playlist_view::Playlist>,
+    playlist_state: playlist_view::State,
 }
 
 fn view(state: &State) -> Element<'_, Message> {
     column([
         top_bar::view(&()).map(Message::TopBar),
         row([
-            container(playlist_view::view(&state.playlists).map(Message::Playlist))
+            container(playlist_view::view(&state.playlist_state).map(Message::Playlist))
                 .style(|_| container::background(Background::Color(Color::from_rgb(1.0, 0.0, 0.0))))
                 .width(Length::Fixed(300.0))
                 .height(Length::Fill)
@@ -47,7 +47,7 @@ fn view(state: &State) -> Element<'_, Message> {
 fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::Playlist(msg) => {
-            playlist_view::update(&mut state.playlists, msg).map(Message::Playlist)
+            playlist_view::update(&mut state.playlist_state, msg).map(Message::Playlist)
         }
         Message::TopBar(msg) => top_bar::update((), msg).map(Message::TopBar),
     }

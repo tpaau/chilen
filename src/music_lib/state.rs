@@ -5,12 +5,14 @@ use std::{
     io::{BufReader, Write},
     path::{Path, PathBuf},
     sync::{Arc, LazyLock, RwLock},
+    thread,
     time::{Duration, SystemTime},
 };
 
+use chilen_daemon::handler::send_event;
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
-    tag::{Accessor, ItemValue, Tag},
+    tag::{Accessor, ItemValue, Tag, items::Timestamp},
 };
 use log::{error, trace};
 use lrc_rs::SyncedLyrics;
@@ -30,7 +32,7 @@ use crate::{
     },
 };
 
-/// Lyrics data. Can be either synced or unsynced.
+/// Lyrics data, can be either synced or unsynced.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Lyrics {
     /// Synced lyrics parsed from the LRC format.
@@ -54,8 +56,7 @@ pub(crate) struct Track {
     pub track_total: Option<u32>,
     pub disc: Option<u32>,
     pub disc_total: Option<u32>,
-    // TODO: Date
-    // pub year: Option<u32>,
+    pub date: Option<Timestamp>,
 }
 
 impl std::fmt::Display for Track {
@@ -110,6 +111,7 @@ impl TryFrom<&TaggedFile> for Track {
             track_total: tag.track_total(),
             disc: tag.disk(),
             disc_total: tag.disk_total(),
+            date: tag.date(),
         })
     }
 }
@@ -228,6 +230,7 @@ impl Track {
             disc: None,
             disc_total: None,
             lyrics: None,
+            date: None,
         }
     }
 
@@ -712,6 +715,20 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
         trace!("The library file does not exist, creating a new library");
         *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
     }
+    gui::playlist_view::send_event(gui::playlist_view::Event::PlaylistsChanged(
+        MUSIC_LIBRARY
+            .read()
+            .unwrap()
+            .as_ref()
+            .unwrap()
+            .playlists
+            .iter()
+            .map(|p| gui::playlist_view::Playlist {
+                name: p.name.clone(),
+                num_tracks: p.tracks.len(),
+            })
+            .collect(),
+    ));
     save_library()?;
 
     let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));

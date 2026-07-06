@@ -206,11 +206,17 @@ fn main() {
             dir
         }
     };
-    set_dirs(data_dir, cache_dir, music_dir).unwrap();
-    if let Err(e) = music_lib::state::load(LoadMode::Load) {
-        error!("Could not load the music library: {e}");
-        exit(1)
-    }
+
+    thread::spawn(|| {
+        if let Err(e) = set_dirs(data_dir, cache_dir, music_dir) {
+            error!("Could not set the initial directories: {e}");
+            exit(1)
+        }
+        if let Err(e) = music_lib::state::load(LoadMode::Load) {
+            error!("Could not load the music library: {e}");
+            exit(1)
+        }
+    });
 
     thread::spawn(|| {
         playback::init(

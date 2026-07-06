@@ -8,11 +8,25 @@ use iced::{
 };
 use log::error;
 
-use crate::music_lib::{create_playlist, state::get_playlists};
+use crate::music_lib::create_playlist;
 
 #[derive(Debug, Clone)]
 pub enum Event {
     PlaylistsChanged(Vec<Playlist>),
+}
+
+#[derive(Default)]
+pub enum LoadingState {
+    #[default]
+    Loading,
+    Error(String),
+    Loaded,
+}
+
+#[derive(Default)]
+pub struct State {
+    pub playlists: Vec<Playlist>,
+    pub loading_state: LoadingState,
 }
 
 #[derive(Debug, Clone)]
@@ -48,25 +62,6 @@ fn playlist_worker() -> impl Stream<Item = Event> {
         let (sender, mut receiver) = mpsc::channel(128);
         *EVENT_SENDER.write().unwrap() = Some(sender);
 
-        let playlists = match get_playlists() {
-            Ok(p) => p
-                .into_iter()
-                .map(|p| Playlist {
-                    name: p.name.clone(),
-                    num_tracks: p.tracks.len(),
-                })
-                .collect::<Vec<_>>(),
-            Err(e) => {
-                error!("Couldn't get the playlists from the library: {e}");
-                return;
-            }
-        };
-
-        if let Err(e) = out.send(Event::PlaylistsChanged(playlists)).await {
-            error!("Could not send the event, aborting: {e}");
-            return;
-        }
-
         loop {
             let input = receiver.select_next_some().await;
             if let Err(e) = out.send(input).await {
@@ -81,23 +76,30 @@ pub fn subscription() -> Subscription<Event> {
     Subscription::run(playlist_worker)
 }
 
-pub fn view(state: &[Playlist]) -> Element<'_, Message> {
-    column![
-        column(
-            state
-                .iter()
-                .map(|p| text!("Playlist \"{}\", tracks: {}", p.name, p.num_tracks).into())
-        )
-        .padding(12),
-        button("Hello!").on_press(Message::Create)
-    ]
-    .into()
+pub fn view(state: &State) -> Element<'_, Message> {
+    match &state.loading_state {
+        LoadingState::Loading => text!("Loading...").into(),
+        LoadingState::Error(e) => text!("Loading failed: {e}").into(),
+        LoadingState::Loaded => column![
+            column(
+                state.playlists.iter().map(|p| text!(
+                    "Playlist \"{}\", tracks: {}",
+                    p.name,
+                    p.num_tracks
+                )
+                .into())
+            )
+            .padding(12),
+            button("Hello!").on_press(Message::Create)
+        ]
+        .into(),
+    }
 }
 
-pub fn update(state: &mut Vec<Playlist>, message: Message) -> Task<Message> {
+pub fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::Create => {
-            if let Err(e) = create_playlist(format!("Hello {}", state.len()), &None) {
+            if let Err(e) = create_playlist(format!("Hello {}", state.playlists.len()), &None) {
                 error!(
                     "Could not create a playlist, this shouldn't happen in the finished app: {e}"
                 );
@@ -106,7 +108,8 @@ pub fn update(state: &mut Vec<Playlist>, message: Message) -> Task<Message> {
         }
         Message::Event(event) => match event {
             Event::PlaylistsChanged(playlists) => {
-                *state = playlists;
+                state.loading_state = LoadingState::Loaded;
+                state.playlists = playlists;
                 Task::none()
             }
         },
