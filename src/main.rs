@@ -21,8 +21,6 @@ use crate::{
 /// Can either originate from a [`Response`] or from a function in this crate.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
-    /// Quit requests from external clients are not allowed.
-    QuitDisabled,
     /// The audio player is not connected.
     ///
     /// This may happen if the device doesn't have an audio device or none of the audio devices are
@@ -56,14 +54,8 @@ pub enum Error {
     /// This means that the current track is last in the queue and the
     /// [loop state](playback::LoopState) is set to [`LoopState::Off`](playback::LoopState).
     CannotGoNext,
-    /// The daemon was not built with shuffle support.
-    ShuffleNotSupported,
     /// No track at this index.
     NoTrackAtIndex(usize),
-    /// The specified rate value was out of the allowed range.
-    RateOutOfRange,
-    /// The modification of the playback rate is not allowed.
-    FixedRate,
     /// The player position could not be set because the duration provided was invalid.
     ///
     /// The player will additionally refuse to seek by 0s to prevent audio popping.
@@ -114,7 +106,6 @@ impl std::error::Error for Error {}
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::QuitDisabled => write!(f, "Quit requests from external clients are not allowed"),
             Self::PlayerNotConnected => write!(f, "The audio player is not connected"),
             Self::StateNotInitialized => write!(f, "The playback state is not initialized"),
             Self::QueueEmpty => write!(f, "The queue is empty"),
@@ -128,12 +119,7 @@ impl std::fmt::Display for Error {
             Self::SeekNotSupported => write!(f, "Seek is not supported"),
             Self::CannotGoPrevious => write!(f, "Cannot go to the previous track"),
             Self::CannotGoNext => write!(f, "Cannot go to the next track"),
-            Self::ShuffleNotSupported => write!(f, "The daemon was not built with shuffle support"),
             Self::NoTrackAtIndex(index) => write!(f, "No track was found at index {index}"),
-            Self::RateOutOfRange => {
-                write!(f, "The specified rate value was out of the allowed range")
-            }
-            Self::FixedRate => write!(f, "The modification of the playback rate is disallowed"),
             Self::InvalidDuration => write!(
                 f,
                 "The player position could not be set because the duration provided was invalid"

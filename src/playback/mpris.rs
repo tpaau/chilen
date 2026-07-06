@@ -241,12 +241,9 @@ impl PlayerInterface for MprisInterface {
     async fn set_shuffle(&self, shuffle: bool) -> mpris_server::zbus::Result<()> {
         match playback::set_shuffle_state(shuffle.into()) {
             Ok(_) => Ok(()),
-            Err(e) => match e {
-                Error::ShuffleNotSupported => Err(mpris_server::zbus::Error::Unsupported),
-                _ => Err(mpris_server::zbus::Error::Failure(format!(
-                    "Cannot set the shuffle state: {e}"
-                ))),
-            },
+            Err(e) => Err(mpris_server::zbus::Error::Failure(format!(
+                "Cannot set the shuffle state: {e}"
+            ))),
         }
     }
 
