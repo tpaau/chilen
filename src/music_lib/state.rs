@@ -5,11 +5,9 @@ use std::{
     io::{BufReader, Write},
     path::{Path, PathBuf},
     sync::{Arc, LazyLock, RwLock},
-    thread,
     time::{Duration, SystemTime},
 };
 
-use chilen_daemon::handler::send_event;
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, Tag, items::Timestamp},
@@ -653,6 +651,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
     let tracks = match indexer::index(load_mode) {
         Ok(tracks) => tracks,
         Err(e) => {
+            gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(e.to_string()));
             return Err(e);
         }
     };
@@ -672,6 +671,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library exists: {e}");
+            gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(e.to_string()));
             return Err(Error::StateNotReadable);
         }
     };
@@ -681,6 +681,9 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
 
         if !library_state.is_file() {
             error!("The item at {library_state:?} must be a file!");
+            gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(format!(
+                "The item at {library_state:?} must be a file!"
+            )));
             return Err(Error::StateNotAFile);
         }
 
@@ -688,6 +691,9 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library: {e}");
+                gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(
+                    e.to_string(),
+                ));
                 return Err(Error::StateNotReadable);
             }
         };

@@ -13,13 +13,14 @@ use crate::music_lib::create_playlist;
 #[derive(Debug, Clone)]
 pub enum Event {
     PlaylistsChanged(Vec<Playlist>),
+    LoadFailed(String),
 }
 
 #[derive(Default)]
 pub enum LoadingState {
     #[default]
     Loading,
-    Error(String),
+    Failed(String),
     Loaded,
 }
 
@@ -79,7 +80,7 @@ pub fn subscription() -> Subscription<Event> {
 pub fn view(state: &State) -> Element<'_, Message> {
     match &state.loading_state {
         LoadingState::Loading => text!("Loading...").into(),
-        LoadingState::Error(e) => text!("Loading failed: {e}").into(),
+        LoadingState::Failed(e) => text!("Loading failed: {e}").into(),
         LoadingState::Loaded => column![
             column(
                 state.playlists.iter().map(|p| text!(
@@ -110,6 +111,10 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             Event::PlaylistsChanged(playlists) => {
                 state.loading_state = LoadingState::Loaded;
                 state.playlists = playlists;
+                Task::none()
+            }
+            Event::LoadFailed(e) => {
+                state.loading_state = LoadingState::Failed(e);
                 Task::none()
             }
         },

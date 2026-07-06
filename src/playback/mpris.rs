@@ -225,7 +225,7 @@ impl PlayerInterface for MprisInterface {
         Ok(mpris_server::PlaybackRate::from(1))
     }
 
-    async fn set_rate(&self, rate: mpris_server::PlaybackRate) -> mpris_server::zbus::Result<()> {
+    async fn set_rate(&self, _rate: mpris_server::PlaybackRate) -> mpris_server::zbus::Result<()> {
         Err(mpris_server::zbus::Error::Unsupported)
     }
 
