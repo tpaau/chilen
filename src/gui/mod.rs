@@ -15,6 +15,7 @@ use iced::{
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
+    window,
 };
 use log::{error, trace};
 
@@ -32,6 +33,7 @@ pub(super) enum Event {
     MusicLibraryChanged(Box<MusicLibrary>),
     PlayerStateChanged(PlayerState),
     LibraryLoadFailed(String),
+    Quit,
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +122,7 @@ impl Chilen {
                     state.loading_state = LoadingState::Failed(e);
                     Task::none()
                 }
+                Event::Quit => window::latest().and_then(window::close),
             },
         }
     }

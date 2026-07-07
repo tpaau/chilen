@@ -7,10 +7,13 @@ use std::{
 use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
-use crate::playback::{
-    self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
-    open_uri,
-    state::{self, PLAYER_STATE},
+use crate::{
+    gui,
+    playback::{
+        self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
+        open_uri,
+        state::{self, PLAYER_STATE},
+    },
 };
 
 type MprisError = mpris_server::zbus::fdo::Error;
@@ -70,8 +73,8 @@ impl RootInterface for MprisInterface {
     }
 
     async fn quit(&self) -> MprisResult<()> {
-        // TODO: Quit
-        Err(MprisError::NotSupported("TBD".to_string()))
+        gui::send_event(gui::Event::Quit);
+        Ok(())
     }
 
     async fn can_quit(&self) -> mpris_server::zbus::fdo::Result<bool> {
