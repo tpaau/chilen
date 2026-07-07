@@ -1,8 +1,10 @@
 use iced::{
     Element, Length, Task,
-    widget::{button, row, space},
+    widget::{button, container, row, space},
     window,
 };
+
+use crate::gui::theme::Theme;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Message {
@@ -11,14 +13,17 @@ pub enum Message {
     Maximize,
 }
 
-pub fn view(_state: &()) -> Element<'_, Message> {
-    row([
-        space().width(Length::Fill).into(),
-        button("minimize").on_press(Message::Minimize).into(),
-        button("maximize").on_press(Message::Maximize).into(),
-        button("quit").on_press(Message::Close).into(),
-    ])
-    .width(Length::Fill)
+pub fn view(theme: &Theme) -> Element<'_, Message> {
+    container(
+        row([
+            space().width(Length::Fill).into(),
+            button("minimize").on_press(Message::Minimize).into(),
+            button("maximize").on_press(Message::Maximize).into(),
+            button("quit").on_press(Message::Close).into(),
+        ])
+        .width(Length::Fill),
+    )
+    .style(|_| container::background(theme.current().surface_container))
     .into()
 }
 

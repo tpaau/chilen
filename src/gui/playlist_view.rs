@@ -1,41 +1,20 @@
+use std::{collections::HashSet, sync::Arc};
+
 use iced::{
     Element, Task,
     widget::{button, column, text},
 };
 use log::error;
 
-use crate::music_lib::create_playlist;
-
-#[derive(Debug, Clone)]
-pub enum Event {
-    PlaylistsChanged(Vec<Playlist>),
-    LoadFailed(String),
-}
-
-#[derive(Default)]
-pub enum LoadingState {
-    #[default]
-    Loading,
-    Failed(String),
-    Loaded,
-}
-
-#[derive(Default)]
-pub struct State {
-    pub playlists: Vec<Playlist>,
-    pub loading_state: LoadingState,
-}
+use crate::{
+    gui::{LoadingState, State},
+    music_lib::{create_playlist, state::Playlist},
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Create,
-    Event(Event),
-}
-
-#[derive(Debug, Clone)]
-pub struct Playlist {
-    pub name: String,
-    pub num_tracks: usize,
+    PlaylistsChanged(HashSet<Arc<Playlist>>),
 }
 
 pub fn view(state: &State) -> Element<'_, Message> {
@@ -47,7 +26,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
                 state.playlists.iter().map(|p| text!(
                     "Playlist \"{}\", tracks: {}",
                     p.name,
-                    p.num_tracks
+                    p.tracks.len()
                 )
                 .into())
             )
@@ -68,16 +47,10 @@ pub fn update(state: &mut State, message: Message) -> Task<Message> {
             }
             Task::none()
         }
-        Message::Event(event) => match event {
-            Event::PlaylistsChanged(playlists) => {
-                state.loading_state = LoadingState::Loaded;
-                state.playlists = playlists;
-                Task::none()
-            }
-            Event::LoadFailed(e) => {
-                state.loading_state = LoadingState::Failed(e);
-                Task::none()
-            }
-        },
+        Message::PlaylistsChanged(playlists) => {
+            state.loading_state = LoadingState::Loaded;
+            state.playlists = playlists;
+            Task::none()
+        }
     }
 }

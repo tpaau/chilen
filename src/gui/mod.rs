@@ -1,22 +1,41 @@
-pub mod playlist_view;
+mod playlist_view;
+#[cfg(test)]
+mod tests;
+pub mod theme;
 mod widgets;
 
-use std::sync::{Arc, LazyLock, RwLock};
+use std::{
+    collections::HashSet,
+    sync::{Arc, LazyLock, RwLock},
+};
 
 use iced::{
-    self, Background, Color, Element, Length, Subscription, Task,
+    self, Border, Element, Length, Subscription, Task,
+    border::Radius,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
 };
 use log::error;
 
-use crate::{gui::widgets::top_bar, music_lib::state::MusicLibrary, playback::PlaybackState};
+use crate::{
+    gui::{theme::Theme, widgets::top_bar},
+    music_lib::state::{MusicLibrary, Playlist},
+    playback::state::PlayerState,
+};
+
+#[derive(Default, Debug, Clone)]
+pub enum LoadingState {
+    #[default]
+    Loading,
+    Failed(String),
+    Loaded,
+}
 
 #[derive(Debug, Clone)]
 pub(super) enum Event {
     MusicLibraryChanged(Box<MusicLibrary>),
-    PlaybackStateChanged(PlaybackState),
+    PlayerStateChanged(PlayerState),
     LibraryLoadFailed(String),
 }
 
@@ -25,6 +44,13 @@ pub enum Message {
     Event(Event),
     Playlist(playlist_view::Message),
     TopBar(top_bar::Message),
+}
+
+#[derive(Default)]
+struct State {
+    playlists: HashSet<Arc<Playlist>>,
+    loading_state: LoadingState,
+    theme: Theme,
 }
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
@@ -62,68 +88,58 @@ pub fn subscription() -> Subscription<Event> {
     Subscription::run(worker)
 }
 
-#[derive(Default)]
-struct State {
-    playlist_state: playlist_view::State,
-}
-
 fn view(state: &State) -> Element<'_, Message> {
-    column([
-        top_bar::view(&()).map(Message::TopBar),
+    container(column([
+        top_bar::view(&state.theme).map(Message::TopBar),
         row([
-            container(playlist_view::view(&state.playlist_state).map(Message::Playlist))
-                .style(|_| container::background(Background::Color(Color::from_rgb(1.0, 0.0, 0.0))))
+            container(playlist_view::view(state).map(Message::Playlist))
+                .style(|_| container::background(state.theme.current().surface_container))
                 .width(Length::Fixed(300.0))
                 .height(Length::Fill)
                 .into(),
             container("Center view")
-                .style(|_| container::background(Background::Color(Color::from_rgb(0.0, 1.0, 0.0))))
+                .style(|_| {
+                    container::Style::default()
+                        .background(state.theme.current().background)
+                        .border(Border::default().rounded(Radius::new(12)))
+                })
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into(),
             container("Currently playing")
-                .style(|_| container::background(Background::Color(Color::from_rgb(0.0, 0.0, 1.0))))
+                .style(|_| container::background(state.theme.current().surface_container))
                 .width(Length::Fixed(300.0))
                 .height(Length::Fill)
                 .into(),
         ])
         .into(),
-    ])
+    ]))
+    .style(|_| container::background(state.theme.current().surface_container))
     .into()
 }
 
 fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
-        Message::Playlist(msg) => {
-            playlist_view::update(&mut state.playlist_state, msg).map(Message::Playlist)
-        }
+        Message::Playlist(msg) => playlist_view::update(state, msg).map(Message::Playlist),
         Message::TopBar(msg) => top_bar::update((), msg).map(Message::TopBar),
         Message::Event(event) => match event {
             Event::MusicLibraryChanged(lib) => playlist_view::update(
-                &mut state.playlist_state,
-                playlist_view::Message::Event(playlist_view::Event::PlaylistsChanged(
-                    lib.playlists
-                        .into_iter()
-                        .map(|p| playlist_view::Playlist {
-                            name: p.name.clone(),
-                            num_tracks: p.tracks.len(),
-                        })
-                        .collect(),
-                )),
+                state,
+                playlist_view::Message::PlaylistsChanged(lib.playlists),
             )
             .map(Message::Playlist),
-            Event::PlaybackStateChanged(state) => todo!("Playback events"),
-            Event::LibraryLoadFailed(e) => playlist_view::update(
-                &mut state.playlist_state,
-                playlist_view::Message::Event(playlist_view::Event::LoadFailed(e)),
-            )
-            .map(Message::Playlist),
+            Event::PlayerStateChanged(state) => todo!("Player events"),
+            Event::LibraryLoadFailed(e) => {
+                state.loading_state = LoadingState::Failed(e);
+                Task::none()
+            }
         },
     }
 }
 
 pub fn start() -> iced::Result {
     iced::application(State::default, update, view)
+        .title("Chilen")
         .subscription(|_| subscription().map(Message::Event))
         .run()
 }

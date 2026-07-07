@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use rand::seq::SliceRandom;
 
 use crate::{
-    Error,
+    Error, gui,
     music_lib::{CACHE_DIR, state::Track, tracks_from_hashes},
     playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
 };
@@ -77,17 +77,21 @@ impl PlayerState {
         mpris::update_properties(properties);
     }
 
-    #[cfg(feature = "mpris")]
     pub(crate) fn on_playback_state_changed(&self) {
-        use mpris_server::Property;
-
         trace!("Playback state changed: {}", self.playback_state);
-        mpris::update_properties(vec![
-            Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
-            Property::CanPlay(self.can_play()),
-            Property::CanPause(self.can_pause()),
-            Property::CanSeek(self.can_seek()),
-        ]);
+
+        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::Property;
+            mpris::update_properties(vec![
+                Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
+                Property::CanPlay(self.can_play()),
+                Property::CanPause(self.can_pause()),
+                Property::CanSeek(self.can_seek()),
+            ]);
+        }
     }
 
     #[cfg(feature = "mpris")]
