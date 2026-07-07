@@ -1,9 +1,5 @@
-use std::sync::{Arc, LazyLock, RwLock};
-
 use iced::{
-    Element, Subscription, Task,
-    futures::{SinkExt, Stream, StreamExt, channel::mpsc},
-    stream,
+    Element, Task,
     widget::{button, column, text},
 };
 use log::error;
@@ -40,41 +36,6 @@ pub enum Message {
 pub struct Playlist {
     pub name: String,
     pub num_tracks: usize,
-}
-
-static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(None)));
-
-pub fn send_event(event: Event) {
-    match EVENT_SENDER.write().unwrap().as_mut() {
-        Some(sender) => {
-            if let Err(e) = sender.try_send(event) {
-                error!("Could not send the event: {e}");
-            }
-        }
-        None => {
-            error!("The sender is not initialized!")
-        }
-    }
-}
-
-fn playlist_worker() -> impl Stream<Item = Event> {
-    stream::channel(128, async |mut out| {
-        let (sender, mut receiver) = mpsc::channel(128);
-        *EVENT_SENDER.write().unwrap() = Some(sender);
-
-        loop {
-            let input = receiver.select_next_some().await;
-            if let Err(e) = out.send(input).await {
-                error!("Could not send the event, aborting: {e}");
-                break;
-            }
-        }
-    })
-}
-
-pub fn subscription() -> Subscription<Event> {
-    Subscription::run(playlist_worker)
 }
 
 pub fn view(state: &State) -> Element<'_, Message> {

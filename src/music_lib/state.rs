@@ -304,14 +304,8 @@ impl From<Playlist> for ConfPlaylist {
 
 #[derive(Clone, Debug)]
 pub(crate) struct MusicLibrary {
-    #[cfg(test)]
     pub playlists: HashSet<Arc<Playlist>>,
-    #[cfg(not(test))]
-    playlists: HashSet<Arc<Playlist>>,
-    #[cfg(test)]
     pub tracks: HashSet<Arc<Track>>,
-    #[cfg(not(test))]
-    tracks: HashSet<Arc<Track>>,
     tracks_by_path: HashMap<String, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
     playlists_by_name: HashMap<String, Arc<Playlist>>,
@@ -450,15 +444,7 @@ impl MusicLibrary {
         });
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(name, playlist);
-        gui::playlist_view::send_event(gui::playlist_view::Event::PlaylistsChanged(
-            self.playlists
-                .iter()
-                .map(|p| gui::playlist_view::Playlist {
-                    name: p.name.clone(),
-                    num_tracks: p.tracks.len(),
-                })
-                .collect(),
-        ));
+        gui::send_event(gui::Event::MusicLibraryChanged(Box::new(self.clone())));
         Ok(())
     }
 
@@ -651,7 +637,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
     let tracks = match indexer::index(load_mode) {
         Ok(tracks) => tracks,
         Err(e) => {
-            gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(e.to_string()));
+            gui::send_event(gui::Event::LibraryLoadFailed(e.to_string()));
             return Err(e);
         }
     };
@@ -671,7 +657,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library exists: {e}");
-            gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(e.to_string()));
+            gui::send_event(gui::Event::LibraryLoadFailed(e.to_string()));
             return Err(Error::StateNotReadable);
         }
     };
@@ -681,7 +667,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
 
         if !library_state.is_file() {
             error!("The item at {library_state:?} must be a file!");
-            gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(format!(
+            gui::send_event(gui::Event::LibraryLoadFailed(format!(
                 "The item at {library_state:?} must be a file!"
             )));
             return Err(Error::StateNotAFile);
@@ -691,9 +677,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library: {e}");
-                gui::playlist_view::send_event(gui::playlist_view::Event::LoadFailed(
-                    e.to_string(),
-                ));
+                gui::send_event(gui::Event::LibraryLoadFailed(e.to_string()));
                 return Err(Error::StateNotReadable);
             }
         };
@@ -721,20 +705,9 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
         trace!("The library file does not exist, creating a new library");
         *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
     }
-    gui::playlist_view::send_event(gui::playlist_view::Event::PlaylistsChanged(
-        MUSIC_LIBRARY
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .playlists
-            .iter()
-            .map(|p| gui::playlist_view::Playlist {
-                name: p.name.clone(),
-                num_tracks: p.tracks.len(),
-            })
-            .collect(),
-    ));
+    gui::send_event(gui::Event::MusicLibraryChanged(Box::new(
+        MUSIC_LIBRARY.read().unwrap().as_ref().unwrap().clone(),
+    )));
     save_library()?;
 
     let time_elapsed = time_start.elapsed().unwrap_or(Duration::from_secs(0));
