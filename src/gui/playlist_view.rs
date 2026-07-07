@@ -1,8 +1,8 @@
 use std::{collections::HashSet, sync::Arc};
 
 use iced::{
-    Element, Task,
-    widget::{button, column, text},
+    Border, Element, Length, Padding, Task,
+    widget::{button, column, container, scrollable, text},
 };
 use log::error;
 
@@ -20,19 +20,27 @@ pub enum Message {
 pub fn view(state: &Chilen) -> Element<'_, Message> {
     match &state.loading_state {
         LoadingState::Loading => text!("Loading...").into(),
-        LoadingState::Failed(e) => text!("Loading failed: {e}").into(),
+        LoadingState::Failed(e) => container(text!("Load failed: {e}").style(|_| text::Style {
+            color: Some(state.theme.current().on_error_container),
+        }))
+        .style(|_| {
+            container::Style::default()
+                .background(state.theme.current().error_container)
+                .border(Border::default().rounded(state.rounding.regular))
+        })
+        .width(Length::Fill)
+        .padding(Padding::new(state.spacing.smaller as f32))
+        .into(),
         LoadingState::Loaded => column![
-            column(
-                state.playlists.iter().map(|p| text!(
-                    "Playlist \"{}\", tracks: {}",
-                    p.name,
-                    p.tracks.len()
-                )
-                .into())
-            )
-            .padding(12),
+            scrollable(column(state.playlists.iter().map(|p| {
+                text!("Playlist \"{}\", tracks: {}", p.name, p.tracks.len()).into()
+            })))
+            .height(Length::Fill)
+            .width(Length::Fill),
             button("Hello!").on_press(Message::Create)
         ]
+        .height(Length::Fill)
+        .width(Length::Fill)
         .into(),
     }
 }

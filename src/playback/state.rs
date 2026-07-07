@@ -62,19 +62,23 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
 }
 
 impl PlayerState {
-    #[cfg(feature = "mpris")]
     fn on_track_changed(&self) {
-        use mpris_server::{Metadata, Property};
+        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
 
-        let properties = vec![
-            match self.current() {
-                Some(track) => Property::Metadata(track.get_meta(self.position)),
-                None => Property::Metadata(Metadata::new()),
-            },
-            Property::CanGoPrevious(self.can_go_previous()),
-            Property::CanGoNext(self.can_go_next()),
-        ];
-        mpris::update_properties(properties);
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::{Metadata, Property};
+
+            let properties = vec![
+                match self.current() {
+                    Some(track) => Property::Metadata(track.get_meta(self.position)),
+                    None => Property::Metadata(Metadata::new()),
+                },
+                Property::CanGoPrevious(self.can_go_previous()),
+                Property::CanGoNext(self.can_go_next()),
+            ];
+            mpris::update_properties(properties);
+        }
     }
 
     pub(crate) fn on_playback_state_changed(&self) {
@@ -127,7 +131,6 @@ impl PlayerState {
         } else {
             &self.tracks
         };
-        #[cfg(feature = "mpris")]
         self.on_track_changed();
     }
 
@@ -141,6 +144,7 @@ impl PlayerState {
         } else {
             &self.tracks
         };
+        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -174,6 +178,7 @@ impl PlayerState {
         tracks.shuffle(&mut rng);
         tracks.insert(prev_pos, track);
         self.shuffled_tracks = tracks;
+        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
     }
 
     pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
@@ -192,6 +197,7 @@ impl PlayerState {
                 }
             }
             self.shuffle_state = shuffle_state;
+            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -208,11 +214,24 @@ impl PlayerState {
 
     pub fn increment_player_position(&mut self, duration: Duration) {
         self.player_position += duration;
+        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::{Metadata, Property};
+
+            let meta = match self.current() {
+                Some(track) => track.get_meta(self.position),
+                None => Metadata::new(),
+            };
+            mpris::update_properties(vec![Property::Metadata(meta)]);
+            mpris::set_position(self.player_position);
+        }
     }
 
     pub fn set_player_position(&mut self, player_position: Duration) {
         if self.player_position != player_position {
             self.player_position = player_position;
+            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::{Metadata, Property};
@@ -221,8 +240,7 @@ impl PlayerState {
                     Some(track) => track.get_meta(self.position),
                     None => Metadata::new(),
                 };
-                let properties = vec![Property::Metadata(meta)];
-                mpris::update_properties(properties);
+                mpris::update_properties(vec![Property::Metadata(meta)]);
                 mpris::set_position(player_position);
             }
         }
@@ -231,6 +249,7 @@ impl PlayerState {
     pub fn set_player_volume(&mut self, player_volume: PlayerVolume) {
         if self.player_volume != player_volume {
             self.player_volume = player_volume;
+            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -244,6 +263,7 @@ impl PlayerState {
     pub fn set_loop_state(&mut self, loop_state: LoopState) {
         if self.loop_state != loop_state {
             self.loop_state = loop_state;
+            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -264,7 +284,6 @@ impl PlayerState {
             if self.playback_state == PlaybackState::Stopped {
                 self.set_player_position(Duration::default());
             }
-            #[cfg(feature = "mpris")]
             self.on_playback_state_changed();
         }
     }
@@ -295,7 +314,6 @@ impl PlayerState {
     pub fn play_track(&mut self, index: usize) -> Option<&Track> {
         if index < self.tracks.len() {
             self.position = index;
-            #[cfg(feature = "mpris")]
             self.on_track_changed();
             self.current()
         } else {
@@ -353,14 +371,12 @@ impl PlayerState {
                 };
                 if !tracks.is_empty() && self.position < tracks.len() - 1 {
                     self.position += 1;
-                    #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     return self.current();
                 }
                 None
             }
             LoopState::Track => {
-                #[cfg(feature = "mpris")]
                 self.on_track_changed();
                 self.current()
             }
@@ -373,12 +389,10 @@ impl PlayerState {
                     None
                 } else if !tracks.is_empty() && self.position < tracks.len() - 1 {
                     self.position += 1;
-                    #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     self.current()
                 } else {
                     self.position = 0;
-                    #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     self.current()
                 }
@@ -408,7 +422,6 @@ impl PlayerState {
                 };
                 if self.position > 0 && !tracks.is_empty() {
                     self.position -= 1;
-                    #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     self.current()
                 } else {
@@ -416,7 +429,6 @@ impl PlayerState {
                 }
             }
             LoopState::Track => {
-                #[cfg(feature = "mpris")]
                 self.on_track_changed();
                 self.current()
             }
@@ -429,12 +441,10 @@ impl PlayerState {
                     None
                 } else if self.position > 0 {
                     self.position -= 1;
-                    #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     self.current()
                 } else if !tracks.is_empty() {
                     self.position = tracks.len() - 1;
-                    #[cfg(feature = "mpris")]
                     self.on_track_changed();
                     self.current()
                 } else {

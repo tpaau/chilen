@@ -5,7 +5,7 @@ mod playback;
 #[cfg(test)]
 mod tests;
 
-use std::{env::home_dir, process::exit, thread};
+use std::{env::home_dir, process::exit, thread, time::Duration};
 
 use dirs::{cache_dir, data_dir};
 

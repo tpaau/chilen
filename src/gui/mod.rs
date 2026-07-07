@@ -1,3 +1,4 @@
+mod config;
 mod playlist_view;
 #[cfg(test)]
 mod tests;
@@ -10,16 +11,18 @@ use std::{
 };
 
 use iced::{
-    self, Border, Element, Length, Subscription, Task,
-    border::Radius,
+    self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
 };
-use log::error;
+use log::{error, trace};
 
 use crate::{
-    gui::theme::Theme,
+    gui::{
+        config::{Rounding, Spacing},
+        theme::Theme,
+    },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
 };
@@ -50,6 +53,8 @@ struct Chilen {
     playlists: HashSet<Arc<Playlist>>,
     loading_state: LoadingState,
     theme: Theme,
+    rounding: Rounding,
+    spacing: Spacing,
 }
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
@@ -71,28 +76,33 @@ pub fn send_event(event: Event) {
 impl Chilen {
     fn view(state: &Chilen) -> Element<'_, Message> {
         container(column([row([
+            // TODO: I should be able to resize this
             container(playlist_view::view(state).map(Message::Playlist))
-                .style(|_| container::background(state.theme.current().surface_container))
-                .width(Length::Fixed(300.0))
+                .style(|_| container::background(state.theme.current().surface_container_low))
+                .padding(Padding::new(state.spacing.small as f32))
+                .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
             container("Center view")
                 .style(|_| {
                     container::Style::default()
                         .background(state.theme.current().background)
-                        .border(Border::default().rounded(Radius::new(12)))
+                        .border(Border::default().rounded(state.rounding.regular))
                 })
+                .padding(Padding::new(state.spacing.small as f32))
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into(),
+            // TODO: I should be able to resize this
             container("Currently playing")
-                .style(|_| container::background(state.theme.current().surface_container))
-                .width(Length::Fixed(300.0))
+                .style(|_| container::background(state.theme.current().surface_container_low))
+                .padding(Padding::new(state.spacing.small as f32))
+                .width(Length::Fixed(500.0))
                 .height(Length::Fill)
                 .into(),
         ])
         .into()]))
-        .style(|_| container::background(state.theme.current().surface_container))
+        .style(|_| container::background(state.theme.current().surface_container_low))
         .into()
     }
 
@@ -135,8 +145,10 @@ impl Chilen {
 }
 
 pub fn start() -> iced::Result {
+    trace!("Launching GUI");
     iced::application(Chilen::default, Chilen::update, Chilen::view)
         .title("Chilen")
+        .default_font(Font::with_name("Noto Sans Regular"))
         .subscription(|_| Chilen::subscription().map(Message::Event))
         .run()
 }
