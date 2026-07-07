@@ -24,14 +24,6 @@ use crate::{
     playback::state::PlayerState,
 };
 
-#[derive(Default, Debug, Clone)]
-pub enum LoadingState {
-    #[default]
-    Loading,
-    Failed(String),
-    Loaded,
-}
-
 #[derive(Debug, Clone)]
 pub(super) enum Event {
     MusicLibraryChanged(Box<MusicLibrary>),
@@ -45,8 +37,16 @@ pub enum Message {
     Playlist(playlist_view::Message),
 }
 
+#[derive(Default, Debug, Clone)]
+pub enum LoadingState {
+    #[default]
+    Loading,
+    Failed(String),
+    Loaded,
+}
+
 #[derive(Default)]
-struct State {
+struct Chilen {
     playlists: HashSet<Arc<Playlist>>,
     loading_state: LoadingState,
     theme: Theme,
@@ -68,73 +68,75 @@ pub fn send_event(event: Event) {
     }
 }
 
-fn worker() -> impl Stream<Item = Event> {
-    stream::channel(128, async |mut out| {
-        let (sender, mut receiver) = mpsc::channel(128);
-        *EVENT_SENDER.write().unwrap() = Some(sender);
+impl Chilen {
+    fn view(state: &Chilen) -> Element<'_, Message> {
+        container(column([row([
+            container(playlist_view::view(state).map(Message::Playlist))
+                .style(|_| container::background(state.theme.current().surface_container))
+                .width(Length::Fixed(300.0))
+                .height(Length::Fill)
+                .into(),
+            container("Center view")
+                .style(|_| {
+                    container::Style::default()
+                        .background(state.theme.current().background)
+                        .border(Border::default().rounded(Radius::new(12)))
+                })
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
+            container("Currently playing")
+                .style(|_| container::background(state.theme.current().surface_container))
+                .width(Length::Fixed(300.0))
+                .height(Length::Fill)
+                .into(),
+        ])
+        .into()]))
+        .style(|_| container::background(state.theme.current().surface_container))
+        .into()
+    }
 
-        loop {
-            let input = receiver.select_next_some().await;
-            if let Err(e) = out.send(input).await {
-                error!("Could not send the event, aborting: {e}");
-                break;
-            }
+    fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+        match message {
+            Message::Playlist(msg) => playlist_view::update(state, msg).map(Message::Playlist),
+            Message::Event(event) => match event {
+                Event::MusicLibraryChanged(lib) => playlist_view::update(
+                    state,
+                    playlist_view::Message::PlaylistsChanged(lib.playlists),
+                )
+                .map(Message::Playlist),
+                Event::PlayerStateChanged(state) => todo!("Player events"),
+                Event::LibraryLoadFailed(e) => {
+                    state.loading_state = LoadingState::Failed(e);
+                    Task::none()
+                }
+            },
         }
-    })
-}
+    }
 
-pub fn subscription() -> Subscription<Event> {
-    Subscription::run(worker)
-}
+    fn worker() -> impl Stream<Item = Event> {
+        stream::channel(128, async |mut out| {
+            let (sender, mut receiver) = mpsc::channel(128);
+            *EVENT_SENDER.write().unwrap() = Some(sender);
 
-fn view(state: &State) -> Element<'_, Message> {
-    container(column([row([
-        container(playlist_view::view(state).map(Message::Playlist))
-            .style(|_| container::background(state.theme.current().surface_container))
-            .width(Length::Fixed(300.0))
-            .height(Length::Fill)
-            .into(),
-        container("Center view")
-            .style(|_| {
-                container::Style::default()
-                    .background(state.theme.current().background)
-                    .border(Border::default().rounded(Radius::new(12)))
-            })
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into(),
-        container("Currently playing")
-            .style(|_| container::background(state.theme.current().surface_container))
-            .width(Length::Fixed(300.0))
-            .height(Length::Fill)
-            .into(),
-    ])
-    .into()]))
-    .style(|_| container::background(state.theme.current().surface_container))
-    .into()
-}
-
-fn update(state: &mut State, message: Message) -> Task<Message> {
-    match message {
-        Message::Playlist(msg) => playlist_view::update(state, msg).map(Message::Playlist),
-        Message::Event(event) => match event {
-            Event::MusicLibraryChanged(lib) => playlist_view::update(
-                state,
-                playlist_view::Message::PlaylistsChanged(lib.playlists),
-            )
-            .map(Message::Playlist),
-            Event::PlayerStateChanged(state) => todo!("Player events"),
-            Event::LibraryLoadFailed(e) => {
-                state.loading_state = LoadingState::Failed(e);
-                Task::none()
+            loop {
+                let input = receiver.select_next_some().await;
+                if let Err(e) = out.send(input).await {
+                    error!("Could not send the event, aborting: {e}");
+                    break;
+                }
             }
-        },
+        })
+    }
+
+    fn subscription() -> Subscription<Event> {
+        Subscription::run(Self::worker)
     }
 }
 
 pub fn start() -> iced::Result {
-    iced::application(State::default, update, view)
+    iced::application(Chilen::default, Chilen::update, Chilen::view)
         .title("Chilen")
-        .subscription(|_| subscription().map(Message::Event))
+        .subscription(|_| Chilen::subscription().map(Message::Event))
         .run()
 }

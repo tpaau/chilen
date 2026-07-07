@@ -7,7 +7,7 @@ use iced::{
 use log::error;
 
 use crate::{
-    gui::{LoadingState, State},
+    gui::{Chilen, LoadingState},
     music_lib::{create_playlist, state::Playlist},
 };
 
@@ -17,7 +17,7 @@ pub enum Message {
     PlaylistsChanged(HashSet<Arc<Playlist>>),
 }
 
-pub fn view(state: &State) -> Element<'_, Message> {
+pub fn view(state: &Chilen) -> Element<'_, Message> {
     match &state.loading_state {
         LoadingState::Loading => text!("Loading...").into(),
         LoadingState::Failed(e) => text!("Loading failed: {e}").into(),
@@ -37,7 +37,7 @@ pub fn view(state: &State) -> Element<'_, Message> {
     }
 }
 
-pub fn update(state: &mut State, message: Message) -> Task<Message> {
+pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
         Message::Create => {
             if let Err(e) = create_playlist(format!("Hello {}", state.playlists.len()), &None) {
