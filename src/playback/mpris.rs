@@ -68,8 +68,8 @@ fn get_response(result: Result<(), Error>) -> MprisResult<()> {
 
 impl RootInterface for MprisInterface {
     async fn raise(&self) -> MprisResult<()> {
-        // TODO: Raising
-        Err(MprisError::NotSupported("TBD".to_string()))
+        gui::send_event(gui::Event::Raise);
+        Ok(())
     }
 
     async fn quit(&self) -> MprisResult<()> {
@@ -101,14 +101,12 @@ impl RootInterface for MprisInterface {
     }
 
     async fn can_raise(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Raising
-        Err(mpris_server::zbus::fdo::Error::NotSupported(
-            "TBD".to_string(),
-        ))
+        Ok(true)
     }
 
     async fn has_track_list(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        Ok(false) // TODO: Implement track lists for Mpris
+        // TODO: Implement track lists for Mpris
+        Ok(false)
     }
 
     async fn identity(&self) -> mpris_server::zbus::fdo::Result<String> {

@@ -34,6 +34,7 @@ pub(super) enum Event {
     PlayerStateChanged(PlayerState),
     LibraryLoadFailed(String),
     Quit,
+    Raise,
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +124,7 @@ impl Chilen {
                     Task::none()
                 }
                 Event::Quit => window::latest().and_then(window::close),
+                Event::Raise => window::latest().and_then(window::gain_focus),
             },
         }
     }
