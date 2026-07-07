@@ -28,7 +28,7 @@ pub(crate) struct PlayerState {
     /// The index of the current track.
     ///
     /// It can either point to the `tracks` variable or `shuffled_tracks` is shuffle is supported
-    /// and set to [`ShuffleState::Playlist`].
+    /// and set to [`ShuffleState::On`].
     pub position: usize,
     pub player_position: Duration,
     pub player_volume: PlayerVolume,

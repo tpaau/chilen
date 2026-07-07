@@ -109,8 +109,8 @@ impl std::fmt::Display for LoopState {
 
 /// Signed duration type used for seeking.
 ///
-/// This is just a bare bones type that should only be used for
-/// [seeking player position](PlaybackCommand::Seek), and not as a [`Duration`] replacement.
+/// This is just a bare bones type that shouldn't be used as a [`Duration`] replacement in most
+/// cases.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum SignedDuration {
     Positive(Duration),

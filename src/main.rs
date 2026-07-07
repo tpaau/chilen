@@ -16,9 +16,7 @@ use crate::{
     music_lib::{covers::LoadMode, set_dirs},
 };
 
-/// Error related to the daemon.
-///
-/// Can either originate from a [`Response`] or from a function in this crate.
+/// Chilen error type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
     /// The audio player is not connected.
@@ -27,9 +25,6 @@ pub enum Error {
     /// marked as default.
     PlayerNotConnected,
     /// The playback state is not initialized.
-    ///
-    /// This error may occur when a [`PlaybackCommand`] is sent to the daemon too early, before the
-    /// state is restored from cache.
     StateNotInitialized,
     /// The queue is empty.
     QueueEmpty,
@@ -62,16 +57,16 @@ pub enum Error {
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,
-    /// Could not complete the operation because a [playlist](library::Playlist) with the provided
-    /// name already exists.
+    /// Could not complete the operation because a [playlist](music_lib::state::Playlist) with the
+    /// provided name already exists.
     PlaylistExists,
-    /// Could not perform the operation because the [music library](MusicLibrary) is not
-    /// initialized.
+    /// Could not perform the operation because the [music library](music_lib::state::MusicLibrary)
+    /// is not initialized.
     ///
     /// This can happen if a command is sent to early and the music library is not yet initialized.
     LibraryNotInitialized,
-    /// There is no [playlist](library::Playlist) in the [music library](MusicLibrary) with the
-    /// provided name.
+    /// There is no [playlist](music_lib::state::Playlist) in the
+    /// [music library](music_lib::state::MusicLibrary) with the provided name.
     UnknownPlaylist,
     /// The provided item index was out of bounds.
     IndexOutOfBounds,

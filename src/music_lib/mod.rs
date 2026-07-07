@@ -106,7 +106,7 @@ pub(crate) fn set_dirs(
 /// and return only those that correspond to tracks in the music library. It might return an empty
 /// vector if no paths could be matched.
 ///
-/// It might also fail if the music library is not initialized, so you should never run [`unwrap`]
+/// It might also fail if the music library is not initialized, so you should never run `unwrap`
 /// on the result of this function.
 pub(crate) fn tracks_from_paths(
     track_paths: &[PathBuf],
