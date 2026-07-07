@@ -19,7 +19,7 @@ use iced::{
 use log::error;
 
 use crate::{
-    gui::{theme::Theme, widgets::top_bar},
+    gui::theme::Theme,
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
 };
@@ -43,7 +43,6 @@ pub(super) enum Event {
 pub enum Message {
     Event(Event),
     Playlist(playlist_view::Message),
-    TopBar(top_bar::Message),
 }
 
 #[derive(Default)]
@@ -89,31 +88,28 @@ pub fn subscription() -> Subscription<Event> {
 }
 
 fn view(state: &State) -> Element<'_, Message> {
-    container(column([
-        top_bar::view(&state.theme).map(Message::TopBar),
-        row([
-            container(playlist_view::view(state).map(Message::Playlist))
-                .style(|_| container::background(state.theme.current().surface_container))
-                .width(Length::Fixed(300.0))
-                .height(Length::Fill)
-                .into(),
-            container("Center view")
-                .style(|_| {
-                    container::Style::default()
-                        .background(state.theme.current().background)
-                        .border(Border::default().rounded(Radius::new(12)))
-                })
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
-            container("Currently playing")
-                .style(|_| container::background(state.theme.current().surface_container))
-                .width(Length::Fixed(300.0))
-                .height(Length::Fill)
-                .into(),
-        ])
-        .into(),
-    ]))
+    container(column([row([
+        container(playlist_view::view(state).map(Message::Playlist))
+            .style(|_| container::background(state.theme.current().surface_container))
+            .width(Length::Fixed(300.0))
+            .height(Length::Fill)
+            .into(),
+        container("Center view")
+            .style(|_| {
+                container::Style::default()
+                    .background(state.theme.current().background)
+                    .border(Border::default().rounded(Radius::new(12)))
+            })
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
+        container("Currently playing")
+            .style(|_| container::background(state.theme.current().surface_container))
+            .width(Length::Fixed(300.0))
+            .height(Length::Fill)
+            .into(),
+    ])
+    .into()]))
     .style(|_| container::background(state.theme.current().surface_container))
     .into()
 }
@@ -121,7 +117,6 @@ fn view(state: &State) -> Element<'_, Message> {
 fn update(state: &mut State, message: Message) -> Task<Message> {
     match message {
         Message::Playlist(msg) => playlist_view::update(state, msg).map(Message::Playlist),
-        Message::TopBar(msg) => top_bar::update((), msg).map(Message::TopBar),
         Message::Event(event) => match event {
             Event::MusicLibraryChanged(lib) => playlist_view::update(
                 state,
