@@ -8,8 +8,8 @@ use log::error;
 
 use crate::{
     gui::{
-        self, Chilen, FONT_SIZE_LARGE, LoadingState, ROUNDING_REGULAR, SPACING_SMALL,
-        SPACING_SMALLER, widgets::playlist_button::playlist_button,
+        self, Chilen, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+        font::FONT_SIZE_LARGE, widgets::playlist_button::playlist_button,
     },
     music_lib::{create_playlist, state::Playlist},
 };
@@ -41,7 +41,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
             text!("Playlists")
                 .color(state.theme.current().on_surface)
                 .size(FONT_SIZE_LARGE)
-                .font(gui::font_bold()),
+                .font(gui::font::font_bold()),
             iced::widget::scrollable(
                 column(
                     state

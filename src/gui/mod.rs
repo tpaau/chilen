@@ -1,3 +1,5 @@
+mod font;
+mod icons;
 mod playlist_view;
 #[cfg(test)]
 mod tests;
@@ -13,13 +15,17 @@ use iced::{
     self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
-    widget::{column, container, row},
+    widget::{column, container, row, text},
     window::{self},
 };
 use log::{error, trace};
 
 use crate::{
-    gui::theme::Theme,
+    gui::{
+        font::{FONT_BYTES_BOLD, FONT_BYTES_REGULAR},
+        icons::ICONS_FONT_BYTES,
+        theme::Theme,
+    },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
     settings::Settings,
@@ -78,28 +84,6 @@ pub static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-#[cfg(windows)]
-const ICONS_FONT_BYTES: &[u8] =
-    include_bytes!("..\\..\\resources\\fonts\\MaterialSymbolsRounded-Regular.ttf");
-#[cfg(unix)]
-const ICONS_FONT_BYTES: &[u8] =
-    include_bytes!("../../resources/fonts/MaterialSymbolsRounded-Regular.ttf");
-
-#[cfg(windows)]
-const FONT_BYTES_REGULAR: &[u8] = include_bytes!("..\\..\\resources\\Roboto\\NotoSans-Regular.ttf");
-#[cfg(unix)]
-const FONT_BYTES_REGULAR: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Regular.ttf");
-#[cfg(windows)]
-const FONT_BYTES_BOLD: &[u8] = include_bytes!("..\\..\\resources\\Roboto\\NotoSans-Bold.ttf");
-#[cfg(unix)]
-const FONT_BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Bold.ttf");
-
-const FONT_SIZE_SMALLER: u32 = 12;
-const FONT_SIZE_SMALL: u32 = 14;
-const FONT_SIZE_REGULAR: u32 = 16;
-const FONT_SIZE_LARGE: u32 = 18;
-const FONT_SIZE_LARGER: u32 = 18;
-
 const SPACING_SMALLER: u32 = 8;
 const SPACING_SMALL: u32 = 12;
 const SPACING_REGULAR: u32 = 16;
@@ -111,9 +95,6 @@ const ROUNDING_SMALL: u32 = 14;
 const ROUNDING_REGULAR: u32 = 14;
 const ROUNDING_LARGE: u32 = 18;
 const ROUNDING_LARGER: u32 = 20;
-
-const ICONS_FONT_NAME: &str = "Material Symbols";
-const FONT_NAME: &str = "Noto Sans";
 
 const DIM_TEXT_ALPHA: f32 = 0.7;
 
@@ -134,22 +115,6 @@ fn window_subscription() -> Subscription<Message> {
     window::events().map(|(id, event)| Message::Event(Event::Window { event, id }))
 }
 
-fn font() -> Font {
-    iced::Font {
-        weight: iced::font::Weight::Normal,
-        family: iced::font::Family::Name(FONT_NAME),
-        stretch: iced::font::Stretch::Normal,
-        style: iced::font::Style::Normal,
-    }
-}
-
-fn font_bold() -> Font {
-    iced::Font {
-        weight: iced::font::Weight::Bold,
-        ..font()
-    }
-}
-
 impl Chilen {
     fn view(state: &Chilen) -> Element<'_, Message> {
         container(column([row([
@@ -160,16 +125,20 @@ impl Chilen {
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
-            container("Center view")
-                .style(|_| {
-                    container::Style::default()
-                        .background(state.theme.current().background)
-                        .border(Border::default().rounded(ROUNDING_REGULAR))
-                })
-                .padding(Padding::new(SPACING_SMALL as f32))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
+            container(
+                text(char::from_u32(icons::HOME).unwrap())
+                    .font(icons::font())
+                    .size(icons::SIZE_REGULAR),
+            )
+            .style(|_| {
+                container::Style::default()
+                    .background(state.theme.current().background)
+                    .border(Border::default().rounded(ROUNDING_REGULAR))
+            })
+            .padding(Padding::new(SPACING_SMALL as f32))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
             // TODO: I should be able to resize this
             container("Currently playing")
                 .style(|_| container::background(state.theme.current().surface_container_low))

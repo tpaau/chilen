@@ -7,8 +7,9 @@ use iced::{
 
 use crate::{
     gui::{
-        Chilen, DIM_TEXT_ALPHA, FONT_SIZE_REGULAR, FONT_SIZE_SMALL, ROUNDING_REGULAR,
-        SPACING_SMALL, SPACING_SMALLER, playlist_view,
+        Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+        font::{FONT_SIZE_REGULAR, FONT_SIZE_SMALL},
+        playlist_view,
     },
     music_lib::state::Playlist,
 };
