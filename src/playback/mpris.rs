@@ -82,7 +82,12 @@ impl RootInterface for MprisInterface {
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        Ok(*gui::WINDOW_MODE.read().unwrap().as_ref().unwrap() == iced::window::Mode::Fullscreen)
+        Ok(*gui::WINDOW_MODE
+            .read()
+            .unwrap()
+            .as_ref()
+            .unwrap_or(&iced::window::Mode::Windowed)
+            == iced::window::Mode::Fullscreen)
     }
 
     async fn can_set_fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {

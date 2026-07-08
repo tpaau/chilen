@@ -26,6 +26,7 @@ use crate::{
     },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
+    settings::Settings,
 };
 
 #[derive(Debug, Clone)]
@@ -56,13 +57,27 @@ pub enum LoadingState {
     Loaded,
 }
 
-#[derive(Default)]
 struct Chilen {
     playlists: HashSet<Arc<Playlist>>,
     loading_state: LoadingState,
     theme: Theme,
+    settings: Settings,
     rounding: Rounding,
     spacing: Spacing,
+}
+
+impl Default for Chilen {
+    fn default() -> Self {
+        let settings = Settings::load();
+        Self {
+            playlists: HashSet::new(),
+            loading_state: LoadingState::default(),
+            theme: Theme::default(settings.dark_theme()),
+            settings: Settings::load(),
+            rounding: Rounding::default(),
+            spacing: Spacing::default(),
+        }
+    }
 }
 
 pub static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =

@@ -2,10 +2,11 @@ mod argparse;
 mod gui;
 pub mod music_lib;
 mod playback;
+pub mod settings;
 #[cfg(test)]
 mod tests;
 
-use std::{env::home_dir, process::exit, thread, time::Duration};
+use std::{env::home_dir, process::exit, thread};
 
 use dirs::{cache_dir, data_dir};
 
@@ -197,9 +198,6 @@ fn main() {
             error!("Could not load the music library: {e}");
             exit(1)
         }
-    });
-
-    thread::spawn(|| {
         playback::init(
             #[cfg(feature = "mpris")]
             "Chilen".to_string(),

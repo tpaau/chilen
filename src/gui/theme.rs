@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use iced::Color;
+use iced::{Color, theme::Base};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Palette {
@@ -59,9 +59,9 @@ pub struct Palette {
     pub outline_variant: Color,
 }
 
-impl Default for Palette {
+impl Palette {
     // TODO: Replace the default material color scheme with a custom one.
-    fn default() -> Self {
+    pub fn default_dark() -> Self {
         Self {
             primary: Color::from_str("#D0BCFF").unwrap(),
             on_primary: Color::from_str("#381E72").unwrap(),
@@ -134,15 +134,13 @@ impl Theme {
             false => &self.light,
         }
     }
-}
 
-impl Default for Theme {
-    fn default() -> Self {
+    pub fn default(dark_mode: bool) -> Self {
         // TODO: Add a default light theme
         Self {
-            dark: Palette::default(),
-            light: Palette::default(),
-            dark_mode: true,
+            dark: Palette::default_dark(),
+            light: Palette::default_dark(),
+            dark_mode,
         }
     }
 }
