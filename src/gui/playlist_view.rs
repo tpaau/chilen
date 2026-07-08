@@ -43,12 +43,14 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 .size(FONT_SIZE_LARGE)
                 .font(gui::font::font_bold()),
             iced::widget::scrollable(
-                column(
-                    state
-                        .playlists
-                        .iter()
-                        .map(|p| { playlist_button(state, p).width(Length::Fill).into() })
-                )
+                column({
+                    // TODO: Proper sorting with support for numbers and
+                    let mut playlists: Vec<_> = state.playlists.iter().collect();
+                    playlists.sort_by_key(|pl| pl.name.clone());
+                    playlists
+                        .into_iter()
+                        .map(|p| playlist_button(state, p).width(Length::Fill).into())
+                })
                 .spacing(SPACING_SMALLER)
             )
             .style(
