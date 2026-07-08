@@ -118,6 +118,64 @@ impl Palette {
             outline_variant: Color::from_str("#49454F").unwrap(),
         }
     }
+
+    pub fn default_light() -> Self {
+        Self {
+            primary: Color::from_str("#6750A4").unwrap(),
+            on_primary: Color::from_str("#FFFFFF").unwrap(),
+            primary_container: Color::from_str("#EADDFF").unwrap(),
+            on_primary_container: Color::from_str("#4F378B").unwrap(),
+            primary_fixed: Color::from_str("#EADDFF").unwrap(),
+            on_primary_fixed: Color::from_str("#21005D").unwrap(),
+            primary_fixed_dim: Color::from_str("#D0BCFF").unwrap(),
+            on_primary_fixed_variant: Color::from_str("#4F378B").unwrap(),
+            inverse_primary: Color::from_str("#D0BCFF").unwrap(),
+
+            secondary: Color::from_str("#625B71").unwrap(),
+            on_secondary: Color::from_str("#FFFFFF").unwrap(),
+            secondary_container: Color::from_str("#E8DEF8").unwrap(),
+            on_secondary_container: Color::from_str("#4A4458").unwrap(),
+            secondary_fixed: Color::from_str("#E8DEF8").unwrap(),
+            on_secondary_fixed: Color::from_str("#1D192B").unwrap(),
+            secondary_fixed_dim: Color::from_str("#CCC2DC").unwrap(),
+            on_secondary_fixed_variant: Color::from_str("#4A4458").unwrap(),
+
+            tertiary: Color::from_str("#7D5260").unwrap(),
+            on_tertiary: Color::from_str("#FFFFFF").unwrap(),
+            tertiary_container: Color::from_str("#FFD8E4").unwrap(),
+            on_tertiary_container: Color::from_str("#633B48").unwrap(),
+            tertiary_fixed: Color::from_str("#FFD8E4").unwrap(),
+            on_tertiary_fixed: Color::from_str("#31111D").unwrap(),
+            tertiary_fixed_dim: Color::from_str("#EFB8C8").unwrap(),
+            on_tertiary_fixed_variant: Color::from_str("#633B48").unwrap(),
+
+            error: Color::from_str("#B3261E").unwrap(),
+            on_error: Color::from_str("#FFFFFF").unwrap(),
+            error_container: Color::from_str("#F9DEDC").unwrap(),
+            on_error_container: Color::from_str("#8C1D18").unwrap(),
+
+            surface: Color::from_str("#FEF7FF").unwrap(),
+            on_surface: Color::from_str("#1D1B20").unwrap(),
+            surface_variant: Color::from_str("#E7E0EC").unwrap(),
+            on_surface_variant: Color::from_str("#49454F").unwrap(),
+            surface_container_highest: Color::from_str("#E6E0E9").unwrap(),
+            surface_container_high: Color::from_str("#ECE6F0").unwrap(),
+            surface_container: Color::from_str("#F3EDF7").unwrap(),
+            surface_container_low: Color::from_str("#F7F2FA").unwrap(),
+            surface_container_lowest: Color::from_str("#FFFFFF").unwrap(),
+            inverse_surface: Color::from_str("#322F35").unwrap(),
+            inverse_on_surface: Color::from_str("#F5EFF7").unwrap(),
+            background: Color::from_str("#FEF7FF").unwrap(),
+            on_background: Color::from_str("#1D1B20").unwrap(),
+            surface_bright: Color::from_str("#FEF7FF").unwrap(),
+            surface_dim: Color::from_str("#DED8E1").unwrap(),
+            scrim: Color::from_str("#000000").unwrap(),
+            shadow: Color::from_str("#000000").unwrap(),
+
+            outline: Color::from_str("#79747E").unwrap(),
+            outline_variant: Color::from_str("#CAC4D0").unwrap(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -139,7 +197,7 @@ impl Theme {
         // TODO: Add a default light theme
         Self {
             dark: Palette::default_dark(),
-            light: Palette::default_dark(),
+            light: Palette::default_light(),
             dark_mode,
         }
     }

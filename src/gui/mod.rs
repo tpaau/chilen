@@ -72,7 +72,7 @@ impl Default for Chilen {
         Self {
             playlists: HashSet::new(),
             loading_state: LoadingState::default(),
-            theme: Theme::default(settings.dark_theme()),
+            theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
             rounding: Rounding::default(),
             spacing: Spacing::default(),
