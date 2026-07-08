@@ -1,18 +1,17 @@
 use std::{collections::HashSet, sync::Arc};
 
 use iced::{
-    Background, Border, Color, Element, Font, Length, Padding, Shadow, Task,
+    Border, Element, Font, Length, Padding, Task,
     font::Weight,
-    widget::{
-        button, column, container,
-        scrollable::{self, Rail, Scroller},
-        text,
-    },
+    widget::{button, column, container, text},
 };
 use log::error;
 
 use crate::{
-    gui::{Chilen, LoadingState, widgets::playlist_button::playlist_button},
+    gui::{
+        Chilen, FONT_SIZE_LARGE, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+        widgets::playlist_button::playlist_button,
+    },
     music_lib::{create_playlist, state::Playlist},
 };
 
@@ -33,16 +32,16 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 .style(|_| {
                     container::Style::default()
                         .background(state.theme.current().error_container)
-                        .border(Border::default().rounded(state.rounding.regular))
+                        .border(Border::default().rounded(ROUNDING_REGULAR))
                 })
                 .width(Length::Fill)
-                .padding(Padding::new(state.spacing.smaller as f32))
+                .padding(Padding::new(SPACING_SMALLER as f32))
                 .into()
         }
         LoadingState::Loaded => column![
             text!("Playlists")
                 .color(state.theme.current().on_surface)
-                .size(state.font_size.large)
+                .size(FONT_SIZE_LARGE)
                 .font(Font {
                     weight: Weight::Bold,
                     ..Default::default()
@@ -54,7 +53,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                         .iter()
                         .map(|p| { playlist_button(state, p).width(Length::Fill).into() })
                 )
-                .spacing(state.spacing.smaller)
+                .spacing(SPACING_SMALLER)
             )
             .style(
                 |_, status| crate::gui::theme::styles::scrollable::scrollable(status, &state.theme)
@@ -63,7 +62,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
             .width(Length::Fill),
             button("Hello!").on_press(Message::Create)
         ]
-        .spacing(state.spacing.small)
+        .spacing(SPACING_SMALL)
         .height(Length::Fill)
         .width(Length::Fill)
         .into(),

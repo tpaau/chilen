@@ -7,7 +7,10 @@ use iced::{
 };
 
 use crate::{
-    gui::{Chilen, playlist_view},
+    gui::{
+        Chilen, FONT_SIZE_REGULAR, FONT_SIZE_SMALL, ROUNDING_REGULAR, SPACING_SMALL,
+        SPACING_SMALLER, playlist_view,
+    },
     music_lib::state::Playlist,
 };
 
@@ -23,17 +26,14 @@ pub fn playlist_button<'a>(
                 .style(|_| {
                     container::Style::default()
                         .background(Color::from_str("#FF0000").unwrap())
-                        .border(
-                            Border::default()
-                                .rounded(state.rounding.regular - state.spacing.smaller),
-                        )
+                        .border(Border::default().rounded(ROUNDING_REGULAR - SPACING_SMALLER))
                 })
                 .width(Length::Fixed(THUMBNAIL_SIZE))
                 .height(Length::Fixed(THUMBNAIL_SIZE))
                 .into(),
             container(column(vec![
                 text(playlist.name.clone())
-                    .size(state.font_size.regular)
+                    .size(FONT_SIZE_REGULAR)
                     .color(state.theme.current().on_surface)
                     .font(Font {
                         weight: Weight::Semibold,
@@ -47,7 +47,7 @@ pub fn playlist_button<'a>(
                         format!("{} tracks", playlist.tracks.len())
                     }
                 })
-                .size(state.font_size.small)
+                .size(FONT_SIZE_SMALL)
                 .color(state.theme.current().on_surface)
                 .into(),
             ]))
@@ -56,16 +56,16 @@ pub fn playlist_button<'a>(
             space().width(Length::Fill).into(),
             container(text("aaa")).center_y(Length::Fill).into(),
         ])
-        .spacing(state.spacing.small),
+        .spacing(SPACING_SMALL),
     )
-    .padding(Padding::new(state.spacing.smaller as f32))
+    .padding(Padding::new(SPACING_SMALLER as f32))
     .style(|_, status| {
         let style = button::Style {
             background: Some(Background::Color(
                 state.theme.current().surface_container_low,
             )),
             text_color: state.theme.current().on_surface,
-            border: Border::default().rounded(state.rounding.regular),
+            border: Border::default().rounded(ROUNDING_REGULAR),
             shadow: Shadow::default(),
             snap: true,
         };

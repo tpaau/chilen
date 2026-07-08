@@ -1,4 +1,3 @@
-mod config;
 mod playlist_view;
 #[cfg(test)]
 mod tests;
@@ -20,10 +19,7 @@ use iced::{
 use log::{error, trace};
 
 use crate::{
-    gui::{
-        config::{FontSize, Rounding, Spacing},
-        theme::Theme,
-    },
+    gui::{config::Rounding, theme::Theme},
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
     settings::Settings,
@@ -62,9 +58,6 @@ struct Chilen {
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
-    rounding: Rounding,
-    spacing: Spacing,
-    font_size: FontSize,
 }
 
 impl Default for Chilen {
@@ -75,9 +68,6 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
-            rounding: Rounding::default(),
-            spacing: Spacing::default(),
-            font_size: FontSize::default(),
         }
     }
 }
@@ -87,6 +77,24 @@ pub static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+pub const FONT_SIZE_SMALLER: u32 = 12;
+pub const FONT_SIZE_SMALL: u32 = 14;
+pub const FONT_SIZE_REGULAR: u32 = 16;
+pub const FONT_SIZE_LARGE: u32 = 18;
+pub const FONT_SIZE_LARGER: u32 = 18;
+
+pub const SPACING_SMALLER: u32 = 8;
+pub const SPACING_SMALL: u32 = 12;
+pub const SPACING_REGULAR: u32 = 16;
+pub const SPACING_LARGE: u32 = 20;
+pub const SPACING_LARGER: u32 = 24;
+
+pub const ROUNDING_SMALLER: u32 = 12;
+pub const ROUNDING_SMALL: u32 = 14;
+pub const ROUNDING_REGULAR: u32 = 14;
+pub const ROUNDING_LARGE: u32 = 18;
+pub const ROUNDING_LARGER: u32 = 20;
 
 pub fn send_event(event: Event) {
     match EVENT_SENDER.write().unwrap().as_mut() {
@@ -111,7 +119,7 @@ impl Chilen {
             // TODO: I should be able to resize this
             container(playlist_view::view(state).map(Message::Playlist))
                 .style(|_| container::background(state.theme.current().surface_container_low))
-                .padding(Padding::new(state.spacing.small as f32))
+                .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
@@ -119,16 +127,16 @@ impl Chilen {
                 .style(|_| {
                     container::Style::default()
                         .background(state.theme.current().background)
-                        .border(Border::default().rounded(state.rounding.regular))
+                        .border(Border::default().rounded(ROUNDING_REGULAR))
                 })
-                .padding(Padding::new(state.spacing.small as f32))
+                .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into(),
             // TODO: I should be able to resize this
             container("Currently playing")
                 .style(|_| container::background(state.theme.current().surface_container_low))
-                .padding(Padding::new(state.spacing.small as f32))
+                .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fixed(500.0))
                 .height(Length::Fill)
                 .into(),
