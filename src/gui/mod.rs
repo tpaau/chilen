@@ -19,7 +19,7 @@ use iced::{
 use log::{error, trace};
 
 use crate::{
-    gui::{config::Rounding, theme::Theme},
+    gui::theme::Theme,
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
     settings::Settings,
@@ -78,23 +78,44 @@ pub static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-pub const FONT_SIZE_SMALLER: u32 = 12;
-pub const FONT_SIZE_SMALL: u32 = 14;
-pub const FONT_SIZE_REGULAR: u32 = 16;
-pub const FONT_SIZE_LARGE: u32 = 18;
-pub const FONT_SIZE_LARGER: u32 = 18;
+#[cfg(windows)]
+const ICONS_FONT_BYTES: &[u8] =
+    include_bytes!("..\\..\\resources\\fonts\\MaterialSymbolsRounded-Regular.ttf");
+#[cfg(unix)]
+const ICONS_FONT_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/MaterialSymbolsRounded-Regular.ttf");
 
-pub const SPACING_SMALLER: u32 = 8;
-pub const SPACING_SMALL: u32 = 12;
-pub const SPACING_REGULAR: u32 = 16;
-pub const SPACING_LARGE: u32 = 20;
-pub const SPACING_LARGER: u32 = 24;
+#[cfg(windows)]
+const FONT_BYTES_REGULAR: &[u8] = include_bytes!("..\\..\\resources\\Roboto\\NotoSans-Regular.ttf");
+#[cfg(unix)]
+const FONT_BYTES_REGULAR: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Regular.ttf");
+#[cfg(windows)]
+const FONT_BYTES_BOLD: &[u8] = include_bytes!("..\\..\\resources\\Roboto\\NotoSans-Bold.ttf");
+#[cfg(unix)]
+const FONT_BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Bold.ttf");
 
-pub const ROUNDING_SMALLER: u32 = 12;
-pub const ROUNDING_SMALL: u32 = 14;
-pub const ROUNDING_REGULAR: u32 = 14;
-pub const ROUNDING_LARGE: u32 = 18;
-pub const ROUNDING_LARGER: u32 = 20;
+const FONT_SIZE_SMALLER: u32 = 12;
+const FONT_SIZE_SMALL: u32 = 14;
+const FONT_SIZE_REGULAR: u32 = 16;
+const FONT_SIZE_LARGE: u32 = 18;
+const FONT_SIZE_LARGER: u32 = 18;
+
+const SPACING_SMALLER: u32 = 8;
+const SPACING_SMALL: u32 = 12;
+const SPACING_REGULAR: u32 = 16;
+const SPACING_LARGE: u32 = 20;
+const SPACING_LARGER: u32 = 24;
+
+const ROUNDING_SMALLER: u32 = 12;
+const ROUNDING_SMALL: u32 = 14;
+const ROUNDING_REGULAR: u32 = 14;
+const ROUNDING_LARGE: u32 = 18;
+const ROUNDING_LARGER: u32 = 20;
+
+const ICONS_FONT_NAME: &str = "Material Symbols";
+const FONT_NAME: &str = "Noto Sans";
+
+const DIM_TEXT_ALPHA: f32 = 0.7;
 
 pub fn send_event(event: Event) {
     match EVENT_SENDER.write().unwrap().as_mut() {
@@ -111,6 +132,22 @@ pub fn send_event(event: Event) {
 
 fn window_subscription() -> Subscription<Message> {
     window::events().map(|(id, event)| Message::Event(Event::Window { event, id }))
+}
+
+fn font() -> Font {
+    iced::Font {
+        weight: iced::font::Weight::Normal,
+        family: iced::font::Family::Name(FONT_NAME),
+        stretch: iced::font::Stretch::Normal,
+        style: iced::font::Style::Normal,
+    }
+}
+
+fn font_bold() -> Font {
+    iced::Font {
+        weight: iced::font::Weight::Bold,
+        ..font()
+    }
 }
 
 impl Chilen {
@@ -212,16 +249,28 @@ impl Chilen {
     }
 }
 
+fn load_fonts() -> Task<Message> {
+    trace!("Loading fonts...");
+    Task::batch([
+        iced::font::load(ICONS_FONT_BYTES).discard(),
+        iced::font::load(FONT_BYTES_REGULAR).discard(),
+        iced::font::load(FONT_BYTES_BOLD).discard(),
+    ])
+}
 pub fn start() -> iced::Result {
     trace!("Launching GUI");
-    iced::application(Chilen::default, Chilen::update, Chilen::view)
-        .title("Chilen")
-        .default_font(Font::with_name("Noto Sans Regular"))
-        .subscription(|_| {
-            Subscription::batch(vec![
-                Chilen::subscription().map(Message::Event),
-                window_subscription(),
-            ])
-        })
-        .run()
+    iced::application(
+        || (Chilen::default(), load_fonts()),
+        Chilen::update,
+        Chilen::view,
+    )
+    .title("Chilen")
+    .default_font(Font::with_name("Noto Sans"))
+    .subscription(|_| {
+        Subscription::batch(vec![
+            Chilen::subscription().map(Message::Event),
+            window_subscription(),
+        ])
+    })
+    .run()
 }

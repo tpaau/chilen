@@ -1,15 +1,14 @@
 use std::{str::FromStr, sync::Arc};
 
 use iced::{
-    Background, Border, Color, Font, Length, Padding, Shadow,
-    font::Weight,
+    Background, Border, Color, Length, Padding, Shadow,
     widget::{Button, Space, button, column, container, row, space, text},
 };
 
 use crate::{
     gui::{
-        Chilen, FONT_SIZE_REGULAR, FONT_SIZE_SMALL, ROUNDING_REGULAR, SPACING_SMALL,
-        SPACING_SMALLER, playlist_view,
+        Chilen, DIM_TEXT_ALPHA, FONT_SIZE_REGULAR, FONT_SIZE_SMALL, ROUNDING_REGULAR,
+        SPACING_SMALL, SPACING_SMALLER, playlist_view,
     },
     music_lib::state::Playlist,
 };
@@ -35,10 +34,6 @@ pub fn playlist_button<'a>(
                 text(playlist.name.clone())
                     .size(FONT_SIZE_REGULAR)
                     .color(state.theme.current().on_surface)
-                    .font(Font {
-                        weight: Weight::Semibold,
-                        ..Default::default()
-                    })
                     .into(),
                 text({
                     if playlist.tracks.is_empty() {
@@ -48,7 +43,7 @@ pub fn playlist_button<'a>(
                     }
                 })
                 .size(FONT_SIZE_SMALL)
-                .color(state.theme.current().on_surface)
+                .color(state.theme.current().on_surface.scale_alpha(DIM_TEXT_ALPHA))
                 .into(),
             ]))
             .center_y(Length::Fill)

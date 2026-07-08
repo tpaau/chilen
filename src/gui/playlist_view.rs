@@ -1,16 +1,15 @@
 use std::{collections::HashSet, sync::Arc};
 
 use iced::{
-    Border, Element, Font, Length, Padding, Task,
-    font::Weight,
+    Border, Element, Length, Padding, Task,
     widget::{button, column, container, text},
 };
 use log::error;
 
 use crate::{
     gui::{
-        Chilen, FONT_SIZE_LARGE, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-        widgets::playlist_button::playlist_button,
+        self, Chilen, FONT_SIZE_LARGE, LoadingState, ROUNDING_REGULAR, SPACING_SMALL,
+        SPACING_SMALLER, widgets::playlist_button::playlist_button,
     },
     music_lib::{create_playlist, state::Playlist},
 };
@@ -42,10 +41,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
             text!("Playlists")
                 .color(state.theme.current().on_surface)
                 .size(FONT_SIZE_LARGE)
-                .font(Font {
-                    weight: Weight::Bold,
-                    ..Default::default()
-                }),
+                .font(gui::font_bold()),
             iced::widget::scrollable(
                 column(
                     state
