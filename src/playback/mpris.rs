@@ -82,22 +82,16 @@ impl RootInterface for MprisInterface {
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Fullscreen toggling
-        Err(mpris_server::zbus::fdo::Error::NotSupported(
-            "TBD".to_string(),
-        ))
+        Ok(*gui::WINDOW_MODE.read().unwrap().as_ref().unwrap() == iced::window::Mode::Fullscreen)
     }
 
     async fn can_set_fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        // TODO: Fullscreen toggling
-        Err(mpris_server::zbus::fdo::Error::NotSupported(
-            "TBD".to_string(),
-        ))
+        Ok(true)
     }
 
     async fn set_fullscreen(&self, fullscreen: bool) -> mpris_server::zbus::Result<()> {
-        // TODO: Fullscreen toggling
-        Err(mpris_server::zbus::Error::Unsupported)
+        gui::send_event(gui::Event::SetFullscreen(fullscreen));
+        Ok(())
     }
 
     async fn can_raise(&self) -> mpris_server::zbus::fdo::Result<bool> {

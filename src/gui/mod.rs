@@ -15,7 +15,7 @@ use iced::{
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
-    window,
+    window::{self},
 };
 use log::{error, trace};
 
@@ -35,6 +35,11 @@ pub(super) enum Event {
     LibraryLoadFailed(String),
     Quit,
     Raise,
+    SetFullscreen(bool),
+    Window {
+        event: window::Event,
+        id: window::Id,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +65,9 @@ struct Chilen {
     spacing: Spacing,
 }
 
+pub static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
+
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
@@ -74,6 +82,10 @@ pub fn send_event(event: Event) {
             error!("The sender is not initialized!")
         }
     }
+}
+
+fn window_subscription() -> Subscription<Message> {
+    window::events().map(|(id, event)| Message::Event(Event::Window { event, id }))
 }
 
 impl Chilen {
@@ -124,7 +136,33 @@ impl Chilen {
                     Task::none()
                 }
                 Event::Quit => window::latest().and_then(window::close),
-                Event::Raise => window::latest().and_then(window::gain_focus),
+                Event::Raise => {
+                    trace!("Raising!");
+                    window::latest().and_then(window::gain_focus)
+                }
+                Event::SetFullscreen(fullscreen) => window::latest().and_then(move |id| {
+                    window::set_mode(
+                        id,
+                        match fullscreen {
+                            true => window::Mode::Fullscreen,
+                            false => window::Mode::Windowed,
+                        },
+                    )
+                }),
+                Event::Window { event, id } => match event {
+                    window::Event::Opened {
+                        position: _,
+                        size: _,
+                    } => window::mode(id).then(|mode| {
+                        *WINDOW_MODE.write().unwrap() = Some(mode);
+                        Task::none()
+                    }),
+                    window::Event::Resized(_) => window::mode(id).then(|mode| {
+                        *WINDOW_MODE.write().unwrap() = Some(mode);
+                        Task::none()
+                    }),
+                    _ => Task::none(),
+                },
             },
         }
     }
@@ -154,6 +192,11 @@ pub fn start() -> iced::Result {
     iced::application(Chilen::default, Chilen::update, Chilen::view)
         .title("Chilen")
         .default_font(Font::with_name("Noto Sans Regular"))
-        .subscription(|_| Chilen::subscription().map(Message::Event))
+        .subscription(|_| {
+            Subscription::batch(vec![
+                Chilen::subscription().map(Message::Event),
+                window_subscription(),
+            ])
+        })
         .run()
 }
