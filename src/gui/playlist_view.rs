@@ -1,13 +1,18 @@
 use std::{collections::HashSet, sync::Arc};
 
 use iced::{
-    Border, Element, Length, Padding, Task,
-    widget::{button, column, container, scrollable, text},
+    Background, Border, Color, Element, Font, Length, Padding, Shadow, Task,
+    font::Weight,
+    widget::{
+        button, column, container,
+        scrollable::{self, Rail, Scroller},
+        text,
+    },
 };
 use log::error;
 
 use crate::{
-    gui::{Chilen, LoadingState},
+    gui::{Chilen, LoadingState, widgets::playlist_button::playlist_button},
     music_lib::{create_playlist, state::Playlist},
 };
 
@@ -15,30 +20,50 @@ use crate::{
 pub enum Message {
     Create,
     PlaylistsChanged(HashSet<Arc<Playlist>>),
+    Open(Arc<Playlist>),
 }
 
 pub fn view(state: &Chilen) -> Element<'_, Message> {
     match &state.loading_state {
-        LoadingState::Loading => text!("Loading...").into(),
-        LoadingState::Failed(e) => container(text!("Load failed: {e}").style(|_| text::Style {
-            color: Some(state.theme.current().on_error_container),
-        }))
-        .style(|_| {
-            container::Style::default()
-                .background(state.theme.current().error_container)
-                .border(Border::default().rounded(state.rounding.regular))
-        })
-        .width(Length::Fill)
-        .padding(Padding::new(state.spacing.smaller as f32))
-        .into(),
+        LoadingState::Loading => text!("Loading...")
+            .color(state.theme.current().on_surface)
+            .into(),
+        LoadingState::Failed(e) => {
+            container(text!("Load failed: {e}").color(state.theme.current().on_error))
+                .style(|_| {
+                    container::Style::default()
+                        .background(state.theme.current().error_container)
+                        .border(Border::default().rounded(state.rounding.regular))
+                })
+                .width(Length::Fill)
+                .padding(Padding::new(state.spacing.smaller as f32))
+                .into()
+        }
         LoadingState::Loaded => column![
-            scrollable(column(state.playlists.iter().map(|p| {
-                text!("Playlist \"{}\", tracks: {}", p.name, p.tracks.len()).into()
-            })))
+            text!("Playlists")
+                .color(state.theme.current().on_surface)
+                .size(state.font_size.large)
+                .font(Font {
+                    weight: Weight::Bold,
+                    ..Default::default()
+                }),
+            iced::widget::scrollable(
+                column(
+                    state
+                        .playlists
+                        .iter()
+                        .map(|p| { playlist_button(state, p).width(Length::Fill).into() })
+                )
+                .spacing(state.spacing.smaller)
+            )
+            .style(
+                |_, status| crate::gui::theme::styles::scrollable::scrollable(status, &state.theme)
+            )
             .height(Length::Fill)
             .width(Length::Fill),
             button("Hello!").on_press(Message::Create)
         ]
+        .spacing(state.spacing.small)
         .height(Length::Fill)
         .width(Length::Fill)
         .into(),
@@ -60,5 +85,6 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.playlists = playlists;
             Task::none()
         }
+        Message::Open(pl) => todo!(),
     }
 }

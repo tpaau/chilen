@@ -21,7 +21,7 @@ use log::{error, trace};
 
 use crate::{
     gui::{
-        config::{Rounding, Spacing},
+        config::{FontSize, Rounding, Spacing},
         theme::Theme,
     },
     music_lib::state::{MusicLibrary, Playlist},
@@ -64,6 +64,7 @@ struct Chilen {
     settings: Settings,
     rounding: Rounding,
     spacing: Spacing,
+    font_size: FontSize,
 }
 
 impl Default for Chilen {
@@ -76,6 +77,7 @@ impl Default for Chilen {
             settings: Settings::load(),
             rounding: Rounding::default(),
             spacing: Spacing::default(),
+            font_size: FontSize::default(),
         }
     }
 }

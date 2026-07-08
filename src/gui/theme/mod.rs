@@ -1,6 +1,8 @@
+pub mod styles;
+
 use std::str::FromStr;
 
-use iced::{Color, theme::Base};
+use iced::Color;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Palette {
