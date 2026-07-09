@@ -14,11 +14,17 @@ use crate::{
     music_lib::{create_playlist, state::Playlist},
 };
 
+#[derive(Debug, Clone, Default)]
+pub struct State {
+    pub playlist_menu: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     Create,
     PlaylistsChanged(HashSet<Arc<Playlist>>),
     Open(Arc<Playlist>),
+    OpenContextMenu { playlist_name: String },
 }
 
 pub fn view(state: &Chilen) -> Element<'_, Message> {
@@ -83,5 +89,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::Open(pl) => todo!(),
+        Message::OpenContextMenu { playlist_name } => {
+            state.playlist_view.playlist_menu = Some(playlist_name);
+            Task::none()
+        }
     }
 }

@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 #[cfg(windows)]
 pub(super) const ICONS_FONT_BYTES: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\MaterialSymbolsRounded_Filled-Regular.ttf");
@@ -7,7 +9,8 @@ pub(super) const ICONS_FONT_BYTES: &[u8] =
 
 const ICONS_FONT_NAME: &str = "Material Symbols Rounded Filled";
 
-pub const HOME: u32 = 0xe88a;
+pub static HOME: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe88a).unwrap());
+pub static MORE_HORIZ: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5d3).unwrap());
 
 pub const SIZE_SMALLER: u32 = 20;
 pub const SIZE_SMALL: u32 = 26;

@@ -64,6 +64,7 @@ struct Chilen {
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
+    playlist_view: playlist_view::State,
 }
 
 impl Default for Chilen {
@@ -74,6 +75,7 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
+            playlist_view: playlist_view::State::default(),
         }
     }
 }
@@ -126,7 +128,7 @@ impl Chilen {
                 .height(Length::Fill)
                 .into(),
             container(
-                text(char::from_u32(icons::HOME).unwrap())
+                text(*icons::HOME)
                     .font(icons::font())
                     .size(icons::SIZE_REGULAR),
             )

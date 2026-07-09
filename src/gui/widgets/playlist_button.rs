@@ -9,7 +9,7 @@ use crate::{
     gui::{
         Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
         font::{FONT_SIZE_REGULAR, FONT_SIZE_SMALL},
-        playlist_view,
+        icons, playlist_view,
     },
     music_lib::state::Playlist,
 };
@@ -50,7 +50,20 @@ pub fn playlist_button<'a>(
             .center_y(Length::Fill)
             .into(),
             space().width(Length::Fill).into(),
-            container(text("aaa")).center_y(Length::Fill).into(),
+            container(
+                button(text(*icons::MORE_HORIZ).size(icons::SIZE_SMALLER).color(
+                    if state.playlist_view.playlist_menu == Some(playlist.name.clone()) {
+                        Color::from_str("#FF0000").unwrap()
+                    } else {
+                        Color::from_str("#00FF00").unwrap()
+                    },
+                ))
+                .on_press(playlist_view::Message::OpenContextMenu {
+                    playlist_name: playlist.name.clone(),
+                }),
+            )
+            .center_y(Length::Fill)
+            .into(),
         ])
         .spacing(SPACING_SMALL),
     )
