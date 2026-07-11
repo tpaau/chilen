@@ -25,6 +25,7 @@ use crate::{
         font::{FONT_BYTES_BOLD, FONT_BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
         theme::Theme,
+        widgets::common::drop_down_menu::DropDownMenu,
     },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
@@ -127,11 +128,12 @@ impl Chilen {
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
-            container(
+            container(row![
                 text(*icons::HOME)
                     .font(icons::font())
                     .size(icons::SIZE_REGULAR),
-            )
+                DropDownMenu::new(text("content"), text("context_menu")),
+            ])
             .style(|_| {
                 container::Style::default()
                     .background(state.theme.current().background)

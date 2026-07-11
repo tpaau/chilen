@@ -587,6 +587,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "iced",
+ "iced_widget",
  "lofty",
  "log",
  "lrc_rs",
