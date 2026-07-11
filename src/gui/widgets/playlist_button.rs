@@ -63,9 +63,9 @@ pub fn playlist_button<'a>(
                                 .background(state.theme.surface_container_low())
                                 .border(Border::default().rounded(ROUNDING_REGULAR))
                                 .shadow(Shadow {
-                                    color: state.theme.shadow(),
+                                    color: state.theme.shadow().scale_alpha(0.4),
                                     offset: Vector::default(),
-                                    blur_radius: 2.0,
+                                    blur_radius: 4.0,
                                 })
                         })
                         .padding(Padding::from(SPACING_SMALL as f32)),

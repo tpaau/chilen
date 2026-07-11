@@ -235,7 +235,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
         layout: Layout<'_>,
         cursor: Cursor,
     ) {
-        renderer.with_layer(layout.bounds(), |renderer| {
+        renderer.with_layer(Rectangle::INFINITE, |renderer| {
             self.context_menu.as_widget().draw(
                 self.tree,
                 renderer,

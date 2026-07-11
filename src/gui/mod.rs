@@ -12,7 +12,7 @@ use std::{
 };
 
 use iced::{
-    self, Border, Element, Font, Length, Padding, Shadow, Subscription, Task, Vector,
+    self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row, text},
@@ -125,23 +125,11 @@ impl Chilen {
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
-            container(row![
+            container(
                 text(*icons::HOME)
                     .font(icons::font())
                     .size(icons::SIZE_REGULAR),
-                container(text("aaa"))
-                    .style(|_| {
-                        container::Style::default()
-                            .background(state.theme.background())
-                            .border(Border::default().rounded(ROUNDING_REGULAR))
-                            .shadow(Shadow {
-                                color: state.theme.shadow(),
-                                offset: Vector::default(),
-                                blur_radius: 2.0,
-                            })
-                    })
-                    .padding(Padding::new(SPACING_SMALL as f32))
-            ])
+            )
             .style(|_| {
                 container::Style::default()
                     .background(state.theme.background())
