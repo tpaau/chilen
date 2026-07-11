@@ -16,6 +16,18 @@ struct State {
     position: Option<Point>,
 }
 
+// TODO: Better positioning
+// pub enum Orientation {
+//     TopLeft,
+//     TopRight,
+//     RightTop,
+//     RightBottom,
+//     BottomRight,
+//     BottomLeft,
+//     LeftBottom,
+//     LeftTop,
+// }
+
 pub struct DropDownMenu<'a, Message> {
     content: Element<'a, Message, Theme, Renderer>,
     context_menu: Element<'a, Message, Theme, Renderer>,
@@ -41,7 +53,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
         self.content
             .as_widget_mut()
-            .layout(&mut tree.children[0], renderer, limits) // Out of bounds
+            .layout(&mut tree.children[0], renderer, limits)
     }
 
     fn draw(
@@ -124,7 +136,8 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             && layout.bounds().contains(pos)
         {
             let bounds = layout.bounds();
-            tree.state.downcast_mut::<State>().position = Some(bounds.position());
+            tree.state.downcast_mut::<State>().position =
+                Some(bounds.position() + Vector::new(0.0, bounds.height));
             shell.capture_event();
             shell.request_redraw();
         }

@@ -1,7 +1,7 @@
 use std::{str::FromStr, sync::Arc};
 
 use iced::{
-    Background, Border, Color, Length, Padding, Shadow,
+    Background, Border, Color, Length, Padding, Shadow, Vector,
     widget::{Button, Space, button, column, container, row, space, text},
 };
 
@@ -10,6 +10,7 @@ use crate::{
         Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
         font::{FONT_SIZE_REGULAR, FONT_SIZE_SMALL},
         icons, playlist_view,
+        widgets::common::drop_down_menu::DropDownMenu,
     },
     music_lib::state::Playlist,
 };
@@ -34,7 +35,7 @@ pub fn playlist_button<'a>(
             container(column(vec![
                 text(playlist.name.clone())
                     .size(FONT_SIZE_REGULAR)
-                    .color(state.theme.current().on_surface)
+                    .color(state.theme.on_surface())
                     .into(),
                 text({
                     if playlist.tracks.is_empty() {
@@ -44,23 +45,31 @@ pub fn playlist_button<'a>(
                     }
                 })
                 .size(FONT_SIZE_SMALL)
-                .color(state.theme.current().on_surface.scale_alpha(DIM_TEXT_ALPHA))
+                .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
                 .into(),
             ]))
             .center_y(Length::Fill)
             .into(),
             space().width(Length::Fill).into(),
             container(
-                button(text(*icons::MORE_HORIZ).size(icons::SIZE_SMALLER).color(
-                    if state.playlist_view.playlist_menu == Some(playlist.name.clone()) {
-                        Color::from_str("#FF0000").unwrap()
-                    } else {
-                        Color::from_str("#00FF00").unwrap()
-                    },
-                ))
-                .on_press(playlist_view::Message::OpenContextMenu {
-                    playlist_name: playlist.name.clone(),
-                }),
+                // TODO: Should be more like a button
+                DropDownMenu::new(
+                    text(*icons::MORE_HORIZ)
+                        .font(icons::font())
+                        .size(icons::SIZE_REGULAR),
+                    container(text("content"))
+                        .style(|_| {
+                            container::Style::default()
+                                .background(state.theme.surface_container_low())
+                                .border(Border::default().rounded(ROUNDING_REGULAR))
+                                .shadow(Shadow {
+                                    color: state.theme.shadow(),
+                                    offset: Vector::default(),
+                                    blur_radius: 2.0,
+                                })
+                        })
+                        .padding(Padding::from(SPACING_SMALL as f32)),
+                ),
             )
             .center_y(Length::Fill)
             .into(),
@@ -70,19 +79,17 @@ pub fn playlist_button<'a>(
     .padding(Padding::new(SPACING_SMALLER as f32))
     .style(|_, status| {
         let style = button::Style {
-            background: Some(Background::Color(
-                state.theme.current().surface_container_low,
-            )),
-            text_color: state.theme.current().on_surface,
+            background: Some(Background::Color(state.theme.surface_container())),
+            text_color: state.theme.on_surface(),
             border: Border::default().rounded(ROUNDING_REGULAR),
             shadow: Shadow::default(),
             snap: true,
         };
 
         match status {
-            button::Status::Hovered => style.with_background(Background::Color(
-                state.theme.current().surface_container_high,
-            )),
+            button::Status::Hovered => {
+                style.with_background(Background::Color(state.theme.surface_container_high()))
+            }
             _ => style,
         }
     })

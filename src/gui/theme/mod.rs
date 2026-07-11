@@ -203,4 +203,196 @@ impl Theme {
             dark_mode,
         }
     }
+
+    pub fn primary(&self) -> Color {
+        self.current().primary
+    }
+
+    pub fn on_primary(&self) -> Color {
+        self.current().on_primary
+    }
+
+    pub fn primary_container(&self) -> Color {
+        self.current().primary_container
+    }
+
+    pub fn on_primary_container(&self) -> Color {
+        self.current().on_primary_container
+    }
+
+    pub fn primary_fixed(&self) -> Color {
+        self.current().primary_fixed
+    }
+
+    pub fn on_primary_fixed(&self) -> Color {
+        self.current().on_primary_fixed
+    }
+
+    pub fn primary_fixed_dim(&self) -> Color {
+        self.current().primary_fixed_dim
+    }
+
+    pub fn on_primary_fixed_variant(&self) -> Color {
+        self.current().on_primary_fixed_variant
+    }
+
+    pub fn inverse_primary(&self) -> Color {
+        self.current().inverse_primary
+    }
+
+    pub fn secondary(&self) -> Color {
+        self.current().secondary
+    }
+
+    pub fn on_secondary(&self) -> Color {
+        self.current().on_secondary
+    }
+
+    pub fn secondary_container(&self) -> Color {
+        self.current().secondary_container
+    }
+
+    pub fn on_secondary_container(&self) -> Color {
+        self.current().on_secondary_container
+    }
+
+    pub fn secondary_fixed(&self) -> Color {
+        self.current().secondary_fixed
+    }
+
+    pub fn on_secondary_fixed(&self) -> Color {
+        self.current().on_secondary_fixed
+    }
+
+    pub fn secondary_fixed_dim(&self) -> Color {
+        self.current().secondary_fixed_dim
+    }
+
+    pub fn on_secondary_fixed_variant(&self) -> Color {
+        self.current().on_secondary_fixed_variant
+    }
+
+    pub fn tertiary(&self) -> Color {
+        self.current().tertiary
+    }
+
+    pub fn on_tertiary(&self) -> Color {
+        self.current().on_tertiary
+    }
+
+    pub fn tertiary_container(&self) -> Color {
+        self.current().tertiary_container
+    }
+
+    pub fn on_tertiary_container(&self) -> Color {
+        self.current().on_tertiary_container
+    }
+
+    pub fn tertiary_fixed(&self) -> Color {
+        self.current().tertiary_fixed
+    }
+
+    pub fn on_tertiary_fixed(&self) -> Color {
+        self.current().on_tertiary_fixed
+    }
+
+    pub fn tertiary_fixed_dim(&self) -> Color {
+        self.current().tertiary_fixed_dim
+    }
+
+    pub fn on_tertiary_fixed_variant(&self) -> Color {
+        self.current().on_tertiary_fixed_variant
+    }
+
+    pub fn error(&self) -> Color {
+        self.current().error
+    }
+
+    pub fn on_error(&self) -> Color {
+        self.current().on_error
+    }
+
+    pub fn error_container(&self) -> Color {
+        self.current().error_container
+    }
+
+    pub fn on_error_container(&self) -> Color {
+        self.current().on_error_container
+    }
+
+    pub fn surface(&self) -> Color {
+        self.current().surface
+    }
+
+    pub fn on_surface(&self) -> Color {
+        self.current().on_surface
+    }
+
+    pub fn surface_variant(&self) -> Color {
+        self.current().surface_variant
+    }
+
+    pub fn on_surface_variant(&self) -> Color {
+        self.current().on_surface_variant
+    }
+
+    pub fn surface_container_highest(&self) -> Color {
+        self.current().surface_container_highest
+    }
+
+    pub fn surface_container_high(&self) -> Color {
+        self.current().surface_container_high
+    }
+
+    pub fn surface_container(&self) -> Color {
+        self.current().surface_container
+    }
+
+    pub fn surface_container_low(&self) -> Color {
+        self.current().surface_container_low
+    }
+
+    pub fn surface_container_lowest(&self) -> Color {
+        self.current().surface_container_lowest
+    }
+
+    pub fn inverse_surface(&self) -> Color {
+        self.current().inverse_surface
+    }
+
+    pub fn inverse_on_surface(&self) -> Color {
+        self.current().inverse_on_surface
+    }
+
+    pub fn background(&self) -> Color {
+        self.current().background
+    }
+
+    pub fn on_background(&self) -> Color {
+        self.current().on_background
+    }
+
+    pub fn surface_bright(&self) -> Color {
+        self.current().surface_bright
+    }
+
+    pub fn surface_dim(&self) -> Color {
+        self.current().surface_dim
+    }
+
+    pub fn scrim(&self) -> Color {
+        self.current().scrim
+    }
+
+    pub fn shadow(&self) -> Color {
+        self.current().shadow
+    }
+
+    pub fn outline(&self) -> Color {
+        self.current().outline
+    }
+
+    pub fn outline_variant(&self) -> Color {
+        self.current().outline_variant
+    }
 }

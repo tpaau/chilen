@@ -14,29 +14,21 @@ use crate::{
     music_lib::{create_playlist, state::Playlist},
 };
 
-#[derive(Debug, Clone, Default)]
-pub struct State {
-    pub playlist_menu: Option<String>,
-}
-
 #[derive(Debug, Clone)]
 pub enum Message {
     Create,
     PlaylistsChanged(HashSet<Arc<Playlist>>),
     Open(Arc<Playlist>),
-    OpenContextMenu { playlist_name: String },
 }
 
 pub fn view(state: &Chilen) -> Element<'_, Message> {
     match &state.loading_state {
-        LoadingState::Loading => text!("Loading...")
-            .color(state.theme.current().on_surface)
-            .into(),
+        LoadingState::Loading => text!("Loading...").color(state.theme.on_surface()).into(),
         LoadingState::Failed(e) => {
-            container(text!("Load failed: {e}").color(state.theme.current().on_error))
+            container(text!("Load failed: {e}").color(state.theme.on_error()))
                 .style(|_| {
                     container::Style::default()
-                        .background(state.theme.current().error_container)
+                        .background(state.theme.error_container())
                         .border(Border::default().rounded(ROUNDING_REGULAR))
                 })
                 .width(Length::Fill)
@@ -45,7 +37,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
         }
         LoadingState::Loaded => column![
             text!("Playlists")
-                .color(state.theme.current().on_surface)
+                .color(state.theme.on_surface())
                 .size(FONT_SIZE_LARGE)
                 .font(gui::font::font_bold()),
             iced::widget::scrollable(
@@ -88,9 +80,8 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.playlists = playlists;
             Task::none()
         }
-        Message::Open(pl) => todo!(),
-        Message::OpenContextMenu { playlist_name } => {
-            state.playlist_view.playlist_menu = Some(playlist_name);
+        Message::Open(pl) => {
+            // TODO: Open the playlist
             Task::none()
         }
     }

@@ -12,7 +12,7 @@ use std::{
 };
 
 use iced::{
-    self, Border, Element, Font, Length, Padding, Subscription, Task,
+    self, Border, Element, Font, Length, Padding, Shadow, Subscription, Task, Vector,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row, text},
@@ -25,7 +25,6 @@ use crate::{
         font::{FONT_BYTES_BOLD, FONT_BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
         theme::Theme,
-        widgets::common::drop_down_menu::DropDownMenu,
     },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
@@ -65,7 +64,6 @@ struct Chilen {
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
-    playlist_view: playlist_view::State,
 }
 
 impl Default for Chilen {
@@ -76,7 +74,6 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
-            playlist_view: playlist_view::State::default(),
         }
     }
 }
@@ -123,7 +120,7 @@ impl Chilen {
         container(column([row([
             // TODO: I should be able to resize this
             container(playlist_view::view(state).map(Message::Playlist))
-                .style(|_| container::background(state.theme.current().surface_container_low))
+                .style(|_| container::background(state.theme.surface_container()))
                 .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
@@ -132,11 +129,22 @@ impl Chilen {
                 text(*icons::HOME)
                     .font(icons::font())
                     .size(icons::SIZE_REGULAR),
-                DropDownMenu::new(text("content"), text("context_menu")),
+                container(text("aaa"))
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.background())
+                            .border(Border::default().rounded(ROUNDING_REGULAR))
+                            .shadow(Shadow {
+                                color: state.theme.shadow(),
+                                offset: Vector::default(),
+                                blur_radius: 2.0,
+                            })
+                    })
+                    .padding(Padding::new(SPACING_SMALL as f32))
             ])
             .style(|_| {
                 container::Style::default()
-                    .background(state.theme.current().background)
+                    .background(state.theme.background())
                     .border(Border::default().rounded(ROUNDING_REGULAR))
             })
             .padding(Padding::new(SPACING_SMALL as f32))
@@ -145,14 +153,14 @@ impl Chilen {
             .into(),
             // TODO: I should be able to resize this
             container("Currently playing")
-                .style(|_| container::background(state.theme.current().surface_container_low))
+                .style(|_| container::background(state.theme.surface_container()))
                 .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fixed(500.0))
                 .height(Length::Fill)
                 .into(),
         ])
         .into()]))
-        .style(|_| container::background(state.theme.current().surface_container_low))
+        .style(|_| container::background(state.theme.surface_container_low()))
         .into()
     }
 
