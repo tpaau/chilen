@@ -2,6 +2,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use iced::{
     Border, Element, Length, Padding, Shadow, Task, Vector,
+    border::Radius,
     widget::{button, column, container, text},
 };
 use iced_widget::{bottom_right, stack};
@@ -9,7 +10,8 @@ use log::error;
 
 use crate::{
     gui::{
-        self, Chilen, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
+        self, Chilen, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
+        SPACING_SMALLER, font, icons,
         theme::{ColorScheme, styles},
         widgets::playlist_button::playlist_button,
     },
@@ -18,9 +20,14 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Create,
+    ToggleFabMenu,
     PlaylistsChanged(HashSet<Arc<Playlist>>),
     Open(Arc<Playlist>),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct State {
+    fab_menu_opened: bool,
 }
 
 pub fn view(state: &Chilen) -> Element<'_, Message> {
@@ -69,11 +76,17 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 .width(Length::Fill),
                 bottom_right(
                     button(
-                        text(*icons::ADD)
+                        container(
+                            text(match state.playlist_state.fab_menu_opened {
+                                true => *icons::CLOSE,
+                                false => *icons::ADD,
+                            })
                             .font(icons::font())
-                            .size(icons::SIZE_LARGER)
+                            .size(icons::SIZE_LARGE)
+                        )
+                        .padding(Padding::from(SPACING_SMALLER as f32))
                     )
-                    .on_press(Message::Create)
+                    .on_press(Message::ToggleFabMenu)
                     .style(|_, status| {
                         let mut style = styles::button::button(
                             status,
@@ -85,6 +98,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                             offset: Vector::default(),
                             blur_radius: 6.0,
                         };
+                        style.border.radius = Radius::from(ROUNDING_LARGE);
                         style
                     })
                 ),
@@ -96,12 +110,8 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
-        Message::Create => {
-            if let Err(e) = create_playlist(format!("Hello {}", state.playlists.len()), &None) {
-                error!(
-                    "Could not create a playlist, this shouldn't happen in the finished app: {e}"
-                );
-            }
+        Message::ToggleFabMenu => {
+            state.playlist_state.fab_menu_opened = !state.playlist_state.fab_menu_opened;
             Task::none()
         }
         Message::PlaylistsChanged(playlists) => {
