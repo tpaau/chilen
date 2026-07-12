@@ -7,8 +7,11 @@ use crate::gui::{
 
 pub enum Style {
     Primary,
+    InversePrimary,
     Secondary,
+    InverseSecondary,
     Tertiary,
+    InverseTertiary,
 }
 
 pub fn button(
@@ -23,17 +26,35 @@ pub fn button(
             mix_colors(theme.primary(), theme.surface(), 0.8_f32),
             theme.on_primary(),
         ),
+        Style::InversePrimary => (
+            theme.on_primary(),
+            mix_colors(theme.on_primary(), theme.surface(), 0.9_f32),
+            mix_colors(theme.on_primary(), theme.surface(), 0.8_f32),
+            theme.primary(),
+        ),
         Style::Secondary => (
             theme.secondary(),
             mix_colors(theme.secondary(), theme.surface(), 0.9_f32),
             mix_colors(theme.secondary(), theme.surface(), 0.8_f32),
             theme.on_secondary(),
         ),
+        Style::InverseSecondary => (
+            theme.on_secondary(),
+            mix_colors(theme.on_secondary(), theme.surface(), 0.9_f32),
+            mix_colors(theme.on_secondary(), theme.surface(), 0.8_f32),
+            theme.secondary(),
+        ),
         Style::Tertiary => (
             theme.tertiary(),
             mix_colors(theme.tertiary(), theme.surface(), 0.9_f32),
             mix_colors(theme.tertiary(), theme.surface(), 0.8_f32),
             theme.on_tertiary(),
+        ),
+        Style::InverseTertiary => (
+            theme.on_tertiary(),
+            mix_colors(theme.on_tertiary(), theme.surface(), 0.9_f32),
+            mix_colors(theme.on_tertiary(), theme.surface(), 0.8_f32),
+            theme.tertiary(),
         ),
     };
     iced_widget::button::Style {

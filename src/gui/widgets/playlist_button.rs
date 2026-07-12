@@ -70,7 +70,7 @@ pub fn playlist_button<'a>(
                             .border(Border::default().rounded(16))
                             .shadow(Shadow {
                                 color: state.theme.shadow().scale_alpha(0.6),
-                                offset: Vector::default(),
+                                offset: Vector::new(0.0, 2.0),
                                 blur_radius: 6.0,
                             })
                     })

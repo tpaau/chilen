@@ -12,6 +12,8 @@ const ICONS_FONT_NAME: &str = "Material Symbols Rounded Filled";
 pub static MORE_HORIZ: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5d3).unwrap());
 pub static ADD: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe145).unwrap());
 pub static CLOSE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5cd).unwrap());
+pub static PLAYLIST_ADD: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe03b).unwrap());
+pub static UPLOAD_FILE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe9fc).unwrap());
 
 pub const SIZE_SMALLER: u32 = 20;
 pub const SIZE_SMALL: u32 = 26;
