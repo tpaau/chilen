@@ -1,14 +1,16 @@
 use std::{collections::HashSet, sync::Arc};
 
 use iced::{
-    Border, Element, Length, Padding, Task,
+    Border, Element, Length, Padding, Shadow, Task, Vector,
     widget::{button, column, container, text},
 };
+use iced_widget::{bottom_right, stack};
 use log::error;
 
 use crate::{
     gui::{
-        self, Chilen, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
+        self, Chilen, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
+        theme::{ColorScheme, styles},
         widgets::playlist_button::playlist_button,
     },
     music_lib::{create_playlist, state::Playlist},
@@ -35,33 +37,60 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 .padding(Padding::new(SPACING_SMALLER as f32))
                 .into()
         }
-        LoadingState::Loaded => column![
-            text!("Playlists")
-                .color(state.theme.on_surface())
-                .size(font::SIZE_LARGE)
-                .font(gui::font::font_bold()),
-            iced::widget::scrollable(
-                column({
-                    // TODO: Proper sorting with support for numbers and non-ASCII characters
-                    let mut playlists: Vec<_> = state.playlists.iter().collect();
-                    playlists.sort_by_key(|pl| pl.name.clone());
-                    playlists
-                        .into_iter()
-                        .map(|p| playlist_button(state, p).width(Length::Fill).into())
-                })
-                .spacing(SPACING_SMALLER)
+        LoadingState::Loaded => {
+            stack!(
+                column![
+                    text!("Playlists")
+                        .color(state.theme.on_surface())
+                        .size(font::SIZE_LARGE)
+                        .font(gui::font::font_bold()),
+                    iced::widget::scrollable(
+                        column({
+                            // TODO: Proper sorting with support for numbers and non-ASCII characters
+                            let mut playlists: Vec<_> = state.playlists.iter().collect();
+                            playlists.sort_by_key(|pl| pl.name.clone());
+                            playlists
+                                .into_iter()
+                                .map(|p| playlist_button(state, p).width(Length::Fill).into())
+                        })
+                        .spacing(SPACING_SMALLER)
+                    )
+                    .style(
+                        |_, status| crate::gui::theme::styles::scrollable::scrollable(
+                            status,
+                            &state.theme
+                        )
+                    )
+                    .height(Length::Fill)
+                    .width(Length::Fill),
+                ]
+                .spacing(SPACING_SMALL)
+                .height(Length::Fill)
+                .width(Length::Fill),
+                bottom_right(
+                    button(
+                        text(*icons::ADD)
+                            .font(icons::font())
+                            .size(icons::SIZE_LARGER)
+                    )
+                    .on_press(Message::Create)
+                    .style(|_, status| {
+                        let mut style = styles::button::button(
+                            status,
+                            &state.theme,
+                            styles::button::Style::Primary,
+                        );
+                        style.shadow = Shadow {
+                            color: state.theme.shadow().scale_alpha(0.4),
+                            offset: Vector::default(),
+                            blur_radius: 6.0,
+                        };
+                        style
+                    })
+                ),
             )
-            .style(
-                |_, status| crate::gui::theme::styles::scrollable::scrollable(status, &state.theme)
-            )
-            .height(Length::Fill)
-            .width(Length::Fill),
-            button("Hello!").on_press(Message::Create)
-        ]
-        .spacing(SPACING_SMALL)
-        .height(Length::Fill)
-        .width(Length::Fill)
-        .into(),
+            .into()
+        }
     }
 }
 

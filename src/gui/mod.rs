@@ -24,7 +24,7 @@ use crate::{
     gui::{
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
-        theme::Theme,
+        theme::{ColorScheme, Theme},
     },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
@@ -144,7 +144,7 @@ impl Chilen {
                 .into(),
         ])
         .into()]))
-        .style(|_| container::background(state.theme.surface_container_low()))
+        .style(|_| container::background(state.theme.surface_container()))
         .into()
     }
 

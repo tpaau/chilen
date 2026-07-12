@@ -1,10 +1,10 @@
 use iced::{Background, Border, Color, Shadow, widget::container};
 
-use crate::gui::theme::Theme;
+use crate::gui::theme::ColorScheme;
 
 pub fn scrollable(
     status: iced::widget::scrollable::Status,
-    theme: &Theme,
+    theme: &impl ColorScheme,
 ) -> iced::widget::scrollable::Style {
     let color = match status {
         iced::widget::scrollable::Status::Active {

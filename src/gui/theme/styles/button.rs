@@ -1,0 +1,53 @@
+use iced::border::Radius;
+
+use crate::gui::{
+    ROUNDING_REGULAR,
+    theme::{ColorScheme, styles::mix_colors},
+};
+
+pub enum Style {
+    Primary,
+    Secondary,
+    Tertiary,
+}
+
+pub fn button(
+    status: iced_widget::button::Status,
+    theme: &impl ColorScheme,
+    style: Style,
+) -> iced_widget::button::Style {
+    let (color_regular, color_hovered, color_pressed, content_color) = match style {
+        Style::Primary => (
+            theme.primary(),
+            mix_colors(theme.primary(), theme.surface(), 0.9_f32),
+            mix_colors(theme.primary(), theme.surface(), 0.8_f32),
+            theme.on_primary(),
+        ),
+        Style::Secondary => (
+            theme.secondary(),
+            mix_colors(theme.secondary(), theme.surface(), 0.9_f32),
+            mix_colors(theme.secondary(), theme.surface(), 0.8_f32),
+            theme.on_secondary(),
+        ),
+        Style::Tertiary => (
+            theme.tertiary(),
+            mix_colors(theme.tertiary(), theme.surface(), 0.9_f32),
+            mix_colors(theme.tertiary(), theme.surface(), 0.8_f32),
+            theme.on_tertiary(),
+        ),
+    };
+    iced_widget::button::Style {
+        background: Some(iced::Background::Color(match status {
+            iced_widget::button::Status::Active => color_regular,
+            iced_widget::button::Status::Hovered => color_hovered,
+            iced_widget::button::Status::Pressed => color_pressed,
+            iced_widget::button::Status::Disabled => color_regular.scale_alpha(0.7),
+        })),
+        border: iced::Border {
+            radius: Radius::from(ROUNDING_REGULAR as f32),
+            ..Default::default()
+        },
+        text_color: content_color,
+        ..Default::default()
+    }
+}

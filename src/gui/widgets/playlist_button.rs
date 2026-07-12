@@ -10,6 +10,7 @@ use crate::{
         Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
         font::{self, SIZE_REGULAR, SIZE_SMALL},
         icons, playlist_view,
+        theme::ColorScheme,
         widgets::common::drop_down_menu::DropDownMenu,
     },
     music_lib::state::Playlist,
@@ -68,9 +69,9 @@ pub fn playlist_button<'a>(
                             .background(state.theme.surface_container_low())
                             .border(Border::default().rounded(16))
                             .shadow(Shadow {
-                                color: state.theme.shadow().scale_alpha(0.4),
+                                color: state.theme.shadow().scale_alpha(0.6),
                                 offset: Vector::default(),
-                                blur_radius: 4.0,
+                                blur_radius: 6.0,
                             })
                     })
                     .padding(Padding::from(SPACING_SMALL as f32)),
