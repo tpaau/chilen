@@ -8,7 +8,7 @@ use iced::{
 use crate::{
     gui::{
         Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-        font::{FONT_SIZE_REGULAR, FONT_SIZE_SMALL},
+        font::{self, SIZE_REGULAR, SIZE_SMALL},
         icons, playlist_view,
         widgets::common::drop_down_menu::DropDownMenu,
     },
@@ -34,7 +34,7 @@ pub fn playlist_button<'a>(
                 .into(),
             container(column(vec![
                 text(playlist.name.clone())
-                    .size(FONT_SIZE_REGULAR)
+                    .size(SIZE_REGULAR)
                     .color(state.theme.on_surface())
                     .into(),
                 text({
@@ -44,7 +44,7 @@ pub fn playlist_button<'a>(
                         format!("{} tracks", playlist.tracks.len())
                     }
                 })
-                .size(FONT_SIZE_SMALL)
+                .size(SIZE_SMALL)
                 .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
                 .into(),
             ]))
@@ -57,18 +57,23 @@ pub fn playlist_button<'a>(
                     text(*icons::MORE_HORIZ)
                         .font(icons::font())
                         .size(icons::SIZE_REGULAR),
-                    container(text("content"))
-                        .style(|_| {
-                            container::Style::default()
-                                .background(state.theme.surface_container_low())
-                                .border(Border::default().rounded(ROUNDING_REGULAR))
-                                .shadow(Shadow {
-                                    color: state.theme.shadow().scale_alpha(0.4),
-                                    offset: Vector::default(),
-                                    blur_radius: 4.0,
-                                })
-                        })
-                        .padding(Padding::from(SPACING_SMALL as f32)),
+                    container(column![
+                        text("Option 1").size(font::SIZE_REGULAR),
+                        text("Option 2").size(font::SIZE_REGULAR),
+                        text("Option 3").size(font::SIZE_REGULAR),
+                        text("Option 4").size(font::SIZE_REGULAR),
+                    ])
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.surface_container_low())
+                            .border(Border::default().rounded(16))
+                            .shadow(Shadow {
+                                color: state.theme.shadow().scale_alpha(0.4),
+                                offset: Vector::default(),
+                                blur_radius: 4.0,
+                            })
+                    })
+                    .padding(Padding::from(SPACING_SMALL as f32)),
                 ),
             )
             .center_y(Length::Fill)

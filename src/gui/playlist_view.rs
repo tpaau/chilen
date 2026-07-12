@@ -8,8 +8,8 @@ use log::error;
 
 use crate::{
     gui::{
-        self, Chilen, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-        font::FONT_SIZE_LARGE, widgets::playlist_button::playlist_button,
+        self, Chilen, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
+        widgets::playlist_button::playlist_button,
     },
     music_lib::{create_playlist, state::Playlist},
 };
@@ -38,11 +38,11 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
         LoadingState::Loaded => column![
             text!("Playlists")
                 .color(state.theme.on_surface())
-                .size(FONT_SIZE_LARGE)
+                .size(font::SIZE_LARGE)
                 .font(gui::font::font_bold()),
             iced::widget::scrollable(
                 column({
-                    // TODO: Proper sorting with support for numbers and
+                    // TODO: Proper sorting with support for numbers and non-ASCII characters
                     let mut playlists: Vec<_> = state.playlists.iter().collect();
                     playlists.sort_by_key(|pl| pl.name.clone());
                     playlists

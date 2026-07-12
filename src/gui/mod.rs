@@ -15,14 +15,14 @@ use iced::{
     self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
-    widget::{column, container, row, text},
+    widget::{column, container, row},
     window::{self},
 };
 use log::{error, trace};
 
 use crate::{
     gui::{
-        font::{FONT_BYTES_BOLD, FONT_BYTES_REGULAR},
+        font::{BYTES_BOLD, BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
         theme::Theme,
     },
@@ -125,20 +125,16 @@ impl Chilen {
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
-            container(
-                text(*icons::HOME)
-                    .font(icons::font())
-                    .size(icons::SIZE_REGULAR),
-            )
-            .style(|_| {
-                container::Style::default()
-                    .background(state.theme.background())
-                    .border(Border::default().rounded(ROUNDING_REGULAR))
-            })
-            .padding(Padding::new(SPACING_SMALL as f32))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into(),
+            container("Main view")
+                .style(|_| {
+                    container::Style::default()
+                        .background(state.theme.background())
+                        .border(Border::default().rounded(ROUNDING_REGULAR))
+                })
+                .padding(Padding::new(SPACING_SMALL as f32))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
             // TODO: I should be able to resize this
             container("Currently playing")
                 .style(|_| container::background(state.theme.surface_container()))
@@ -222,8 +218,8 @@ fn load_fonts() -> Task<Message> {
     trace!("Loading fonts...");
     Task::batch([
         iced::font::load(ICONS_FONT_BYTES).discard(),
-        iced::font::load(FONT_BYTES_REGULAR).discard(),
-        iced::font::load(FONT_BYTES_BOLD).discard(),
+        iced::font::load(BYTES_REGULAR).discard(),
+        iced::font::load(BYTES_BOLD).discard(),
     ])
 }
 pub fn start() -> iced::Result {
