@@ -17,6 +17,10 @@ use crate::{
     music_lib::{covers::LoadMode, set_dirs},
 };
 
+const APP_NAME: &str = "Chilen";
+#[cfg(feature = "mpris")]
+const APP_ID: &str = "dev.tpaau.Chilen";
+
 /// Chilen error type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
@@ -198,12 +202,7 @@ fn main() {
             error!("Could not load the music library: {e}");
             exit(1)
         }
-        playback::init(
-            #[cfg(feature = "mpris")]
-            "Chilen".to_string(),
-            #[cfg(feature = "mpris")]
-            "dev.tpaau.Chilen".to_string(),
-        );
+        playback::init();
     });
 
     match gui::start() {

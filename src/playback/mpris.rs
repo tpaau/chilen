@@ -8,7 +8,7 @@ use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::{
-    gui,
+    APP_ID, APP_NAME, gui,
     playback::{
         self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
         open_uri,
@@ -348,16 +348,15 @@ impl PlayerInterface for MprisInterface {
     }
 }
 
-pub(crate) fn launch_server(identity: String, bus_name_suffix: String) {
+pub(crate) fn launch_server() {
     thread::spawn(move || {
         trace!("Starting the MPRIS server");
-        let bus_name_suffix = bus_name_suffix.clone();
         let interface = MprisInterface {
-            identity: identity.clone(),
+            identity: APP_NAME.to_string(),
         };
 
         smol::block_on(async {
-            let server = match Server::new(&bus_name_suffix, interface).await {
+            let server = match Server::new(APP_ID, interface).await {
                 Ok(server) => server,
                 Err(e) => {
                     error!("Cannot start the MPRIS server: {e}");

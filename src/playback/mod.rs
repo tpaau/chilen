@@ -690,10 +690,7 @@ pub(crate) fn get_player_volume() -> Result<PlayerVolume, Error> {
 //     pub bus_name_suffix: String,
 // }
 
-pub(crate) fn init(
-    #[cfg(feature = "mpris")] identity: String,
-    #[cfg(feature = "mpris")] bus_name_suffix: String,
-) {
+pub(crate) fn init() {
     trace!("Initializing the playback module");
 
     let state = match restore_state_from_cache() {
@@ -740,7 +737,7 @@ pub(crate) fn init(
     drop(state_guard);
 
     #[cfg(feature = "mpris")]
-    mpris::launch_server(identity, bus_name_suffix);
+    mpris::launch_server();
 
     trace!("Playback module initialized");
 
