@@ -12,7 +12,7 @@ use std::{
 };
 
 use log::{error, trace};
-use m3u8::{MediaPlaylist, MediaSegment};
+use m3u8_rs::{MediaPlaylist, MediaSegment};
 
 use crate::{
     Error,
@@ -145,7 +145,7 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
         }
     };
     let content = String::from_utf8_lossy(&data);
-    match m3u8::parser::parse_media_playlist(&content) {
+    match m3u8_rs::parser::parse_media_playlist(&content) {
         Ok((_, pl)) => {
             let base_path = path.parent().unwrap_or(Path::new("./"));
             let track_paths: Vec<_> = pl

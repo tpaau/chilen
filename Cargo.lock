@@ -591,7 +591,7 @@ dependencies = [
  "lofty",
  "log",
  "lrc_rs",
- "m3u8",
+ "m3u8_rs",
  "mpris-server",
  "rand",
  "rmp-serde",
@@ -1968,8 +1968,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1dc47f592c06f33f8e3aea9591776ec7c9f9e4124778ff8a3c3b87159f7e593"
 
 [[package]]
-name = "m3u8"
+name = "m3u8_rs"
 version = "0.1.0"
+source = "git+https://github.com/tpaau/m3u8_rs#a704605a75cd1dda4be8f0e634a837acb4deb2b5"
 dependencies = [
  "log",
  "nom",

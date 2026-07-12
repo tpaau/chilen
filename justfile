@@ -1,8 +1,8 @@
 doc:
-	cargo doc --no-deps -p chilen -p m3u8 --all-features
+	cargo doc --no-deps -p chilen --all-features
 
 open-doc:
-	cargo doc --no-deps -p chilen -p m3u8 --all-features --open
+	cargo doc --no-deps -p chilen --all-features --open
 
 test:
 	cargo test --workspace
@@ -14,11 +14,8 @@ check:
 	just doc
 	cargo deny check
 
-fmt:
-	cargo fmt --all
-
 loc:
-	cloc src/ m3u8/src/
+	cloc src/
 
 release:
 	cargo build --release
