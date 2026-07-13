@@ -15,7 +15,7 @@ check:
 	cargo deny check
 
 loc:
-	cloc src/
+	cloc src/ iced_m3/src/
 
 release:
 	cargo build --release
