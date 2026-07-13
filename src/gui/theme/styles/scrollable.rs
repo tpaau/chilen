@@ -1,6 +1,5 @@
 use iced::{Background, Border, Color, Shadow, widget::container};
-
-use crate::gui::theme::ColorScheme;
+use iced_m3::theme::ColorScheme;
 
 pub fn scrollable(
     status: iced::widget::scrollable::Status,

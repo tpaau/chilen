@@ -1,0 +1,9 @@
+[package]
+name = "iced_m3"
+version = "0.1.0"
+edition = "2024"
+authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
+license = "MIT"
+
+[dependencies]
+iced = "0.14.0"

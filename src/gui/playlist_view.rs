@@ -5,14 +5,13 @@ use iced::{
     border::Radius,
     widget::{button, column, container, text},
 };
+use iced_m3::theme::ColorScheme;
 use iced_widget::{bottom_right, center, right, row, stack};
 
 use crate::{
     gui::{
         self, Chilen, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
-        SPACING_SMALLER, font, icons,
-        theme::{ColorScheme, styles},
-        widgets::playlist_button::playlist_button,
+        SPACING_SMALLER, font, icons, theme::styles, widgets::playlist_button::playlist_button,
     },
     music_lib::state::Playlist,
 };

@@ -18,13 +18,13 @@ use iced::{
     widget::{column, container, row},
     window::{self},
 };
+use iced_m3::theme::{ColorScheme, Theme};
 use log::{error, trace};
 
 use crate::{
     gui::{
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
-        theme::{ColorScheme, Theme},
     },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
@@ -122,7 +122,6 @@ impl Chilen {
         container(column([row([
             // TODO: I should be able to resize this
             container(playlist_view::view(state).map(Message::Playlist))
-                .style(|_| container::background(state.theme.surface_container()))
                 .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
@@ -139,7 +138,6 @@ impl Chilen {
                 .into(),
             // TODO: I should be able to resize this
             container("Currently playing")
-                .style(|_| container::background(state.theme.surface_container()))
                 .padding(Padding::new(SPACING_SMALL as f32))
                 .width(Length::Fixed(500.0))
                 .height(Length::Fill)

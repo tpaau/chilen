@@ -4,13 +4,13 @@ use iced::{
     Background, Border, Color, Length, Padding, Shadow, Vector,
     widget::{Button, Space, button, column, container, row, space, text},
 };
+use iced_m3::theme::ColorScheme;
 
 use crate::{
     gui::{
         Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
         font::{self, SIZE_REGULAR, SIZE_SMALL},
         icons, playlist_view,
-        theme::ColorScheme,
         widgets::common::drop_down_menu::DropDownMenu,
     },
     music_lib::state::Playlist,
