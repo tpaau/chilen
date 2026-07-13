@@ -7,3 +7,4 @@ license = "MIT"
 
 [dependencies]
 iced = "0.14.0"
+iced_widget = "0.14.2"

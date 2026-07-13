@@ -19,7 +19,10 @@ use iced::{
     widget::{column, container, row},
     window::{self},
 };
-use iced_m3::theme::{ColorScheme, Theme};
+use iced_m3::{
+    theme::{ColorScheme, Theme},
+    widget::drop_down_menu::{DropDownMenu, Placement},
+};
 use iced_widget::{space, text};
 use log::{error, trace};
 
@@ -27,7 +30,6 @@ use crate::{
     gui::{
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
-        widgets::common::drop_down_menu::{DropDownMenu, Placement},
     },
     music_lib::state::{MusicLibrary, Playlist},
     playback::state::PlayerState,
