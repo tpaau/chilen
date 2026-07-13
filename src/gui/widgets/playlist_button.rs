@@ -11,7 +11,7 @@ use crate::{
         Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
         font::{self, SIZE_REGULAR, SIZE_SMALL},
         icons, playlist_view,
-        widgets::common::drop_down_menu::DropDownMenu,
+        widgets::common::drop_down_menu::{DropDownMenu, Placement},
     },
     music_lib::state::Playlist,
 };
@@ -62,7 +62,10 @@ pub fn playlist_button<'a>(
                         text("Option 1").size(font::SIZE_REGULAR),
                         text("Option 2").size(font::SIZE_REGULAR),
                         text("Option 3").size(font::SIZE_REGULAR),
-                        text("Option 4").size(font::SIZE_REGULAR),
+                        // text("Option 4").size(font::SIZE_REGULAR),
+                        // text("Option 5").size(font::SIZE_REGULAR),
+                        // text("Option 6").size(font::SIZE_REGULAR),
+                        // text("Option 7").size(font::SIZE_REGULAR),
                     ])
                     .style(|_| {
                         container::Style::default()
@@ -75,6 +78,7 @@ pub fn playlist_button<'a>(
                             })
                     })
                     .padding(Padding::from(SPACING_SMALL as f32)),
+                    Placement::TopLeft,
                 ),
             )
             .center_y(Length::Fill)

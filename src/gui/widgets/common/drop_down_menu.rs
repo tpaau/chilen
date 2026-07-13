@@ -16,31 +16,50 @@ struct State {
     position: Option<Point>,
 }
 
-// TODO: Better positioning
-// pub enum Orientation {
-//     TopLeft,
-//     TopRight,
-//     RightTop,
-//     RightBottom,
-//     BottomRight,
-//     BottomLeft,
-//     LeftBottom,
-//     LeftTop,
-// }
+/// Describes which edge of `content` the menu is anchored to, and where along that edge it is placed.
+///
+/// Variant names are `EdgePosition`:
+/// - `Edge` is the side of `content` the menu attaches to
+/// - `Position` is the menu's alignment along that edge
+///
+/// For example, [`TopLeft`](Placement::TopLeft) means the menu is attached to the top edge of
+/// `content` and aligned to the left. [`LeftTop`](Placement::LeftTop) means it is attached to the
+/// left edge and aligned to the top.
+#[derive(Default)]
+pub enum Placement {
+    TopLeft,
+    TopCenter,
+    TopRight,
+    RightTop,
+    RightCenter,
+    RightBottom,
+    BottomRight,
+    BottomCenter,
+    #[default]
+    BottomLeft,
+    LeftBottom,
+    LeftCenter,
+    LeftTop,
+}
 
 pub struct DropDownMenu<'a, Message> {
     content: Element<'a, Message, Theme, Renderer>,
     context_menu: Element<'a, Message, Theme, Renderer>,
+    overlay_bounds: Option<Rectangle>,
+    placement: Placement,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
     pub fn new(
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
         context_menu: impl Into<Element<'a, Message, Theme, Renderer>>,
+        placement: Placement,
     ) -> Self {
         Self {
             content: content.into(),
             context_menu: context_menu.into(),
+            overlay_bounds: None,
+            placement,
         }
     }
 }
@@ -51,6 +70,12 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
+        let overlay_bounds = self
+            .context_menu
+            .as_widget_mut()
+            .layout(&mut tree.children[1], renderer, limits)
+            .bounds();
+        self.overlay_bounds = Some(overlay_bounds);
         self.content
             .as_widget_mut()
             .layout(&mut tree.children[0], renderer, limits)
@@ -136,8 +161,46 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             && layout.bounds().contains(pos)
         {
             let bounds = layout.bounds();
-            tree.state.downcast_mut::<State>().position =
-                Some(bounds.position() + Vector::new(0.0, bounds.height));
+            let overlay_bounds = self.overlay_bounds.unwrap_or_default();
+            let overlay = tree.state.downcast_mut::<State>();
+            overlay.position = Some(
+                bounds.position()
+                    + match self.placement {
+                        Placement::TopLeft => Vector::new(
+                            -overlay_bounds.width + bounds.width,
+                            -overlay_bounds.height,
+                        ),
+                        Placement::TopCenter => Vector::new(
+                            (-overlay_bounds.width + bounds.width) / 2.0,
+                            -overlay_bounds.height,
+                        ),
+                        Placement::TopRight => Vector::new(0.0, -overlay_bounds.height),
+                        Placement::RightCenter => Vector::new(
+                            bounds.width,
+                            (-overlay_bounds.height + bounds.height) / 2.0,
+                        ),
+                        Placement::RightTop => {
+                            Vector::new(bounds.width, -overlay_bounds.height + bounds.height)
+                        }
+                        Placement::RightBottom => Vector::new(bounds.width, 0.0),
+                        Placement::BottomRight => Vector::new(0.0, bounds.height),
+                        Placement::BottomCenter => {
+                            Vector::new((-overlay_bounds.width + bounds.width) / 2.0, bounds.height)
+                        }
+                        Placement::BottomLeft => {
+                            Vector::new(-overlay_bounds.width + bounds.width, bounds.height)
+                        }
+                        Placement::LeftBottom => Vector::new(-overlay_bounds.width, 0.0),
+                        Placement::LeftCenter => Vector::new(
+                            -overlay_bounds.width,
+                            (-overlay_bounds.height + bounds.height) / 2.0,
+                        ),
+                        Placement::LeftTop => Vector::new(
+                            -overlay_bounds.width,
+                            -overlay_bounds.height + bounds.height,
+                        ),
+                    },
+            );
             shell.capture_event();
             shell.request_redraw();
         }
