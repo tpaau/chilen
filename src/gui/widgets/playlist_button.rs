@@ -64,10 +64,10 @@ pub fn playlist_button<'a>(
                         text("Option 1").size(font::SIZE_REGULAR),
                         text("Option 2").size(font::SIZE_REGULAR),
                         text("Option 3").size(font::SIZE_REGULAR),
-                        // text("Option 4").size(font::SIZE_REGULAR),
-                        // text("Option 5").size(font::SIZE_REGULAR),
-                        // text("Option 6").size(font::SIZE_REGULAR),
-                        // text("Option 7").size(font::SIZE_REGULAR),
+                        text("Option 4").size(font::SIZE_REGULAR),
+                        text("Option 5").size(font::SIZE_REGULAR),
+                        text("Option 6").size(font::SIZE_REGULAR),
+                        text("Option 7").size(font::SIZE_REGULAR),
                     ])
                     .style(|_| {
                         container::Style::default()

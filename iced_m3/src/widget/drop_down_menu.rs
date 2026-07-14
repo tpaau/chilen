@@ -25,7 +25,7 @@ struct State {
 /// For example, [`TopLeft`](Placement::TopLeft) means the menu is attached to the top edge of
 /// `content` and aligned to the left. [`LeftTop`](Placement::LeftTop) means it is attached to the
 /// left edge and aligned to the top.
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub enum Placement {
     TopLeft,
     TopCenter,
@@ -40,6 +40,78 @@ pub enum Placement {
     LeftBottom,
     LeftCenter,
     LeftTop,
+}
+
+impl Placement {
+    fn flip_x(&mut self) {
+        // println!("Flip X!");
+        *self = match self {
+            Self::TopLeft => Self::TopRight,
+            Self::TopRight => Self::TopLeft,
+            Self::RightTop => Self::LeftTop,
+            Self::RightCenter => Self::LeftCenter,
+            Self::RightBottom => Self::LeftBottom,
+            Self::BottomRight => Self::BottomLeft,
+            Self::BottomLeft => Self::BottomRight,
+            Self::LeftBottom => Self::RightBottom,
+            Self::LeftCenter => Self::RightCenter,
+            Self::LeftTop => Self::RightTop,
+            Self::TopCenter | Self::BottomCenter => *self,
+        }
+    }
+
+    fn flip_y(&mut self) {
+        // println!("Flip Y!");
+        *self = match self {
+            Self::TopLeft => Self::BottomLeft,
+            Self::TopCenter => Self::BottomCenter,
+            Self::TopRight => Self::BottomRight,
+            Self::RightTop => Self::RightBottom,
+            Self::RightBottom => Self::RightTop,
+            Self::BottomRight => Self::TopRight,
+            Self::BottomCenter => Self::TopCenter,
+            Self::BottomLeft => Self::TopLeft,
+            Self::LeftBottom => Self::LeftTop,
+            Self::LeftTop => Self::LeftBottom,
+            Self::LeftCenter | Self::RightCenter => *self,
+        }
+    }
+
+    fn calc(&self, bounds: &Rectangle, overlay_bounds: &Rectangle) -> Vector {
+        match self {
+            Placement::TopLeft => {
+                Vector::new(-overlay_bounds.width + bounds.width, -overlay_bounds.height)
+            }
+            Placement::TopCenter => Vector::new(
+                (-overlay_bounds.width + bounds.width) / 2.0,
+                -overlay_bounds.height,
+            ),
+            Placement::TopRight => Vector::new(0.0, -overlay_bounds.height),
+            Placement::RightCenter => {
+                Vector::new(bounds.width, (-overlay_bounds.height + bounds.height) / 2.0)
+            }
+            Placement::RightTop => {
+                Vector::new(bounds.width, -overlay_bounds.height + bounds.height)
+            }
+            Placement::RightBottom => Vector::new(bounds.width, 0.0),
+            Placement::BottomRight => Vector::new(0.0, bounds.height),
+            Placement::BottomCenter => {
+                Vector::new((-overlay_bounds.width + bounds.width) / 2.0, bounds.height)
+            }
+            Placement::BottomLeft => {
+                Vector::new(-overlay_bounds.width + bounds.width, bounds.height)
+            }
+            Placement::LeftBottom => Vector::new(-overlay_bounds.width, 0.0),
+            Placement::LeftCenter => Vector::new(
+                -overlay_bounds.width,
+                (-overlay_bounds.height + bounds.height) / 2.0,
+            ),
+            Placement::LeftTop => Vector::new(
+                -overlay_bounds.width,
+                -overlay_bounds.height + bounds.height,
+            ),
+        }
+    }
 }
 
 pub struct DropDownMenu<'a, Message> {
@@ -73,7 +145,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         let overlay_bounds = self
             .context_menu
             .as_widget_mut()
-            .layout(&mut tree.children[1], renderer, limits)
+            .layout(&mut tree.children[1], renderer, &Limits::NONE)
             .bounds();
         self.overlay_bounds = Some(overlay_bounds);
         self.content
@@ -163,44 +235,27 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             let bounds = layout.bounds();
             let overlay_bounds = self.overlay_bounds.unwrap_or_default();
             let overlay = tree.state.downcast_mut::<State>();
-            overlay.position = Some(
-                bounds.position()
-                    + match self.placement {
-                        Placement::TopLeft => Vector::new(
-                            -overlay_bounds.width + bounds.width,
-                            -overlay_bounds.height,
-                        ),
-                        Placement::TopCenter => Vector::new(
-                            (-overlay_bounds.width + bounds.width) / 2.0,
-                            -overlay_bounds.height,
-                        ),
-                        Placement::TopRight => Vector::new(0.0, -overlay_bounds.height),
-                        Placement::RightCenter => Vector::new(
-                            bounds.width,
-                            (-overlay_bounds.height + bounds.height) / 2.0,
-                        ),
-                        Placement::RightTop => {
-                            Vector::new(bounds.width, -overlay_bounds.height + bounds.height)
-                        }
-                        Placement::RightBottom => Vector::new(bounds.width, 0.0),
-                        Placement::BottomRight => Vector::new(0.0, bounds.height),
-                        Placement::BottomCenter => {
-                            Vector::new((-overlay_bounds.width + bounds.width) / 2.0, bounds.height)
-                        }
-                        Placement::BottomLeft => {
-                            Vector::new(-overlay_bounds.width + bounds.width, bounds.height)
-                        }
-                        Placement::LeftBottom => Vector::new(-overlay_bounds.width, 0.0),
-                        Placement::LeftCenter => Vector::new(
-                            -overlay_bounds.width,
-                            (-overlay_bounds.height + bounds.height) / 2.0,
-                        ),
-                        Placement::LeftTop => Vector::new(
-                            -overlay_bounds.width,
-                            -overlay_bounds.height + bounds.height,
-                        ),
-                    },
-            );
+            let offset = self.placement.calc(&bounds, &overlay_bounds);
+            // println!("viewport: {viewport:?}");
+            // println!("bounds: {bounds:?}");
+            // println!("overlay_bounds: {overlay_bounds:?}");
+            // println!("offset: {offset:?}");
+            let target = bounds.position()
+                + offset
+                + Vector::new(overlay_bounds.width, overlay_bounds.height);
+            let mut placement = self.placement;
+            if bounds.width + bounds.x + offset.x < viewport.x {
+                placement.flip_y();
+            } else if target.x >= viewport.width + viewport.x {
+                placement.flip_x();
+            }
+            if bounds.height + bounds.y + offset.y < viewport.y {
+                placement.flip_y();
+            } else if target.y >= viewport.height + viewport.y {
+                placement.flip_y();
+            }
+            let offset = placement.calc(&bounds, &overlay_bounds);
+            overlay.position = Some(bounds.position() + offset);
             shell.capture_event();
             shell.request_redraw();
         }
