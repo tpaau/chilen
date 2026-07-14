@@ -80,7 +80,7 @@ pub fn playlist_button<'a>(
                             })
                     })
                     .padding(Padding::from(SPACING_SMALL as f32)),
-                    Placement::TopLeft,
+                    Placement::BottomLeft,
                 ),
             )
             .center_y(Length::Fill)

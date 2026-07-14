@@ -124,7 +124,6 @@ fn window_subscription() -> Subscription<Message> {
 
 impl Chilen {
     fn view(state: &Chilen) -> Element<'_, Message> {
-        let placement = Placement::BottomLeft;
         container(column([row([
             // TODO: I should be able to resize this
             container(playlist_view::view(state).map(Message::Playlist))
@@ -132,149 +131,22 @@ impl Chilen {
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
-            container(column![
-                DropDownMenu::new(
-                    container(text("BottomLeft"),)
-                        .style(|_| container::Style::default()
-                            .background(Color::from_str("#0000FF").unwrap()))
-                        .width(Length::Fixed(60.0))
-                        .height(Length::Fixed(40.0)),
-                    container(
-                        space()
-                            .width(Length::Fixed(100.0))
-                            .height(Length::Fixed(150.0)),
-                    )
-                    .style(|_| {
-                        container::Style::default().background(Color::from_str("#FF0000").unwrap())
-                    }),
-                    placement,
-                ),
-                space().height(Length::Fixed(450.0)),
-                DropDownMenu::new(
-                    container(text("BottomLeft"),)
-                        .style(|_| container::Style::default()
-                            .background(Color::from_str("#0000FF").unwrap()))
-                        .width(Length::Fixed(60.0))
-                        .height(Length::Fixed(40.0)),
-                    container(
-                        space()
-                            .width(Length::Fixed(100.0))
-                            .height(Length::Fixed(150.0)),
-                    )
-                    .style(|_| {
-                        container::Style::default().background(Color::from_str("#FF0000").unwrap())
-                    }),
-                    placement,
-                ),
-                space().height(Length::Fixed(450.0)),
-                DropDownMenu::new(
-                    container(text("BottomLeft"),)
-                        .style(|_| container::Style::default()
-                            .background(Color::from_str("#0000FF").unwrap()))
-                        .width(Length::Fixed(60.0))
-                        .height(Length::Fixed(40.0)),
-                    container(
-                        space()
-                            .width(Length::Fixed(100.0))
-                            .height(Length::Fixed(150.0)),
-                    )
-                    .style(|_| {
-                        container::Style::default().background(Color::from_str("#FF0000").unwrap())
-                    }),
-                    placement,
-                )
-            ])
-            .style(|_| {
-                container::Style::default()
-                    .background(state.theme.background())
-                    .border(Border::default().rounded(ROUNDING_REGULAR))
-            })
-            .padding(Padding::new(SPACING_SMALL as f32))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into(),
+            container("Main view")
+                .style(|_| {
+                    container::Style::default()
+                        .background(state.theme.background())
+                        .border(Border::default().rounded(ROUNDING_REGULAR))
+                })
+                .padding(Padding::new(SPACING_SMALL as f32))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
             // TODO: I should be able to resize this
-            container(row![
-                column![
-                    DropDownMenu::new(
-                        container(text("TopRight"),)
-                            .style(|_| container::Style::default()
-                                .background(Color::from_str("#0000FF").unwrap()))
-                            .width(Length::Fixed(60.0))
-                            .height(Length::Fixed(40.0)),
-                        container(
-                            space()
-                                .width(Length::Fixed(100.0))
-                                .height(Length::Fixed(150.0)),
-                        )
-                        .style(|_| {
-                            container::Style::default()
-                                .background(Color::from_str("#FF0000").unwrap())
-                        }),
-                        Placement::TopRight,
-                    ),
-                    space().height(Length::Fill),
-                    DropDownMenu::new(
-                        container(text("TopRight"),)
-                            .style(|_| container::Style::default()
-                                .background(Color::from_str("#0000FF").unwrap()))
-                            .width(Length::Fixed(60.0))
-                            .height(Length::Fixed(40.0)),
-                        container(
-                            space()
-                                .width(Length::Fixed(100.0))
-                                .height(Length::Fixed(150.0)),
-                        )
-                        .style(|_| {
-                            container::Style::default()
-                                .background(Color::from_str("#FF0000").unwrap())
-                        }),
-                        Placement::TopRight,
-                    ),
-                ],
-                space().width(Length::Fill),
-                column![
-                    DropDownMenu::new(
-                        container(text("TopRight"),)
-                            .style(|_| container::Style::default()
-                                .background(Color::from_str("#0000FF").unwrap()))
-                            .width(Length::Fixed(60.0))
-                            .height(Length::Fixed(40.0)),
-                        container(
-                            space()
-                                .width(Length::Fixed(100.0))
-                                .height(Length::Fixed(150.0)),
-                        )
-                        .style(|_| {
-                            container::Style::default()
-                                .background(Color::from_str("#FF0000").unwrap())
-                        }),
-                        Placement::TopRight,
-                    ),
-                    space().height(Length::Fill),
-                    DropDownMenu::new(
-                        container(text("TopRight"),)
-                            .style(|_| container::Style::default()
-                                .background(Color::from_str("#0000FF").unwrap()))
-                            .width(Length::Fixed(60.0))
-                            .height(Length::Fixed(40.0)),
-                        container(
-                            space()
-                                .width(Length::Fixed(100.0))
-                                .height(Length::Fixed(150.0)),
-                        )
-                        .style(|_| {
-                            container::Style::default()
-                                .background(Color::from_str("#FF0000").unwrap())
-                        }),
-                        Placement::TopRight,
-                    ),
-                ]
-            ])
-            .padding(Padding::new(SPACING_SMALL as f32))
-            .width(Length::Fixed(500.0))
-            .height(Length::Fill)
-            .into(),
+            container("Currently playing")
+                .padding(Padding::new(SPACING_SMALL as f32))
+                .width(Length::Fixed(500.0))
+                .height(Length::Fill)
+                .into(),
         ])
         .into()]))
         .style(|_| container::background(state.theme.surface_container()))

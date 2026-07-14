@@ -44,7 +44,6 @@ pub enum Placement {
 
 impl Placement {
     fn flip_x(&mut self) {
-        // println!("Flip X!");
         *self = match self {
             Self::TopLeft => Self::TopRight,
             Self::TopRight => Self::TopLeft,
@@ -61,7 +60,6 @@ impl Placement {
     }
 
     fn flip_y(&mut self) {
-        // println!("Flip Y!");
         *self = match self {
             Self::TopLeft => Self::BottomLeft,
             Self::TopCenter => Self::BottomCenter,
@@ -236,10 +234,6 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             let overlay_bounds = self.overlay_bounds.unwrap_or_default();
             let overlay = tree.state.downcast_mut::<State>();
             let offset = self.placement.calc(&bounds, &overlay_bounds);
-            // println!("viewport: {viewport:?}");
-            // println!("bounds: {bounds:?}");
-            // println!("overlay_bounds: {overlay_bounds:?}");
-            // println!("offset: {offset:?}");
             let target = bounds.position()
                 + offset
                 + Vector::new(overlay_bounds.width, overlay_bounds.height);
