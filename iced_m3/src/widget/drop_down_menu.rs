@@ -1,5 +1,3 @@
-use std::cell::Cell;
-
 use iced::advanced::Clipboard;
 use iced_widget::{
     Renderer, Theme,
@@ -120,7 +118,7 @@ pub struct DropDownMenu<'a, Message> {
     overlay_bounds: Option<Rectangle>,
     content_cached: Option<Element<'a, Message, Theme, Renderer>>,
     placement: Placement,
-    open: Cell<bool>,
+    open_cached: bool,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
@@ -135,14 +133,14 @@ impl<'a, Message> DropDownMenu<'a, Message> {
             overlay_bounds: None,
             content_cached: None,
             placement,
-            open: Cell::new(false),
+            open_cached: false,
         }
     }
 }
 
 impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     fn size(&self) -> Size<Length> {
-        (self.content)(self.open.get()).as_widget().size()
+        (self.content)(self.open_cached).as_widget().size()
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
@@ -152,7 +150,9 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             .layout(&mut tree.children[1], renderer, &Limits::NONE)
             .bounds();
         self.overlay_bounds = Some(overlay_bounds);
-        self.content_cached = Some((self.content)(self.open.get()));
+        self.content_cached = Some((self.content)(
+            tree.state.downcast_ref::<State>().position.is_some(),
+        ));
         self.content_cached
             .as_mut()
             .unwrap()
@@ -170,15 +170,17 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         cursor: Cursor,
         viewport: &Rectangle,
     ) {
-        (self.content)(self.open.get()).as_widget().draw(
-            &tree.children[0],
-            renderer,
-            theme,
-            style,
-            layout,
-            cursor,
-            viewport,
-        );
+        (self.content)(tree.state.downcast_ref::<State>().position.is_some())
+            .as_widget()
+            .draw(
+                &tree.children[0],
+                renderer,
+                theme,
+                style,
+                layout,
+                cursor,
+                viewport,
+            );
     }
 
     fn tag(&self) -> tree::Tag {
@@ -191,13 +193,13 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
 
     fn children(&self) -> Vec<Tree> {
         vec![
-            Tree::new(&(self.content)(self.open.get())),
+            Tree::new(&(self.content)(self.open_cached)),
             Tree::new(&self.menu),
         ]
     }
 
     fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&[&(self.content)(self.open.get()), &self.menu]);
+        tree.diff_children(&[&(self.content)(self.open_cached), &self.menu]);
     }
 
     fn operate(
@@ -207,12 +209,9 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         renderer: &Renderer,
         operation: &mut dyn Operation,
     ) {
-        (self.content)(self.open.get()).as_widget_mut().operate(
-            &mut tree.children[0],
-            layout,
-            renderer,
-            operation,
-        );
+        (self.content)(tree.state.downcast_ref::<State>().position.is_some())
+            .as_widget_mut()
+            .operate(&mut tree.children[0], layout, renderer, operation);
     }
 
     fn update(
@@ -226,16 +225,18 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
-        (self.content)(self.open.get()).as_widget_mut().update(
-            &mut tree.children[0],
-            event,
-            layout,
-            cursor,
-            renderer,
-            clipboard,
-            shell,
-            viewport,
-        );
+        (self.content)(tree.state.downcast_ref::<State>().position.is_some())
+            .as_widget_mut()
+            .update(
+                &mut tree.children[0],
+                event,
+                layout,
+                cursor,
+                renderer,
+                clipboard,
+                shell,
+                viewport,
+            );
 
         if shell.is_event_captured() {
             return;
@@ -265,7 +266,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             }
             let offset = placement.calc(&bounds, &overlay_bounds);
             overlay.position = Some(bounds.position() + offset);
-            self.open.set(true);
+            self.open_cached = true;
             shell.capture_event();
             shell.request_redraw();
         }
@@ -279,7 +280,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> Interaction {
-        (self.content)(self.open.get())
+        (self.content)(self.open_cached)
             .as_widget()
             .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer)
     }
@@ -316,7 +317,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     tree: second,
                     state,
                     position: position + translation,
-                    open: &self.open,
+                    open: &self.open_cached,
                 }))
             }),
         ]
@@ -339,7 +340,7 @@ struct Overlay<'a, 'b, Message> {
     tree: &'b mut Tree,
     state: &'b mut State,
     position: Point,
-    open: &'b Cell<bool>,
+    open: &'b bool,
 }
 
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
@@ -420,7 +421,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                     shell.capture_event();
                 } else {
                     self.state.position = None;
-                    self.open.set(false);
+                    self.open = &false;
                     shell.request_redraw();
                 }
             }
@@ -428,7 +429,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
                 self.state.position = None;
-                self.open.set(false);
+                self.open = &false;
                 shell.request_redraw();
             }
             Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
