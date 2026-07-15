@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use iced::advanced::Clipboard;
 use iced_widget::{
     Renderer, Theme,
@@ -117,6 +119,7 @@ pub struct DropDownMenu<'a, Message> {
     menu: Element<'a, Message, Theme, Renderer>,
     overlay_bounds: Option<Rectangle>,
     placement: Placement,
+    open: Cell<bool>,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
@@ -130,6 +133,7 @@ impl<'a, Message> DropDownMenu<'a, Message> {
             menu: menu.into(),
             overlay_bounds: None,
             placement,
+            open: Cell::new(false),
         }
     }
 }
@@ -250,6 +254,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             }
             let offset = placement.calc(&bounds, &overlay_bounds);
             overlay.position = Some(bounds.position() + offset);
+            self.open.set(true);
             shell.capture_event();
             shell.request_redraw();
         }
@@ -296,6 +301,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     tree: second,
                     state,
                     position: position + translation,
+                    open: &self.open,
                 }))
             }),
         ]
@@ -318,6 +324,7 @@ struct Overlay<'a, 'b, Message> {
     tree: &'b mut Tree,
     state: &'b mut State,
     position: Point,
+    open: &'b Cell<bool>,
 }
 
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
@@ -398,6 +405,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                     shell.capture_event();
                 } else {
                     self.state.position = None;
+                    self.open.set(false);
                     shell.request_redraw();
                 }
             }
@@ -405,6 +413,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
                 self.state.position = None;
+                self.open.set(false);
                 shell.request_redraw();
             }
             Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
