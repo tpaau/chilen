@@ -57,9 +57,12 @@ pub fn playlist_button<'a>(
             container(
                 // TODO: Should be more like a button
                 DropDownMenu::new(
-                    text(*icons::MORE_HORIZ)
-                        .font(icons::font())
-                        .size(icons::SIZE_REGULAR),
+                    |_| {
+                        text(*icons::MORE_HORIZ)
+                            .font(icons::font())
+                            .size(icons::SIZE_REGULAR)
+                            .into()
+                    },
                     container(column![
                         text("Option 1").size(font::SIZE_REGULAR),
                         text("Option 2").size(font::SIZE_REGULAR),

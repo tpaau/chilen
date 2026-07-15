@@ -115,23 +115,25 @@ impl Placement {
 }
 
 pub struct DropDownMenu<'a, Message> {
-    content: Element<'a, Message, Theme, Renderer>,
+    content: Box<dyn Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a>,
     menu: Element<'a, Message, Theme, Renderer>,
     overlay_bounds: Option<Rectangle>,
+    content_cached: Option<Element<'a, Message, Theme, Renderer>>,
     placement: Placement,
     open: Cell<bool>,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
     pub fn new(
-        content: impl Into<Element<'a, Message, Theme, Renderer>>,
+        content: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
         menu: impl Into<Element<'a, Message, Theme, Renderer>>,
         placement: Placement,
     ) -> Self {
         Self {
-            content: content.into(),
+            content: Box::new(content),
             menu: menu.into(),
             overlay_bounds: None,
+            content_cached: None,
             placement,
             open: Cell::new(false),
         }
@@ -140,7 +142,7 @@ impl<'a, Message> DropDownMenu<'a, Message> {
 
 impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     fn size(&self) -> Size<Length> {
-        self.content.as_widget().size()
+        (self.content)(self.open.get()).as_widget().size()
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
@@ -150,7 +152,10 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             .layout(&mut tree.children[1], renderer, &Limits::NONE)
             .bounds();
         self.overlay_bounds = Some(overlay_bounds);
-        self.content
+        self.content_cached = Some((self.content)(self.open.get()));
+        self.content_cached
+            .as_mut()
+            .unwrap()
             .as_widget_mut()
             .layout(&mut tree.children[0], renderer, limits)
     }
@@ -165,7 +170,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         cursor: Cursor,
         viewport: &Rectangle,
     ) {
-        self.content.as_widget().draw(
+        (self.content)(self.open.get()).as_widget().draw(
             &tree.children[0],
             renderer,
             theme,
@@ -185,11 +190,14 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     }
 
     fn children(&self) -> Vec<Tree> {
-        vec![Tree::new(&self.content), Tree::new(&self.menu)]
+        vec![
+            Tree::new(&(self.content)(self.open.get())),
+            Tree::new(&self.menu),
+        ]
     }
 
     fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&[&self.content, &self.menu]);
+        tree.diff_children(&[&(self.content)(self.open.get()), &self.menu]);
     }
 
     fn operate(
@@ -199,9 +207,12 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         renderer: &Renderer,
         operation: &mut dyn Operation,
     ) {
-        self.content
-            .as_widget_mut()
-            .operate(&mut tree.children[0], layout, renderer, operation);
+        (self.content)(self.open.get()).as_widget_mut().operate(
+            &mut tree.children[0],
+            layout,
+            renderer,
+            operation,
+        );
     }
 
     fn update(
@@ -215,7 +226,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
-        self.content.as_widget_mut().update(
+        (self.content)(self.open.get()).as_widget_mut().update(
             &mut tree.children[0],
             event,
             layout,
@@ -268,13 +279,9 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> Interaction {
-        self.content.as_widget().mouse_interaction(
-            &tree.children[0],
-            layout,
-            cursor,
-            viewport,
-            renderer,
-        )
+        (self.content)(self.open.get())
+            .as_widget()
+            .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer)
     }
 
     fn overlay<'a>(
@@ -292,9 +299,17 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         };
 
         let children = [
-            self.content
-                .as_widget_mut()
-                .overlay(first, layout, renderer, viewport, translation),
+            // NOTE: I think this might cause issues if `content_cached` is not assigned, it won't
+            // display its overlay??
+            self.content_cached.as_mut().and_then(|content_cached| {
+                content_cached.as_widget_mut().overlay(
+                    first,
+                    layout,
+                    renderer,
+                    viewport,
+                    translation,
+                )
+            }),
             state.position.map(|position| {
                 overlay::Element::new(Box::new(Overlay {
                     menu: &mut self.menu,
