@@ -114,7 +114,7 @@ impl Placement {
 
 pub struct DropDownMenu<'a, Message> {
     content: Element<'a, Message, Theme, Renderer>,
-    context_menu: Element<'a, Message, Theme, Renderer>,
+    menu: Element<'a, Message, Theme, Renderer>,
     overlay_bounds: Option<Rectangle>,
     placement: Placement,
 }
@@ -122,12 +122,12 @@ pub struct DropDownMenu<'a, Message> {
 impl<'a, Message> DropDownMenu<'a, Message> {
     pub fn new(
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
-        context_menu: impl Into<Element<'a, Message, Theme, Renderer>>,
+        menu: impl Into<Element<'a, Message, Theme, Renderer>>,
         placement: Placement,
     ) -> Self {
         Self {
             content: content.into(),
-            context_menu: context_menu.into(),
+            menu: menu.into(),
             overlay_bounds: None,
             placement,
         }
@@ -141,7 +141,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
         let overlay_bounds = self
-            .context_menu
+            .menu
             .as_widget_mut()
             .layout(&mut tree.children[1], renderer, &Limits::NONE)
             .bounds();
@@ -181,11 +181,11 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     }
 
     fn children(&self) -> Vec<Tree> {
-        vec![Tree::new(&self.content), Tree::new(&self.context_menu)]
+        vec![Tree::new(&self.content), Tree::new(&self.menu)]
     }
 
     fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&[&self.content, &self.context_menu]);
+        tree.diff_children(&[&self.content, &self.menu]);
     }
 
     fn operate(
@@ -292,7 +292,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                 .overlay(first, layout, renderer, viewport, translation),
             state.position.map(|position| {
                 overlay::Element::new(Box::new(Overlay {
-                    context_menu: &mut self.context_menu,
+                    menu: &mut self.menu,
                     tree: second,
                     state,
                     position: position + translation,
@@ -314,7 +314,7 @@ impl<'a, Message: 'a> From<DropDownMenu<'a, Message>> for Element<'a, Message, T
 }
 
 struct Overlay<'a, 'b, Message> {
-    context_menu: &'b mut Element<'a, Message, Theme, Renderer>,
+    menu: &'b mut Element<'a, Message, Theme, Renderer>,
     tree: &'b mut Tree,
     state: &'b mut State,
     position: Point,
@@ -323,7 +323,7 @@ struct Overlay<'a, 'b, Message> {
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
     fn layout(&mut self, renderer: &Renderer, bounds: Size) -> Node {
         let mut layout = self
-            .context_menu
+            .menu
             .as_widget_mut()
             .layout(self.tree, renderer, &Limits::new(Size::ZERO, bounds))
             .move_to(self.position);
@@ -348,7 +348,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
         cursor: Cursor,
     ) {
         renderer.with_layer(Rectangle::INFINITE, |renderer| {
-            self.context_menu.as_widget().draw(
+            self.menu.as_widget().draw(
                 self.tree,
                 renderer,
                 theme,
@@ -361,7 +361,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
     }
 
     fn operate(&mut self, layout: Layout<'_>, renderer: &Renderer, operation: &mut dyn Operation) {
-        self.context_menu
+        self.menu
             .as_widget_mut()
             .operate(self.tree, layout, renderer, operation);
     }
@@ -377,7 +377,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
     ) {
         let was_event_captured = shell.is_event_captured();
 
-        self.context_menu.as_widget_mut().update(
+        self.menu.as_widget_mut().update(
             self.tree,
             event,
             layout,
@@ -428,7 +428,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
         cursor: Cursor,
         renderer: &Renderer,
     ) -> Interaction {
-        let interaction = self.context_menu.as_widget().mouse_interaction(
+        let interaction = self.menu.as_widget().mouse_interaction(
             self.tree,
             layout,
             cursor,
@@ -448,7 +448,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
         layout: Layout<'a>,
         renderer: &Renderer,
     ) -> Option<overlay::Element<'a, Message, Theme, Renderer>> {
-        self.context_menu.as_widget_mut().overlay(
+        self.menu.as_widget_mut().overlay(
             self.tree,
             layout,
             renderer,
