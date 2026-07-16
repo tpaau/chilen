@@ -272,6 +272,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             let offset = placement.calc(&bounds, &overlay_bounds);
             overlay.position = Some(bounds.position() + offset);
             self.open_cached.set(true);
+            shell.invalidate_widgets();
             shell.capture_event();
             shell.request_redraw();
         }
@@ -427,6 +428,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 } else {
                     self.state.position = None;
                     self.open_cached.set(false);
+                    shell.invalidate_widgets();
                     shell.request_redraw();
                 }
             }
@@ -435,6 +437,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
             {
                 self.state.position = None;
                 self.open_cached.set(false);
+                shell.invalidate_widgets();
                 shell.request_redraw();
             }
             Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
@@ -446,6 +449,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
             }) => {
                 self.state.position = None;
                 self.open_cached.set(false);
+                shell.invalidate_widgets();
                 shell.capture_event();
                 shell.request_redraw();
             }
