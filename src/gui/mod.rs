@@ -69,7 +69,6 @@ struct Chilen {
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
-    playlist_state: playlist_view::State,
 }
 
 impl Default for Chilen {
@@ -80,7 +79,6 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
-            playlist_state: playlist_view::State::default(),
         }
     }
 }

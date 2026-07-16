@@ -3,10 +3,13 @@ use std::{collections::HashSet, sync::Arc};
 use iced::{
     Alignment, Border, Element, Length, Padding, Shadow, Task, Vector,
     border::Radius,
-    widget::{button, column, container, text},
+    widget::{column, container, text},
 };
-use iced_m3::theme::ColorScheme;
-use iced_widget::{bottom_right, center, right, row, stack};
+use iced_m3::{
+    theme::ColorScheme,
+    widget::drop_down_menu::{DropDownMenu, Placement},
+};
+use iced_widget::{bottom_right, center, row, space, stack};
 
 use crate::{
     gui::{
@@ -18,16 +21,10 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ToggleFabMenu,
     PlaylistsChanged(HashSet<Arc<Playlist>>),
     Open(Arc<Playlist>),
     CreatePlaylist,
     ImportPlaylist,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct State {
-    fab_menu_opened: bool,
 }
 
 pub fn view(state: &Chilen) -> Element<'_, Message> {
@@ -74,105 +71,95 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 .spacing(SPACING_SMALL)
                 .height(Length::Fill)
                 .width(Length::Fill),
-                bottom_right({
-                    let button = button(center(
-                        text(match state.playlist_state.fab_menu_opened {
-                            true => *icons::CLOSE,
-                            false => *icons::ADD,
-                        })
-                        .font(icons::font())
-                        .size(icons::SIZE_REGULAR),
+                bottom_right(DropDownMenu::new(
+                    move |opened| container(center(
+                        text(if opened { *icons::CLOSE } else { *icons::ADD })
+                            .font(icons::font())
+                            .size(icons::SIZE_REGULAR)
                     ))
-                    .on_press(Message::ToggleFabMenu)
-                    .width(Length::Fixed(56.0))
-                    .height(Length::Fixed(56.0))
-                    .style(|_, status| {
-                        let mut style = styles::button::button(
-                            status,
-                            &state.theme,
-                            if state.playlist_state.fab_menu_opened {
-                                styles::button::Style::InversePrimary
-                            } else {
-                                styles::button::Style::Primary
-                            },
-                        );
-                        style.shadow = Shadow {
-                            color: state.theme.shadow().scale_alpha(0.4),
-                            offset: Vector::new(0.0, 2.0),
-                            blur_radius: 6.0,
-                        };
-                        style.border.radius = if state.playlist_state.fab_menu_opened {
+                    .style(move |_| container::Style {
+                        text_color: Some(if opened {
+                            state.theme.primary()
+                        } else {
+                            state.theme.on_primary()
+                        }),
+                        background: Some(iced::Background::Color(if opened {
+                            state.theme.on_primary()
+                        } else {
+                            state.theme.primary()
+                        })),
+                        border: Border::default().rounded(if opened {
                             Radius::from(u32::MAX)
                         } else {
                             Radius::from(ROUNDING_LARGE)
-                        };
-                        style
-                    });
-                    // TODO: Move this to a dedicated widget
-                    // TODO: Close the FAB menu when the user clicks outside of it
-                    match state.playlist_state.fab_menu_opened {
-                        true => column![
-                            column![
-                                right(
-                                    iced::widget::button(center(
-                                        row(vec![
-                                            text(*icons::PLAYLIST_ADD)
-                                                .font(icons::font())
-                                                .size(icons::SIZE_SMALLER)
-                                                .into(),
-                                            text("New playlist").size(font::SIZE_REGULAR).into()
-                                        ])
-                                        .align_y(Alignment::Center)
-                                        .spacing(8)
-                                    ))
-                                    .style(|_, status| {
-                                        let mut style = styles::button::button(
-                                            status,
-                                            &state.theme,
-                                            styles::button::Style::Primary,
-                                        );
-                                        style.border.radius = Radius::from(f32::MAX);
-                                        style
-                                    })
-                                    .padding(Padding::from(16.0))
-                                    .height(Length::Fixed(56.0))
-                                    .width(Length::Shrink)
-                                    .on_press(Message::CreatePlaylist)
-                                ),
-                                right(
-                                    iced::widget::button(center(
-                                        row(vec![
-                                            text(*icons::UPLOAD_FILE)
-                                                .font(icons::font())
-                                                .size(icons::SIZE_SMALLER)
-                                                .into(),
-                                            text("Import playlist").size(font::SIZE_REGULAR).into()
-                                        ])
-                                        .align_y(Alignment::Center)
-                                        .spacing(8)
-                                    ))
-                                    .style(|_, status| {
-                                        let mut style = styles::button::button(
-                                            status,
-                                            &state.theme,
-                                            styles::button::Style::Primary,
-                                        );
-                                        style.border.radius = Radius::from(f32::MAX);
-                                        style
-                                    })
-                                    .padding(Padding::from(16.0))
-                                    .height(Length::Fixed(56.0))
-                                    .width(Length::Shrink)
-                                    .on_press(Message::ImportPlaylist)
-                                ),
-                            ]
-                            .spacing(4),
-                            right(button),
-                        ]
-                        .spacing(SPACING_SMALL),
-                        false => column![button],
-                    }
-                }),
+                        }),
+                        shadow: Shadow {
+                            color: state.theme.shadow().scale_alpha(0.4),
+                            offset: Vector::new(0.0, 2.0),
+                            blur_radius: 6.0,
+                        },
+                        snap: true
+                    })
+                    .width(Length::Fixed(56.0))
+                    .height(Length::Fixed(56.0))
+                    .into(),
+                    column![
+                        iced::widget::button(center(
+                            row(vec![
+                                text(*icons::UPLOAD_FILE)
+                                    .font(icons::font())
+                                    .size(icons::SIZE_SMALLER)
+                                    .into(),
+                                text("Import playlist").size(font::SIZE_REGULAR).into()
+                            ])
+                            .align_y(Alignment::Center)
+                            .spacing(8)
+                        ))
+                        .style(|_, status| {
+                            let mut style = styles::button::button(
+                                status,
+                                &state.theme,
+                                styles::button::Style::Primary,
+                            );
+                            style.border.radius = Radius::from(f32::MAX);
+                            style
+                        })
+                        .padding(Padding::from(16.0))
+                        .height(Length::Fixed(56.0))
+                        .width(Length::Shrink)
+                        .on_press(Message::ImportPlaylist),
+                        iced::widget::button(center(
+                            row(vec![
+                                text(*icons::PLAYLIST_ADD)
+                                    .font(icons::font())
+                                    .size(icons::SIZE_SMALLER)
+                                    .into(),
+                                text("New playlist").size(font::SIZE_REGULAR).into()
+                            ])
+                            .align_y(Alignment::Center)
+                            .spacing(8)
+                        ))
+                        .style(|_, status| {
+                            let mut style = styles::button::button(
+                                status,
+                                &state.theme,
+                                styles::button::Style::Primary,
+                            );
+                            style.border.radius = Radius::from(f32::MAX);
+                            style
+                        })
+                        .padding(Padding::from(16.0))
+                        .height(Length::Fixed(56.0))
+                        .width(Length::Shrink)
+                        .on_press(Message::CreatePlaylist),
+                        space().height(4.0)
+                    ]
+                    .align_x(Alignment::End)
+                    .width(Length::Shrink)
+                    .height(Length::Shrink)
+                    .spacing(4),
+                    Placement::TopLeft,
+                ))
             )
             .into()
         }
@@ -181,10 +168,6 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
-        Message::ToggleFabMenu => {
-            state.playlist_state.fab_menu_opened = !state.playlist_state.fab_menu_opened;
-            Task::none()
-        }
         Message::PlaylistsChanged(playlists) => {
             state.loading_state = LoadingState::Loaded;
             state.playlists = playlists;

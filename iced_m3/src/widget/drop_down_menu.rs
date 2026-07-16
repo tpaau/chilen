@@ -115,6 +115,7 @@ impl Placement {
 }
 
 pub struct DropDownMenu<'a, Message> {
+    // TODO: Also expose whether the content is hovered
     content: Box<dyn Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a>,
     menu: Element<'a, Message, Theme, Renderer>,
     overlay_bounds: Option<Rectangle>,
