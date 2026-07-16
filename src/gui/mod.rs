@@ -133,7 +133,7 @@ impl Chilen {
                 .into(),
             container(DropDownMenu::new(
                 |open| {
-                    text("content")
+                    text(if open { *icons::CLOSE } else { *icons::ADD })
                         .color({
                             if open {
                                 Color::from_str("#FF0000").unwrap()
@@ -141,6 +141,7 @@ impl Chilen {
                                 Color::from_str("#00FF00").unwrap()
                             }
                         })
+                        .font(icons::font())
                         .into()
                 },
                 text("menu"),

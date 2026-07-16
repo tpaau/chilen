@@ -1,3 +1,5 @@
+use std::{cell::Cell, rc::Rc};
+
 use iced::advanced::Clipboard;
 use iced_widget::{
     Renderer, Theme,
@@ -118,7 +120,7 @@ pub struct DropDownMenu<'a, Message> {
     overlay_bounds: Option<Rectangle>,
     content_cached: Option<Element<'a, Message, Theme, Renderer>>,
     placement: Placement,
-    open_cached: bool,
+    open_cached: Rc<Cell<bool>>,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
@@ -133,14 +135,14 @@ impl<'a, Message> DropDownMenu<'a, Message> {
             overlay_bounds: None,
             content_cached: None,
             placement,
-            open_cached: false,
+            open_cached: Rc::new(Cell::new(false)),
         }
     }
 }
 
 impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     fn size(&self) -> Size<Length> {
-        (self.content)(self.open_cached).as_widget().size()
+        (self.content)(self.open_cached.get()).as_widget().size()
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
@@ -193,13 +195,16 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
 
     fn children(&self) -> Vec<Tree> {
         vec![
-            Tree::new(&(self.content)(self.open_cached)),
+            Tree::new(&(self.content)(self.open_cached.get())),
             Tree::new(&self.menu),
         ]
     }
 
     fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&[&(self.content)(self.open_cached), &self.menu]);
+        tree.diff_children(&[
+            &(self.content)(tree.state.downcast_ref::<State>().position.is_some()),
+            &self.menu,
+        ]);
     }
 
     fn operate(
@@ -266,7 +271,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             }
             let offset = placement.calc(&bounds, &overlay_bounds);
             overlay.position = Some(bounds.position() + offset);
-            self.open_cached = true;
+            self.open_cached.set(true);
             shell.capture_event();
             shell.request_redraw();
         }
@@ -280,7 +285,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> Interaction {
-        (self.content)(self.open_cached)
+        (self.content)(self.open_cached.get())
             .as_widget()
             .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer)
     }
@@ -317,6 +322,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     tree: second,
                     state,
                     position: position + translation,
+                    open_cached: self.open_cached.clone(),
                 }))
             }),
         ]
@@ -339,6 +345,7 @@ struct Overlay<'a, 'b, Message> {
     tree: &'b mut Tree,
     state: &'b mut State,
     position: Point,
+    open_cached: Rc<Cell<bool>>,
 }
 
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
@@ -419,6 +426,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                     shell.capture_event();
                 } else {
                     self.state.position = None;
+                    self.open_cached.set(false);
                     shell.request_redraw();
                 }
             }
@@ -426,6 +434,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
                 self.state.position = None;
+                self.open_cached.set(false);
                 shell.request_redraw();
             }
             Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
@@ -436,6 +445,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 ..
             }) => {
                 self.state.position = None;
+                self.open_cached.set(false);
                 shell.capture_event();
                 shell.request_redraw();
             }
