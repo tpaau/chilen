@@ -317,7 +317,6 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     tree: second,
                     state,
                     position: position + translation,
-                    open: &self.open_cached,
                 }))
             }),
         ]
@@ -340,7 +339,6 @@ struct Overlay<'a, 'b, Message> {
     tree: &'b mut Tree,
     state: &'b mut State,
     position: Point,
-    open: &'b bool,
 }
 
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
@@ -421,7 +419,6 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                     shell.capture_event();
                 } else {
                     self.state.position = None;
-                    self.open = &false;
                     shell.request_redraw();
                 }
             }
@@ -429,7 +426,6 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
                 self.state.position = None;
-                self.open = &false;
                 shell.request_redraw();
             }
             Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
