@@ -173,11 +173,8 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.playlists = playlists;
             Task::none()
         }
-        Message::Open(pl) => {
-            // TODO: Open the playlist
-            Task::none()
-        }
-        Message::CreatePlaylist => todo!(),
-        Message::ImportPlaylist => todo!(),
+        Message::Open(pl) => Task::none(),
+        Message::CreatePlaylist => Task::none(),
+        Message::ImportPlaylist => Task::none(),
     }
 }

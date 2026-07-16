@@ -14,6 +14,7 @@ use iced_widget::{
     },
 };
 
+#[derive(Debug)]
 struct State {
     position: Option<Point>,
 }
@@ -122,6 +123,7 @@ pub struct DropDownMenu<'a, Message> {
     content_cached: Option<Element<'a, Message, Theme, Renderer>>,
     placement: Placement,
     open_cached: Rc<Cell<bool>>,
+    just_closed: Rc<Cell<bool>>,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
@@ -137,6 +139,7 @@ impl<'a, Message> DropDownMenu<'a, Message> {
             content_cached: None,
             placement,
             open_cached: Rc::new(Cell::new(false)),
+            just_closed: Rc::new(Cell::new(false)),
         }
     }
 }
@@ -245,6 +248,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             );
 
         if shell.is_event_captured() {
+            self.just_closed.set(false);
             return;
         }
 
@@ -252,30 +256,38 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             && let Some(pos) = cursor.position()
             && layout.bounds().contains(pos)
         {
-            let bounds = layout.bounds();
-            let overlay_bounds = self.overlay_bounds.unwrap_or_default();
-            let overlay = tree.state.downcast_mut::<State>();
-            let offset = self.placement.calc(&bounds, &overlay_bounds);
-            let target = bounds.position()
-                + offset
-                + Vector::new(overlay_bounds.width, overlay_bounds.height);
-            let mut placement = self.placement;
-            if bounds.width + bounds.x + offset.x < viewport.x {
-                placement.flip_y();
-            } else if target.x >= viewport.width + viewport.x {
-                placement.flip_x();
+            let state = tree.state.downcast_mut::<State>();
+            if self.just_closed.get() {
+                state.position = None;
+                self.open_cached.set(false);
+                shell.request_redraw();
+            } else {
+                let bounds = layout.bounds();
+                let overlay_bounds = self.overlay_bounds.unwrap_or_default();
+                let offset = self.placement.calc(&bounds, &overlay_bounds);
+                let target = bounds.position()
+                    + offset
+                    + Vector::new(overlay_bounds.width, overlay_bounds.height);
+                let mut placement = self.placement;
+                if bounds.width + bounds.x + offset.x < viewport.x {
+                    placement.flip_y();
+                } else if target.x >= viewport.width + viewport.x {
+                    placement.flip_x();
+                }
+                if bounds.height + bounds.y + offset.y < viewport.y {
+                    placement.flip_y();
+                } else if target.y >= viewport.height + viewport.y {
+                    placement.flip_y();
+                }
+                let offset = placement.calc(&bounds, &overlay_bounds);
+                state.position = Some(bounds.position() + offset);
+                self.open_cached.set(true);
+                shell.invalidate_widgets();
+                shell.request_redraw();
             }
-            if bounds.height + bounds.y + offset.y < viewport.y {
-                placement.flip_y();
-            } else if target.y >= viewport.height + viewport.y {
-                placement.flip_y();
-            }
-            let offset = placement.calc(&bounds, &overlay_bounds);
-            overlay.position = Some(bounds.position() + offset);
-            self.open_cached.set(true);
-            shell.invalidate_widgets();
             shell.capture_event();
-            shell.request_redraw();
+
+            self.just_closed.set(false);
         }
     }
 
@@ -325,6 +337,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     state,
                     position: position + translation,
                     open_cached: self.open_cached.clone(),
+                    just_closed: self.just_closed.clone(),
                 }))
             }),
         ]
@@ -348,6 +361,7 @@ struct Overlay<'a, 'b, Message> {
     state: &'b mut State,
     position: Point,
     open_cached: Rc<Cell<bool>>,
+    just_closed: Rc<Cell<bool>>,
 }
 
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
@@ -428,6 +442,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                     shell.capture_event();
                 } else {
                     self.state.position = None;
+                    self.just_closed.set(true);
                     self.open_cached.set(false);
                     shell.invalidate_widgets();
                     shell.request_redraw();
@@ -437,6 +452,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
                 self.state.position = None;
+                self.just_closed.set(true);
                 self.open_cached.set(false);
                 shell.invalidate_widgets();
                 shell.request_redraw();
@@ -449,6 +465,7 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
                 ..
             }) => {
                 self.state.position = None;
+                self.just_closed.set(true);
                 self.open_cached.set(false);
                 shell.invalidate_widgets();
                 shell.capture_event();
