@@ -124,6 +124,7 @@ pub struct DropDownMenu<'a, Message> {
     placement: Placement,
     open_cached: Rc<Cell<bool>>,
     just_closed: Rc<Cell<bool>>,
+    transparent_overlay: bool,
 }
 
 impl<'a, Message> DropDownMenu<'a, Message> {
@@ -140,7 +141,13 @@ impl<'a, Message> DropDownMenu<'a, Message> {
             placement,
             open_cached: Rc::new(Cell::new(false)),
             just_closed: Rc::new(Cell::new(false)),
+            transparent_overlay: false,
         }
+    }
+
+    pub fn transparent_overlay(mut self, enabled: bool) -> Self {
+        self.transparent_overlay = enabled;
+        self
     }
 }
 
@@ -260,7 +267,6 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
             if self.just_closed.get() {
                 state.position = None;
                 self.open_cached.set(false);
-                shell.request_redraw();
             } else {
                 let bounds = layout.bounds();
                 let overlay_bounds = self.overlay_bounds.unwrap_or_default();
@@ -283,9 +289,9 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                 state.position = Some(bounds.position() + offset);
                 self.open_cached.set(true);
                 shell.invalidate_widgets();
-                shell.request_redraw();
             }
             shell.capture_event();
+            shell.request_redraw();
 
             self.just_closed.set(false);
         }
@@ -299,6 +305,12 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> Interaction {
+        if let Some(pos) = cursor.position()
+            && layout.bounds().contains(pos)
+        {
+            return Interaction::Pointer;
+        }
+
         (self.content)(self.open_cached.get())
             .as_widget()
             .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer)
@@ -338,6 +350,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     position: position + translation,
                     open_cached: self.open_cached.clone(),
                     just_closed: self.just_closed.clone(),
+                    transparent: &self.transparent_overlay,
                 }))
             }),
         ]
@@ -362,6 +375,7 @@ struct Overlay<'a, 'b, Message> {
     position: Point,
     open_cached: Rc<Cell<bool>>,
     just_closed: Rc<Cell<bool>>,
+    transparent: &'b bool,
 }
 
 impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
@@ -489,7 +503,8 @@ impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Mes
             renderer,
         );
 
-        if interaction == Interaction::None && cursor.is_over(layout.bounds()) {
+        if interaction == Interaction::None && cursor.is_over(layout.bounds()) && !self.transparent
+        {
             Interaction::Idle
         } else {
             interaction
