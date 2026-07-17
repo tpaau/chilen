@@ -13,6 +13,7 @@ use crate::{
     music_lib::{MUSIC_DIR, Track, covers::LoadMode},
 };
 
+// FIX: Too many open files (os error 24) on large music libraries
 fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, Error> {
     let tracks = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
