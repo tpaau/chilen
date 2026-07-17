@@ -1,8 +1,8 @@
 doc:
-	cargo doc --no-deps -p chilen -p iced_m3 --all-features
+	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3 --all-features
 
 open-doc:
-	cargo doc --no-deps -p chilen -p iced_m3 --all-features --open
+	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3 --all-features --open
 
 test:
 	cargo test --workspace

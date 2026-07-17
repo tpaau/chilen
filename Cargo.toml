@@ -32,3 +32,6 @@ linux_flatpak = [ "mpris" ]
 windows = []
 macos = []
 default = []
+
+[workspace]
+members = [ "chilen_backend", "iced_m3" ]

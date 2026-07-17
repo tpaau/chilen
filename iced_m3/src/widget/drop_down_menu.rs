@@ -206,7 +206,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
 
     fn children(&self) -> Vec<Tree> {
         vec![
-            Tree::new(&(self.content)(self.open_cached.get())),
+            Tree::new((self.content)(self.open_cached.get())),
             Tree::new(&self.menu),
         ]
     }
@@ -275,14 +275,14 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     + offset
                     + Vector::new(overlay_bounds.width, overlay_bounds.height);
                 let mut placement = self.placement;
-                if bounds.width + bounds.x + offset.x < viewport.x {
-                    placement.flip_y();
-                } else if target.x >= viewport.width + viewport.x {
+                if bounds.width + bounds.x + offset.x < viewport.x
+                    || target.x >= viewport.width + viewport.x
+                {
                     placement.flip_x();
                 }
-                if bounds.height + bounds.y + offset.y < viewport.y {
-                    placement.flip_y();
-                } else if target.y >= viewport.height + viewport.y {
+                if bounds.height + bounds.y + offset.y < viewport.y
+                    || target.y >= viewport.height + viewport.y
+                {
                     placement.flip_y();
                 }
                 let offset = placement.calc(&bounds, &overlay_bounds);

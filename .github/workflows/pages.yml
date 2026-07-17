@@ -41,7 +41,7 @@ jobs:
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
       - name: Generate rustdoc documentation
-        run: cargo doc --no-deps -p iced -p iced_m3
+        run: cargo doc --no-deps -p chilen_backend -p iced_m3
 
       - run: mkdir -p publish/
       - run: cp -r ./target/doc/* ./publish/

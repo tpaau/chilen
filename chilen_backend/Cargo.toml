@@ -1,0 +1,8 @@
+[package]
+name = "chilen_backend"
+version = "0.1.0"
+authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[dependencies]

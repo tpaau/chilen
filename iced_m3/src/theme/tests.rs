@@ -1,3 +1,5 @@
+use crate::theme::Palette;
+
 #[test]
 fn default_theme_works() {
     Palette::default_dark();
