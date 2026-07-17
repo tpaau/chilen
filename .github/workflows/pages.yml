@@ -2,6 +2,7 @@
 name: Deploy static content to Pages
 env:
   CARGO_TERM_COLOR: always
+  DEPS_APT: libasound2-dev
 
 on:
   # Runs on pushes targeting the default branch
@@ -37,14 +38,19 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Install alsa
+        run: |
+          sudo apt-get update -y
+          sudo apt install -y "${{ env.DEPS_APT }}"
+
       - name: Update Rust
         run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
 
       - name: Generate rustdoc documentation
-        run: cargo doc --no-deps -p chilen_backend -p iced_m3 --all-features
-
-      - run: mkdir -p publish/
-      - run: cp -r ./target/doc/* ./publish/
+        run: |
+          cargo doc --no-deps -p chilen_backend -p iced_m3 --all-features
+          mkdir -p publish/
+          cp -r ./target/doc/* ./publish/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
