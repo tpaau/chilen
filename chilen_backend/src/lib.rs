@@ -16,7 +16,7 @@ pub mod playback;
 #[cfg(test)]
 mod tests;
 
-const APP_NAME: &str = "Chilen";
+pub const APP_NAME: &str = "Chilen";
 #[cfg(feature = "mpris")]
 const APP_ID: &str = "dev.tpaau.Chilen";
 

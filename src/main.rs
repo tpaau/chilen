@@ -37,7 +37,10 @@ fn main() {
         let data_dir = match args.data_dir {
             Some(dir) => dir,
             None => match data_dir() {
-                Some(dir) => dir,
+                Some(mut dir) => {
+                    dir.push(chilen_backend::APP_NAME.to_lowercase());
+                    dir
+                }
                 None => {
                     error!("Could not get the path to the data directory");
                     exit(1);
@@ -47,26 +50,28 @@ fn main() {
         let cache_dir = match args.cache_dir {
             Some(dir) => dir,
             None => match cache_dir() {
-                Some(dir) => dir,
+                Some(mut dir) => {
+                    dir.push(chilen_backend::APP_NAME.to_lowercase());
+                    dir
+                }
                 None => {
-                    error!("Could not get the path to the data directory");
+                    error!("Could not get the path to the cache directory");
                     exit(1);
                 }
             },
         };
         let music_dir = match args.music_dir {
             Some(dir) => dir,
-            None => {
-                let mut dir = match home_dir() {
-                    Some(home) => home,
-                    None => {
-                        error!("Could not get the path to the home directory");
-                        exit(1);
-                    }
-                };
-                dir.push("Music");
-                dir
-            }
+            None => match home_dir() {
+                Some(mut dir) => {
+                    dir.push("Music");
+                    dir
+                }
+                None => {
+                    error!("Could not get the path to the home directory");
+                    exit(1);
+                }
+            },
         };
 
         let config = Config {

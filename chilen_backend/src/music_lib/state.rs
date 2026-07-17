@@ -570,9 +570,9 @@ pub(crate) fn get_library() -> Result<MusicLibrary, Error> {
     unwrap_lib_ref(guard.as_ref()).cloned()
 }
 
-pub(crate) fn get_playlists() -> Result<Vec<Arc<Playlist>>, Error> {
+pub(crate) fn get_playlists() -> Result<HashSet<Arc<Playlist>>, Error> {
     let lib = get_library()?;
-    Ok(lib.playlists.into_iter().collect())
+    Ok(lib.playlists)
 }
 
 /// Save the library state to a file.
@@ -612,7 +612,7 @@ pub(crate) fn save_library() -> Result<(), Error> {
 
 // FIX: This function hangs if if the `MusicLibrary` struct changes (and can't be deserialized)
 /// Load the music library from the playlists file.
-pub fn load(load_mode: LoadMode) -> Result<(), Error> {
+pub(crate) fn load(load_mode: LoadMode) -> Result<(), Error> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
