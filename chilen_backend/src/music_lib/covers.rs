@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::{music_lib::CACHE_DIR, music_lib::Track};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub(crate) enum CoverError {
+pub enum CoverError {
     NoPictures,
     NoSuitablePictures,
     CoverWriteError(String),
@@ -37,7 +37,7 @@ impl std::fmt::Display for CoverError {
 
 /// Track cover art caching mode used when indexing the music library.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LoadMode {
+pub enum LoadMode {
     /// Don't cache cover arts.
     ///
     /// This should only be used for testing.

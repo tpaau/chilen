@@ -195,6 +195,7 @@ fn send_event(event: Event) {
 pub(crate) static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
+// TODO: Unused cached cover art cleanup here somewhere
 pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
     let (sender, receiver) = mpsc::channel();
     *EVENT_SENDER.write().unwrap() = Some(sender);

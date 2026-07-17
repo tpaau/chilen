@@ -21,17 +21,17 @@ fn skip_next() {
     };
     while state.can_go_next() {
         println!("Position: {}", state.position);
-        state.next().unwrap();
+        state.next_track().unwrap();
     }
-    assert!(state.next().is_none());
+    assert!(state.next_track().is_none());
     state.set_shuffle_state(ShuffleState::On);
     state.shuffle();
     state.position = 0;
     while state.can_go_next() {
         println!("Position: {}", state.position);
-        state.next().unwrap();
+        state.next_track().unwrap();
     }
-    assert!(state.next().is_none());
+    assert!(state.next_track().is_none());
 }
 
 #[test]
@@ -41,16 +41,16 @@ fn skip_previous() {
         ..Default::default()
     };
     while state.can_go_previous() {
-        state.previous().unwrap();
+        state.previous_track().unwrap();
     }
-    assert!(state.previous().is_none());
+    assert!(state.previous_track().is_none());
     state.set_shuffle_state(ShuffleState::On);
     state.shuffle();
     state.position = 0;
     while state.can_go_previous() {
-        state.previous().unwrap();
+        state.previous_track().unwrap();
     }
-    assert!(state.previous().is_none());
+    assert!(state.previous_track().is_none());
 }
 
 #[test]
@@ -63,20 +63,20 @@ fn track_loop() {
     state.loop_state = LoopState::Track;
     let track = state.tracks[state.position].clone();
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.next().unwrap(), &track);
+        assert_eq!(state.next_track().unwrap(), &track);
     }
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.previous().unwrap(), &track);
+        assert_eq!(state.previous_track().unwrap(), &track);
     }
 
     state.position = 1;
     state.set_shuffle_state(ShuffleState::On);
     state.shuffle();
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.next().unwrap(), &track);
+        assert_eq!(state.next_track().unwrap(), &track);
     }
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.previous().unwrap(), &track);
+        assert_eq!(state.previous_track().unwrap(), &track);
     }
 }
 
@@ -88,11 +88,11 @@ fn playlist_loop() {
     };
     state.loop_state = LoopState::Playlist;
     for _ in 0..state.tracks.len() + 2 {
-        state.next().unwrap();
+        state.next_track().unwrap();
     }
     assert_eq!(&state.tracks[2].clone(), state.current().unwrap());
     for _ in 0..state.tracks.len() + 2 {
-        state.previous().unwrap();
+        state.previous_track().unwrap();
     }
     assert_eq!(&state.tracks[0].clone(), state.current().unwrap());
 }
@@ -157,13 +157,13 @@ fn shuffle_track_stays_the_same() {
             );
             let track = if rand::random() && state.can_go_next() {
                 println!("Right (1)!");
-                state.next()
+                state.next_track()
             } else if state.can_go_previous() {
                 println!("Left!");
-                state.previous()
+                state.previous_track()
             } else {
                 println!("Right (2)!");
-                state.next()
+                state.next_track()
             }
             .cloned();
             if loop_state == LoopState::Track {

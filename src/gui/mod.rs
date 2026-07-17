@@ -8,23 +8,18 @@ mod widgets;
 
 use std::{
     collections::HashSet,
-    str::FromStr,
     sync::{Arc, LazyLock, RwLock},
 };
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    self, Border, Color, Element, Font, Length, Padding, Subscription, Task,
+    self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
     window::{self},
 };
-use iced_m3::{
-    theme::{ColorScheme, Theme},
-    widget::drop_down_menu::DropDownMenu,
-};
-use iced_widget::text;
+use iced_m3::theme::{ColorScheme, Theme};
 use log::{error, trace};
 
 use crate::{

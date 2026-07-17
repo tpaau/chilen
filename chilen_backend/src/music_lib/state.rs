@@ -39,6 +39,7 @@ pub enum Lyrics {
     Unsynced(String),
 }
 
+#[cfg_attr(test, derive(Default))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Track {
     pub path: PathBuf,
@@ -212,34 +213,16 @@ impl Track {
         }
     }
 
-    #[cfg(test)]
-    pub fn new() -> Track {
-        Track {
-            path: PathBuf::new(),
-            cover_path: None,
-            duration: Duration::default(),
-            artist: None,
-            title: None,
-            album: None,
-            genre: None,
-            comment: None,
-            track: None,
-            track_total: None,
-            disc: None,
-            disc_total: None,
-            lyrics: None,
-            date: None,
-        }
-    }
-
     /// Returns a [Vec] of unique [Track] structs for testing.
     #[cfg(test)]
     pub fn unique_tracks(size: usize) -> Vec<Track> {
         let mut tracks = Vec::new();
         for i in 0..size {
-            let mut track = Track::new();
-            track.duration = Duration::from_secs(i.try_into().unwrap());
-            track.path = format!("/test/path/{i}").into();
+            let track = Track {
+                duration: Duration::from_secs(i.try_into().unwrap()),
+                path: format!("/test/path/{i}").into(),
+                ..Default::default()
+            };
             tracks.push(track);
         }
         tracks

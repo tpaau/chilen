@@ -19,7 +19,7 @@ check:
 	cargo deny check
 
 loc:
-	cloc src/ iced_m3/src/
+	cloc src/ chilen_backend/src/ iced_m3/src/
 
 release:
 	cargo build --release

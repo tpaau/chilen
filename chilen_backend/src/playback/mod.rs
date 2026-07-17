@@ -421,7 +421,7 @@ pub(crate) fn skip_next() -> Result<(), Error> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     if state.can_go_next() {
-        let track = state.next().unwrap();
+        let track = state.next_track().unwrap();
         let source = match track.open_source() {
             Ok(source) => source,
             Err(e) => {
@@ -452,7 +452,7 @@ pub(crate) fn skip_previous() -> Result<(), Error> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     if state.can_go_previous() {
-        let track = state.previous().unwrap();
+        let track = state.previous_track().unwrap();
         let source = match track.open_source() {
             Ok(source) => source,
             Err(e) => {
@@ -757,7 +757,7 @@ pub(crate) fn init() {
                 state.set_playback_state(PlaybackState::Stopped);
                 continue;
             }
-            let track = state.next().unwrap();
+            let track = state.next_track().unwrap();
             let source = match track.open_source() {
                 Ok(source) => source,
                 Err(e) => {

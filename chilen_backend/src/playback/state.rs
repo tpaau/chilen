@@ -362,7 +362,7 @@ impl PlayerState {
         }
     }
 
-    pub fn next(&mut self) -> Option<&Track> {
+    pub fn next_track(&mut self) -> Option<&Track> {
         match self.loop_state {
             LoopState::Off => {
                 let tracks = match self.shuffle_state {
@@ -413,7 +413,7 @@ impl PlayerState {
         }
     }
 
-    pub fn previous(&mut self) -> Option<&Track> {
+    pub fn previous_track(&mut self) -> Option<&Track> {
         match self.loop_state {
             LoopState::Off => {
                 let tracks = match self.shuffle_state {
