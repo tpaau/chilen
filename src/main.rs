@@ -31,55 +31,57 @@ fn handle_events(receiver: Receiver<chilen_backend::Event>) {
 }
 
 fn main() {
-    let args = parse_args();
+    thread::spawn(|| {
+        let args = parse_args();
 
-    let data_dir = match args.data_dir {
-        Some(dir) => dir,
-        None => match data_dir() {
+        let data_dir = match args.data_dir {
             Some(dir) => dir,
-            None => {
-                error!("Could not get the path to the data directory");
-                exit(1);
-            }
-        },
-    };
-    let cache_dir = match args.cache_dir {
-        Some(dir) => dir,
-        None => match cache_dir() {
-            Some(dir) => dir,
-            None => {
-                error!("Could not get the path to the data directory");
-                exit(1);
-            }
-        },
-    };
-    let music_dir = match args.music_dir {
-        Some(dir) => dir,
-        None => {
-            let mut dir = match home_dir() {
-                Some(home) => home,
+            None => match data_dir() {
+                Some(dir) => dir,
                 None => {
-                    error!("Could not get the path to the home directory");
+                    error!("Could not get the path to the data directory");
                     exit(1);
                 }
-            };
-            dir.push("Music");
-            dir
-        }
-    };
+            },
+        };
+        let cache_dir = match args.cache_dir {
+            Some(dir) => dir,
+            None => match cache_dir() {
+                Some(dir) => dir,
+                None => {
+                    error!("Could not get the path to the data directory");
+                    exit(1);
+                }
+            },
+        };
+        let music_dir = match args.music_dir {
+            Some(dir) => dir,
+            None => {
+                let mut dir = match home_dir() {
+                    Some(home) => home,
+                    None => {
+                        error!("Could not get the path to the home directory");
+                        exit(1);
+                    }
+                };
+                dir.push("Music");
+                dir
+            }
+        };
 
-    let config = Config {
-        data_dir,
-        music_dir,
-        cache_dir,
-    };
+        let config = Config {
+            data_dir,
+            music_dir,
+            cache_dir,
+        };
 
-    let receiver = match chilen_backend::init(config) {
-        Ok(receiver) => receiver,
-        Err(e) => panic!("Could not initialize the backend: {e}"),
-    };
+        let receiver = match chilen_backend::init(config) {
+            Ok(receiver) => receiver,
+            Err(e) => panic!("Could not initialize the backend: {e}"),
+        };
 
-    thread::spawn(|| handle_events(receiver));
+        handle_events(receiver);
+    });
 
     match gui::start() {
         Ok(_) => info!("Main window closed, exiting"),

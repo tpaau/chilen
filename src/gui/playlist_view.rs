@@ -70,6 +70,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 .height(Length::Fill)
                 .width(Length::Fill),
                 bottom_right(
+                    // TODO: The overlay should pass down mouse clicks in transparent mode too
                     DropDownMenu::new(
                         move |opened| container(center(
                             text(if opened { *icons::CLOSE } else { *icons::ADD })

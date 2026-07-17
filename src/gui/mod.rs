@@ -127,31 +127,16 @@ impl Chilen {
                 .width(Length::Fixed(350.0))
                 .height(Length::Fill)
                 .into(),
-            container(DropDownMenu::new(
-                |open| {
-                    text(if open { *icons::CLOSE } else { *icons::ADD })
-                        .color({
-                            if open {
-                                Color::from_str("#FF0000").unwrap()
-                            } else {
-                                Color::from_str("#00FF00").unwrap()
-                            }
-                        })
-                        .font(icons::font())
-                        .into()
-                },
-                text("menu"),
-                iced_m3::widget::drop_down_menu::Placement::TopLeft,
-            ))
-            .style(|_| {
-                container::Style::default()
-                    .background(state.theme.background())
-                    .border(Border::default().rounded(ROUNDING_REGULAR))
-            })
-            .padding(Padding::new(SPACING_SMALL as f32))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into(),
+            container("Main view")
+                .style(|_| {
+                    container::Style::default()
+                        .background(state.theme.background())
+                        .border(Border::default().rounded(ROUNDING_REGULAR))
+                })
+                .padding(Padding::new(SPACING_SMALL as f32))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
             // TODO: I should be able to resize this
             container("Currently playing")
                 .padding(Padding::new(SPACING_SMALL as f32))
@@ -242,6 +227,7 @@ fn load_fonts() -> Task<Message> {
         iced::font::load(BYTES_BOLD).discard(),
     ])
 }
+
 pub fn start() -> iced::Result {
     trace!("Launching GUI");
     iced::application(
