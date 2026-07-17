@@ -1,3 +1,6 @@
+doc-no-all-features:
+	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3
+
 doc:
 	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3 --all-features
 
@@ -11,6 +14,7 @@ test:
 check:
 	cargo fmt --check --all
 	just test
+	just doc-no-all-features
 	just doc
 	cargo deny check
 
