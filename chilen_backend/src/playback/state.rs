@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use rand::seq::SliceRandom;
 
 use crate::{
-    Error, gui,
+    Error, Event,
     music_lib::{CACHE_DIR, state::Track, tracks_from_hashes},
     playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
 };
@@ -23,8 +23,8 @@ use crate::{
 use crate::playback::mpris;
 
 /// Data structure used to store playback state on the disc and in the RAM at runtime.
-#[derive(Debug, Clone, Default)]
-pub(crate) struct PlayerState {
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct PlayerState {
     /// The index of the current track.
     ///
     /// It can either point to the `tracks` variable or `shuffled_tracks` is shuffle is supported
@@ -63,7 +63,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
 
 impl PlayerState {
     fn on_track_changed(&self) {
-        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
 
         #[cfg(feature = "mpris")]
         {
@@ -84,7 +84,7 @@ impl PlayerState {
     pub(crate) fn on_playback_state_changed(&self) {
         trace!("Playback state changed: {}", self.playback_state);
 
-        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
 
         #[cfg(feature = "mpris")]
         {
@@ -144,7 +144,7 @@ impl PlayerState {
         } else {
             &self.tracks
         };
-        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -178,7 +178,7 @@ impl PlayerState {
         tracks.shuffle(&mut rng);
         tracks.insert(prev_pos, track);
         self.shuffled_tracks = tracks;
-        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
     }
 
     pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
@@ -197,7 +197,7 @@ impl PlayerState {
                 }
             }
             self.shuffle_state = shuffle_state;
-            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+            crate::send_event(Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -214,7 +214,7 @@ impl PlayerState {
 
     pub fn increment_player_position(&mut self, duration: Duration) {
         self.player_position += duration;
-        gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -231,7 +231,7 @@ impl PlayerState {
     pub fn set_player_position(&mut self, player_position: Duration) {
         if self.player_position != player_position {
             self.player_position = player_position;
-            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+            crate::send_event(Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::{Metadata, Property};
@@ -249,7 +249,7 @@ impl PlayerState {
     pub fn set_player_volume(&mut self, player_volume: PlayerVolume) {
         if self.player_volume != player_volume {
             self.player_volume = player_volume;
-            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+            crate::send_event(Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -263,7 +263,7 @@ impl PlayerState {
     pub fn set_loop_state(&mut self, loop_state: LoopState) {
         if self.loop_state != loop_state {
             self.loop_state = loop_state;
-            gui::send_event(gui::Event::PlayerStateChanged(self.clone()));
+            crate::send_event(Event::PlayerStateChanged(self.clone()));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;

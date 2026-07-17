@@ -13,8 +13,6 @@ use lofty::{
 use log::error;
 use serde::{Deserialize, Serialize};
 
-use clap::ValueEnum;
-
 use crate::{music_lib::CACHE_DIR, music_lib::Track};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -38,7 +36,7 @@ impl std::fmt::Display for CoverError {
 }
 
 /// Track cover art caching mode used when indexing the music library.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LoadMode {
     /// Don't cache cover arts.
     ///

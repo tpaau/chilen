@@ -1,5 +1,6 @@
 use std::{str::FromStr, sync::Arc};
 
+use chilen_backend::music_lib::state::Playlist;
 use iced::{
     Background, Border, Color, Length, Padding, Shadow, Vector,
     widget::{Button, Space, button, column, container, row, space, text},
@@ -9,13 +10,10 @@ use iced_m3::{
     widget::drop_down_menu::{DropDownMenu, Placement},
 };
 
-use crate::{
-    gui::{
-        Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-        font::{self, SIZE_REGULAR, SIZE_SMALL},
-        icons, playlist_view,
-    },
-    music_lib::state::Playlist,
+use crate::gui::{
+    Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+    font::{self, SIZE_REGULAR, SIZE_SMALL},
+    icons, playlist_view,
 };
 
 const THUMBNAIL_SIZE: f32 = 64.0;

@@ -1,6 +1,6 @@
 #[cfg(feature = "mpris")]
 mod mpris;
-pub(crate) mod state;
+pub mod state;
 #[cfg(test)]
 mod tests;
 
@@ -312,7 +312,7 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), Error> {
         }
         Err(e) => {
             error!("Could not check if the URI {uri:?} exists: {e}");
-            return Err(Error::PathExistenceUnknown);
+            return Err(Error::PathInaccessible(uri));
         }
     }
     if uri.is_dir() {

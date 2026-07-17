@@ -8,7 +8,7 @@ use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::{
-    APP_ID, APP_NAME, gui,
+    APP_ID, APP_NAME, Event,
     playback::{
         self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
         open_uri,
@@ -68,12 +68,12 @@ fn get_response(result: Result<(), Error>) -> MprisResult<()> {
 
 impl RootInterface for MprisInterface {
     async fn raise(&self) -> MprisResult<()> {
-        gui::send_event(gui::Event::Raise);
+        crate::send_event(Event::Raise);
         Ok(())
     }
 
     async fn quit(&self) -> MprisResult<()> {
-        gui::send_event(gui::Event::Quit);
+        crate::send_event(Event::Quit);
         Ok(())
     }
 
@@ -82,12 +82,15 @@ impl RootInterface for MprisInterface {
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
-        Ok(*gui::WINDOW_MODE
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap_or(&iced::window::Mode::Windowed)
-            == iced::window::Mode::Fullscreen)
+        Err(mpris_server::zbus::fdo::Error::NotSupported(
+            "TBD".to_string(),
+        ))
+        // Ok(*gui::WINDOW_MODE
+        //     .read()
+        //     .unwrap()
+        //     .as_ref()
+        //     .unwrap_or(&iced::window::Mode::Windowed)
+        //     == iced::window::Mode::Fullscreen)
     }
 
     async fn can_set_fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
@@ -95,7 +98,7 @@ impl RootInterface for MprisInterface {
     }
 
     async fn set_fullscreen(&self, fullscreen: bool) -> mpris_server::zbus::Result<()> {
-        gui::send_event(gui::Event::SetFullscreen(fullscreen));
+        crate::send_event(Event::SetFullscreen(fullscreen));
         Ok(())
     }
 

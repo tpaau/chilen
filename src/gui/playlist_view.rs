@@ -1,5 +1,6 @@
 use std::{collections::HashSet, sync::Arc};
 
+use chilen_backend::music_lib::state::Playlist;
 use iced::{
     Alignment, Border, Element, Length, Padding, Shadow, Task, Vector,
     border::Radius,
@@ -11,12 +12,9 @@ use iced_m3::{
 };
 use iced_widget::{bottom_right, center, row, space, stack};
 
-use crate::{
-    gui::{
-        self, Chilen, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
-        SPACING_SMALLER, font, icons, theme::styles, widgets::playlist_button::playlist_button,
-    },
-    music_lib::state::Playlist,
+use crate::gui::{
+    self, Chilen, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+    font, icons, theme::styles, widgets::playlist_button::playlist_button,
 };
 
 #[derive(Debug, Clone)]

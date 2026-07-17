@@ -583,12 +583,22 @@ dependencies = [
 name = "chilen"
 version = "0.1.0"
 dependencies = [
+ "chilen_backend",
  "clap",
  "dirs",
  "env_logger",
  "iced",
  "iced_m3",
  "iced_widget",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "chilen_backend"
+version = "0.1.0"
+dependencies = [
  "lofty",
  "log",
  "lrc_rs",
@@ -598,14 +608,9 @@ dependencies = [
  "rmp-serde",
  "rodio",
  "serde",
- "serde_json",
  "smol",
  "walkdir",
 ]
-
-[[package]]
-name = "chilen_backend"
-version = "0.1.0"
 
 [[package]]
 name = "clap"

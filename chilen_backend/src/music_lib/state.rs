@@ -21,7 +21,7 @@ use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Error, gui,
+    Error, Event,
     music_lib::{
         DATA_DIR,
         covers::{CoverError, LoadMode, get_track_cover},
@@ -40,7 +40,7 @@ pub enum Lyrics {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Track {
+pub struct Track {
     pub path: PathBuf,
     pub cover_path: Option<PathBuf>,
     pub duration: Duration,
@@ -247,7 +247,7 @@ impl Track {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct Playlist {
+pub struct Playlist {
     pub name: String,
     pub tracks: Vec<Arc<Track>>,
 }
@@ -302,8 +302,8 @@ impl From<Playlist> for ConfPlaylist {
     }
 }
 
-#[derive(Clone, Debug)]
-pub(crate) struct MusicLibrary {
+#[derive(Clone, Debug, PartialEq)]
+pub struct MusicLibrary {
     pub playlists: HashSet<Arc<Playlist>>,
     pub tracks: HashSet<Arc<Track>>,
     tracks_by_path: HashMap<String, Arc<Track>>,
@@ -444,7 +444,7 @@ impl MusicLibrary {
         });
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(name, playlist);
-        gui::send_event(gui::Event::MusicLibraryChanged(Box::new(self.clone())));
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
     }
 
@@ -637,7 +637,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
     let tracks = match indexer::index(load_mode) {
         Ok(tracks) => tracks,
         Err(e) => {
-            gui::send_event(gui::Event::LibraryLoadFailed(e.to_string()));
+            crate::send_event(Event::LibraryLoadFailed(e.to_string()));
             return Err(e);
         }
     };
@@ -657,7 +657,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
         Ok(exists) => exists,
         Err(e) => {
             error!("Could not check if the library exists: {e}");
-            gui::send_event(gui::Event::LibraryLoadFailed(e.to_string()));
+            crate::send_event(Event::LibraryLoadFailed(e.to_string()));
             return Err(Error::StateNotReadable);
         }
     };
@@ -667,7 +667,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
 
         if !library_state.is_file() {
             error!("The item at {library_state:?} must be a file!");
-            gui::send_event(gui::Event::LibraryLoadFailed(format!(
+            crate::send_event(Event::LibraryLoadFailed(format!(
                 "The item at {library_state:?} must be a file!"
             )));
             return Err(Error::StateNotAFile);
@@ -677,7 +677,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not read the library: {e}");
-                gui::send_event(gui::Event::LibraryLoadFailed(e.to_string()));
+                crate::send_event(Event::LibraryLoadFailed(e.to_string()));
                 return Err(Error::StateNotReadable);
             }
         };
@@ -705,7 +705,7 @@ pub fn load(load_mode: LoadMode) -> Result<(), Error> {
         trace!("The library file does not exist, creating a new library");
         *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
     }
-    gui::send_event(gui::Event::MusicLibraryChanged(Box::new(
+    crate::send_event(Event::LibraryChanged(Box::new(
         MUSIC_LIBRARY.read().unwrap().as_ref().unwrap().clone(),
     )));
     save_library()?;

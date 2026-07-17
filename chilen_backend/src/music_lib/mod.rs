@@ -1,6 +1,6 @@
 pub(crate) mod covers;
 pub(crate) mod indexer;
-pub(crate) mod state;
+pub mod state;
 #[cfg(test)]
 mod tests;
 
@@ -23,18 +23,18 @@ pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static CACHE_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 
-fn init_dir(dir: &PathBuf) -> Result<(), String> {
+fn init_dir(dir: &PathBuf) -> Result<(), Error> {
     if dir.is_dir() {
         let perms = match dir.metadata() {
             Ok(md) => md.permissions(),
             Err(e) => {
                 error!("Could not read the metadata of {dir:?}: {e}");
-                return Err(format!("Could not read the metadata of {dir:?}: {e}"));
+                return Err(Error::PathInaccessible(dir.to_path_buf()));
             }
         };
         if perms.readonly() {
             error!("The directory {dir:?} is readonly");
-            return Err(format!("The directory {dir:?} is readonly"));
+            return Err(Error::PathReadonly(dir.to_path_buf()));
         }
         Ok(())
     } else {
@@ -42,17 +42,20 @@ fn init_dir(dir: &PathBuf) -> Result<(), String> {
             Ok(exists) => exists,
             Err(e) => {
                 error!("Can't check whether {dir:?} exists: {e}");
-                return Err(format!("Can't check whether {dir:?} exists: {e}"));
+                return Err(Error::PathInaccessible(dir.to_path_buf()));
             }
         };
         if exists {
             error!("The path is not a directory: {dir:?}");
-            Err(format!("The path is not a directory: {dir:?}"))
+            Err(Error::NotADirectory(dir.to_path_buf()))
         } else {
             trace!("The directory at {dir:?} does not exist. Attempting to create a new one");
             if let Err(e) = create_dir_all(dir) {
                 error!("Could not create the directory: {e}");
-                return Err(format!("Could not create the directory: {e}"));
+                return Err(Error::DirectoryCreationFailed(
+                    dir.to_path_buf(),
+                    e.to_string(),
+                ));
             }
             trace!("Created a new directory at {dir:?}");
             Ok(())
@@ -64,28 +67,17 @@ pub(crate) fn set_dirs(
     data_dir: PathBuf,
     cache_dir: PathBuf,
     music_dir: PathBuf,
-) -> Result<(), String> {
-    if let Err(e) = init_dir(&cache_dir) {
-        error!("Could not initialize the cache directory: {e}");
-        return Err(format!("Could not initialize the cache directory: {e}"));
-    }
-    if let Err(e) = init_dir(&data_dir) {
-        error!("Could not initialize the data directory: {e}");
-        return Err(format!("Could not initialize the data directory: {e}"));
-    }
+) -> Result<(), Error> {
+    init_dir(&cache_dir)?;
+    init_dir(&data_dir)?;
     if music_dir.is_dir() {
         if let Err(e) = music_dir.metadata() {
             error!("Could not read the metadata of {:?}: {e}", music_dir);
-            return Err(format!(
-                "Could not read the metadata of {:?}: {e}",
-                music_dir
-            ));
+            return Err(Error::PathInaccessible(music_dir));
         }
     } else {
         error!("The music library is not a directory or does not exist: {music_dir:?}");
-        return Err(format!(
-            "The music library is not a directory or does not exist: {music_dir:?}"
-        ));
+        return Err(Error::NotADirectory(music_dir));
     }
     *DATA_DIR.write().unwrap() = Some(data_dir);
     *CACHE_DIR.write().unwrap() = Some(cache_dir);

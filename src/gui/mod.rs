@@ -12,6 +12,7 @@ use std::{
     sync::{Arc, LazyLock, RwLock},
 };
 
+use chilen_backend::music_lib::state::Playlist;
 use iced::{
     self, Border, Color, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
@@ -31,19 +32,12 @@ use crate::{
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::ICONS_FONT_BYTES,
     },
-    music_lib::state::{MusicLibrary, Playlist},
-    playback::state::PlayerState,
     settings::Settings,
 };
 
 #[derive(Debug, Clone)]
 pub(super) enum Event {
-    MusicLibraryChanged(Box<MusicLibrary>),
-    PlayerStateChanged(PlayerState),
-    LibraryLoadFailed(String),
-    Quit,
-    Raise,
-    SetFullscreen(bool),
+    Backend(chilen_backend::Event),
     Window {
         event: window::Event,
         id: window::Id,
@@ -83,7 +77,7 @@ impl Default for Chilen {
     }
 }
 
-pub static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
+static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
@@ -102,6 +96,10 @@ const ROUNDING_LARGE: u32 = 18;
 const ROUNDING_LARGER: u32 = 20;
 
 const DIM_TEXT_ALPHA: f32 = 0.7;
+
+pub fn event_sender_initialized() -> bool {
+    EVENT_SENDER.read().unwrap().is_some()
+}
 
 pub fn send_event(event: Event) {
     match EVENT_SENDER.write().unwrap().as_mut() {
@@ -170,30 +168,34 @@ impl Chilen {
         match message {
             Message::Playlist(msg) => playlist_view::update(state, msg).map(Message::Playlist),
             Message::Event(event) => match event {
-                Event::MusicLibraryChanged(lib) => playlist_view::update(
-                    state,
-                    playlist_view::Message::PlaylistsChanged(lib.playlists),
-                )
-                .map(Message::Playlist),
-                Event::PlayerStateChanged(state) => todo!("Player events"),
-                Event::LibraryLoadFailed(e) => {
-                    state.loading_state = LoadingState::Failed(e);
-                    Task::none()
-                }
-                Event::Quit => window::latest().and_then(window::close),
-                Event::Raise => {
-                    trace!("Raising!");
-                    window::latest().and_then(window::gain_focus)
-                }
-                Event::SetFullscreen(fullscreen) => window::latest().and_then(move |id| {
-                    window::set_mode(
-                        id,
-                        match fullscreen {
-                            true => window::Mode::Fullscreen,
-                            false => window::Mode::Windowed,
-                        },
+                Event::Backend(event) => match event {
+                    chilen_backend::Event::LibraryChanged(lib) => playlist_view::update(
+                        state,
+                        playlist_view::Message::PlaylistsChanged(lib.playlists),
                     )
-                }),
+                    .map(Message::Playlist),
+                    chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
+                    chilen_backend::Event::LibraryLoadFailed(e) => {
+                        state.loading_state = LoadingState::Failed(e);
+                        Task::none()
+                    }
+                    chilen_backend::Event::Quit => window::latest().and_then(window::close),
+                    chilen_backend::Event::Raise => {
+                        trace!("Raising!");
+                        window::latest().and_then(window::gain_focus)
+                    }
+                    chilen_backend::Event::SetFullscreen(fullscreen) => {
+                        window::latest().and_then(move |id| {
+                            window::set_mode(
+                                id,
+                                match fullscreen {
+                                    true => window::Mode::Fullscreen,
+                                    false => window::Mode::Windowed,
+                                },
+                            )
+                        })
+                    }
+                },
                 Event::Window { event, id } => match event {
                     window::Event::Opened {
                         position: _,
