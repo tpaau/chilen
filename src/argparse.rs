@@ -19,6 +19,7 @@ pub struct Args {
     /// Set the log filter level
     pub log_filter: Option<LevelFilter>,
 
+    // TODO: Clearly label those three paths as overrides
     #[arg(long, short, value_hint = ValueHint::DirPath)]
     pub music_dir: Option<PathBuf>,
 

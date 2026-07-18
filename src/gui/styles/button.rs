@@ -1,7 +1,7 @@
 use iced::border::Radius;
 use iced_m3::theme::ColorScheme;
 
-use crate::gui::{ROUNDING_REGULAR, theme::styles::mix_colors};
+use crate::gui::{ROUNDING_REGULAR, styles::mix_colors};
 
 pub enum Style {
     Primary,

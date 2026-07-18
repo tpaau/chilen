@@ -1,9 +1,9 @@
 mod font;
 mod icons;
 mod playlist_view;
+pub mod styles;
 #[cfg(test)]
 mod tests;
-pub mod theme;
 mod widgets;
 
 use std::{
