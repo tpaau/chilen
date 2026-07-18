@@ -1,3 +1,5 @@
+#![feature(io_error_too_many_open_files)]
+
 use std::{
     path::PathBuf,
     sync::{Arc, LazyLock, RwLock, mpsc},

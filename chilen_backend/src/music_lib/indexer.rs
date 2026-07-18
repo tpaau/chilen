@@ -2,9 +2,13 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
     thread,
+    time::Duration,
 };
 
-use lofty::{file::TaggedFileExt, read_from_path};
+use lofty::{
+    error::LoftyError,
+    file::{TaggedFile, TaggedFileExt},
+};
 use log::{info, trace, warn};
 use walkdir::WalkDir;
 
@@ -12,6 +16,25 @@ use crate::{
     Error,
     music_lib::{MUSIC_DIR, Track, covers::LoadMode},
 };
+
+fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
+    let sleep_dur = Duration::from_millis(100);
+    loop {
+        match lofty::read_from_path(path) {
+            Ok(file) => return Ok(file),
+            Err(e) => {
+                if let lofty::error::ErrorKind::Io(e) = e.kind()
+                    && e.kind() == std::io::ErrorKind::TooManyOpenFiles
+                {
+                    thread::sleep(sleep_dur);
+                    continue;
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+}
 
 // FIX: Too many open files (os error 24) on large music libraries
 fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, Error> {
@@ -22,7 +45,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
         let lock = tracks.clone();
 
         handles.push(thread::spawn(move || {
-            let tagged_file = match read_from_path(&file) {
+            let tagged_file = match safe_read_from_path(&file) {
                 Ok(tagged_file) => tagged_file,
                 Err(e) => {
                     match e.kind() {
