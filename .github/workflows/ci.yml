@@ -33,6 +33,7 @@ jobs:
           - nightly
     steps:
       - uses: actions/checkout@v6
+      - uses: tpaau/init-pipewire-pulse/.github/workflows/init-pipewire-pulse.yml@v1
 
       - name: Install alsa
         run: |

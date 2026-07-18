@@ -88,7 +88,7 @@ cargo run -- -v trace
 ## Checks
 
 > [!TIP]
-> You can run the following checks at once by running `just check`.
+> You can run the following checks all at once by running `just check`.
 
 ### Code style
 Follow the standard Rust formatting. Check with:
