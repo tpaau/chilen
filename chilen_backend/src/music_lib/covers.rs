@@ -4,6 +4,8 @@ use std::{
     io::Write,
     path::PathBuf,
     sync::LazyLock,
+    thread,
+    time::Duration,
 };
 
 use lofty::{
@@ -20,6 +22,7 @@ pub enum CoverError {
     NoPictures,
     NoSuitablePictures,
     CoverWriteError(String),
+    CacheDirError(String),
 }
 
 impl std::fmt::Display for CoverError {
@@ -31,6 +34,7 @@ impl std::fmt::Display for CoverError {
                 "The tag contains pictures, but none of them can be used as cover art replacement"
             ),
             Self::CoverWriteError(e) => write!(f, "Could not write the cover image to cache: {e}"),
+            Self::CacheDirError(e) => write!(f, "Could not create the cache directory: {e}"),
         }
     }
 }
@@ -107,23 +111,39 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cov
     Err(CoverError::NoSuitablePictures)
 }
 
+fn safe_file_create(path: &PathBuf) -> Result<File, std::io::Error> {
+    let sleep_dur = Duration::from_millis(100);
+    loop {
+        match File::create(path) {
+            Ok(handle) => return Ok(handle),
+            Err(e) => {
+                if e.kind() == std::io::ErrorKind::TooManyOpenFiles {
+                    thread::sleep(sleep_dur);
+                    continue;
+                } else {
+                    return Err(e);
+                }
+            }
+        }
+    }
+}
+
+// FIX: Too many open files (os error 24)
 // TODO: Add quality options
 pub(crate) fn get_track_cover(
     track: &Track,
     tag: &Tag,
     load_mode: &LoadMode,
 ) -> Result<PathBuf, CoverError> {
-    let pic = pick_front_cover_or_replacement(tag.pictures())?;
-
-    let hash = track.hash_self();
-
     let cover_cache = COVERS_CACHE_DIR.clone();
     if !cover_cache.is_dir()
         && let Err(e) = create_dir_all(&cover_cache)
     {
-        error!("Could not create the cover cache directory {cover_cache:?}: {e}");
+        error!("Could not create the cache directory {cover_cache:?}: {e}");
+        return Err(CoverError::CacheDirError(e.to_string()));
     }
 
+    let hash = track.hash_self();
     let mut cover_path = cover_cache.clone();
     cover_path.push(hash.to_string());
 
@@ -131,7 +151,7 @@ pub(crate) fn get_track_cover(
         return Ok(cover_path);
     }
 
-    let mut file = match File::create(&cover_path) {
+    let mut file = match safe_file_create(&cover_path) {
         Ok(file) => file,
         Err(e) => {
             error!(
@@ -141,6 +161,7 @@ pub(crate) fn get_track_cover(
         }
     };
 
+    let pic = pick_front_cover_or_replacement(tag.pictures())?;
     if let Err(e) = file.write_all(pic.data()) {
         error!("Could not write the cover image to the cache directory: {e}");
         return Err(CoverError::CoverWriteError(e.to_string()));
