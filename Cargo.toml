@@ -5,6 +5,10 @@ authors = [ "tpaau <tpaau-17db@tutamail.com>" ]
 edition = "2024"
 license = "GPL-3.0-or-later"
 
+[package.metadata.docs.rs]
+rustdoc-args = ["--cfg", "docsrs"]
+all-features = true
+
 [dependencies]
 env_logger = "0.11.10"
 log = "0.4.29"

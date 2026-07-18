@@ -1,5 +1,8 @@
 #![feature(io_error_too_many_open_files)]
 
+// TODO: Add error handling for playback and library state restoration for when the indexer is
+// running in the background (too many open files)
+
 use std::{
     path::PathBuf,
     sync::{Arc, LazyLock, RwLock, mpsc},

@@ -128,7 +128,6 @@ fn safe_file_create(path: &PathBuf) -> Result<File, std::io::Error> {
     }
 }
 
-// FIX: Too many open files (os error 24)
 // TODO: Add quality options
 pub(crate) fn get_track_cover(
     track: &Track,
