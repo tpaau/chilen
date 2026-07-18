@@ -32,7 +32,6 @@ jobs:
           - beta
           - nightly
     steps:
-      - uses: actions/checkout@v6
       - uses: tpaau/init-pipewire-pulse/.github/workflows/init-pipewire-pulse.yml@main
 
       - name: Install alsa
