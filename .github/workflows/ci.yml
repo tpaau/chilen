@@ -27,12 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        toolchain:
-          - stable
-          - beta
-          - nightly
+        toolchain: [stable, beta, nightly]
     steps:
-      - uses: tpaau/init-pipewire-pulse/.github/workflows/init-pipewire-pulse.yml@main
+      - uses: actions/checkout@v6
+      - uses: tpaau/init-pipewire-pulse@main
 
       - name: Install alsa
         run: |
