@@ -30,7 +30,7 @@ jobs:
         toolchain: [stable, beta, nightly]
     steps:
       - uses: actions/checkout@v6
-      - uses: tpaau/init-pipewire-pulse@main
+      - uses: tpaau/init-pulse@main
 
       - name: Install alsa
         run: |
