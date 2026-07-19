@@ -174,7 +174,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             Task::none()
         }
         Message::Open(pl) => Task::none(),
-        Message::CreatePlaylist => Task::none(),
-        Message::ImportPlaylist => Task::none(),
+        Message::CreatePlaylist => unreachable!(),
+        Message::ImportPlaylist => todo!(),
     }
 }

@@ -14,12 +14,17 @@ use std::{
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
     self, Border, Element, Font, Length, Padding, Subscription, Task,
+    alignment::Vertical,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
     window::{self},
 };
-use iced_m3::theme::{ColorScheme, Theme};
+use iced_m3::{
+    theme::{ColorScheme, Theme},
+    widget::dialog,
+};
+use iced_widget::{button, space, stack, text};
 use log::{error, trace};
 
 use crate::{
@@ -43,6 +48,7 @@ pub(super) enum Event {
 pub enum Message {
     Event(Event),
     Playlist(playlist_view::Message),
+    CloseDialog,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -53,8 +59,16 @@ pub enum LoadingState {
     Loaded,
 }
 
+#[derive(Default)]
+enum Dialog {
+    #[default]
+    None,
+    CreatePlaylist(String),
+}
+
 struct Chilen {
     playlists: HashSet<Arc<Playlist>>,
+    dialog: Dialog,
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
@@ -65,6 +79,7 @@ impl Default for Chilen {
         let settings = Settings::load();
         Self {
             playlists: HashSet::new(),
+            dialog: Dialog::default(),
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
@@ -115,57 +130,82 @@ fn window_subscription() -> Subscription<Message> {
 
 impl Chilen {
     fn view(state: &Chilen) -> Element<'_, Message> {
-        container(column([row([
-            // TODO: I should be able to resize this
-            container(playlist_view::view(state).map(Message::Playlist))
-                .padding(Padding::new(SPACING_SMALL as f32))
-                .width(Length::Fixed(350.0))
-                .height(Length::Fill)
+        stack![
+            container(column([row([
+                // TODO: I should be able to resize this
+                container(playlist_view::view(state).map(Message::Playlist))
+                    .padding(Padding::new(SPACING_SMALL as f32))
+                    .width(Length::Fixed(350.0))
+                    .height(Length::Fill)
+                    .into(),
+                container("Main view")
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.background())
+                            .border(Border::default().rounded(ROUNDING_REGULAR))
+                    })
+                    .padding(Padding::new(SPACING_SMALL as f32))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into(),
+                // TODO: I should be able to resize this
+                container("Currently playing")
+                    .padding(Padding::new(SPACING_SMALL as f32))
+                    .width(Length::Fixed(500.0))
+                    .height(Length::Fill)
+                    .into(),
+            ])
+            .into()]))
+            .style(|_| container::background(state.theme.surface_container())),
+            match &state.dialog {
+                Dialog::None => None,
+                Dialog::CreatePlaylist(name) => dialog(
+                    true,
+                    container(space()).width(Length::Fill).height(Length::Fill),
+                    text("content"),
+                    state.theme.current()
+                )
+                .title("Save")
+                .push_button(space().width(Length::Fill))
+                .push_button(button("Cancel").on_press(Message::CloseDialog))
+                .push_button(button("Confirm"))
+                .width(350)
+                .height(234)
                 .into(),
-            container("Main view")
-                .style(|_| {
-                    container::Style::default()
-                        .background(state.theme.background())
-                        .border(Border::default().rounded(ROUNDING_REGULAR))
-                })
-                .padding(Padding::new(SPACING_SMALL as f32))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
-            // TODO: I should be able to resize this
-            container("Currently playing")
-                .padding(Padding::new(SPACING_SMALL as f32))
-                .width(Length::Fixed(500.0))
-                .height(Length::Fill)
-                .into(),
-        ])
-        .into()]))
-        .style(|_| container::background(state.theme.surface_container()))
+            },
+        ]
         .into()
     }
 
     fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         match message {
-            Message::Playlist(msg) => playlist_view::update(state, msg).map(Message::Playlist),
+            Message::CloseDialog => state.dialog = Dialog::None,
+            Message::Playlist(msg) => match msg {
+                playlist_view::Message::CreatePlaylist => {
+                    state.dialog = Dialog::CreatePlaylist(String::new());
+                }
+                _ => return playlist_view::update(state, msg).map(Message::Playlist),
+            },
             Message::Event(event) => match event {
                 Event::Backend(event) => match event {
-                    chilen_backend::Event::LibraryChanged(lib) => playlist_view::update(
-                        state,
-                        playlist_view::Message::PlaylistsChanged(lib.playlists),
-                    )
-                    .map(Message::Playlist),
+                    chilen_backend::Event::LibraryChanged(lib) => {
+                        return playlist_view::update(
+                            state,
+                            playlist_view::Message::PlaylistsChanged(lib.playlists),
+                        )
+                        .map(Message::Playlist);
+                    }
                     chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
                     chilen_backend::Event::LibraryLoadFailed(e) => {
-                        state.loading_state = LoadingState::Failed(e);
-                        Task::none()
+                        state.loading_state = LoadingState::Failed(e)
                     }
-                    chilen_backend::Event::Quit => window::latest().and_then(window::close),
+                    chilen_backend::Event::Quit => return window::latest().and_then(window::close),
                     chilen_backend::Event::Raise => {
                         trace!("Raising!");
-                        window::latest().and_then(window::gain_focus)
+                        return window::latest().and_then(window::gain_focus);
                     }
                     chilen_backend::Event::SetFullscreen(fullscreen) => {
-                        window::latest().and_then(move |id| {
+                        return window::latest().and_then(move |id| {
                             window::set_mode(
                                 id,
                                 match fullscreen {
@@ -173,25 +213,28 @@ impl Chilen {
                                     false => window::Mode::Windowed,
                                 },
                             )
-                        })
+                        });
                     }
                 },
-                Event::Window { event, id } => match event {
-                    window::Event::Opened {
-                        position: _,
-                        size: _,
-                    } => window::mode(id).then(|mode| {
-                        *WINDOW_MODE.write().unwrap() = Some(mode);
-                        Task::none()
-                    }),
-                    window::Event::Resized(_) => window::mode(id).then(|mode| {
-                        *WINDOW_MODE.write().unwrap() = Some(mode);
-                        Task::none()
-                    }),
-                    _ => Task::none(),
-                },
+                Event::Window { event, id } => {
+                    return match event {
+                        window::Event::Opened {
+                            position: _,
+                            size: _,
+                        } => window::mode(id).then(|mode| {
+                            *WINDOW_MODE.write().unwrap() = Some(mode);
+                            Task::none()
+                        }),
+                        window::Event::Resized(_) => window::mode(id).then(|mode| {
+                            *WINDOW_MODE.write().unwrap() = Some(mode);
+                            Task::none()
+                        }),
+                        _ => Task::none(),
+                    };
+                }
             },
         }
+        Task::none()
     }
 
     fn worker() -> impl Stream<Item = Event> {
