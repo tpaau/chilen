@@ -1,8 +1,8 @@
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Background, Border, Color, Length, Padding, Shadow, Vector,
+    Background, Border, Length, Padding, Shadow, Vector, color,
     widget::{Button, Space, button, column, container, row, space, text},
 };
 use iced_m3::{
@@ -27,7 +27,7 @@ pub fn playlist_button<'a>(
             container(Space::new())
                 .style(|_| {
                     container::Style::default()
-                        .background(Color::from_str("#FF0000").unwrap())
+                        .background(color!(0xff0000))
                         .border(Border::default().rounded(ROUNDING_REGULAR - SPACING_SMALLER))
                 })
                 .width(Length::Fixed(THUMBNAIL_SIZE))
