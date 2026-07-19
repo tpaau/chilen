@@ -1,7 +1,6 @@
 mod font;
 mod icons;
 mod playlist_view;
-pub mod styles;
 #[cfg(test)]
 mod tests;
 mod widgets;
@@ -14,7 +13,6 @@ use std::{
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
     self, Border, Element, Font, Length, Padding, Subscription, Task,
-    alignment::Vertical,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},

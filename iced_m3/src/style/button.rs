@@ -1,9 +1,7 @@
+use crate::{style::mix_colors, theme::ColorScheme};
 use iced::border::Radius;
-use iced_m3::theme::ColorScheme;
 
-use crate::gui::{ROUNDING_REGULAR, styles::mix_colors};
-
-pub enum Style {
+pub enum Button {
     Primary,
     InversePrimary,
     Secondary,
@@ -15,40 +13,40 @@ pub enum Style {
 pub fn button(
     status: iced_widget::button::Status,
     theme: &impl ColorScheme,
-    style: Style,
+    style: Button,
 ) -> iced_widget::button::Style {
     let (color_regular, color_hovered, color_pressed, content_color) = match style {
-        Style::Primary => (
+        Button::Primary => (
             theme.primary(),
             mix_colors(theme.primary(), theme.surface(), 0.9),
             mix_colors(theme.primary(), theme.surface(), 0.8),
             theme.on_primary(),
         ),
-        Style::InversePrimary => (
+        Button::InversePrimary => (
             theme.on_primary(),
             mix_colors(theme.on_primary(), theme.surface(), 0.9),
             mix_colors(theme.on_primary(), theme.surface(), 0.8),
             theme.primary(),
         ),
-        Style::Secondary => (
+        Button::Secondary => (
             theme.secondary(),
             mix_colors(theme.secondary(), theme.surface(), 0.9),
             mix_colors(theme.secondary(), theme.surface(), 0.8),
             theme.on_secondary(),
         ),
-        Style::InverseSecondary => (
+        Button::InverseSecondary => (
             theme.on_secondary(),
             mix_colors(theme.on_secondary(), theme.surface(), 0.9),
             mix_colors(theme.on_secondary(), theme.surface(), 0.8),
             theme.secondary(),
         ),
-        Style::Tertiary => (
+        Button::Tertiary => (
             theme.tertiary(),
             mix_colors(theme.tertiary(), theme.surface(), 0.9),
             mix_colors(theme.tertiary(), theme.surface(), 0.8),
             theme.on_tertiary(),
         ),
-        Style::InverseTertiary => (
+        Button::InverseTertiary => (
             theme.on_tertiary(),
             mix_colors(theme.on_tertiary(), theme.surface(), 0.9),
             mix_colors(theme.on_tertiary(), theme.surface(), 0.8),
@@ -63,7 +61,7 @@ pub fn button(
             iced_widget::button::Status::Disabled => color_regular.scale_alpha(0.7),
         })),
         border: iced::Border {
-            radius: Radius::from(ROUNDING_REGULAR as f32),
+            radius: Radius::from(f32::MAX),
             ..Default::default()
         },
         text_color: content_color,

@@ -14,7 +14,7 @@ use iced_widget::{bottom_right, center, row, space, stack};
 
 use crate::gui::{
     self, Chilen, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-    font, icons, styles, widgets::playlist_button::playlist_button,
+    font, icons, widgets::playlist_button::playlist_button,
 };
 
 #[derive(Debug, Clone)]
@@ -57,10 +57,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                         })
                         .spacing(SPACING_SMALLER)
                     )
-                    .style(|_, status| crate::gui::styles::scrollable::scrollable(
-                        status,
-                        &state.theme
-                    ))
+                    .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
                     .height(Length::Fill)
                     .width(Length::Fill),
                 ]
@@ -114,10 +111,10 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                 .spacing(8)
                             ))
                             .style(|_, status| {
-                                let mut style = styles::button::button(
+                                let mut style = iced_m3::style::button(
                                     status,
                                     &state.theme,
-                                    styles::button::Style::Primary,
+                                    iced_m3::style::Button::Primary,
                                 );
                                 style.border.radius = Radius::from(f32::MAX);
                                 style
@@ -138,10 +135,10 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                 .spacing(8)
                             ))
                             .style(|_, status| {
-                                let mut style = styles::button::button(
+                                let mut style = iced_m3::style::button(
                                     status,
                                     &state.theme,
-                                    styles::button::Style::Primary,
+                                    iced_m3::style::Button::Primary,
                                 );
                                 style.border.radius = Radius::from(f32::MAX);
                                 style
