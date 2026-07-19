@@ -489,10 +489,10 @@ impl MusicLibrary {
     ///
     /// If a playlist with the default name exists, then a number will be added to the end of the
     /// playlist name so it's unique, eg. "New Playlist 1", "New Playlist 2", etc.
-    fn get_default_playlist_name(&self) -> String {
+    pub fn get_default_playlist_name(&self) -> String {
         let mut i = 0;
         let mut playlist_name = DEFAULT_PLAYLIST_NAME.to_string();
-        while self.find_playlist(&playlist_name).is_none() {
+        while self.find_playlist(&playlist_name).is_some() {
             i += 1;
             playlist_name = format!("{DEFAULT_PLAYLIST_NAME} {i}");
         }

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
@@ -19,7 +19,6 @@ use crate::gui::{
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    PlaylistsChanged(HashSet<Arc<Playlist>>),
     Open(Arc<Playlist>),
     CreatePlaylist,
     ImportPlaylist,
@@ -49,7 +48,8 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                     iced::widget::scrollable(
                         column({
                             // TODO: Proper sorting with support for numbers and non-ASCII characters
-                            let mut playlists: Vec<_> = state.playlists.iter().collect();
+                            let mut playlists: Vec<_> =
+                                state.library.as_ref().unwrap().playlists.iter().collect();
                             playlists.sort_by_key(|pl| pl.name.clone());
                             playlists
                                 .into_iter()
@@ -165,11 +165,6 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
-        Message::PlaylistsChanged(playlists) => {
-            state.loading_state = LoadingState::Loaded;
-            state.playlists = playlists;
-            Task::none()
-        }
         Message::Open(pl) => Task::none(),
         Message::CreatePlaylist => unreachable!(),
         Message::ImportPlaylist => todo!(),

@@ -5,12 +5,9 @@ mod playlist_view;
 mod tests;
 mod widgets;
 
-use std::{
-    collections::HashSet,
-    sync::{Arc, LazyLock, RwLock},
-};
+use std::sync::{Arc, LazyLock, RwLock};
 
-use chilen_backend::music_lib::state::Playlist;
+use chilen_backend::music_lib::state::MusicLibrary;
 use iced::{
     self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
@@ -22,7 +19,7 @@ use iced_m3::{
     theme::{ColorScheme, Theme},
     widget::dialog,
 };
-use iced_widget::{button, space, stack, text};
+use iced_widget::{button, space, stack, text_input};
 use log::{error, trace};
 
 use crate::{
@@ -47,6 +44,7 @@ pub enum Message {
     Event(Event),
     Playlist(playlist_view::Message),
     CloseDialog,
+    PlaylistName(String),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -65,7 +63,7 @@ enum Dialog {
 }
 
 struct Chilen {
-    playlists: HashSet<Arc<Playlist>>,
+    library: Option<Box<MusicLibrary>>,
     dialog: Dialog,
     loading_state: LoadingState,
     theme: Theme,
@@ -76,7 +74,7 @@ impl Default for Chilen {
     fn default() -> Self {
         let settings = Settings::load();
         Self {
-            playlists: HashSet::new(),
+            library: None,
             dialog: Dialog::default(),
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
@@ -159,16 +157,35 @@ impl Chilen {
                 Dialog::None => None,
                 Dialog::CreatePlaylist(name) => dialog(
                     true,
-                    container(space()).width(Length::Fill).height(Length::Fill),
-                    text("content"),
+                    space().width(Length::Fill).height(Length::Fill),
+                    text_input(
+                        &state.library.as_ref().unwrap().get_default_playlist_name(),
+                        if let Dialog::CreatePlaylist(ref name) = state.dialog {
+                            name
+                        } else {
+                            ""
+                        }
+                    )
+                    .on_input(Message::PlaylistName),
                     state.theme.current()
                 )
-                .title("Save")
+                .title("Create playlist")
                 .push_button(space().width(Length::Fill))
-                .push_button(button("Cancel").on_press(Message::CloseDialog))
-                .push_button(button("Confirm"))
+                .push_button(
+                    button("Cancel")
+                        .style(|_, status| iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Outlined
+                        ))
+                        .on_press(Message::CloseDialog)
+                )
+                .push_button(button("Confirm").style(|_, status| iced_m3::style::button(
+                    status,
+                    state.theme.current(),
+                    iced_m3::style::Button::Primary
+                )))
                 .width(350)
-                .height(234)
                 .into(),
             },
         ]
@@ -187,11 +204,8 @@ impl Chilen {
             Message::Event(event) => match event {
                 Event::Backend(event) => match event {
                     chilen_backend::Event::LibraryChanged(lib) => {
-                        return playlist_view::update(
-                            state,
-                            playlist_view::Message::PlaylistsChanged(lib.playlists),
-                        )
-                        .map(Message::Playlist);
+                        state.loading_state = LoadingState::Loaded;
+                        state.library = Some(lib);
                     }
                     chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
                     chilen_backend::Event::LibraryLoadFailed(e) => {
@@ -231,6 +245,7 @@ impl Chilen {
                     };
                 }
             },
+            Message::PlaylistName(name) => state.dialog = Dialog::CreatePlaylist(name),
         }
         Task::none()
     }
