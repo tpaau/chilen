@@ -360,7 +360,6 @@ where
                         .spacing(self.spacing)
                         .align_y(self.button_alignment),
                 )
-                .height(80)
                 .padding(self.padding_inner),
             );
 

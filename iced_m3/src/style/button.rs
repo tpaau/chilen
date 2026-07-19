@@ -1,5 +1,5 @@
 use crate::{style::mix_colors, theme::ColorScheme};
-use iced::{border::Radius, color};
+use iced::{Color, border::Radius};
 
 pub enum Button {
     Primary,
@@ -60,7 +60,7 @@ pub fn button(
             None,
         ),
         Button::Outlined => (
-            color!(0x000000),
+            Color::TRANSPARENT,
             theme.on_surface_variant().scale_alpha(0.1),
             theme.on_surface_variant().scale_alpha(0.2),
             theme.on_surface_variant(),

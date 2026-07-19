@@ -159,7 +159,7 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
 }
 
 // TEST: Check if export work correctly
-pub(crate) fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(), Error> {
+pub fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(), Error> {
     trace!("Exporting a playlist to an M3U8 file in {path:?}");
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
@@ -204,19 +204,22 @@ pub(crate) fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(),
     }
 }
 
-pub(crate) fn create_playlist(
-    name: String,
-    track_paths: &Option<Vec<PathBuf>>,
-) -> Result<(), Error> {
+pub fn create_playlist(name: String, track_paths: &Option<Vec<PathBuf>>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
-    lib.create_playlist(name.clone(), track_paths)?;
+    let name = name.trim();
+    let name = if name.is_empty() {
+        lib.get_default_playlist_name()
+    } else {
+        name.to_string()
+    };
+    lib.create_playlist(name, track_paths)?;
 
     drop(guard);
     save_library()
 }
 
-pub(crate) fn import_playlist_from_m3u8(name: Option<String>, file: &PathBuf) -> Result<(), Error> {
+pub fn import_playlist_from_m3u8(name: Option<String>, file: &PathBuf) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.import_m3u8_playlist(file, name)?;
@@ -225,7 +228,7 @@ pub(crate) fn import_playlist_from_m3u8(name: Option<String>, file: &PathBuf) ->
     save_library()
 }
 
-pub(crate) fn delete_playlists(playlists: Vec<String>) -> Result<(), Error> {
+pub fn delete_playlists(playlists: Vec<String>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.remove_playlists(playlists)?;
@@ -234,7 +237,7 @@ pub(crate) fn delete_playlists(playlists: Vec<String>) -> Result<(), Error> {
     save_library()
 }
 
-pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
+pub fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.add_tracks(playlist, tracks)?;
@@ -244,7 +247,7 @@ pub(crate) fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), Err
 }
 
 /// Remove tracks by indices from a playlist.
-pub(crate) fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
+pub fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.remove_tracks(playlist, tracks)?;

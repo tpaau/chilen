@@ -45,6 +45,7 @@ pub enum Message {
     Playlist(playlist_view::Message),
     CloseDialog,
     PlaylistName(String),
+    CreatePlaylist(String),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -160,13 +161,10 @@ impl Chilen {
                     space().width(Length::Fill).height(Length::Fill),
                     text_input(
                         &state.library.as_ref().unwrap().get_default_playlist_name(),
-                        if let Dialog::CreatePlaylist(ref name) = state.dialog {
-                            name
-                        } else {
-                            ""
-                        }
+                        name
                     )
-                    .on_input(Message::PlaylistName),
+                    .on_input(Message::PlaylistName)
+                    .on_submit(Message::CreatePlaylist(name.clone())),
                     state.theme.current()
                 )
                 .title("Create playlist")
@@ -178,13 +176,19 @@ impl Chilen {
                             state.theme.current(),
                             iced_m3::style::Button::Outlined
                         ))
+                        .padding(12)
                         .on_press(Message::CloseDialog)
                 )
-                .push_button(button("Confirm").style(|_, status| iced_m3::style::button(
-                    status,
-                    state.theme.current(),
-                    iced_m3::style::Button::Primary
-                )))
+                .push_button(
+                    button("Confirm")
+                        .style(|_, status| iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Primary
+                        ))
+                        .padding(12)
+                        .on_press(Message::CreatePlaylist(name.clone()))
+                )
                 .width(350)
                 .into(),
             },
@@ -246,6 +250,12 @@ impl Chilen {
                 }
             },
             Message::PlaylistName(name) => state.dialog = Dialog::CreatePlaylist(name),
+            Message::CreatePlaylist(name) => {
+                state.dialog = Dialog::None;
+                if let Err(e) = chilen_backend::music_lib::create_playlist(name, &None) {
+                    error!("Couldn't create playlist: {e}")
+                }
+            }
         }
         Task::none()
     }

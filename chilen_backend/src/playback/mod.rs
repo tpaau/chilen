@@ -388,7 +388,7 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), Error> {
+pub fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), Error> {
     trace!("Appending tracks to queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -416,7 +416,7 @@ pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, Error
     }
 }
 
-pub(crate) fn skip_next() -> Result<(), Error> {
+pub fn skip_next() -> Result<(), Error> {
     trace!("Skipping to the next track");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -447,7 +447,7 @@ pub(crate) fn skip_next() -> Result<(), Error> {
     }
 }
 
-pub(crate) fn skip_previous() -> Result<(), Error> {
+pub fn skip_previous() -> Result<(), Error> {
     trace!("Skipping to the previous track");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -478,7 +478,7 @@ pub(crate) fn skip_previous() -> Result<(), Error> {
     }
 }
 
-pub(crate) fn set_loop_state(loop_state: LoopState) -> Result<(), Error> {
+pub fn set_loop_state(loop_state: LoopState) -> Result<(), Error> {
     trace!("Setting loop state to {loop_state:?}");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -487,13 +487,13 @@ pub(crate) fn set_loop_state(loop_state: LoopState) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn get_loop_state() -> Result<LoopState, Error> {
+pub fn get_loop_state() -> Result<LoopState, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.loop_state)
 }
 
-pub(crate) fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), Error> {
+pub fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), Error> {
     trace!("Setting shuffle state to {shuffle_state:?}");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -509,7 +509,7 @@ pub(crate) fn get_shuffle_state() -> Result<ShuffleState, Error> {
     Ok(state.shuffle_state)
 }
 
-pub(crate) fn set_player_position(position: Duration) -> Result<(), Error> {
+pub fn set_player_position(position: Duration) -> Result<(), Error> {
     trace!("Setting player position to {:?}", position.as_secs());
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -582,7 +582,7 @@ static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
 });
 
 // FIX: Sometimes the MPRIS track metadata remains after the track switches in a seek operation
-pub(crate) fn seek(delta: SignedDuration) -> Result<(), Error> {
+pub fn seek(delta: SignedDuration) -> Result<(), Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {
         Some(player) => player,
@@ -651,7 +651,7 @@ pub(crate) fn get_player_position() -> Result<Duration, Error> {
     Ok(state.player_position)
 }
 
-pub(crate) fn set_player_volume(volume: PlayerVolume) -> Result<(), Error> {
+pub fn set_player_volume(volume: PlayerVolume) -> Result<(), Error> {
     trace!("Setting player volume to {:?}", volume);
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
