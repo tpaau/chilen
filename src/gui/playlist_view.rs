@@ -7,6 +7,7 @@ use iced::{
     widget::{column, container, text},
 };
 use iced_m3::{
+    style::shadow,
     theme::ColorScheme,
     widget::drop_down_menu::{DropDownMenu, Placement},
 };
@@ -88,11 +89,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                             } else {
                                 Radius::from(ROUNDING_LARGE)
                             }),
-                            shadow: Shadow {
-                                color: state.theme.shadow().scale_alpha(0.4),
-                                offset: Vector::new(0.0, 2.0),
-                                blur_radius: 6.0,
-                            },
+                            shadow: shadow(&state.theme, 0.6),
                             snap: true
                         })
                         .width(Length::Fixed(56.0))

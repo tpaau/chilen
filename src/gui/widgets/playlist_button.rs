@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Background, Border, Length, Padding, Shadow, Vector, color,
+    Background, Border, Length, Padding, Shadow, color,
     widget::{Button, Space, button, column, container, row, space, text},
 };
 use iced_m3::{
+    style::shadow,
     theme::ColorScheme,
     widget::drop_down_menu::{DropDownMenu, Placement},
 };
@@ -74,11 +75,7 @@ pub fn playlist_button<'a>(
                         container::Style::default()
                             .background(state.theme.surface_container_low())
                             .border(Border::default().rounded(16))
-                            .shadow(Shadow {
-                                color: state.theme.shadow().scale_alpha(0.6),
-                                offset: Vector::new(0.0, 2.0),
-                                blur_radius: 6.0,
-                            })
+                            .shadow(shadow(&state.theme, 0.4))
                     })
                     .padding(Padding::from(SPACING_SMALL as f32)),
                     Placement::BottomLeft,

@@ -10,7 +10,7 @@ use iced_widget::{
 
 use iced_widget::core::{self, Color, Element, Length, Padding, Pixels, alignment};
 
-use crate::theme::Palette;
+use crate::{style::shadow, theme::Palette};
 
 /// A message dialog.
 ///
@@ -51,8 +51,6 @@ where
     button_alignment: alignment::Vertical,
     palette: &'a Palette,
     class: <Theme as Catalog>::Class<'a>,
-    title_class: <Theme as text::Catalog>::Class<'a>,
-    container_class: <Theme as container::Catalog>::Class<'a>,
 }
 
 impl<'a, Message, Theme, Renderer> Dialog<'a, Message, Theme, Renderer>
@@ -101,8 +99,6 @@ where
             button_alignment: alignment::Vertical::Top,
             palette,
             class: <Theme as Catalog>::default(),
-            title_class: <Theme as Catalog>::default_title(),
-            container_class: <Theme as Catalog>::default_container(),
         }
     }
 
@@ -278,47 +274,10 @@ where
         self
     }
 
-    /// Sets the style of the [`Dialog`]'s title.
-    #[must_use]
-    pub fn title_style(mut self, style: impl Fn(&Theme) -> text::Style + 'a) -> Self
-    where
-        <Theme as text::Catalog>::Class<'a>: From<text::StyleFn<'a, Theme>>,
-    {
-        self.title_class = (Box::new(style) as text::StyleFn<'a, Theme>).into();
-        self
-    }
-
-    /// Sets the style of the [`Dialog`]'s container.
-    #[must_use]
-    pub fn container_style(mut self, style: impl Fn(&Theme) -> container::Style + 'a) -> Self
-    where
-        <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
-    {
-        self.container_class = (Box::new(style) as container::StyleFn<'a, Theme>).into();
-        self
-    }
-
     /// Sets the style class of the [`Dialog`].
     #[must_use]
     pub fn class(mut self, class: impl Into<<Theme as Catalog>::Class<'a>>) -> Self {
         self.class = class.into();
-        self
-    }
-
-    /// Sets the style class of the [`Dialog`]'s title.
-    #[must_use]
-    pub fn title_class(mut self, class: impl Into<<Theme as text::Catalog>::Class<'a>>) -> Self {
-        self.title_class = class.into();
-        self
-    }
-
-    /// Sets the style class of the [`Dialog`]'s container.
-    #[must_use]
-    pub fn container_class(
-        mut self,
-        class: impl Into<<Theme as container::Catalog>::Class<'a>>,
-    ) -> Self {
-        self.container_class = class.into();
         self
     }
 
@@ -334,8 +293,7 @@ where
                 self.title.map(|title| {
                     let text = text(title)
                         .size(20)
-                        .line_height(text::LineHeight::Absolute(Pixels(26.0)))
-                        .class(self.title_class);
+                        .line_height(text::LineHeight::Absolute(Pixels(26.0)));
 
                     if let Some(font) = self.font {
                         text.font(font)
@@ -388,13 +346,13 @@ where
             .max_width(max_width)
             .height(self.height)
             .max_height(max_height)
-            .class(self.container_class)
             .style(|_| container::Style {
                 background: Some(Background::Color(self.palette.surface_container_high)),
                 border: core::Border {
                     radius: Radius::from(24),
                     ..Default::default()
                 },
+                shadow: shadow(self.palette, 1.0),
                 ..Default::default()
             })
             .clip(true);

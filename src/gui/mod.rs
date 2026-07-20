@@ -168,6 +168,7 @@ impl Chilen {
                     state.theme.current()
                 )
                 .title("Create playlist")
+                .font(font::font_bold())
                 .push_button(space().width(Length::Fill))
                 .push_button(
                     button("Cancel")

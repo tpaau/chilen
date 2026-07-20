@@ -1,9 +1,11 @@
 mod button;
 mod scrollable;
+pub mod shadow;
 mod text_input;
 
 pub use button::*;
 pub use scrollable::*;
+pub use shadow::*;
 pub use text_input::*;
 
 use iced::Color;
