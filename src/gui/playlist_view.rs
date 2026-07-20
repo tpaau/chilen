@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Alignment, Border, Element, Length, Padding, Shadow, Task, Vector,
+    Alignment, Border, Element, Length, Padding, Task,
     border::Radius,
     widget::{column, container, text},
 };

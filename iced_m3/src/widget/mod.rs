@@ -1,10 +1,14 @@
 pub mod dialog;
 pub mod drop_down_menu;
+pub mod text_input;
 
 use iced::Element;
 use iced_widget::container;
 
-use crate::{theme::Palette, widget::dialog::Dialog};
+use crate::{
+    theme::{ColorScheme, Palette},
+    widget::{dialog::Dialog, text_input::TextInput},
+};
 
 pub fn dialog<'a, Message, Theme, Renderer>(
     is_open: bool,
@@ -19,4 +23,13 @@ where
     <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
 {
     Dialog::new(is_open, base, content, palette)
+}
+
+pub fn text_input<'a, Message: Clone, Theme, Renderer>(
+    placeholder: &str,
+    value: &'a str,
+    theme: &'a impl ColorScheme,
+    style: crate::widget::text_input::Style,
+) -> TextInput<'a, Message> {
+    TextInput::new(placeholder, value, theme, style)
 }

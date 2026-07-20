@@ -19,7 +19,7 @@ use iced_m3::{
     theme::{ColorScheme, Theme},
     widget::dialog,
 };
-use iced_widget::{button, space, stack, text_input};
+use iced_widget::{button, space, stack};
 use log::{error, trace};
 
 use crate::{
@@ -159,9 +159,11 @@ impl Chilen {
                 Dialog::CreatePlaylist(name) => dialog(
                     true,
                     space().width(Length::Fill).height(Length::Fill),
-                    text_input(
+                    iced_m3::widget::text_input::<_, Message, iced::Theme>(
                         &state.library.as_ref().unwrap().get_default_playlist_name(),
-                        name
+                        name,
+                        &state.theme,
+                        iced_m3::widget::text_input::Style::Outlined,
                     )
                     .on_input(Message::PlaylistName)
                     .on_submit(Message::CreatePlaylist(name.clone())),
