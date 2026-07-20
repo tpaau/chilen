@@ -565,14 +565,10 @@ pub(crate) fn unwrap_lib_mut(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn get_library() -> Result<MusicLibrary, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     unwrap_lib_ref(guard.as_ref()).cloned()
-}
-
-pub(crate) fn get_playlists() -> Result<HashSet<Arc<Playlist>>, Error> {
-    let lib = get_library()?;
-    Ok(lib.playlists)
 }
 
 /// Save the library state to a file.

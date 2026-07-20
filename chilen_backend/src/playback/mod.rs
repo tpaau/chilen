@@ -397,15 +397,6 @@ pub fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), Error> {
     Ok(())
 }
 
-pub(crate) fn get_current_track() -> Result<Option<Track>, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    match state.current() {
-        Some(track) => Ok(Some(track.clone())),
-        None => Ok(None),
-    }
-}
-
 #[cfg(feature = "mpris")]
 pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();

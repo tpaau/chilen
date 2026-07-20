@@ -126,11 +126,6 @@ impl PlayerState {
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
         }
-        let tracks = if self.shuffle_state == ShuffleState::On {
-            &self.shuffled_tracks
-        } else {
-            &self.tracks
-        };
         self.on_track_changed();
     }
 
@@ -139,11 +134,6 @@ impl PlayerState {
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
         }
-        let tracks = if self.shuffle_state == ShuffleState::On {
-            &self.shuffled_tracks
-        } else {
-            &self.tracks
-        };
         crate::send_event(Event::PlayerStateChanged(self.clone()));
         #[cfg(feature = "mpris")]
         {
