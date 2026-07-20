@@ -1,4 +1,4 @@
-use crate::{style::mix_colors, theme::ColorScheme};
+use crate::{DIM_ALPHA, style::mix_colors, theme::ColorScheme};
 use iced::{Color, border::Radius};
 
 pub enum Button {
@@ -72,14 +72,14 @@ pub fn button(
             iced_widget::button::Status::Active => color_regular,
             iced_widget::button::Status::Hovered => color_hovered,
             iced_widget::button::Status::Pressed => color_pressed,
-            iced_widget::button::Status::Disabled => color_regular.scale_alpha(0.7),
+            iced_widget::button::Status::Disabled => color_regular.scale_alpha(DIM_ALPHA),
         })),
         border: iced::Border {
             radius: Radius::from(f32::MAX),
             color: border_color
                 .map(|c| {
                     if status == iced_widget::button::Status::Disabled {
-                        c.scale_alpha(0.7)
+                        c.scale_alpha(DIM_ALPHA)
                     } else {
                         c
                     }
