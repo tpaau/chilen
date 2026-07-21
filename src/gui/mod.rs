@@ -159,12 +159,14 @@ impl Chilen {
                 Dialog::CreatePlaylist(name) => dialog(
                     true,
                     space().width(Length::Fill).height(Length::Fill),
-                    iced_m3::widget::text_input::<_, Message, iced::Theme>(
+                    iced_m3::widget::text_input::<_, Message>(
                         &state.library.as_ref().unwrap().get_default_playlist_name(),
                         name,
-                        &state.theme,
+                        Arc::new(state.theme),
                         iced_m3::widget::text_input::Style::Outlined,
                     )
+                    .with_label_text("label text", state.theme.surface_container_high())
+                    .with_supporting_text("supporting text")
                     .on_input(Message::PlaylistName)
                     .on_submit(Message::CreatePlaylist(name.clone())),
                     state.theme.current()
