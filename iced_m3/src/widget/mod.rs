@@ -2,8 +2,6 @@ pub mod dialog;
 pub mod drop_down_menu;
 pub mod text_input;
 
-use std::sync::Arc;
-
 use iced::Element;
 use iced_widget::container;
 
@@ -30,8 +28,8 @@ where
 pub fn text_input<'a, Message: Clone, Renderer>(
     placeholder: &str,
     value: &'a str,
-    theme: Arc<dyn ColorScheme>,
-    style: crate::widget::text_input::Style,
+    theme: &'a impl ColorScheme,
+    style: crate::widget::text_input::InputStyle,
 ) -> TextInput<'a, Message> {
     TextInput::new(placeholder, value, theme, style)
 }

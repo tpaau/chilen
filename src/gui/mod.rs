@@ -162,8 +162,8 @@ impl Chilen {
                     iced_m3::widget::text_input::<_, Message>(
                         &state.library.as_ref().unwrap().get_default_playlist_name(),
                         name,
-                        Arc::new(state.theme),
-                        iced_m3::widget::text_input::Style::Outlined,
+                        &state.theme,
+                        iced_m3::widget::text_input::InputStyle::Outlined,
                     )
                     .with_label_text("label text", state.theme.surface_container_high())
                     .with_supporting_text("supporting text")
