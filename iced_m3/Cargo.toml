@@ -8,3 +8,4 @@ license = "MIT"
 [dependencies]
 iced = { version = "0.14.0", features = [ "advanced" ] }
 iced_widget = "0.14.2"
+unicode-segmentation = "1.13.3"
