@@ -36,6 +36,7 @@ mod value;
 pub mod cursor;
 
 pub use cursor::Cursor;
+use iced::border::Radius;
 pub use value::Value;
 
 use editor::Editor;
@@ -61,6 +62,7 @@ use iced_widget::core::{
     Pixels, Point, Rectangle, Shell, Size, Theme, Vector, Widget,
 };
 
+use crate::DIM_ALPHA;
 use crate::theme::ColorScheme;
 
 /// A field that can be filled with text.
@@ -129,7 +131,7 @@ pub enum InputStyle {
 }
 
 /// The default [`Padding`] of a [`TextInput`].
-pub const DEFAULT_PADDING: Padding = Padding::new(5.0);
+pub const DEFAULT_PADDING: Padding = Padding::new(12.0);
 
 impl<'a, Message, Theme, Renderer> TextInput<'a, Message, Theme, Renderer>
 where
@@ -467,10 +469,22 @@ where
         renderer.fill_quad(
             renderer::Quad {
                 bounds,
-                border: style.border,
+                border: iced::Border {
+                    color: match self.last_status.unwrap_or(Status::Disabled) {
+                        Status::Active | Status::Hovered => self.theme.outline(),
+                        Status::Focused { is_hovered: _ } => self.theme.primary(),
+                        Status::Disabled => self.theme.outline().scale_alpha(DIM_ALPHA),
+                    },
+                    width: if let Some(Status::Focused { is_hovered: _ }) = self.last_status {
+                        3.0
+                    } else {
+                        2.0
+                    },
+                    radius: Radius::from(4.0),
+                },
                 ..renderer::Quad::default()
             },
-            style.background,
+            Color::TRANSPARENT,
         );
 
         if self.icon.is_some() {
@@ -518,7 +532,7 @@ where
                                 },
                                 ..renderer::Quad::default()
                             },
-                            style.value,
+                            self.theme.primary(),
                         ))
                     } else {
                         None
@@ -549,7 +563,7 @@ where
                                 },
                                 ..renderer::Quad::default()
                             },
-                            style.selection,
+                            self.theme.inverse_primary(),
                         )),
                         if end == right {
                             right_offset
@@ -596,9 +610,9 @@ where
                 text_bounds.anchor(paragraph.min_bounds(), Alignment::Start, Alignment::Center)
                     + Vector::new(alignment_offset - offset, 0.0),
                 if text.is_empty() {
-                    style.placeholder
+                    self.theme.on_surface_variant()
                 } else {
-                    style.value
+                    self.theme.on_surface()
                 },
                 viewport,
             );
