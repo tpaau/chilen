@@ -50,7 +50,8 @@ pub enum Message {
     CloseDialog,
     PlaylistName(String),
     CreatePlaylist(String),
-    ImportPlaylist(Option<rfd::FileHandle>),
+    OpenPlaylistImportDialog(Option<rfd::FileHandle>),
+    ImportPlaylist(Option<String>, rfd::FileHandle),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -66,6 +67,7 @@ enum Dialog {
     #[default]
     None,
     CreatePlaylist(String),
+    ImportPlaylist(String, rfd::FileHandle),
 }
 
 struct Chilen {
@@ -199,6 +201,61 @@ impl Chilen {
                 )
                 .width(350)
                 .into(),
+                Dialog::ImportPlaylist(name, handle) => dialog(
+                    true,
+                    space().width(Length::Fill).height(Length::Fill),
+                    iced_m3::widget::text_input::<_, Message>(
+                        handle
+                            .file_name()
+                            .strip_suffix(".m3u8")
+                            .unwrap_or(&handle.file_name()),
+                        name,
+                        &state.theme,
+                    )
+                    .with_label_text("Playlist name", state.theme.surface_container_high())
+                    .on_input(Message::PlaylistName)
+                    .on_submit(Message::ImportPlaylist(
+                        if name.is_empty() {
+                            None
+                        } else {
+                            Some(name.clone())
+                        },
+                        handle.clone()
+                    )),
+                    state.theme.current()
+                )
+                .title("Import playlist")
+                .font(font::font_bold())
+                .push_button(space().width(Length::Fill))
+                .push_button(
+                    button("Cancel")
+                        .style(|_, status| iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Outlined
+                        ))
+                        .padding(12)
+                        .on_press(Message::CloseDialog)
+                )
+                .push_button(
+                    button("Import")
+                        .style(|_, status| iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Primary
+                        ))
+                        .padding(12)
+                        .on_press(Message::ImportPlaylist(
+                            if name.is_empty() {
+                                None
+                            } else {
+                                Some(name.clone())
+                            },
+                            handle.clone()
+                        ))
+                )
+                .width(350)
+                .into(),
             },
         ]
         .into()
@@ -218,7 +275,7 @@ impl Chilen {
                             .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
                             .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
                             .pick_file(),
-                        Message::ImportPlaylist,
+                        Message::OpenPlaylistImportDialog,
                     );
                 }
             },
@@ -273,12 +330,21 @@ impl Chilen {
                     error!("Couldn't create playlist: {e}")
                 }
             }
-            Message::ImportPlaylist(handle) => {
+            Message::OpenPlaylistImportDialog(handle) => {
                 if let Some(handle) = handle {
-                    todo!("Do the thing with the handle: {handle:?}");
+                    trace!("Showing import dialog for playlist {handle:?}");
+                    state.dialog = Dialog::ImportPlaylist(String::new(), handle);
                 } else {
                     info!("Didn't get the file handle!");
                 }
+            }
+            Message::ImportPlaylist(name, handle) => {
+                if let Err(e) =
+                    chilen_backend::music_lib::import_playlist_from_m3u8(name, &handle.into())
+                {
+                    error!("Could not import the playlist: {e}");
+                }
+                state.dialog = Dialog::None;
             }
         }
         Task::none()
