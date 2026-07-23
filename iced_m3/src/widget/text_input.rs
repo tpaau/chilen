@@ -345,7 +345,7 @@ where
             ..placeholder_text
         });
 
-        if let Some(icon) = &self.icon {
+        let mut children = if let Some(icon) = &self.icon {
             let mut content = [0; 4];
 
             let icon_text = Text {
@@ -382,13 +382,48 @@ where
             let icon_node =
                 layout::Node::new(Size::new(icon_width, text_bounds.height)).move_to(icon_position);
 
-            layout::Node::with_children(text_bounds.expand(padding), vec![text_node, icon_node])
+            vec![text_node, icon_node]
         } else {
-            let text =
-                layout::Node::new(text_bounds).move_to(Point::new(padding.left, padding.top));
+            vec![layout::Node::new(text_bounds).move_to(Point::new(padding.left, padding.top))]
+        };
 
-            layout::Node::with_children(text_bounds.expand(padding), vec![text])
+        if let Some(label_text) = self.label_text {
+            eprintln!("Running here in layout!");
+            let offset = Point::new(12.0, 0.0);
+            let text_size = Pixels::from(16.0);
+            // let height = text::LineHeight::default().to_absolute(text_size);
+            // let limits = limits.width(self.width).shrink(padding);
+            let text = Text {
+                font: self.font.unwrap_or_else(|| renderer.default_font()),
+                line_height: self.line_height,
+                content: label_text,
+                bounds: Size::new(f32::INFINITY, text_bounds.height),
+                size: text_size,
+                align_x: text::Alignment::Default,
+                align_y: alignment::Vertical::Center,
+                shaping: text::Shaping::Advanced,
+                wrapping: text::Wrapping::default(),
+            };
+            let _ = state.label.update(text);
+            let label_bounds = state.label.min_bounds();
+
+            // let _ = state.placeholder.update(placeholder_text);
+
+            // let secure_value = self.is_secure.then(|| value.secure());
+            // let value = secure_value.as_ref().unwrap_or(value);
+
+            // let _ = state.value.update(Text {
+            //     content: &value.to_string(),
+            //     ..placeholder_text
+            // });
+
+            children.push(layout::Node::new(label_bounds).move_to(offset));
+            // let text_bounds = limits.resolve(self.width, height, Size::ZERO);
+
+            // children.push(layout::Node::new(text_bounds).move_to(offset));
         }
+
+        layout::Node::with_children(text_bounds.expand(padding), children)
     }
 
     fn input_method<'b>(
@@ -461,6 +496,10 @@ where
 
         let bounds = layout.bounds();
 
+        for (i, child) in layout.children().enumerate() {
+            eprintln!("child {i}: {child:?}");
+        }
+
         let mut children_layout = layout.children();
         let text_bounds = children_layout.next().unwrap().bounds();
 
@@ -486,6 +525,53 @@ where
             },
             Color::TRANSPARENT,
         );
+
+        if let Some(Status::Focused { is_hovered: _ }) = self.last_status
+            && let Some(label_text) = self.label_text
+        {
+            let background = self.background_color.unwrap();
+            let offset = Vector::new(12.0, 0.0);
+            let text = Text {
+                font: self.font.unwrap_or_else(|| renderer.default_font()),
+                line_height: self.line_height,
+                content: label_text.to_string(),
+                bounds: Size::new(f32::INFINITY, text_bounds.height),
+                size: iced::Pixels(12.0),
+                align_x: text::Alignment::Default,
+                align_y: alignment::Vertical::Center,
+                shaping: text::Shaping::Advanced,
+                wrapping: text::Wrapping::default(),
+            };
+            let text_bounds = children_layout.next().unwrap().bounds();
+            eprintln!("text_bounds: {text_bounds:?}");
+            let bounds = Rectangle {
+                x: offset.x,
+                y: offset.y,
+                width: text_bounds.width,
+                height: text_bounds.height,
+            };
+            eprintln!("bound: {bounds:?}");
+
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: Rectangle {
+                        x: offset.x,
+                        y: offset.y,
+                        width: text_bounds.width,
+                        height: text_bounds.height,
+                    },
+                    ..Default::default()
+                },
+                Color::from_rgb(1.0, 0.0, 0.0),
+            );
+
+            renderer.fill_text(
+                text,
+                bounds.position() + offset,
+                self.theme.primary(),
+                *viewport,
+            );
+        }
 
         if self.icon.is_some() {
             let icon_layout = children_layout.next().unwrap();
@@ -1379,6 +1465,7 @@ pub enum Side {
 pub struct State<P: text::Paragraph> {
     value: paragraph::Plain<P>,
     placeholder: paragraph::Plain<P>,
+    label: paragraph::Plain<P>,
     icon: paragraph::Plain<P>,
     is_focused: Option<Focus>,
     is_dragging: Option<Drag>,
