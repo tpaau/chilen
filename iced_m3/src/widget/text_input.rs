@@ -132,6 +132,14 @@ pub enum InputStyle {
 
 /// The default [`Padding`] of a [`TextInput`].
 pub const DEFAULT_PADDING: Padding = Padding::new(12.0);
+const LABEL_BACKGROUND_PADDING: f32 = 4.0;
+const LABEL_TEXT_SIZE: Pixels = Pixels(12.0);
+const LABEL_TEXT_OFFSET: Point = Point::new(
+    12.0 + LABEL_BACKGROUND_PADDING,
+    LABEL_TEXT_SIZE.0 / 4.0 - BORDER_WIDTH / 2.0,
+);
+const SUPPORTING_TEXT_SIZE: Pixels = Pixels(12.0);
+const BORDER_WIDTH: f32 = 2.0;
 
 impl<'a, Message, Theme, Renderer> TextInput<'a, Message, Theme, Renderer>
 where
@@ -388,17 +396,12 @@ where
         };
 
         if let Some(label_text) = self.label_text {
-            eprintln!("Running here in layout!");
-            let offset = Point::new(12.0, 0.0);
-            let text_size = Pixels::from(16.0);
-            // let height = text::LineHeight::default().to_absolute(text_size);
-            // let limits = limits.width(self.width).shrink(padding);
             let text = Text {
                 font: self.font.unwrap_or_else(|| renderer.default_font()),
                 line_height: self.line_height,
                 content: label_text,
-                bounds: Size::new(f32::INFINITY, text_bounds.height),
-                size: text_size,
+                bounds: Size::new(f32::INFINITY, LABEL_TEXT_SIZE.into()),
+                size: LABEL_TEXT_SIZE,
                 align_x: text::Alignment::Default,
                 align_y: alignment::Vertical::Center,
                 shaping: text::Shaping::Advanced,
@@ -406,21 +409,7 @@ where
             };
             let _ = state.label.update(text);
             let label_bounds = state.label.min_bounds();
-
-            // let _ = state.placeholder.update(placeholder_text);
-
-            // let secure_value = self.is_secure.then(|| value.secure());
-            // let value = secure_value.as_ref().unwrap_or(value);
-
-            // let _ = state.value.update(Text {
-            //     content: &value.to_string(),
-            //     ..placeholder_text
-            // });
-
-            children.push(layout::Node::new(label_bounds).move_to(offset));
-            // let text_bounds = limits.resolve(self.width, height, Size::ZERO);
-
-            // children.push(layout::Node::new(text_bounds).move_to(offset));
+            children.push(layout::Node::new(label_bounds).move_to(LABEL_TEXT_OFFSET));
         }
 
         layout::Node::with_children(text_bounds.expand(padding), children)
@@ -496,10 +485,6 @@ where
 
         let bounds = layout.bounds();
 
-        for (i, child) in layout.children().enumerate() {
-            eprintln!("child {i}: {child:?}");
-        }
-
         let mut children_layout = layout.children();
         let text_bounds = children_layout.next().unwrap().bounds();
 
@@ -514,11 +499,7 @@ where
                         Status::Focused { is_hovered: _ } => self.theme.primary(),
                         Status::Disabled => self.theme.outline().scale_alpha(DIM_ALPHA),
                     },
-                    width: if let Some(Status::Focused { is_hovered: _ }) = self.last_status {
-                        3.0
-                    } else {
-                        2.0
-                    },
+                    width: BORDER_WIDTH,
                     radius: Radius::from(4.0),
                 },
                 ..renderer::Quad::default()
@@ -529,45 +510,34 @@ where
         if let Some(Status::Focused { is_hovered: _ }) = self.last_status
             && let Some(label_text) = self.label_text
         {
-            let background = self.background_color.unwrap();
-            let offset = Vector::new(12.0, 0.0);
-            let text = Text {
-                font: self.font.unwrap_or_else(|| renderer.default_font()),
-                line_height: self.line_height,
-                content: label_text.to_string(),
-                bounds: Size::new(f32::INFINITY, text_bounds.height),
-                size: iced::Pixels(12.0),
-                align_x: text::Alignment::Default,
-                align_y: alignment::Vertical::Center,
-                shaping: text::Shaping::Advanced,
-                wrapping: text::Wrapping::default(),
-            };
-            let text_bounds = children_layout.next().unwrap().bounds();
-            eprintln!("text_bounds: {text_bounds:?}");
-            let bounds = Rectangle {
-                x: offset.x,
-                y: offset.y,
-                width: text_bounds.width,
-                height: text_bounds.height,
-            };
-            eprintln!("bound: {bounds:?}");
+            let label_bounds = children_layout.next().unwrap().bounds();
 
             renderer.fill_quad(
                 renderer::Quad {
                     bounds: Rectangle {
-                        x: offset.x,
-                        y: offset.y,
-                        width: text_bounds.width,
-                        height: text_bounds.height,
+                        height: BORDER_WIDTH,
+                        width: label_bounds.width + 2.0 * LABEL_BACKGROUND_PADDING,
+                        x: label_bounds.x - LABEL_BACKGROUND_PADDING,
+                        y: label_bounds.y - LABEL_TEXT_OFFSET.y,
                     },
                     ..Default::default()
                 },
-                Color::from_rgb(1.0, 0.0, 0.0),
+                self.background_color.unwrap(),
             );
 
             renderer.fill_text(
-                text,
-                bounds.position() + offset,
+                Text {
+                    font: self.font.unwrap_or_else(|| renderer.default_font()),
+                    line_height: self.line_height,
+                    content: label_text.to_string(),
+                    bounds: Size::new(f32::INFINITY, LABEL_TEXT_SIZE.into()),
+                    size: LABEL_TEXT_SIZE,
+                    align_x: text::Alignment::Default,
+                    align_y: alignment::Vertical::Center,
+                    shaping: text::Shaping::Advanced,
+                    wrapping: text::Wrapping::default(),
+                },
+                label_bounds.position(),
                 self.theme.primary(),
                 *viewport,
             );
