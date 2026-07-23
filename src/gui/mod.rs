@@ -5,7 +5,11 @@ mod playlist_view;
 mod tests;
 mod widgets;
 
-use std::sync::{Arc, LazyLock, RwLock};
+use std::{
+    env::home_dir,
+    path::PathBuf,
+    sync::{Arc, LazyLock, RwLock},
+};
 
 use chilen_backend::music_lib::state::MusicLibrary;
 use iced::{
@@ -20,7 +24,7 @@ use iced_m3::{
     widget::dialog,
 };
 use iced_widget::{button, space, stack};
-use log::{error, trace};
+use log::{error, info, trace};
 
 use crate::{
     gui::{
@@ -46,6 +50,7 @@ pub enum Message {
     CloseDialog,
     PlaylistName(String),
     CreatePlaylist(String),
+    ImportPlaylist(Option<rfd::FileHandle>),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -203,10 +208,19 @@ impl Chilen {
         match message {
             Message::CloseDialog => state.dialog = Dialog::None,
             Message::Playlist(msg) => match msg {
+                playlist_view::Message::Open(pl) => todo!(),
                 playlist_view::Message::CreatePlaylist => {
                     state.dialog = Dialog::CreatePlaylist(String::new());
                 }
-                _ => return playlist_view::update(state, msg).map(Message::Playlist),
+                playlist_view::Message::ImportPlaylist => {
+                    return Task::perform(
+                        rfd::AsyncFileDialog::new()
+                            .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
+                            .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
+                            .pick_file(),
+                        Message::ImportPlaylist,
+                    );
+                }
             },
             Message::Event(event) => match event {
                 Event::Backend(event) => match event {
@@ -257,6 +271,13 @@ impl Chilen {
                 state.dialog = Dialog::None;
                 if let Err(e) = chilen_backend::music_lib::create_playlist(name, &None) {
                     error!("Couldn't create playlist: {e}")
+                }
+            }
+            Message::ImportPlaylist(handle) => {
+                if let Some(handle) = handle {
+                    todo!("Do the thing with the handle: {handle:?}");
+                } else {
+                    info!("Didn't get the file handle!");
                 }
             }
         }

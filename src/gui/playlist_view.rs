@@ -159,11 +159,3 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
         }
     }
 }
-
-pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
-    match message {
-        Message::Open(pl) => Task::none(),
-        Message::CreatePlaylist => unreachable!(),
-        Message::ImportPlaylist => todo!(),
-    }
-}
