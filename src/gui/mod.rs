@@ -169,7 +169,7 @@ impl Chilen {
                     .on_submit(Message::CreatePlaylist(name.clone())),
                     state.theme.current()
                 )
-                .title("Create playlist")
+                .title("New playlist")
                 .font(font::font_bold())
                 .push_button(space().width(Length::Fill))
                 .push_button(
@@ -183,7 +183,7 @@ impl Chilen {
                         .on_press(Message::CloseDialog)
                 )
                 .push_button(
-                    button("Confirm")
+                    button("Create")
                         .style(|_, status| iced_m3::style::button(
                             status,
                             state.theme.current(),
