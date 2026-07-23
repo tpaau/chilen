@@ -119,15 +119,8 @@ where
     class: Theme::Class<'a>,
     last_status: Option<Status>,
     theme: &'a dyn ColorScheme,
-    style: InputStyle,
     label_text: Option<&'a str>,
     background_color: Option<Color>,
-    supporting_text: Option<&'a str>,
-}
-
-pub enum InputStyle {
-    Filled,
-    Outlined,
 }
 
 /// The default [`Padding`] of a [`TextInput`].
@@ -149,12 +142,7 @@ where
 {
     /// Creates a new [`TextInput`] with the given placeholder and
     /// its current value.
-    pub fn new(
-        placeholder: &str,
-        value: &str,
-        theme: &'a impl ColorScheme,
-        style: InputStyle,
-    ) -> Self {
+    pub fn new(placeholder: &str, value: &str, theme: &'a impl ColorScheme) -> Self {
         TextInput {
             id: None,
             placeholder: String::from(placeholder),
@@ -173,21 +161,14 @@ where
             class: Theme::default(),
             last_status: None,
             theme,
-            style,
             label_text: None,
             background_color: None,
-            supporting_text: None,
         }
     }
 
     pub fn with_label_text(mut self, label_text: &'a str, background: Color) -> Self {
         self.label_text = Some(label_text);
         self.background_color = Some(background);
-        self
-    }
-
-    pub fn with_supporting_text(mut self, supporting_text: &'a str) -> Self {
-        self.supporting_text = Some(supporting_text);
         self
     }
 

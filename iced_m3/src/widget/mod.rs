@@ -29,7 +29,6 @@ pub fn text_input<'a, Message: Clone, Renderer>(
     placeholder: &str,
     value: &'a str,
     theme: &'a impl ColorScheme,
-    style: crate::widget::text_input::InputStyle,
 ) -> TextInput<'a, Message> {
-    TextInput::new(placeholder, value, theme, style)
+    TextInput::new(placeholder, value, theme)
 }

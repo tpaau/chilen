@@ -163,10 +163,8 @@ impl Chilen {
                         &state.library.as_ref().unwrap().get_default_playlist_name(),
                         name,
                         &state.theme,
-                        iced_m3::widget::text_input::InputStyle::Outlined,
                     )
                     .with_label_text("Playlist name", state.theme.surface_container_high())
-                    .with_supporting_text("supporting text")
                     .on_input(Message::PlaylistName)
                     .on_submit(Message::CreatePlaylist(name.clone())),
                     state.theme.current()
