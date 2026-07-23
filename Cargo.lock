@@ -592,7 +592,6 @@ dependencies = [
  "iced_widget",
  "log",
  "serde",
- "serde_json",
 ]
 
 [[package]]

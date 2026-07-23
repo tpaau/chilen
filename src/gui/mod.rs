@@ -165,7 +165,7 @@ impl Chilen {
                         &state.theme,
                         iced_m3::widget::text_input::InputStyle::Outlined,
                     )
-                    .with_label_text("label text", state.theme.surface_container_high())
+                    .with_label_text("Playlist name", state.theme.surface_container_high())
                     .with_supporting_text("supporting text")
                     .on_input(Message::PlaylistName)
                     .on_submit(Message::CreatePlaylist(name.clone())),
