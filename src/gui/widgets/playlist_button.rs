@@ -12,17 +12,14 @@ use iced_m3::{
 };
 
 use crate::gui::{
-    Chilen, DIM_TEXT_ALPHA, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+    Chilen, DIM_TEXT_ALPHA, Message, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
     font::{self, SIZE_REGULAR, SIZE_SMALL},
-    icons, playlist_view,
+    icons,
 };
 
 const THUMBNAIL_SIZE: f32 = 64.0;
 
-pub fn playlist_button<'a>(
-    state: &'a Chilen,
-    playlist: &'a Arc<Playlist>,
-) -> Button<'a, playlist_view::Message> {
+pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
     button(
         row(vec![
             container(Space::new())
@@ -103,5 +100,5 @@ pub fn playlist_button<'a>(
             _ => style,
         }
     })
-    .on_press(playlist_view::Message::Open(playlist.clone()))
+    .on_press(Message::OpenPlaylist(playlist.clone()))
 }

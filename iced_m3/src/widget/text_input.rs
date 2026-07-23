@@ -131,7 +131,6 @@ const LABEL_TEXT_OFFSET: Point = Point::new(
     12.0 + LABEL_BACKGROUND_PADDING,
     LABEL_TEXT_SIZE.0 / 4.0 - BORDER_WIDTH / 2.0,
 );
-const SUPPORTING_TEXT_SIZE: Pixels = Pixels(12.0);
 const BORDER_WIDTH: f32 = 2.0;
 
 impl<'a, Message, Theme, Renderer> TextInput<'a, Message, Theme, Renderer>

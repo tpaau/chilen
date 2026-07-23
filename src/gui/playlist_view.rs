@@ -1,8 +1,5 @@
-use std::sync::Arc;
-
-use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Alignment, Border, Element, Length, Padding, Task,
+    Alignment, Border, Element, Length, Padding,
     border::Radius,
     widget::{column, container, text},
 };
@@ -14,16 +11,9 @@ use iced_m3::{
 use iced_widget::{bottom_right, center, row, space, stack};
 
 use crate::gui::{
-    self, Chilen, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-    font, icons, widgets::playlist_button::playlist_button,
+    self, Chilen, LoadingState, Message, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
+    SPACING_SMALLER, font, icons, widgets::playlist_button::playlist_button,
 };
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Open(Arc<Playlist>),
-    CreatePlaylist,
-    ImportPlaylist,
-}
 
 pub fn view(state: &Chilen) -> Element<'_, Message> {
     match &state.loading_state {
@@ -119,7 +109,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                             .padding(Padding::from(16.0))
                             .height(Length::Fixed(56.0))
                             .width(Length::Shrink)
-                            .on_press(Message::ImportPlaylist),
+                            .on_press(Message::OpenPlaylistImportFilePicker),
                             iced::widget::button(center(
                                 row(vec![
                                     text(*icons::PLAYLIST_ADD)
@@ -143,7 +133,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                             .padding(Padding::from(16.0))
                             .height(Length::Fixed(56.0))
                             .width(Length::Shrink)
-                            .on_press(Message::CreatePlaylist),
+                            .on_press(Message::OpenPlaylistCreationDialog),
                             space().height(4.0)
                         ]
                         .align_x(Alignment::End)

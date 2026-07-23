@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, LazyLock, RwLock},
 };
 
-use chilen_backend::music_lib::state::MusicLibrary;
+use chilen_backend::music_lib::state::{MusicLibrary, Playlist};
 use iced::{
     self, Border, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
@@ -46,10 +46,12 @@ pub(super) enum Event {
 #[derive(Debug, Clone)]
 pub enum Message {
     Event(Event),
-    Playlist(playlist_view::Message),
     CloseDialog,
-    PlaylistName(String),
+    OpenPlaylist(Arc<Playlist>),
+    PlaylistNameEdited(String),
+    OpenPlaylistCreationDialog,
     CreatePlaylist(String),
+    OpenPlaylistImportFilePicker,
     OpenPlaylistImportDialog(Option<rfd::FileHandle>),
     ImportPlaylist(Option<String>, rfd::FileHandle),
 }
@@ -137,7 +139,7 @@ impl Chilen {
         stack![
             container(column([row([
                 // TODO: I should be able to resize this
-                container(playlist_view::view(state).map(Message::Playlist))
+                container(playlist_view::view(state))
                     .padding(Padding::new(SPACING_SMALL as f32))
                     .width(Length::Fixed(350.0))
                     .height(Length::Fill)
@@ -172,7 +174,7 @@ impl Chilen {
                         &state.theme,
                     )
                     .with_label_text("Playlist name", state.theme.surface_container_high())
-                    .on_input(Message::PlaylistName)
+                    .on_input(Message::PlaylistNameEdited)
                     .on_submit(Message::CreatePlaylist(name.clone())),
                     state.theme.current()
                 )
@@ -213,7 +215,7 @@ impl Chilen {
                         &state.theme,
                     )
                     .with_label_text("Playlist name", state.theme.surface_container_high())
-                    .on_input(Message::PlaylistName)
+                    .on_input(Message::PlaylistNameEdited)
                     .on_submit(Message::ImportPlaylist(
                         if name.is_empty() {
                             None
@@ -264,21 +266,6 @@ impl Chilen {
     fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         match message {
             Message::CloseDialog => state.dialog = Dialog::None,
-            Message::Playlist(msg) => match msg {
-                playlist_view::Message::Open(pl) => todo!(),
-                playlist_view::Message::CreatePlaylist => {
-                    state.dialog = Dialog::CreatePlaylist(String::new());
-                }
-                playlist_view::Message::ImportPlaylist => {
-                    return Task::perform(
-                        rfd::AsyncFileDialog::new()
-                            .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
-                            .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
-                            .pick_file(),
-                        Message::OpenPlaylistImportDialog,
-                    );
-                }
-            },
             Message::Event(event) => match event {
                 Event::Backend(event) => match event {
                     chilen_backend::Event::LibraryChanged(lib) => {
@@ -323,7 +310,13 @@ impl Chilen {
                     };
                 }
             },
-            Message::PlaylistName(name) => state.dialog = Dialog::CreatePlaylist(name),
+            Message::PlaylistNameEdited(name) => match &state.dialog {
+                Dialog::CreatePlaylist(_) => state.dialog = Dialog::CreatePlaylist(name),
+                Dialog::ImportPlaylist(_, handle) => {
+                    state.dialog = Dialog::ImportPlaylist(name, handle.clone())
+                }
+                _ => unreachable!(),
+            },
             Message::CreatePlaylist(name) => {
                 state.dialog = Dialog::None;
                 if let Err(e) = chilen_backend::music_lib::create_playlist(name, &None) {
@@ -345,6 +338,19 @@ impl Chilen {
                     error!("Could not import the playlist: {e}");
                 }
                 state.dialog = Dialog::None;
+            }
+            Message::OpenPlaylist(pl) => todo!(),
+            Message::OpenPlaylistCreationDialog => {
+                state.dialog = Dialog::CreatePlaylist(String::new());
+            }
+            Message::OpenPlaylistImportFilePicker => {
+                return Task::perform(
+                    rfd::AsyncFileDialog::new()
+                        .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
+                        .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
+                        .pick_file(),
+                    Message::OpenPlaylistImportDialog,
+                );
             }
         }
         Task::none()
