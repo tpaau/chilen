@@ -121,6 +121,7 @@ where
     theme: &'a dyn ColorScheme,
     label_text: Option<&'a str>,
     background_color: Option<Color>,
+    error: bool,
 }
 
 /// The default [`Padding`] of a [`TextInput`].
@@ -162,7 +163,13 @@ where
             theme,
             label_text: None,
             background_color: None,
+            error: false,
         }
+    }
+
+    pub fn error(mut self, error: bool) -> Self {
+        self.error = error;
+        self
     }
 
     pub fn with_label_text(mut self, label_text: &'a str, background: Color) -> Self {
@@ -475,8 +482,20 @@ where
                 bounds,
                 border: iced::Border {
                     color: match self.last_status.unwrap_or(Status::Disabled) {
-                        Status::Active | Status::Hovered => self.theme.outline(),
-                        Status::Focused { is_hovered: _ } => self.theme.primary(),
+                        Status::Active | Status::Hovered => {
+                            if self.error {
+                                self.theme.error()
+                            } else {
+                                self.theme.outline()
+                            }
+                        }
+                        Status::Focused { is_hovered: _ } => {
+                            if self.error {
+                                self.theme.error()
+                            } else {
+                                self.theme.primary()
+                            }
+                        }
                         Status::Disabled => self.theme.outline().scale_alpha(DIM_ALPHA),
                     },
                     width: BORDER_WIDTH,
@@ -518,7 +537,11 @@ where
                     wrapping: text::Wrapping::default(),
                 },
                 label_bounds.position(),
-                self.theme.primary(),
+                if self.error {
+                    self.theme.error()
+                } else {
+                    self.theme.primary()
+                },
                 *viewport,
             );
         }
@@ -568,7 +591,11 @@ where
                                 },
                                 ..renderer::Quad::default()
                             },
-                            self.theme.primary(),
+                            if self.error {
+                                self.theme.error()
+                            } else {
+                                self.theme.primary()
+                            },
                         ))
                     } else {
                         None
@@ -599,7 +626,11 @@ where
                                 },
                                 ..renderer::Quad::default()
                             },
-                            self.theme.inverse_primary(),
+                            if self.error {
+                                self.theme.error_container()
+                            } else {
+                                self.theme.inverse_primary()
+                            },
                         )),
                         if end == right {
                             right_offset
@@ -646,7 +677,11 @@ where
                 text_bounds.anchor(paragraph.min_bounds(), Alignment::Start, Alignment::Center)
                     + Vector::new(alignment_offset - offset, 0.0),
                 if text.is_empty() {
-                    self.theme.on_surface_variant()
+                    if self.error {
+                        self.theme.error().scale_alpha(DIM_ALPHA)
+                    } else {
+                        self.theme.on_surface_variant()
+                    }
                 } else {
                     self.theme.on_surface()
                 },
