@@ -68,6 +68,10 @@ enum Dialog {
     None,
     CreatePlaylist(String),
     ImportPlaylist(String, rfd::FileHandle),
+    Error {
+        title: String,
+        message: String,
+    },
 }
 
 struct Chilen {
@@ -221,9 +225,14 @@ impl Chilen {
                 _ => unreachable!(),
             },
             Message::CreatePlaylist(name) => {
-                state.dialog = Dialog::None;
                 if let Err(e) = chilen_backend::music_lib::create_playlist(name, &None) {
-                    error!("Couldn't create playlist: {e}")
+                    error!("Couldn't create playlist: {e}");
+                    state.dialog = Dialog::Error {
+                        title: "Couldn't create playlist".to_string(),
+                        message: e.to_string(),
+                    };
+                } else {
+                    state.dialog = Dialog::None;
                 }
             }
             Message::OpenPlaylistImportDialog(handle) => {
@@ -239,8 +248,13 @@ impl Chilen {
                     chilen_backend::music_lib::import_playlist_from_m3u8(name, &handle.into())
                 {
                     error!("Could not import the playlist: {e}");
+                    state.dialog = Dialog::Error {
+                        title: "Couldn't import playlist".to_string(),
+                        message: e.to_string(),
+                    };
+                } else {
+                    state.dialog = Dialog::None;
                 }
-                state.dialog = Dialog::None;
             }
             Message::OpenPlaylist(pl) => todo!(),
             Message::OpenPlaylistCreationDialog => {

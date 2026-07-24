@@ -1,10 +1,26 @@
-use iced::{Element, Length};
+use iced::{Element, Length, border::Radius};
 use iced_m3::{theme::ColorScheme, widget::dialog};
-use iced_widget::{button, space};
+use iced_widget::{button, container, space, text};
 
 use crate::gui::{Chilen, Dialog, Message, font};
 
 pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
+    let cancel_button = match &state.dialog {
+        Dialog::None => None,
+        _ => Some(
+            button("Cancel")
+                .style(|_, status| {
+                    iced_m3::style::button(
+                        status,
+                        state.theme.current(),
+                        iced_m3::style::Button::Outlined,
+                    )
+                })
+                .padding(12)
+                .on_press(Message::CloseDialog),
+        ),
+    };
+
     match &state.dialog {
         Dialog::None => None,
         Dialog::CreatePlaylist(name) => Some({
@@ -35,18 +51,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .title("New playlist")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
-            .push_button(
-                button("Cancel")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Outlined,
-                        )
-                    })
-                    .padding(12)
-                    .on_press(Message::CloseDialog),
-            )
+            .push_button(cancel_button)
             .push_button(
                 button("Create")
                     .style(|_, status| {
@@ -100,18 +105,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .title("Import playlist")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
-            .push_button(
-                button("Cancel")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Outlined,
-                        )
-                    })
-                    .padding(12)
-                    .on_press(Message::CloseDialog),
-            )
+            .push_button(cancel_button)
             .push_button(
                 button("Import")
                     .style(|_, status| {
@@ -134,6 +128,43 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                             handle.clone(),
                         ))
                     }),
+            )
+            .width(350)
+            .into()
+        }),
+        Dialog::Error { title, message } => Some({
+            dialog(
+                true,
+                space().width(Length::Fill).height(Length::Fill),
+                container(text(message))
+                    .style(|_| container::Style {
+                        text_color: Some(state.theme.error_container()),
+                        background: Some(iced::Background::Color(state.theme.on_error_container())),
+                        border: iced::Border {
+                            color: state.theme.error_container(),
+                            width: 1.0,
+                            radius: Radius::from(8.0),
+                        },
+                        ..Default::default()
+                    })
+                    .width(Length::Fill)
+                    .padding(8.0),
+                state.theme.current(),
+            )
+            .title(title)
+            .font(font::font_bold())
+            .push_button(space().width(Length::Fill))
+            .push_button(
+                button("OK")
+                    .style(|_, status| {
+                        iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Primary,
+                        )
+                    })
+                    .padding(12)
+                    .on_press(Message::CloseDialog),
             )
             .width(350)
             .into()
