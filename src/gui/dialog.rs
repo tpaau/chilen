@@ -2,7 +2,7 @@ use iced::{Element, Length, border::Radius};
 use iced_m3::{theme::ColorScheme, widget::dialog};
 use iced_widget::{button, container, space, text};
 
-use crate::gui::{Chilen, Dialog, Message, font};
+use crate::gui::{Chilen, Dialog, Message, ROUNDING_SMALL, font};
 
 pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
     let cancel_button = match &state.dialog {
@@ -132,7 +132,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .width(350)
             .into()
         }),
-        Dialog::Error { title, message } => Some({
+        Dialog::Error(message) => Some({
             dialog(
                 true,
                 space().width(Length::Fill).height(Length::Fill),
@@ -143,7 +143,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                         border: iced::Border {
                             color: state.theme.error_container(),
                             width: 1.0,
-                            radius: Radius::from(8.0),
+                            radius: Radius::from(ROUNDING_SMALL),
                         },
                         ..Default::default()
                     })
@@ -151,11 +151,11 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                     .padding(8.0),
                 state.theme.current(),
             )
-            .title(title)
+            .title("Error")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
             .push_button(
-                button("OK")
+                button("Dismiss")
                     .style(|_, status| {
                         iced_m3::style::button(
                             status,
