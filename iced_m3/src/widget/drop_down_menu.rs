@@ -74,6 +74,7 @@ impl Placement {
         }
     }
 
+    // TODO: Make sure the menu stays in bounds
     fn calc(&self, bounds: &Rectangle, overlay_bounds: &Rectangle) -> Vector {
         match self {
             Placement::TopLeft => {
@@ -114,7 +115,7 @@ impl Placement {
 pub struct DropDownMenu<'a, Message, Theme, Renderer> {
     // TODO: Also expose whether the content is hovered
     content: Box<dyn Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a>,
-    menu: Element<'a, Message, Theme, Renderer>,
+    menu: Option<Element<'a, Message, Theme, Renderer>>,
     overlay_bounds: Option<Rectangle>,
     content_cached: Option<Element<'a, Message, Theme, Renderer>>,
     placement: Placement,
@@ -126,12 +127,12 @@ pub struct DropDownMenu<'a, Message, Theme, Renderer> {
 impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
     pub fn new(
         content: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
-        menu: impl Into<Element<'a, Message, Theme, Renderer>>,
+        menu: Option<impl Into<Element<'a, Message, Theme, Renderer>>>,
         placement: Placement,
     ) -> Self {
         Self {
             content: Box::new(content),
-            menu: menu.into(),
+            menu: menu.map(|e| e.into()),
             overlay_bounds: None,
             content_cached: None,
             placement,
@@ -155,12 +156,13 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
-        let overlay_bounds = self
-            .menu
-            .as_widget_mut()
-            .layout(&mut tree.children[1], renderer, &Limits::NONE)
-            .bounds();
-        self.overlay_bounds = Some(overlay_bounds);
+        if let Some(menu) = &mut self.menu {
+            let overlay_bounds = menu
+                .as_widget_mut()
+                .layout(&mut tree.children[1], renderer, &Limits::NONE)
+                .bounds();
+            self.overlay_bounds = Some(overlay_bounds);
+        }
         self.content_cached = Some((self.content)(
             tree.state.downcast_ref::<State>().position.is_some(),
         ));
@@ -203,17 +205,27 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
     }
 
     fn children(&self) -> Vec<Tree> {
-        vec![
-            Tree::new((self.content)(self.open_cached.get())),
-            Tree::new(&self.menu),
-        ]
+        if let Some(menu) = &self.menu {
+            vec![
+                Tree::new((self.content)(self.open_cached.get())),
+                Tree::new(menu),
+            ]
+        } else {
+            vec![Tree::new((self.content)(self.open_cached.get()))]
+        }
     }
 
     fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&[
-            &(self.content)(tree.state.downcast_ref::<State>().position.is_some()),
-            &self.menu,
-        ]);
+        if let Some(menu) = &self.menu {
+            tree.diff_children(&[
+                &(self.content)(tree.state.downcast_ref::<State>().position.is_some()),
+                menu,
+            ]);
+        } else {
+            tree.diff_children(&[&(self.content)(
+                tree.state.downcast_ref::<State>().position.is_some(),
+            )]);
+        }
     }
 
     fn operate(
@@ -328,37 +340,40 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
     ) -> Option<overlay::Element<'a, Message, Theme, Renderer>> {
         let state = tree.state.downcast_mut::<State>();
 
-        let [first, second] = &mut *tree.children else {
-            unreachable!();
+        let children = if let Some(menu) = &mut self.menu {
+            let [first, second] = &mut *tree.children else {
+                unreachable!();
+            };
+            [
+                // NOTE: I think this might cause issues if `content_cached` is not assigned, it won't
+                // display its overlay??
+                self.content_cached.as_mut().and_then(|content_cached| {
+                    content_cached.as_widget_mut().overlay(
+                        first,
+                        layout,
+                        renderer,
+                        viewport,
+                        translation,
+                    )
+                }),
+                state.position.map(|position| {
+                    overlay::Element::new(Box::new(Overlay {
+                        menu,
+                        tree: second,
+                        state,
+                        position: position + translation,
+                        open_cached: self.open_cached.clone(),
+                        just_closed: self.just_closed.clone(),
+                        transparent: &self.transparent,
+                    }))
+                }),
+            ]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+        } else {
+            vec![]
         };
-
-        let children = [
-            // NOTE: I think this might cause issues if `content_cached` is not assigned, it won't
-            // display its overlay??
-            self.content_cached.as_mut().and_then(|content_cached| {
-                content_cached.as_widget_mut().overlay(
-                    first,
-                    layout,
-                    renderer,
-                    viewport,
-                    translation,
-                )
-            }),
-            state.position.map(|position| {
-                overlay::Element::new(Box::new(Overlay {
-                    menu: &mut self.menu,
-                    tree: second,
-                    state,
-                    position: position + translation,
-                    open_cached: self.open_cached.clone(),
-                    just_closed: self.just_closed.clone(),
-                    transparent: &self.transparent,
-                }))
-            }),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
 
         (!children.is_empty()).then(|| overlay::Group::with_children(children).overlay())
     }

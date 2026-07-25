@@ -85,61 +85,63 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                         .width(Length::Fixed(56.0))
                         .height(Length::Fixed(56.0))
                         .into(),
-                        column![
-                            iced::widget::button(center(
-                                row(vec![
-                                    text(*icons::UPLOAD_FILE)
-                                        .font(icons::font())
-                                        .size(icons::SIZE_SMALLER)
-                                        .into(),
-                                    text("Import playlist").size(font::SIZE_REGULAR).into()
-                                ])
-                                .align_y(Alignment::Center)
-                                .spacing(8)
-                            ))
-                            .style(|_, status| {
-                                let mut style = iced_m3::style::button(
-                                    status,
-                                    &state.theme,
-                                    iced_m3::style::Button::Primary,
-                                );
-                                style.border.radius = Radius::from(f32::MAX);
-                                style
-                            })
-                            .padding(Padding::from(16.0))
-                            .height(Length::Fixed(56.0))
+                        Some(
+                            column![
+                                iced::widget::button(center(
+                                    row(vec![
+                                        text(*icons::UPLOAD_FILE)
+                                            .font(icons::font())
+                                            .size(icons::SIZE_SMALLER)
+                                            .into(),
+                                        text("Import playlist").size(font::SIZE_REGULAR).into()
+                                    ])
+                                    .align_y(Alignment::Center)
+                                    .spacing(8)
+                                ))
+                                .style(|_, status| {
+                                    let mut style = iced_m3::style::button(
+                                        status,
+                                        &state.theme,
+                                        iced_m3::style::Button::Primary,
+                                    );
+                                    style.border.radius = Radius::from(f32::MAX);
+                                    style
+                                })
+                                .padding(Padding::from(16.0))
+                                .height(Length::Fixed(56.0))
+                                .width(Length::Shrink)
+                                .on_press(Message::OpenPlaylistImportFilePicker),
+                                iced::widget::button(center(
+                                    row(vec![
+                                        text(*icons::PLAYLIST_ADD)
+                                            .font(icons::font())
+                                            .size(icons::SIZE_SMALLER)
+                                            .into(),
+                                        text("New playlist").size(font::SIZE_REGULAR).into()
+                                    ])
+                                    .align_y(Alignment::Center)
+                                    .spacing(8)
+                                ))
+                                .style(|_, status| {
+                                    let mut style = iced_m3::style::button(
+                                        status,
+                                        &state.theme,
+                                        iced_m3::style::Button::Primary,
+                                    );
+                                    style.border.radius = Radius::from(f32::MAX);
+                                    style
+                                })
+                                .padding(Padding::from(16.0))
+                                .height(Length::Fixed(56.0))
+                                .width(Length::Shrink)
+                                .on_press(Message::OpenPlaylistCreationDialog),
+                                space().height(4.0)
+                            ]
+                            .align_x(Alignment::End)
                             .width(Length::Shrink)
-                            .on_press(Message::OpenPlaylistImportFilePicker),
-                            iced::widget::button(center(
-                                row(vec![
-                                    text(*icons::PLAYLIST_ADD)
-                                        .font(icons::font())
-                                        .size(icons::SIZE_SMALLER)
-                                        .into(),
-                                    text("New playlist").size(font::SIZE_REGULAR).into()
-                                ])
-                                .align_y(Alignment::Center)
-                                .spacing(8)
-                            ))
-                            .style(|_, status| {
-                                let mut style = iced_m3::style::button(
-                                    status,
-                                    &state.theme,
-                                    iced_m3::style::Button::Primary,
-                                );
-                                style.border.radius = Radius::from(f32::MAX);
-                                style
-                            })
-                            .padding(Padding::from(16.0))
-                            .height(Length::Fixed(56.0))
-                            .width(Length::Shrink)
-                            .on_press(Message::OpenPlaylistCreationDialog),
-                            space().height(4.0)
-                        ]
-                        .align_x(Alignment::End)
-                        .width(Length::Shrink)
-                        .height(Length::Shrink)
-                        .spacing(4),
+                            .height(Length::Shrink)
+                            .spacing(4)
+                        ),
                         Placement::TopLeft,
                     )
                     .transparent(true)

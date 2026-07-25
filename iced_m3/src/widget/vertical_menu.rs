@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use iced::{Alignment, Border, Color, Element, Font, Length, Pixels, border::Radius, padding};
-use iced_widget::{Container, button, column, container, opaque, row, space, text};
+use iced_widget::{button, column, container, row, space, text};
 
 use crate::{
     DIM_ALPHA, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
@@ -253,7 +253,11 @@ where
                                 Action::Menu(groups) => children.push(
                                     drop_down_menu(
                                         move |_| container(content()).height(BUTTON_HEIGHT).into(),
-                                        Menu::new(groups, theme),
+                                        if groups.is_empty() {
+                                            None
+                                        } else {
+                                            Some(Menu::new(groups, theme))
+                                        },
                                         drop_down_menu::Placement::RightBottom,
                                     )
                                     .into(),

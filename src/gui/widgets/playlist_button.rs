@@ -61,79 +61,85 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                             .size(icons::SIZE_REGULAR)
                             .into()
                     },
-                    iced_m3::widget::menu(
-                        vec![
-                            vertical_menu::Group {
-                                label: Some("Menu!"),
-                                entries: vec![
-                                    vertical_menu::Entry::Button {
-                                        icon: Some(&icons::CLOSE),
-                                        label: "Label",
-                                        supporting_text: Some("Supporting text"),
-                                        action: vertical_menu::Action::Message(Some(
-                                            Message::CloseDialog,
-                                        )),
-                                    },
-                                    vertical_menu::Entry::Button {
-                                        icon: Some(&icons::ADD),
-                                        label: "Label",
-                                        supporting_text: None,
-                                        action: vertical_menu::Action::Menu(vec![
-                                            vertical_menu::Group {
-                                                label: Some("Submenu!"),
-                                                entries: vec![
-                                                    vertical_menu::Entry::Button {
-                                                        icon: Some(&icons::CLOSE),
-                                                        label: "Label",
-                                                        supporting_text: Some("Supporting text"),
-                                                        action: vertical_menu::Action::Message(
-                                                            Some(Message::CloseDialog),
-                                                        ),
-                                                    },
-                                                    vertical_menu::Entry::Button {
-                                                        icon: Some(&icons::CLOSE),
-                                                        label: "Label",
-                                                        supporting_text: Some("Supporting text"),
-                                                        action: vertical_menu::Action::Message(
-                                                            None,
-                                                        ),
-                                                    },
-                                                ],
-                                            },
-                                        ]),
-                                    },
-                                    vertical_menu::Entry::Button {
-                                        icon: Some(&icons::ADD),
-                                        label: "Label",
-                                        supporting_text: None,
-                                        action: vertical_menu::Action::Menu(vec![]),
-                                    },
-                                    vertical_menu::Entry::Separator,
-                                    vertical_menu::Entry::Button {
+                    Some(
+                        iced_m3::widget::menu(
+                            vec![
+                                vertical_menu::Group {
+                                    label: Some("Menu!"),
+                                    entries: vec![
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::CLOSE),
+                                            label: "Label",
+                                            supporting_text: Some("Supporting text"),
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
+                                        },
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::ADD),
+                                            label: "Label",
+                                            supporting_text: None,
+                                            action: vertical_menu::Action::Menu(vec![
+                                                vertical_menu::Group {
+                                                    label: Some("Submenu!"),
+                                                    entries: vec![
+                                                        vertical_menu::Entry::Button {
+                                                            icon: Some(&icons::CLOSE),
+                                                            label: "Label",
+                                                            supporting_text: Some(
+                                                                "Supporting text",
+                                                            ),
+                                                            action: vertical_menu::Action::Message(
+                                                                Some(Message::CloseDialog),
+                                                            ),
+                                                        },
+                                                        vertical_menu::Entry::Button {
+                                                            icon: Some(&icons::CLOSE),
+                                                            label: "Label",
+                                                            supporting_text: Some(
+                                                                "Supporting text",
+                                                            ),
+                                                            action: vertical_menu::Action::Message(
+                                                                None,
+                                                            ),
+                                                        },
+                                                    ],
+                                                },
+                                            ]),
+                                        },
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::ADD),
+                                            label: "Label",
+                                            supporting_text: None,
+                                            action: vertical_menu::Action::Menu(vec![]),
+                                        },
+                                        vertical_menu::Entry::Separator,
+                                        vertical_menu::Entry::Button {
+                                            icon: None,
+                                            label: "Label",
+                                            supporting_text: None,
+                                            action: vertical_menu::Action::Message(None),
+                                        },
+                                    ],
+                                },
+                                vertical_menu::Group {
+                                    label: None,
+                                    entries: vec![vertical_menu::Entry::Button {
                                         icon: None,
                                         label: "Label",
                                         supporting_text: None,
-                                        action: vertical_menu::Action::Message(None),
-                                    },
-                                ],
-                            },
-                            vertical_menu::Group {
-                                label: None,
-                                entries: vec![vertical_menu::Entry::Button {
-                                    icon: None,
-                                    label: "Label",
-                                    supporting_text: None,
-                                    action: vertical_menu::Action::Message(Some(
-                                        Message::CloseDialog,
-                                    )),
-                                }],
-                            },
-                        ],
-                        &state.theme,
-                    )
-                    .font(font::font())
-                    .icon_font(icons::font())
-                    .vibrant(false),
+                                        action: vertical_menu::Action::Message(Some(
+                                            Message::CloseDialog,
+                                        )),
+                                    }],
+                                },
+                            ],
+                            &state.theme,
+                        )
+                        .font(font::font())
+                        .icon_font(icons::font())
+                        .vibrant(false),
+                    ),
                     Placement::BottomRight,
                 ),
             )
