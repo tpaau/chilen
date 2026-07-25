@@ -1,6 +1,4 @@
-use iced::{Shadow, Vector};
-
-use crate::theme::ColorScheme;
+use iced::{Color, Shadow, Vector};
 
 pub struct Elevation {
     value: f32,
@@ -36,10 +34,10 @@ impl Elevation {
     }
 }
 
-pub fn shadow<E: Into<Elevation>>(theme: &impl ColorScheme, elevation: E) -> Shadow {
+pub fn shadow<E: Into<Elevation>>(color: Color, elevation: E) -> Shadow {
     let elevation = elevation.into();
     Shadow {
-        color: theme.shadow().scale_alpha(elevation.alpha()),
+        color: color.scale_alpha(elevation.alpha()),
         offset: elevation.offset(),
         blur_radius: elevation.blur_radius(),
     }

@@ -1,13 +1,18 @@
 pub mod dialog;
 pub mod drop_down_menu;
 pub mod text_input;
+pub mod vertical_menu;
 
 use iced::Element;
 use iced_widget::container;
 
 use crate::{
     theme::{ColorScheme, Palette},
-    widget::{dialog::Dialog, text_input::TextInput},
+    widget::{
+        dialog::Dialog,
+        drop_down_menu::{DropDownMenu, Placement},
+        text_input::TextInput,
+    },
 };
 
 pub fn dialog<'a, Message, Theme, Renderer>(
@@ -23,6 +28,21 @@ where
     <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
 {
     Dialog::new(is_open, base, content, palette)
+}
+
+pub fn drop_down_menu<'a, Message, Theme, Renderer>(
+    content: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
+    menu: impl Into<Element<'a, Message, Theme, Renderer>>,
+    placement: Placement,
+) -> DropDownMenu<'a, Message, Theme, Renderer> {
+    DropDownMenu::<'a, Message, Theme, Renderer>::new(content, menu, placement)
+}
+
+pub fn menu<'a, Message>(
+    sections: Vec<vertical_menu::Group<'a, Message>>,
+    theme: &'a dyn ColorScheme,
+) -> vertical_menu::Menu<'a, Message> {
+    vertical_menu::Menu::new(sections, theme)
 }
 
 pub fn text_input<'a, Message: Clone, Renderer>(

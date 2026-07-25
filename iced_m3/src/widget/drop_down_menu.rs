@@ -1,17 +1,13 @@
 use std::{cell::Cell, rc::Rc};
 
 use iced::advanced::Clipboard;
-use iced_widget::{
-    Renderer, Theme,
-    core::{
-        Element, Event, Layout, Length, Point, Rectangle, Renderer as _, Shell, Size, Vector,
-        Widget, keyboard,
-        layout::{Limits, Node},
-        mouse::{self, Cursor, Interaction},
-        overlay,
-        renderer::Style,
-        widget::{Operation, Tree, tree},
-    },
+use iced_widget::core::{
+    Element, Event, Layout, Length, Point, Rectangle, Shell, Size, Vector, Widget, keyboard,
+    layout::{Limits, Node},
+    mouse::{self, Cursor, Interaction},
+    overlay,
+    renderer::Style,
+    widget::{Operation, Tree, tree},
 };
 
 #[derive(Debug)]
@@ -115,7 +111,7 @@ impl Placement {
     }
 }
 
-pub struct DropDownMenu<'a, Message> {
+pub struct DropDownMenu<'a, Message, Theme, Renderer> {
     // TODO: Also expose whether the content is hovered
     content: Box<dyn Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a>,
     menu: Element<'a, Message, Theme, Renderer>,
@@ -124,10 +120,10 @@ pub struct DropDownMenu<'a, Message> {
     placement: Placement,
     open_cached: Rc<Cell<bool>>,
     just_closed: Rc<Cell<bool>>,
-    transparent_overlay: bool,
+    transparent: bool,
 }
 
-impl<'a, Message> DropDownMenu<'a, Message> {
+impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
     pub fn new(
         content: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
         menu: impl Into<Element<'a, Message, Theme, Renderer>>,
@@ -141,17 +137,19 @@ impl<'a, Message> DropDownMenu<'a, Message> {
             placement,
             open_cached: Rc::new(Cell::new(false)),
             just_closed: Rc::new(Cell::new(false)),
-            transparent_overlay: false,
+            transparent: false,
         }
     }
 
-    pub fn transparent_overlay(mut self, enabled: bool) -> Self {
-        self.transparent_overlay = enabled;
+    pub fn transparent(mut self, enabled: bool) -> Self {
+        self.transparent = enabled;
         self
     }
 }
 
-impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
+impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, Renderer>
+    for DropDownMenu<'_, Message, Theme, Renderer>
+{
     fn size(&self) -> Size<Length> {
         (self.content)(self.open_cached.get()).as_widget().size()
     }
@@ -350,7 +348,7 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
                     position: position + translation,
                     open_cached: self.open_cached.clone(),
                     just_closed: self.just_closed.clone(),
-                    transparent: &self.transparent_overlay,
+                    transparent: &self.transparent,
                 }))
             }),
         ]
@@ -362,13 +360,15 @@ impl<Message> Widget<Message, Theme, Renderer> for DropDownMenu<'_, Message> {
     }
 }
 
-impl<'a, Message: 'a> From<DropDownMenu<'a, Message>> for Element<'a, Message, Theme, Renderer> {
-    fn from(value: DropDownMenu<'a, Message>) -> Self {
+impl<'a, Message: 'a, Theme: 'a, Renderer: iced::advanced::Renderer + 'a>
+    From<DropDownMenu<'a, Message, Theme, Renderer>> for Element<'a, Message, Theme, Renderer>
+{
+    fn from(value: DropDownMenu<'a, Message, Theme, Renderer>) -> Self {
         Self::new(value)
     }
 }
 
-struct Overlay<'a, 'b, Message> {
+struct Overlay<'a, 'b, Message, Theme, Renderer> {
     menu: &'b mut Element<'a, Message, Theme, Renderer>,
     tree: &'b mut Tree,
     state: &'b mut State,
@@ -378,7 +378,9 @@ struct Overlay<'a, 'b, Message> {
     transparent: &'b bool,
 }
 
-impl<Message> overlay::Overlay<Message, Theme, Renderer> for Overlay<'_, '_, Message> {
+impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Message, Theme, Renderer>
+    for Overlay<'_, '_, Message, Theme, Renderer>
+{
     fn layout(&mut self, renderer: &Renderer, bounds: Size) -> Node {
         let mut layout = self
             .menu

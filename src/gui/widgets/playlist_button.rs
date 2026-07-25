@@ -6,9 +6,11 @@ use iced::{
     widget::{Button, Space, button, column, container, row, space, text},
 };
 use iced_m3::{
-    style::shadow,
     theme::ColorScheme,
-    widget::drop_down_menu::{DropDownMenu, Placement},
+    widget::{
+        drop_down_menu::{DropDownMenu, Placement},
+        vertical_menu,
+    },
 };
 
 use crate::gui::{
@@ -59,22 +61,57 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                             .size(icons::SIZE_REGULAR)
                             .into()
                     },
-                    container(column![
-                        text("Option 1").size(font::SIZE_REGULAR),
-                        text("Option 2").size(font::SIZE_REGULAR),
-                        text("Option 3").size(font::SIZE_REGULAR),
-                        text("Option 4").size(font::SIZE_REGULAR),
-                        text("Option 5").size(font::SIZE_REGULAR),
-                        text("Option 6").size(font::SIZE_REGULAR),
-                        text("Option 7").size(font::SIZE_REGULAR),
-                    ])
-                    .style(|_| {
-                        container::Style::default()
-                            .background(state.theme.surface_container_low())
-                            .border(Border::default().rounded(16))
-                            .shadow(shadow(&state.theme, 0.4))
-                    })
-                    .padding(Padding::from(SPACING_SMALL as f32)),
+                    iced_m3::widget::menu(
+                        vec![
+                            vertical_menu::Group {
+                                label: Some("Menu!"),
+                                entries: vec![
+                                    vertical_menu::Entry::Button {
+                                        icon: Some(&icons::CLOSE),
+                                        label: "Label",
+                                        supporting_text: Some("Supporting text"),
+                                        action: vertical_menu::Action::Message(Some(
+                                            Message::CloseDialog,
+                                        )),
+                                    },
+                                    vertical_menu::Entry::Button {
+                                        icon: Some(&icons::ADD),
+                                        label: "Label",
+                                        supporting_text: None,
+                                        action: vertical_menu::Action::Menu(vec![]),
+                                    },
+                                    vertical_menu::Entry::Button {
+                                        icon: Some(&icons::ADD),
+                                        label: "Label",
+                                        supporting_text: None,
+                                        action: vertical_menu::Action::Menu(vec![]),
+                                    },
+                                    vertical_menu::Entry::Separator,
+                                    vertical_menu::Entry::Button {
+                                        icon: None,
+                                        label: "Label",
+                                        supporting_text: None,
+                                        action: vertical_menu::Action::Message(None),
+                                    },
+                                ],
+                            },
+                            vertical_menu::Group {
+                                label: None,
+                                entries: vec![vertical_menu::Entry::Button {
+                                    icon: None,
+                                    label: "Label",
+                                    supporting_text: None,
+                                    action: vertical_menu::Action::Message(Some(
+                                        Message::CloseDialog,
+                                    )),
+                                }],
+                            },
+                        ],
+                        &state.theme,
+                    )
+                    .font(font::font())
+                    .icon_font(icons::font())
+                    .vibrant(false),
                     Placement::BottomLeft,
                 ),
             )

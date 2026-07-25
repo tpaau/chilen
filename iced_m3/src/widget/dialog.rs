@@ -10,7 +10,10 @@ use iced_widget::{
 
 use iced_widget::core::{self, Color, Element, Length, Padding, Pixels, alignment};
 
-use crate::{style::shadow, theme::Palette};
+use crate::{
+    style::shadow,
+    theme::{ColorScheme, Palette},
+};
 
 /// A message dialog.
 ///
@@ -352,7 +355,7 @@ where
                     radius: Radius::from(24),
                     ..Default::default()
                 },
-                shadow: shadow(self.palette, 1.0),
+                shadow: shadow(self.palette.shadow(), 1.0),
                 ..Default::default()
             })
             .clip(true);
