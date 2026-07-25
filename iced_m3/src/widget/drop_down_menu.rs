@@ -257,41 +257,45 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
             return;
         }
 
-        if let Event::Mouse(mouse::Event::ButtonPressed(..)) = event
-            && let Some(pos) = cursor.position()
+        if let Some(pos) = cursor.position()
             && layout.bounds().contains(pos)
         {
-            let state = tree.state.downcast_mut::<State>();
-            if self.just_closed.get() {
-                state.position = None;
-                self.open_cached.set(false);
-            } else {
-                let bounds = layout.bounds();
-                let overlay_bounds = self.overlay_bounds.unwrap_or_default();
-                let offset = self.placement.calc(&bounds, &overlay_bounds);
-                let target = bounds.position()
-                    + offset
-                    + Vector::new(overlay_bounds.width, overlay_bounds.height);
-                let mut placement = self.placement;
-                if bounds.width + bounds.x + offset.x < viewport.x
-                    || target.x >= viewport.width + viewport.x
-                {
-                    placement.flip_x();
+            if let Event::Mouse(mouse::Event::ButtonPressed(..)) = event {
+                let state = tree.state.downcast_mut::<State>();
+                if self.just_closed.get() {
+                    state.position = None;
+                    self.open_cached.set(false);
+                } else {
+                    let bounds = layout.bounds();
+                    let overlay_bounds = self.overlay_bounds.unwrap_or_default();
+                    let offset = self.placement.calc(&bounds, &overlay_bounds);
+                    let target = bounds.position()
+                        + offset
+                        + Vector::new(overlay_bounds.width, overlay_bounds.height);
+                    let mut placement = self.placement;
+                    if bounds.width + bounds.x + offset.x < viewport.x
+                        || target.x >= viewport.width + viewport.x
+                    {
+                        placement.flip_x();
+                    }
+                    if bounds.height + bounds.y + offset.y < viewport.y
+                        || target.y >= viewport.height + viewport.y
+                    {
+                        placement.flip_y();
+                    }
+                    let offset = placement.calc(&bounds, &overlay_bounds);
+                    state.position = Some(bounds.position() + offset);
+                    self.open_cached.set(true);
+                    shell.invalidate_widgets();
                 }
-                if bounds.height + bounds.y + offset.y < viewport.y
-                    || target.y >= viewport.height + viewport.y
-                {
-                    placement.flip_y();
-                }
-                let offset = placement.calc(&bounds, &overlay_bounds);
-                state.position = Some(bounds.position() + offset);
-                self.open_cached.set(true);
-                shell.invalidate_widgets();
+                shell.request_redraw();
+                self.just_closed.set(false);
+                shell.capture_event();
+            } else if !self.transparent
+                && let Event::Mouse(_) = event
+            {
+                shell.capture_event();
             }
-            shell.capture_event();
-            shell.request_redraw();
-
-            self.just_closed.set(false);
         }
     }
 

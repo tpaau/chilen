@@ -301,23 +301,24 @@ where
                     }
                 }
 
-                container(column(children).spacing(2.0))
-                    .style(move |_: &Theme| container::Style {
-                        background: Some(iced::Background::Color(bg)),
-                        border: iced::Border {
-                            radius: Radius::new(16),
+                opaque(
+                    container(column(children).spacing(2.0))
+                        .style(move |_: &Theme| container::Style {
+                            background: Some(iced::Background::Color(bg)),
+                            border: iced::Border {
+                                radius: Radius::new(16),
+                                ..Default::default()
+                            },
+                            shadow: shadow(shadow_color, Elevation::new(0.4)),
                             ..Default::default()
-                        },
-                        shadow: shadow(shadow_color, Elevation::new(0.4)),
-                        ..Default::default()
-                    })
-                    .padding(SECTION_PADDING)
-                    .width(if let Length::Fixed(val) = container_width {
-                        Length::Fixed(val - 2.0 * SECTION_PADDING)
-                    } else {
-                        container_width
-                    })
-                    .into()
+                        })
+                        .padding(SECTION_PADDING)
+                        .width(if let Length::Fixed(val) = container_width {
+                            Length::Fixed(val - 2.0 * SECTION_PADDING)
+                        } else {
+                            container_width
+                        }),
+                )
             })
             .collect();
 
