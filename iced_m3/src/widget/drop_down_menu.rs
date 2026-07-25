@@ -284,11 +284,11 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
             return;
         }
 
+        let state = tree.state.downcast_mut::<State>();
         if let Some(pos) = cursor.position()
             && layout.bounds().contains(pos)
         {
             if let Event::Mouse(mouse::Event::ButtonPressed(..)) = event {
-                let state = tree.state.downcast_mut::<State>();
                 if self.just_closed.get() {
                     state.position = None;
                     self.open_cached.set(false);
@@ -305,6 +305,10 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
             {
                 shell.capture_event();
             }
+        }
+
+        if state.position.is_some() {
+            state.position = Some(layout.bounds().position());
         }
     }
 
