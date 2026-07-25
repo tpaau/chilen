@@ -24,7 +24,7 @@ struct State {
 /// For example, [`TopLeft`](Placement::TopLeft) means the menu is attached to the top edge of
 /// `content` and aligned to the left. [`LeftTop`](Placement::LeftTop) means it is attached to the
 /// left edge and aligned to the top.
-#[derive(Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum Placement {
     TopLeft,
     TopCenter,
@@ -123,6 +123,7 @@ pub struct DropDownMenu<'a, Message, Theme, Renderer> {
     just_closed: Rc<Cell<bool>>,
     menu_transparent: bool,
     content_transparent: bool,
+    trigger_bounds: Option<Rectangle>,
 }
 
 impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
@@ -141,6 +142,7 @@ impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
             just_closed: Rc::new(Cell::new(false)),
             menu_transparent: false,
             content_transparent: false,
+            trigger_bounds: None,
         }
     }
 
@@ -172,11 +174,14 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         self.content_cached = Some((self.content)(
             tree.state.downcast_ref::<State>().position.is_some(),
         ));
-        self.content_cached
+        let content = self
+            .content_cached
             .as_mut()
             .unwrap()
             .as_widget_mut()
-            .layout(&mut tree.children[0], renderer, limits)
+            .layout(&mut tree.children[0], renderer, limits);
+        self.trigger_bounds = Some(content.bounds());
+        content
     }
 
     fn draw(
@@ -288,25 +293,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                     state.position = None;
                     self.open_cached.set(false);
                 } else {
-                    let bounds = layout.bounds();
-                    let overlay_bounds = self.overlay_bounds.unwrap_or_default();
-                    let offset = self.placement.calc(&bounds, &overlay_bounds);
-                    let target = bounds.position()
-                        + offset
-                        + Vector::new(overlay_bounds.width, overlay_bounds.height);
-                    let mut placement = self.placement;
-                    if bounds.width + bounds.x + offset.x < viewport.x
-                        || target.x >= viewport.width + viewport.x
-                    {
-                        placement.flip_x();
-                    }
-                    if bounds.height + bounds.y + offset.y < viewport.y
-                        || target.y >= viewport.height + viewport.y
-                    {
-                        placement.flip_y();
-                    }
-                    let offset = placement.calc(&bounds, &overlay_bounds);
-                    state.position = Some(bounds.position() + offset);
+                    state.position = Some(layout.bounds().position());
                     self.open_cached.set(true);
                     shell.invalidate_widgets();
                 }
@@ -376,6 +363,8 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                         open_cached: self.open_cached.clone(),
                         just_closed: self.just_closed.clone(),
                         transparent: &self.menu_transparent,
+                        placement: self.placement,
+                        trigger_bounds: self.trigger_bounds.unwrap(),
                     }))
                 }),
             ]
@@ -403,30 +392,53 @@ struct Overlay<'a, 'b, Message, Theme, Renderer> {
     tree: &'b mut Tree,
     state: &'b mut State,
     position: Point,
+    placement: Placement,
     open_cached: Rc<Cell<bool>>,
     just_closed: Rc<Cell<bool>>,
     transparent: &'b bool,
+    trigger_bounds: Rectangle,
 }
 
 impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Message, Theme, Renderer>
     for Overlay<'_, '_, Message, Theme, Renderer>
 {
     fn layout(&mut self, renderer: &Renderer, bounds: Size) -> Node {
-        let mut layout = self
+        let layout = self
             .menu
             .as_widget_mut()
             .layout(self.tree, renderer, &Limits::new(Size::ZERO, bounds))
             .move_to(self.position);
 
-        if bounds.width < layout.bounds().x + layout.bounds().width {
-            layout.translate_mut(Vector::new(-layout.bounds().width, 0.0));
+        let overlay_bounds = layout.bounds();
+        let offset = self.placement.calc(&self.trigger_bounds, &overlay_bounds);
+        eprintln!("bounds: {bounds:?}");
+        eprintln!("overlay_bounds: {overlay_bounds:?}");
+        eprintln!("offset: {offset:?}");
+        eprintln!("trigger_bounds: {:?}", self.trigger_bounds);
+
+        // TODO: Don't flip the menu if it'd get clipped
+        if overlay_bounds.width + overlay_bounds.x + offset.x > bounds.width
+            || overlay_bounds.x + offset.x < 0.0
+        {
+            println!("Flip!");
+            println!("Pre flip: {:?}", self.placement);
+            self.placement.flip_x();
+            println!("Post flip: {:?}", self.placement);
         }
 
-        if bounds.height < layout.bounds().y + layout.bounds().height {
-            layout.translate_mut(Vector::new(0.0, -layout.bounds().height));
+        if overlay_bounds.height + overlay_bounds.y + offset.y > bounds.height
+            || overlay_bounds.y + offset.y < 0.0
+        {
+            println!("Flip!");
+            println!("Pre flip: {:?}", self.placement);
+            self.placement.flip_y();
+            println!("Post flip: {:?}", self.placement);
         }
 
-        layout
+        self.menu
+            .as_widget_mut()
+            .layout(self.tree, renderer, &Limits::new(Size::ZERO, bounds))
+            .move_to(self.position + self.placement.calc(&self.trigger_bounds, &overlay_bounds))
     }
 
     fn draw(

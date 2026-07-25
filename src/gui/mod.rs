@@ -140,7 +140,7 @@ impl Chilen {
                 // TODO: I should be able to resize this
                 container(playlist_view::view(state))
                     .padding(Padding::new(SPACING_SMALL as f32))
-                    .width(Length::Fixed(400.0))
+                    .width(Length::Fixed(350.0))
                     .height(Length::Fill)
                     .into(),
                 container("Main view")
