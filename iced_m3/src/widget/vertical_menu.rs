@@ -260,6 +260,7 @@ where
                                         },
                                         drop_down_menu::Placement::RightBottom,
                                     )
+                                    .content_transparent(true)
                                     .into(),
                                 ),
                                 Action::Message(message) => children.push(

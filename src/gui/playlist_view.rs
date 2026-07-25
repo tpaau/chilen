@@ -144,7 +144,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                         ),
                         Placement::TopLeft,
                     )
-                    .transparent(true)
+                    .menu_transparent(true)
                 )
             )
             .into()

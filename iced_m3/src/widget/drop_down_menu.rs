@@ -121,7 +121,8 @@ pub struct DropDownMenu<'a, Message, Theme, Renderer> {
     placement: Placement,
     open_cached: Rc<Cell<bool>>,
     just_closed: Rc<Cell<bool>>,
-    transparent: bool,
+    menu_transparent: bool,
+    content_transparent: bool,
 }
 
 impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
@@ -138,12 +139,17 @@ impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
             placement,
             open_cached: Rc::new(Cell::new(false)),
             just_closed: Rc::new(Cell::new(false)),
-            transparent: false,
+            menu_transparent: false,
+            content_transparent: false,
         }
     }
 
-    pub fn transparent(mut self, enabled: bool) -> Self {
-        self.transparent = enabled;
+    pub fn menu_transparent(mut self, transparent: bool) -> Self {
+        self.menu_transparent = transparent;
+        self
+    }
+    pub fn content_transparent(mut self, transparent: bool) -> Self {
+        self.content_transparent = transparent;
         self
     }
 }
@@ -264,6 +270,10 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                 viewport,
             );
 
+        if self.menu.is_none() {
+            return;
+        }
+
         if shell.is_event_captured() {
             self.just_closed.set(false);
             return;
@@ -303,7 +313,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                 shell.request_redraw();
                 self.just_closed.set(false);
                 shell.capture_event();
-            } else if !self.transparent
+            } else if !self.content_transparent
                 && let Event::Mouse(_) = event
             {
                 shell.capture_event();
@@ -321,6 +331,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
     ) -> Interaction {
         if let Some(pos) = cursor.position()
             && layout.bounds().contains(pos)
+            && self.menu.is_some()
         {
             return Interaction::Pointer;
         }
@@ -364,7 +375,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                         position: position + translation,
                         open_cached: self.open_cached.clone(),
                         just_closed: self.just_closed.clone(),
-                        transparent: &self.transparent,
+                        transparent: &self.menu_transparent,
                     }))
                 }),
             ]
@@ -473,11 +484,15 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
 
         match event {
             Event::Mouse(mouse::Event::ButtonPressed { .. }) => {
-                if cursor.is_over(layout.bounds()) {
+                if cursor.is_over(layout.bounds())
+                    && !was_event_captured
+                    && shell.is_event_captured()
+                {
                     if !*self.transparent {
                         shell.capture_event();
                     }
                 } else {
+                    println!("Closing (press outside bounds or inside an inactive part of bounds)");
                     self.state.position = None;
                     self.just_closed.set(true);
                     self.open_cached.set(false);
@@ -488,6 +503,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
             Event::Mouse(mouse::Event::ButtonReleased { .. })
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
+                println!("Closing (release inside bounds, event captured)");
                 self.state.position = None;
                 self.just_closed.set(true);
                 self.open_cached.set(false);
