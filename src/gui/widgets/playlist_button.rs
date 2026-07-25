@@ -138,7 +138,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                         )
                         .font(font::font())
                         .icon_font(icons::font())
-                        .vibrant(false),
+                        .vibrant(true),
                     ),
                     Placement::BottomRight,
                 ),

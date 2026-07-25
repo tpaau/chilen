@@ -115,6 +115,7 @@ where
         From<iced_widget::button::StyleFn<'a, Theme>>,
 {
     fn from(menu: Menu<'a, Message>) -> Self {
+        let vibrant = menu.vibrant;
         let theme = menu.theme;
         let font = menu.font.unwrap_or_default();
         let icon_font = menu.icon_font.unwrap_or_default();
@@ -256,7 +257,7 @@ where
                                         if groups.is_empty() {
                                             None
                                         } else {
-                                            Some(Menu::new(groups, theme))
+                                            Some(Menu::new(groups, theme).vibrant(vibrant))
                                         },
                                         drop_down_menu::Placement::RightBottom,
                                     )
@@ -313,7 +314,7 @@ where
                             radius: Radius::new(16),
                             ..Default::default()
                         },
-                        shadow: shadow(shadow_color, Elevation::new(0.4)),
+                        shadow: shadow(shadow_color, Elevation::new(0.2)),
                         ..Default::default()
                     })
                     .padding(SECTION_PADDING)
