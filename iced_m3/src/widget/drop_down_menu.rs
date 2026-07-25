@@ -42,8 +42,9 @@ pub enum Placement {
 }
 
 impl Placement {
-    fn flip_x(&mut self) {
-        *self = match self {
+    #[must_use]
+    fn flip_x(self) -> Self {
+        match self {
             Self::TopLeft => Self::TopRight,
             Self::TopRight => Self::TopLeft,
             Self::RightTop => Self::LeftTop,
@@ -54,12 +55,13 @@ impl Placement {
             Self::LeftBottom => Self::RightBottom,
             Self::LeftCenter => Self::RightCenter,
             Self::LeftTop => Self::RightTop,
-            Self::TopCenter | Self::BottomCenter => *self,
+            Self::TopCenter | Self::BottomCenter => self,
         }
     }
 
-    fn flip_y(&mut self) {
-        *self = match self {
+    #[must_use]
+    fn flip_y(self) -> Self {
+        match self {
             Self::TopLeft => Self::BottomLeft,
             Self::TopCenter => Self::BottomCenter,
             Self::TopRight => Self::BottomRight,
@@ -70,12 +72,12 @@ impl Placement {
             Self::BottomLeft => Self::TopLeft,
             Self::LeftBottom => Self::LeftTop,
             Self::LeftTop => Self::LeftBottom,
-            Self::LeftCenter | Self::RightCenter => *self,
+            Self::LeftCenter | Self::RightCenter => self,
         }
     }
 
     // TODO: Make sure the menu stays in bounds
-    fn calc(&self, bounds: &Rectangle, overlay_bounds: &Rectangle) -> Vector {
+    fn offset(&self, bounds: &Rectangle, overlay_bounds: &Rectangle) -> Vector {
         match self {
             Placement::TopLeft => {
                 Vector::new(-overlay_bounds.width + bounds.width, -overlay_bounds.height)
@@ -414,35 +416,38 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
             .move_to(self.position);
 
         let overlay_bounds = layout.bounds();
-        let offset = self.placement.calc(&self.trigger_bounds, &overlay_bounds);
-        eprintln!("bounds: {bounds:?}");
-        eprintln!("overlay_bounds: {overlay_bounds:?}");
-        eprintln!("offset: {offset:?}");
-        eprintln!("trigger_bounds: {:?}", self.trigger_bounds);
+        let offset = self.placement.offset(&self.trigger_bounds, &overlay_bounds);
 
-        // TODO: Don't flip the menu if it'd get clipped
-        if overlay_bounds.width + overlay_bounds.x + offset.x > bounds.width
-            || overlay_bounds.x + offset.x < 0.0
-        {
-            println!("Flip!");
-            println!("Pre flip: {:?}", self.placement);
-            self.placement.flip_x();
-            println!("Post flip: {:?}", self.placement);
+        let over_right = overlay_bounds.width + overlay_bounds.x + offset.x > bounds.width;
+        let over_left = overlay_bounds.x + offset.x < 0.0;
+
+        let placement_flipped = self.placement.flip_x();
+        let offset_flipped = placement_flipped.offset(&self.trigger_bounds, &overlay_bounds);
+        let flipped_fits_right =
+            overlay_bounds.width + overlay_bounds.x + offset_flipped.x < bounds.width;
+        let flipped_fits_left = overlay_bounds.x + offset_flipped.x > 0.0;
+
+        if (over_right && flipped_fits_left) || (over_left && flipped_fits_right) {
+            self.placement = placement_flipped;
         }
 
-        if overlay_bounds.height + overlay_bounds.y + offset.y > bounds.height
-            || overlay_bounds.y + offset.y < 0.0
-        {
-            println!("Flip!");
-            println!("Pre flip: {:?}", self.placement);
-            self.placement.flip_y();
-            println!("Post flip: {:?}", self.placement);
+        let over_top = overlay_bounds.y + offset.y < 0.0;
+        let over_bottom = overlay_bounds.height + overlay_bounds.y + offset.y > bounds.height;
+
+        let placement_flipped = self.placement.flip_y();
+        let offset_flipped = placement_flipped.offset(&self.trigger_bounds, &overlay_bounds);
+        let flipped_fits_top = overlay_bounds.y + offset_flipped.y > 0.0;
+        let flipped_fits_bottom =
+            overlay_bounds.height + overlay_bounds.y + offset_flipped.y < bounds.height;
+
+        if (over_top && flipped_fits_bottom) || (over_bottom && flipped_fits_top) {
+            self.placement = placement_flipped;
         }
 
         self.menu
             .as_widget_mut()
             .layout(self.tree, renderer, &Limits::new(Size::ZERO, bounds))
-            .move_to(self.position + self.placement.calc(&self.trigger_bounds, &overlay_bounds))
+            .move_to(self.position + self.placement.offset(&self.trigger_bounds, &overlay_bounds))
     }
 
     fn draw(
@@ -508,7 +513,6 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
                         shell.capture_event();
                     }
                 } else {
-                    println!("Closing (press outside bounds or inside an inactive part of bounds)");
                     self.state.position = None;
                     self.just_closed.set(true);
                     self.open_cached.set(false);
@@ -519,7 +523,6 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
             Event::Mouse(mouse::Event::ButtonReleased { .. })
                 if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
             {
-                println!("Closing (release inside bounds, event captured)");
                 self.state.position = None;
                 self.just_closed.set(true);
                 self.open_cached.set(false);
