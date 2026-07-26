@@ -290,6 +290,12 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         if let Some(pos) = cursor.position()
             && layout.bounds().contains(pos)
         {
+            if !self.content_transparent
+                && let Event::Mouse(_) = event
+            {
+                shell.capture_event();
+            }
+
             if let Event::Mouse(mouse::Event::ButtonPressed(..)) = event {
                 if self.just_closed.get() {
                     state.position = None;
@@ -301,10 +307,6 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                 }
                 shell.request_redraw();
                 self.just_closed.set(false);
-                shell.capture_event();
-            } else if !self.content_transparent
-                && let Event::Mouse(_) = event
-            {
                 shell.capture_event();
             }
         }
@@ -322,16 +324,15 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> Interaction {
-        if let Some(pos) = cursor.position()
-            && layout.bounds().contains(pos)
-            && self.menu.is_some()
-        {
-            return Interaction::Pointer;
-        }
-
-        (self.content)(self.open_cached.get())
+        let interaction = (self.content)(self.open_cached.get())
             .as_widget()
-            .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer)
+            .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer);
+
+        if cursor.is_over(layout.bounds()) && self.menu.is_some() {
+            Interaction::Pointer
+        } else {
+            interaction
+        }
     }
 
     fn overlay<'a>(
@@ -505,14 +506,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
 
         match event {
             Event::Mouse(mouse::Event::ButtonPressed { .. }) => {
-                if cursor.is_over(layout.bounds())
-                    && !was_event_captured
-                    && shell.is_event_captured()
-                {
-                    if !*self.transparent {
-                        shell.capture_event();
-                    }
-                } else {
+                if !cursor.is_over(layout.bounds()) {
                     self.state.position = None;
                     self.just_closed.set(true);
                     self.open_cached.set(false);
@@ -529,11 +523,6 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
                 shell.invalidate_widgets();
                 shell.request_redraw();
             }
-            Event::Mouse(mouse::Event::WheelScrolled { .. }) => {
-                if !*self.transparent {
-                    shell.capture_event();
-                }
-            }
             Event::Keyboard(keyboard::Event::KeyPressed {
                 key: keyboard::Key::Named(keyboard::key::Named::Escape),
                 ..
@@ -542,10 +531,13 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
                 self.just_closed.set(true);
                 self.open_cached.set(false);
                 shell.invalidate_widgets();
-                shell.capture_event();
                 shell.request_redraw();
             }
             _ => {}
+        }
+
+        if !*self.transparent && cursor.is_over(layout.bounds()) {
+            shell.capture_event();
         }
     }
 
@@ -563,8 +555,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
             renderer,
         );
 
-        if interaction == Interaction::None && cursor.is_over(layout.bounds()) && !self.transparent
-        {
+        if interaction == Interaction::None && cursor.is_over(layout.bounds()) {
             Interaction::Idle
         } else {
             interaction
