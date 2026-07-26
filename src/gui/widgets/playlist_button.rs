@@ -65,80 +65,69 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                         iced_m3::widget::menu(
                             vec![
                                 vertical_menu::Group {
-                                    label: Some("Menu!"),
+                                    label: None,
                                     entries: vec![
                                         vertical_menu::Entry::Button {
-                                            icon: Some(&icons::CLOSE),
-                                            label: "Label",
-                                            supporting_text: Some("Supporting text"),
+                                            icon: Some(&icons::PLAY_ARROW),
+                                            label: "Play",
+                                            supporting_text: None,
                                             error: false,
                                             action: vertical_menu::Action::Message(Some(
                                                 Message::CloseDialog,
                                             )),
                                         },
                                         vertical_menu::Entry::Button {
-                                            icon: Some(&icons::ADD),
-                                            label: "Label",
+                                            icon: Some(&icons::SHUFFLE),
+                                            label: "Shuffle",
                                             supporting_text: None,
                                             error: false,
-                                            action: vertical_menu::Action::Menu(vec![
-                                                vertical_menu::Group {
-                                                    label: Some("Submenu!"),
-                                                    entries: vec![
-                                                        vertical_menu::Entry::Button {
-                                                            icon: Some(&icons::CLOSE),
-                                                            label: "Label",
-                                                            supporting_text: Some(
-                                                                "Supporting text",
-                                                            ),
-                                                            error: true,
-                                                            action: vertical_menu::Action::Message(
-                                                                Some(Message::CloseDialog),
-                                                            ),
-                                                        },
-                                                        vertical_menu::Entry::Button {
-                                                            icon: Some(&icons::CLOSE),
-                                                            label: "Label",
-                                                            supporting_text: Some(
-                                                                "Supporting text",
-                                                            ),
-                                                            error: false,
-                                                            action: vertical_menu::Action::Message(
-                                                                None,
-                                                            ),
-                                                        },
-                                                    ],
-                                                },
-                                            ]),
-                                        },
-                                        vertical_menu::Entry::Button {
-                                            icon: Some(&icons::ADD),
-                                            label: "Label",
-                                            supporting_text: None,
-                                            error: false,
-                                            action: vertical_menu::Action::Menu(vec![]),
-                                        },
-                                        vertical_menu::Entry::Separator,
-                                        vertical_menu::Entry::Button {
-                                            icon: None,
-                                            label: "Label",
-                                            supporting_text: None,
-                                            error: false,
-                                            action: vertical_menu::Action::Message(None),
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
                                         },
                                     ],
                                 },
                                 vertical_menu::Group {
                                     label: None,
-                                    entries: vec![vertical_menu::Entry::Button {
-                                        icon: None,
-                                        label: "Label",
-                                        supporting_text: None,
-                                        error: true,
-                                        action: vertical_menu::Action::Message(Some(
-                                            Message::CloseDialog,
-                                        )),
-                                    }],
+                                    entries: vec![
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::UPLOAD),
+                                            label: "Export",
+                                            supporting_text: None,
+                                            error: false,
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
+                                        },
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::CONTENT_COPY),
+                                            label: "Clone",
+                                            supporting_text: None,
+                                            error: false,
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
+                                        },
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::EDIT),
+                                            label: "Rename",
+                                            supporting_text: None,
+                                            error: false,
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
+                                        },
+                                        vertical_menu::Entry::Separator,
+                                        vertical_menu::Entry::Button {
+                                            icon: Some(&icons::DELETE),
+                                            label: "Delete",
+                                            supporting_text: None,
+                                            error: true,
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
+                                        },
+                                    ],
                                 },
                             ],
                             &state.theme,
