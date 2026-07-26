@@ -31,11 +31,11 @@ where
 }
 
 pub fn drop_down_menu<'a, Message, Theme, Renderer>(
-    content: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
+    trigger: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
     menu: Option<impl Into<Element<'a, Message, Theme, Renderer>>>,
     placement: Placement,
 ) -> DropDownMenu<'a, Message, Theme, Renderer> {
-    DropDownMenu::<'a, Message, Theme, Renderer>::new(content, menu, placement)
+    DropDownMenu::<'a, Message, Theme, Renderer>::new(trigger, menu, placement)
 }
 
 pub fn menu<'a, Message>(

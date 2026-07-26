@@ -15,14 +15,14 @@ struct State {
     position: Option<Point>,
 }
 
-/// Describes which edge of `content` the menu is anchored to, and where along that edge it is placed.
+/// Describes which edge of `trigger` the menu is anchored to, and where along that edge it is placed.
 ///
 /// Variant names are `EdgePosition`:
-/// - `Edge` is the side of `content` the menu attaches to
+/// - `Edge` is the side of `trigger` the menu attaches to
 /// - `Position` is the menu's alignment along that edge
 ///
 /// For example, [`TopLeft`](Placement::TopLeft) means the menu is attached to the top edge of
-/// `content` and aligned to the left. [`LeftTop`](Placement::LeftTop) means it is attached to the
+/// `trigger` and aligned to the left. [`LeftTop`](Placement::LeftTop) means it is attached to the
 /// left edge and aligned to the top.
 #[derive(Debug, Default, Clone, Copy)]
 pub enum Placement {
@@ -115,35 +115,35 @@ impl Placement {
 }
 
 pub struct DropDownMenu<'a, Message, Theme, Renderer> {
-    // TODO: Also expose whether the content is hovered
-    content: Box<dyn Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a>,
+    // TODO: Also expose whether the trigger is hovered
+    trigger: Box<dyn Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a>,
     menu: Option<Element<'a, Message, Theme, Renderer>>,
     overlay_bounds: Option<Rectangle>,
-    content_cached: Option<Element<'a, Message, Theme, Renderer>>,
+    trigger_cached: Option<Element<'a, Message, Theme, Renderer>>,
     placement: Placement,
     open_cached: Rc<Cell<bool>>,
     just_closed: Rc<Cell<bool>>,
     menu_transparent: bool,
-    content_transparent: bool,
+    trigger_transparent: bool,
     trigger_bounds: Option<Rectangle>,
 }
 
 impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
     pub fn new(
-        content: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
+        trigger: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
         menu: Option<impl Into<Element<'a, Message, Theme, Renderer>>>,
         placement: Placement,
     ) -> Self {
         Self {
-            content: Box::new(content),
+            trigger: Box::new(trigger),
             menu: menu.map(|e| e.into()),
             overlay_bounds: None,
-            content_cached: None,
+            trigger_cached: None,
             placement,
             open_cached: Rc::new(Cell::new(false)),
             just_closed: Rc::new(Cell::new(false)),
             menu_transparent: false,
-            content_transparent: false,
+            trigger_transparent: false,
             trigger_bounds: None,
         }
     }
@@ -152,8 +152,8 @@ impl<'a, Message, Theme, Renderer> DropDownMenu<'a, Message, Theme, Renderer> {
         self.menu_transparent = transparent;
         self
     }
-    pub fn content_transparent(mut self, transparent: bool) -> Self {
-        self.content_transparent = transparent;
+    pub fn trigger_transparent(mut self, transparent: bool) -> Self {
+        self.trigger_transparent = transparent;
         self
     }
 }
@@ -162,7 +162,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
     for DropDownMenu<'_, Message, Theme, Renderer>
 {
     fn size(&self) -> Size<Length> {
-        (self.content)(self.open_cached.get()).as_widget().size()
+        (self.trigger)(self.open_cached.get()).as_widget().size()
     }
 
     fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
@@ -173,17 +173,17 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                 .bounds();
             self.overlay_bounds = Some(overlay_bounds);
         }
-        self.content_cached = Some((self.content)(
+        self.trigger_cached = Some((self.trigger)(
             tree.state.downcast_ref::<State>().position.is_some(),
         ));
-        let content = self
-            .content_cached
+        let trigger = self
+            .trigger_cached
             .as_mut()
             .unwrap()
             .as_widget_mut()
             .layout(&mut tree.children[0], renderer, limits);
-        self.trigger_bounds = Some(content.bounds());
-        content
+        self.trigger_bounds = Some(trigger.bounds());
+        trigger
     }
 
     fn draw(
@@ -196,7 +196,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         cursor: Cursor,
         viewport: &Rectangle,
     ) {
-        (self.content)(tree.state.downcast_ref::<State>().position.is_some())
+        (self.trigger)(tree.state.downcast_ref::<State>().position.is_some())
             .as_widget()
             .draw(
                 &tree.children[0],
@@ -220,22 +220,22 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
     fn children(&self) -> Vec<Tree> {
         if let Some(menu) = &self.menu {
             vec![
-                Tree::new((self.content)(self.open_cached.get())),
+                Tree::new((self.trigger)(self.open_cached.get())),
                 Tree::new(menu),
             ]
         } else {
-            vec![Tree::new((self.content)(self.open_cached.get()))]
+            vec![Tree::new((self.trigger)(self.open_cached.get()))]
         }
     }
 
     fn diff(&self, tree: &mut Tree) {
         if let Some(menu) = &self.menu {
             tree.diff_children(&[
-                &(self.content)(tree.state.downcast_ref::<State>().position.is_some()),
+                &(self.trigger)(tree.state.downcast_ref::<State>().position.is_some()),
                 menu,
             ]);
         } else {
-            tree.diff_children(&[&(self.content)(
+            tree.diff_children(&[&(self.trigger)(
                 tree.state.downcast_ref::<State>().position.is_some(),
             )]);
         }
@@ -248,7 +248,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         renderer: &Renderer,
         operation: &mut dyn Operation,
     ) {
-        (self.content)(tree.state.downcast_ref::<State>().position.is_some())
+        (self.trigger)(tree.state.downcast_ref::<State>().position.is_some())
             .as_widget_mut()
             .operate(&mut tree.children[0], layout, renderer, operation);
     }
@@ -264,7 +264,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
-        (self.content)(tree.state.downcast_ref::<State>().position.is_some())
+        (self.trigger)(tree.state.downcast_ref::<State>().position.is_some())
             .as_widget_mut()
             .update(
                 &mut tree.children[0],
@@ -290,7 +290,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         if let Some(pos) = cursor.position()
             && layout.bounds().contains(pos)
         {
-            if !self.content_transparent
+            if !self.trigger_transparent
                 && let Event::Mouse(_) = event
             {
                 shell.capture_event();
@@ -324,7 +324,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> Interaction {
-        let interaction = (self.content)(self.open_cached.get())
+        let interaction = (self.trigger)(self.open_cached.get())
             .as_widget()
             .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer);
 
@@ -353,10 +353,10 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                 unreachable!();
             };
             [
-                // NOTE: I think this might cause issues if `content_cached` is not assigned, it won't
+                // NOTE: I think this might cause issues if `trigger_cached` is not assigned, it won't
                 // display its overlay??
-                self.content_cached.as_mut().and_then(|content_cached| {
-                    content_cached.as_widget_mut().overlay(
+                self.trigger_cached.as_mut().and_then(|trigger_cached| {
+                    trigger_cached.as_widget_mut().overlay(
                         first,
                         layout,
                         renderer,
