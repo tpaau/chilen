@@ -20,6 +20,7 @@ pub enum Entry<'a, Message> {
         icon: Option<&'a char>,
         label: &'a str,
         supporting_text: Option<&'a str>,
+        error: bool,
         action: Action<'a, Message>,
     },
     Separator,
@@ -162,6 +163,12 @@ where
         };
         let button_hover_color = state_layer_color.scale_alpha(HOVER_STATE_LAYER_OPACITY);
         let button_pressed_color = state_layer_color.scale_alpha(PRESSED_STATE_LAYER_OPACITY);
+        let error_content_color = menu.theme.error();
+        let error_state_layer_color = menu.theme.on_error_container();
+        let button_error_hover_color =
+            error_state_layer_color.scale_alpha(HOVER_STATE_LAYER_OPACITY);
+        let button_error_press_color =
+            error_state_layer_color.scale_alpha(PRESSED_STATE_LAYER_OPACITY);
 
         let children: Vec<Element<'_, Message, Theme, Renderer>> = menu
             .groups
@@ -192,6 +199,7 @@ where
                             icon,
                             label,
                             supporting_text,
+                            error,
                             action,
                         } => {
                             let button_disabled = match &action {
@@ -204,26 +212,35 @@ where
                                 row![
                                     icon.map(|i| text(i).size(ICON_SIZE).font(icon_font).style(
                                         move |_| text::Style {
-                                            color: Some(icon_color.scale_alpha(content_alpha))
+                                            color: Some(if error {
+                                                error_content_color.scale_alpha(content_alpha)
+                                            } else {
+                                                icon_color.scale_alpha(content_alpha)
+                                            })
                                         }
                                     )),
                                     column![
                                         space().height(Length::Fill),
                                         text(label).size(LABEL_TEXT_SIZE).font(font).style(
                                             move |_: &Theme| text::Style {
-                                                color: Some(
+                                                color: Some(if error {
+                                                    error_content_color.scale_alpha(content_alpha)
+                                                } else {
                                                     button_label_color.scale_alpha(content_alpha)
-                                                )
+                                                })
                                             }
                                         ),
                                         supporting_text.map(
                                             |t| -> iced::advanced::widget::Text<'_, _, Renderer> {
                                                 text(t).size(SUPPORTING_TEXT_SIZE).font(font).style(
                                                     move |_| text::Style {
-                                                        color: Some(
+                                                        color: Some(if error {
+                                                            error_content_color
+                                                                .scale_alpha(content_alpha)
+                                                        } else {
                                                             supporting_text_color
-                                                                .scale_alpha(content_alpha),
-                                                        ),
+                                                                .scale_alpha(content_alpha)
+                                                        }),
                                                     },
                                                 )
                                             }
@@ -237,9 +254,12 @@ where
                                                 .size(ICON_SIZE)
                                                 .font(icon_font)
                                                 .style(move |_| text::Style {
-                                                    color: Some(
-                                                        icon_color.scale_alpha(content_alpha),
-                                                    ),
+                                                    color: Some(if error {
+                                                        error_content_color
+                                                            .scale_alpha(content_alpha)
+                                                    } else {
+                                                        icon_color.scale_alpha(content_alpha)
+                                                    }),
                                                 }),
                                         )
                                     } else {
@@ -273,11 +293,22 @@ where
                                                     | button::Status::Disabled => {
                                                         Color::TRANSPARENT
                                                     }
-                                                    button::Status::Hovered => button_hover_color,
-                                                    button::Status::Pressed => button_pressed_color,
+                                                    button::Status::Hovered => {
+                                                        if error {
+                                                            button_error_hover_color
+                                                        } else {
+                                                            button_hover_color
+                                                        }
+                                                    }
+                                                    button::Status::Pressed => {
+                                                        if error {
+                                                            button_error_press_color
+                                                        } else {
+                                                            button_pressed_color
+                                                        }
+                                                    }
                                                 },
                                             )),
-                                            text_color: label_color,
                                             border: Border {
                                                 radius: *BUTTON_RADIUS,
                                                 ..Default::default()

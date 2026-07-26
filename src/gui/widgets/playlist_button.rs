@@ -71,6 +71,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             icon: Some(&icons::CLOSE),
                                             label: "Label",
                                             supporting_text: Some("Supporting text"),
+                                            error: false,
                                             action: vertical_menu::Action::Message(Some(
                                                 Message::CloseDialog,
                                             )),
@@ -79,6 +80,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             icon: Some(&icons::ADD),
                                             label: "Label",
                                             supporting_text: None,
+                                            error: false,
                                             action: vertical_menu::Action::Menu(vec![
                                                 vertical_menu::Group {
                                                     label: Some("Submenu!"),
@@ -89,6 +91,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                                             supporting_text: Some(
                                                                 "Supporting text",
                                                             ),
+                                                            error: true,
                                                             action: vertical_menu::Action::Message(
                                                                 Some(Message::CloseDialog),
                                                             ),
@@ -99,6 +102,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                                             supporting_text: Some(
                                                                 "Supporting text",
                                                             ),
+                                                            error: false,
                                                             action: vertical_menu::Action::Message(
                                                                 None,
                                                             ),
@@ -111,6 +115,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             icon: Some(&icons::ADD),
                                             label: "Label",
                                             supporting_text: None,
+                                            error: false,
                                             action: vertical_menu::Action::Menu(vec![]),
                                         },
                                         vertical_menu::Entry::Separator,
@@ -118,6 +123,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             icon: None,
                                             label: "Label",
                                             supporting_text: None,
+                                            error: false,
                                             action: vertical_menu::Action::Message(None),
                                         },
                                     ],
@@ -128,6 +134,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                         icon: None,
                                         label: "Label",
                                         supporting_text: None,
+                                        error: true,
                                         action: vertical_menu::Action::Message(Some(
                                             Message::CloseDialog,
                                         )),
@@ -138,7 +145,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                         )
                         .font(font::font())
                         .icon_font(icons::font())
-                        .vibrant(true),
+                        .vibrant(false),
                     ),
                     Placement::BottomRight,
                 ),

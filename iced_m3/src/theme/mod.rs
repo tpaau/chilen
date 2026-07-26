@@ -148,10 +148,10 @@ impl Palette {
             tertiary_fixed_dim: color!(0xEFB8C8),
             on_tertiary_fixed_variant: color!(0x633B48),
 
-            error: color!(0xB3261E),
-            on_error: color!(0xFFFFFF),
-            error_container: color!(0xF9DEDC),
-            on_error_container: color!(0x8C1D18),
+            error: color!(0xF2B8B5),
+            on_error: color!(0x601410),
+            error_container: color!(0x8C1D18),
+            on_error_container: color!(0xF9DEDC),
 
             surface: color!(0x141218),
             on_surface: color!(0xE6E0E9),
