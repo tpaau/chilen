@@ -328,7 +328,10 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
             .as_widget()
             .mouse_interaction(&tree.children[0], layout, cursor, viewport, renderer);
 
-        if cursor.is_over(layout.bounds()) && self.menu.is_some() {
+        if interaction == Interaction::None
+            && cursor.is_over(layout.bounds())
+            && self.menu.is_some()
+        {
             Interaction::Pointer
         } else {
             interaction
@@ -536,7 +539,10 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
             _ => {}
         }
 
-        if !*self.transparent && cursor.is_over(layout.bounds()) {
+        if let Event::Mouse(_) = event
+            && !*self.transparent
+            && cursor.is_over(layout.bounds())
+        {
             shell.capture_event();
         }
     }
