@@ -409,6 +409,11 @@ struct Overlay<'a, 'b, Message, Theme, Renderer> {
     trigger_bounds: Rectangle,
 }
 
+// FIX: Parent overlay acting all weird while a child `DropDownMenu` overlay is opened:
+// 1. The parent overlay passes down mouse hover events when it's pressed
+// 2. The cursor hovered over the parent overlay has an icon that reflects the widget below the
+//   overlay, not the overlay itself (eg. a button in the overlay is hovered but the mouse pointer
+//   uses the default icon because there's no interactive widget below the overlay)
 impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Message, Theme, Renderer>
     for Overlay<'_, '_, Message, Theme, Renderer>
 {
