@@ -79,7 +79,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                             } else {
                                 Radius::from(ROUNDING_LARGE)
                             }),
-                            shadow: shadow(state.theme.shadow(), 0.6),
+                            shadow: shadow(state.theme.shadow(), 0.4),
                             snap: true
                         })
                         .width(Length::Fixed(56.0))

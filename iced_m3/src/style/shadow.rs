@@ -30,7 +30,7 @@ impl Elevation {
     }
 
     fn blur_radius(&self) -> f32 {
-        self.value * 12.0
+        self.value * 18.0
     }
 }
 
