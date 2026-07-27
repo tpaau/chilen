@@ -138,10 +138,10 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                 space().width(Length::Fill).height(Length::Fill),
                 container(text(message))
                     .style(|_| container::Style {
-                        text_color: Some(state.theme.error_container()),
-                        background: Some(iced::Background::Color(state.theme.on_error_container())),
+                        text_color: Some(state.theme.on_error_container()),
+                        background: Some(iced::Background::Color(state.theme.error_container())),
                         border: iced::Border {
-                            color: state.theme.error_container(),
+                            color: state.theme.on_error_container(),
                             width: 1.0,
                             radius: Radius::from(ROUNDING_SMALL),
                         },

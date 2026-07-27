@@ -109,6 +109,15 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             )),
                                         },
                                         vertical_menu::Entry::Button {
+                                            icon: Some(&icons::IMAGE),
+                                            label: "Change image",
+                                            supporting_text: None,
+                                            error: false,
+                                            action: vertical_menu::Action::Message(Some(
+                                                Message::CloseDialog,
+                                            )),
+                                        },
+                                        vertical_menu::Entry::Button {
                                             icon: Some(&icons::EDIT),
                                             label: "Rename",
                                             supporting_text: None,

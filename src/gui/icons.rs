@@ -20,6 +20,7 @@ pub static UPLOAD: LazyLock<char> = LazyLock::new(|| char::from_u32(0xf09b).unwr
 pub static CONTENT_COPY: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe14d).unwrap());
 pub static EDIT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe3c9).unwrap());
 pub static DELETE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe872).unwrap());
+pub static IMAGE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe3f4).unwrap());
 
 pub const SIZE_SMALLER: u32 = 20;
 pub const SIZE_SMALL: u32 = 26;
