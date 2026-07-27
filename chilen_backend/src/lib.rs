@@ -157,7 +157,7 @@ impl std::fmt::Display for Error {
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not initialized"),
             Self::UnknownPlaylist(name) => {
-                write!(f, "There is no playlist with the name: \"{name}\"")
+                write!(f, "There is no playlist with the name \"{name}\"")
             }
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
             Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),

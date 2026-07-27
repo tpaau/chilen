@@ -2,7 +2,11 @@ use iced::{Element, Length, border::Radius};
 use iced_m3::{theme::ColorScheme, widget::dialog};
 use iced_widget::{button, container, space, text};
 
-use crate::gui::{Chilen, Dialog, Message, ROUNDING_SMALL, font};
+use crate::gui::{
+    Chilen, Dialog,
+    Message::{self},
+    ROUNDING_SMALL, font,
+};
 
 pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
     let cancel_button = match &state.dialog {
@@ -211,6 +215,36 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                     })
                     .padding(12)
                     .on_press_maybe(maybe_message),
+            )
+            .width(350)
+            .into()
+        }),
+        Dialog::DeletePlaylist(playlist) => Some({
+            dialog(
+                true,
+                space().width(Length::Fill).height(Length::Fill),
+                text(format!(
+                    "Delete playlist \"{}\" with {} tracks?\nThis cannot be undone.",
+                    playlist.name,
+                    playlist.tracks.len()
+                )),
+                state.theme.current(),
+            )
+            .title("Delete playlist")
+            .font(font::font_bold())
+            .push_button(space().width(Length::Fill))
+            .push_button(cancel_button)
+            .push_button(
+                button("Delete")
+                    .style(|_, status| {
+                        iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Error,
+                        )
+                    })
+                    .padding(12)
+                    .on_press(Message::DeletePlaylist(playlist.clone())),
             )
             .width(350)
             .into()

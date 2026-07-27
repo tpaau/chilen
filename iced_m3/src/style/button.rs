@@ -1,4 +1,7 @@
-use crate::{DIM_ALPHA, style::mix_colors, theme::ColorScheme};
+use crate::{
+    DIM_ALPHA, FOCUS_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, style::mix_colors,
+    theme::ColorScheme,
+};
 use iced::{Color, border::Radius};
 
 pub enum Button {
@@ -9,6 +12,7 @@ pub enum Button {
     Tertiary,
     InverseTertiary,
     Outlined,
+    Error,
 }
 
 pub fn button(
@@ -19,52 +23,119 @@ pub fn button(
     let (color_regular, color_hovered, color_pressed, content_color, border_color) = match style {
         Button::Primary => (
             theme.primary(),
-            mix_colors(theme.primary(), theme.surface(), 0.9),
-            mix_colors(theme.primary(), theme.surface(), 0.8),
+            mix_colors(
+                theme.primary(),
+                theme.surface(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.primary(),
+                theme.surface(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
             theme.on_primary(),
             None,
         ),
         Button::InversePrimary => (
             theme.on_primary(),
-            mix_colors(theme.on_primary(), theme.surface(), 0.9),
-            mix_colors(theme.on_primary(), theme.surface(), 0.8),
+            mix_colors(
+                theme.on_primary(),
+                theme.surface(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.on_primary(),
+                theme.surface(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
             theme.primary(),
             None,
         ),
         Button::Secondary => (
             theme.secondary(),
-            mix_colors(theme.secondary(), theme.surface(), 0.9),
-            mix_colors(theme.secondary(), theme.surface(), 0.8),
+            mix_colors(
+                theme.secondary(),
+                theme.surface(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.secondary(),
+                theme.surface(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
             theme.on_secondary(),
             None,
         ),
         Button::InverseSecondary => (
             theme.on_secondary(),
-            mix_colors(theme.on_secondary(), theme.surface(), 0.9),
-            mix_colors(theme.on_secondary(), theme.surface(), 0.8),
+            mix_colors(
+                theme.on_secondary(),
+                theme.surface(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.on_secondary(),
+                theme.surface(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
             theme.secondary(),
             None,
         ),
         Button::Tertiary => (
             theme.tertiary(),
-            mix_colors(theme.tertiary(), theme.surface(), 0.9),
-            mix_colors(theme.tertiary(), theme.surface(), 0.8),
+            mix_colors(
+                theme.tertiary(),
+                theme.surface(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.tertiary(),
+                theme.surface(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
             theme.on_tertiary(),
             None,
         ),
         Button::InverseTertiary => (
             theme.on_tertiary(),
-            mix_colors(theme.on_tertiary(), theme.surface(), 0.9),
-            mix_colors(theme.on_tertiary(), theme.surface(), 0.8),
+            mix_colors(
+                theme.on_tertiary(),
+                theme.surface(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.on_tertiary(),
+                theme.surface(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
             theme.tertiary(),
             None,
         ),
         Button::Outlined => (
             Color::TRANSPARENT,
-            theme.on_surface_variant().scale_alpha(0.1),
-            theme.on_surface_variant().scale_alpha(0.2),
+            theme
+                .on_surface_variant()
+                .scale_alpha(FOCUS_STATE_LAYER_OPACITY),
+            theme
+                .on_surface_variant()
+                .scale_alpha(PRESSED_STATE_LAYER_OPACITY),
             theme.on_surface_variant(),
             Some(theme.on_surface_variant()),
+        ),
+        Button::Error => (
+            theme.error(),
+            mix_colors(
+                theme.error(),
+                theme.on_error(),
+                1.0 - FOCUS_STATE_LAYER_OPACITY,
+            ),
+            mix_colors(
+                theme.error(),
+                theme.on_error(),
+                1.0 - PRESSED_STATE_LAYER_OPACITY,
+            ),
+            theme.on_error(),
+            None,
         ),
     };
     iced_widget::button::Style {

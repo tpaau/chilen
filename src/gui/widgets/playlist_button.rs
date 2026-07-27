@@ -128,7 +128,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             supporting_text: None,
                                             error: true,
                                             action: vertical_menu::Action::Message(Some(
-                                                Message::CloseDialog,
+                                                Message::ConfirmPlaylistDeletion(playlist.clone()),
                                             )),
                                         },
                                     ],

@@ -54,6 +54,8 @@ pub enum Message {
     ImportPlaylist(Option<String>, rfd::FileHandle),
     OpenPlaylistRenameDialog { playlist: String, name: String },
     RenamePlaylist { playlist: String, name: String },
+    ConfirmPlaylistDeletion(Arc<Playlist>),
+    DeletePlaylist(Arc<Playlist>),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -75,6 +77,7 @@ enum Dialog {
         playlist: String,
         name: String,
     },
+    DeletePlaylist(Arc<Playlist>),
 }
 
 struct Chilen {
@@ -279,6 +282,28 @@ impl Chilen {
                 if let Err(e) = chilen_backend::music_lib::rename_playlist(&playlist, &name) {
                     error!("Could not rename the playlist: {e}");
                     state.dialog = Dialog::Error(format!("Couldn't rename the playlist: {e}"));
+                } else {
+                    state.dialog = Dialog::None;
+                }
+            }
+            Message::ConfirmPlaylistDeletion(playlist) => {
+                if playlist.tracks.is_empty() {
+                    if let Err(e) =
+                        chilen_backend::music_lib::delete_playlists(vec![playlist.name.clone()])
+                    {
+                        error!("Couldn't delete playlist: {e}");
+                        state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
+                    }
+                } else {
+                    state.dialog = Dialog::DeletePlaylist(playlist)
+                }
+            }
+            Message::DeletePlaylist(playlist) => {
+                if let Err(e) =
+                    chilen_backend::music_lib::delete_playlists(vec![playlist.name.clone()])
+                {
+                    error!("Couldn't delete playlist: {e}");
+                    state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
                 } else {
                     state.dialog = Dialog::None;
                 }
