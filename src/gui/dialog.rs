@@ -24,10 +24,17 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
     match &state.dialog {
         Dialog::None => None,
         Dialog::CreatePlaylist(name) => Some({
-            let playlist_exists = if let Some(lib) = &state.library {
-                lib.find_playlist(name).is_some()
+            let name_trimmed = name.trim();
+            let name_ok = if let Some(lib) = &state.library {
+                lib.find_playlist(name_trimmed).is_none()
             } else {
                 false
+            };
+
+            let maybe_message = if name_ok {
+                Some(Message::CreatePlaylist(name_trimmed.to_string()))
+            } else {
+                None
             };
 
             dialog(
@@ -38,14 +45,10 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                     name,
                     &state.theme,
                 )
-                .error(playlist_exists)
+                .error(!name_ok)
                 .with_label_text("Playlist name", state.theme.surface_container_high())
                 .on_input(Message::PlaylistNameEdited)
-                .on_submit_maybe(if playlist_exists {
-                    None
-                } else {
-                    Some(Message::CreatePlaylist(name.clone()))
-                }),
+                .on_submit_maybe(maybe_message.clone()),
                 state.theme.current(),
             )
             .title("New playlist")
@@ -62,44 +65,51 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                         )
                     })
                     .padding(12)
-                    .on_press_maybe(if playlist_exists {
-                        None
-                    } else {
-                        Some(Message::CreatePlaylist(name.clone()))
-                    }),
+                    .on_press_maybe(maybe_message),
             )
             .width(350)
             .into()
         }),
         Dialog::ImportPlaylist(name, handle) => Some({
             let file_name = handle.file_name();
-            let default_name = file_name.strip_suffix(".m3u8").unwrap_or(&file_name);
-            let playlist_exists = if let Some(lib) = &state.library {
-                let name = if name.is_empty() { default_name } else { name };
-                lib.find_playlist(name).is_some()
+            let name_trimmed = name.trim();
+            let default_name = file_name
+                .strip_suffix(".m3u8")
+                .unwrap_or(file_name.strip_suffix(".m3u").unwrap_or(&file_name))
+                .trim();
+
+            let name_ok = if let Some(lib) = &state.library {
+                let name = if name_trimmed.is_empty() {
+                    default_name
+                } else {
+                    name_trimmed
+                };
+                lib.find_playlist(name).is_none()
             } else {
                 false
+            };
+
+            let maybe_message = if name_ok {
+                Some(Message::ImportPlaylist(
+                    if name_trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(name_trimmed.to_string())
+                    },
+                    handle.clone(),
+                ))
+            } else {
+                None
             };
 
             dialog(
                 true,
                 space().width(Length::Fill).height(Length::Fill),
                 iced_m3::widget::text_input::<_, Message>(default_name, name, &state.theme)
-                    .error(playlist_exists)
+                    .error(!name_ok)
                     .with_label_text("Playlist name", state.theme.surface_container_high())
                     .on_input(Message::PlaylistNameEdited)
-                    .on_submit_maybe(if playlist_exists {
-                        None
-                    } else {
-                        Some(Message::ImportPlaylist(
-                            if name.is_empty() {
-                                None
-                            } else {
-                                Some(name.clone())
-                            },
-                            handle.clone(),
-                        ))
-                    }),
+                    .on_submit_maybe(maybe_message.clone()),
                 state.theme.current(),
             )
             .title("Import playlist")
@@ -116,18 +126,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                         )
                     })
                     .padding(12)
-                    .on_press_maybe(if playlist_exists {
-                        None
-                    } else {
-                        Some(Message::ImportPlaylist(
-                            if name.is_empty() {
-                                None
-                            } else {
-                                Some(name.clone())
-                            },
-                            handle.clone(),
-                        ))
-                    }),
+                    .on_press_maybe(maybe_message),
             )
             .width(350)
             .into()
@@ -165,6 +164,53 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                     })
                     .padding(12)
                     .on_press(Message::CloseDialog),
+            )
+            .width(350)
+            .into()
+        }),
+        Dialog::RenamePlaylist { playlist, name } => Some({
+            let name_trimmed = name.trim();
+            let name_ok = !name_trimmed.is_empty()
+                && if let Some(lib) = &state.library {
+                    lib.find_playlist(name_trimmed).is_none()
+                } else {
+                    true
+                };
+
+            let maybe_message = if name_ok {
+                Some(Message::RenamePlaylist {
+                    playlist: playlist.clone(),
+                    name: name.to_string(),
+                })
+            } else {
+                None
+            };
+
+            dialog(
+                true,
+                space().width(Length::Fill).height(Length::Fill),
+                iced_m3::widget::text_input::<_, Message>("Playlist name", name, &state.theme)
+                    .error(!name_ok)
+                    .with_label_text("Playlist name", state.theme.surface_container_high())
+                    .on_input(Message::PlaylistNameEdited)
+                    .on_submit_maybe(maybe_message.clone()),
+                state.theme.current(),
+            )
+            .title("Rename playlist")
+            .font(font::font_bold())
+            .push_button(space().width(Length::Fill))
+            .push_button(cancel_button)
+            .push_button(
+                button("Rename")
+                    .style(|_, status| {
+                        iced_m3::style::button(
+                            status,
+                            state.theme.current(),
+                            iced_m3::style::Button::Primary,
+                        )
+                    })
+                    .padding(12)
+                    .on_press_maybe(maybe_message),
             )
             .width(350)
             .into()

@@ -52,6 +52,14 @@ pub enum Message {
     OpenPlaylistImportFilePicker,
     OpenPlaylistImportDialog(Option<rfd::FileHandle>),
     ImportPlaylist(Option<String>, rfd::FileHandle),
+    OpenPlaylistRenameDialog {
+        playlist: Arc<Playlist>,
+        name: String,
+    },
+    RenamePlaylist {
+        playlist: Arc<Playlist>,
+        name: String,
+    },
 }
 
 #[derive(Default, Debug, Clone)]
@@ -69,6 +77,10 @@ enum Dialog {
     CreatePlaylist(String),
     ImportPlaylist(String, rfd::FileHandle),
     Error(String),
+    RenamePlaylist {
+        playlist: Arc<Playlist>,
+        name: String,
+    },
 }
 
 struct Chilen {
@@ -214,13 +226,19 @@ impl Chilen {
                     };
                 }
             },
-            Message::PlaylistNameEdited(name) => match &state.dialog {
-                Dialog::CreatePlaylist(_) => state.dialog = Dialog::CreatePlaylist(name),
-                Dialog::ImportPlaylist(_, handle) => {
-                    state.dialog = Dialog::ImportPlaylist(name, handle.clone())
+            Message::PlaylistNameEdited(name) => {
+                state.dialog = match &state.dialog {
+                    Dialog::CreatePlaylist(_) => Dialog::CreatePlaylist(name),
+                    Dialog::ImportPlaylist(_, handle) => {
+                        Dialog::ImportPlaylist(name, handle.clone())
+                    }
+                    Dialog::RenamePlaylist { playlist, name: _ } => Dialog::RenamePlaylist {
+                        playlist: playlist.clone(),
+                        name,
+                    },
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
-            },
+            }
             Message::CreatePlaylist(name) => {
                 if let Err(e) = chilen_backend::music_lib::create_playlist(name, &None) {
                     error!("Couldn't create the playlist: {e}");
@@ -260,6 +278,10 @@ impl Chilen {
                     Message::OpenPlaylistImportDialog,
                 );
             }
+            Message::OpenPlaylistRenameDialog { playlist, name } => {
+                state.dialog = Dialog::RenamePlaylist { playlist, name }
+            }
+            Message::RenamePlaylist { playlist, name } => todo!(),
         }
         Task::none()
     }

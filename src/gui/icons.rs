@@ -17,10 +17,10 @@ pub static UPLOAD_FILE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe9fc)
 pub static PLAY_ARROW: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe037).unwrap());
 pub static SHUFFLE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe043).unwrap());
 pub static UPLOAD: LazyLock<char> = LazyLock::new(|| char::from_u32(0xf09b).unwrap());
-pub static CONTENT_COPY: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe14d).unwrap());
 pub static EDIT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe3c9).unwrap());
 pub static DELETE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe872).unwrap());
 pub static IMAGE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe3f4).unwrap());
+pub static ADD_TO_QUEUE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe05c).unwrap());
 
 pub const SIZE_SMALLER: u32 = 20;
 pub const SIZE_SMALL: u32 = 26;
