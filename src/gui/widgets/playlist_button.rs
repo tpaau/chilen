@@ -116,7 +116,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             error: false,
                                             action: vertical_menu::Action::Message(Some(
                                                 Message::OpenPlaylistRenameDialog {
-                                                    playlist: playlist.clone(),
+                                                    playlist: playlist.name.clone(),
                                                     name: playlist.name.clone(),
                                                 },
                                             )),

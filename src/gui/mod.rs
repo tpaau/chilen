@@ -52,14 +52,8 @@ pub enum Message {
     OpenPlaylistImportFilePicker,
     OpenPlaylistImportDialog(Option<rfd::FileHandle>),
     ImportPlaylist(Option<String>, rfd::FileHandle),
-    OpenPlaylistRenameDialog {
-        playlist: Arc<Playlist>,
-        name: String,
-    },
-    RenamePlaylist {
-        playlist: Arc<Playlist>,
-        name: String,
-    },
+    OpenPlaylistRenameDialog { playlist: String, name: String },
+    RenamePlaylist { playlist: String, name: String },
 }
 
 #[derive(Default, Debug, Clone)]
@@ -78,7 +72,7 @@ enum Dialog {
     ImportPlaylist(String, rfd::FileHandle),
     Error(String),
     RenamePlaylist {
-        playlist: Arc<Playlist>,
+        playlist: String,
         name: String,
     },
 }
@@ -282,7 +276,7 @@ impl Chilen {
                 state.dialog = Dialog::RenamePlaylist { playlist, name }
             }
             Message::RenamePlaylist { playlist, name } => {
-                if let Err(e) = chilen_backend::music_lib::rename_playlist(&playlist.name, &name) {
+                if let Err(e) = chilen_backend::music_lib::rename_playlist(&playlist, &name) {
                     error!("Could not rename the playlist: {e}");
                     state.dialog = Dialog::Error(format!("Couldn't rename the playlist: {e}"));
                 } else {
