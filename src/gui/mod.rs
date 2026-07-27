@@ -23,6 +23,7 @@ use iced::{
 use iced_m3::theme::{ColorScheme, Theme};
 use iced_widget::stack;
 use log::{error, info, trace};
+use rfd::FileHandle;
 
 use crate::{
     gui::{
@@ -56,6 +57,8 @@ pub enum Message {
     RenamePlaylist { playlist: String, name: String },
     ConfirmPlaylistDeletion(Arc<Playlist>),
     DeletePlaylist(Arc<Playlist>),
+    OpenPlaylistExportPicker(String),
+    ExportPlaylist(String, Option<FileHandle>),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -244,14 +247,13 @@ impl Chilen {
                     state.dialog = Dialog::None;
                 }
             }
-            Message::OpenPlaylistImportDialog(handle) => {
-                if let Some(handle) = handle {
+            Message::OpenPlaylistImportDialog(handle) => match handle {
+                Some(handle) => {
                     trace!("Showing import dialog for playlist {handle:?}");
                     state.dialog = Dialog::ImportPlaylist(String::new(), handle);
-                } else {
-                    info!("Didn't get the file handle!");
                 }
-            }
+                None => info!("Didn't get the file handle, guessing the user cancelled the import"),
+            },
             Message::ImportPlaylist(name, handle) => {
                 if let Err(e) =
                     chilen_backend::music_lib::import_playlist_from_m3u8(name, &handle.into())
@@ -308,6 +310,29 @@ impl Chilen {
                     state.dialog = Dialog::None;
                 }
             }
+            Message::OpenPlaylistExportPicker(name) => {
+                return Task::perform(
+                    rfd::AsyncFileDialog::new()
+                        .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
+                        .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
+                        .set_file_name(format!("{}.m3u8", name.to_lowercase().replace(" ", "-")))
+                        .save_file(),
+                    |handle| Message::ExportPlaylist(name, handle),
+                );
+            }
+            Message::ExportPlaylist(name, handle) => match handle {
+                Some(path) => {
+                    if let Err(e) =
+                        chilen_backend::music_lib::export_playlist_to_m3u8(name, path.path())
+                    {
+                        state.dialog =
+                            Dialog::Error(format!("Couldn't export the playlist to M3U8: {e}"));
+                    }
+                }
+                None => {
+                    info!("Didn't get the file handle, guessing the user cancelled the export");
+                }
+            },
         }
         Task::none()
     }

@@ -159,7 +159,7 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
 }
 
 // TEST: Check if export work correctly
-pub fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(), Error> {
+pub fn export_playlist_to_m3u8(name: String, path: &Path) -> Result<(), Error> {
     trace!("Exporting a playlist to an M3U8 file in {path:?}");
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
@@ -176,7 +176,7 @@ pub fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(), Error>
                 if path.parent() == Some(&music_dir) {
                     match t.path.strip_prefix(music_dir.clone()) {
                         Ok(path) => path.to_path_buf(),
-                        Err(_) => path.clone(),
+                        Err(_) => path.to_path_buf(),
                     }
                 } else {
                     t.path.clone()

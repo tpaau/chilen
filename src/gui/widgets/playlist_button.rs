@@ -99,7 +99,9 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                             supporting_text: None,
                                             error: false,
                                             action: vertical_menu::Action::Message(Some(
-                                                Message::CloseDialog,
+                                                Message::OpenPlaylistExportPicker(
+                                                    playlist.name.clone(),
+                                                ),
                                             )),
                                         },
                                         vertical_menu::Entry::Button {
