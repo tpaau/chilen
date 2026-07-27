@@ -224,7 +224,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                 true,
                 space().width(Length::Fill).height(Length::Fill),
                 text(format!(
-                    "Delete playlist \"{}\" with {} tracks?\nThis cannot be undone.",
+                    "Delete playlist \"{}\" with {} tracks?\n\nThis cannot be undone.",
                     playlist.name,
                     playlist.tracks.len()
                 )),

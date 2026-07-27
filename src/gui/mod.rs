@@ -315,7 +315,7 @@ impl Chilen {
                     rfd::AsyncFileDialog::new()
                         .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
                         .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
-                        .set_file_name(format!("{}.m3u8", name.to_lowercase().replace(" ", "-")))
+                        .set_file_name(format!("{name}.m3u8"))
                         .save_file(),
                     |handle| Message::ExportPlaylist(name, handle),
                 );

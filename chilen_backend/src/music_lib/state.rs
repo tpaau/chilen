@@ -463,15 +463,16 @@ impl MusicLibrary {
         trace!("Renaming playlist \"{source}\" to \"{target}\"!");
         self.check_name(target)?;
 
-        let source = if let Some(source) = self.find_playlist(source) {
+        let source_playlist = if let Some(source) = self.find_playlist(source) {
             source.clone()
         } else {
             return Err(Error::UnknownPlaylist(source.to_string()));
         };
-        let mut playlist = source.as_ref().clone();
+        let mut playlist = source_playlist.as_ref().clone();
         playlist.name = target.to_string();
 
-        self.playlists.remove(&source);
+        self.playlists.remove(&source_playlist);
+        self.playlists_by_name.remove(source);
         let playlist = Arc::new(playlist);
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(target.to_string(), playlist);
