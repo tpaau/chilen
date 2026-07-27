@@ -332,7 +332,7 @@ where
                                     .height(1.0),
                             )
                             .width(Length::Fill)
-                            .padding(padding::horizontal(8.0))
+                            .padding(padding::horizontal(8.0).vertical(2.0))
                             .into(),
                         ),
                     }
