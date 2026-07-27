@@ -49,6 +49,7 @@ pub enum Error {
     PathReadonly(PathBuf),
     NotADirectory(PathBuf),
     DirectoryCreationFailed(PathBuf, String),
+    EmptyName,
     /// The audio player is not connected.
     ///
     /// This may happen if the device doesn't have an audio device or none of the audio devices are
@@ -181,6 +182,7 @@ impl std::fmt::Display for Error {
             Error::DirectoryCreationFailed(path_buf, e) => {
                 write!(f, "Could not create a directory at {path_buf:?}: {e}")
             }
+            Error::EmptyName => write!(f, "The provided name was empty"),
         }
     }
 }

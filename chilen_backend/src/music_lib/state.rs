@@ -330,6 +330,18 @@ impl MusicLibrary {
         Ok(lib)
     }
 
+    fn check_playlist_name(&self, name: &str) -> Result<(), Error> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(Error::EmptyName);
+        }
+        if self.find_playlist(name).is_some() {
+            error!("A playlist with name \"{name}\" already exists");
+            return Err(Error::PlaylistExists);
+        }
+        Ok(())
+    }
+
     pub fn new_from_tracks(tracks: Vec<Track>) -> Self {
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
         let playlists: HashSet<Arc<Playlist>> = HashSet::new();
@@ -401,10 +413,8 @@ impl MusicLibrary {
     ) -> Result<(), Error> {
         trace!("Creating a new playlist \"{name}\" from a list of tracks");
 
-        if self.find_playlist(&name).is_some() {
-            error!("A playlist with name \"{name}\" already exists");
-            return Err(Error::PlaylistExists);
-        }
+        let name = name.trim();
+        self.check_playlist_name(name)?;
 
         let tracks = if let Some(tracks) = track_paths {
             let mut out = Vec::with_capacity(tracks.len());
@@ -422,11 +432,11 @@ impl MusicLibrary {
         };
 
         let playlist = Arc::new(Playlist {
-            name: name.clone(),
+            name: name.to_string(),
             tracks,
         });
         self.playlists.insert(playlist.clone());
-        self.playlists_by_name.insert(name, playlist);
+        self.playlists_by_name.insert(name.to_string(), playlist);
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
     }
@@ -512,7 +522,9 @@ impl MusicLibrary {
             None => {
                 if let Some(path) = path.file_name() {
                     let path = path.to_string_lossy().to_string();
-                    path.strip_suffix(".m3u8").unwrap_or(&path).to_string()
+                    path.strip_suffix(".m3u8")
+                        .unwrap_or(path.strip_suffix(".m3u").unwrap_or(&path))
+                        .to_string()
                 } else {
                     self.get_default_playlist_name()
                 }
