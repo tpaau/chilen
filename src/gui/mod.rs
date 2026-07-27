@@ -281,7 +281,14 @@ impl Chilen {
             Message::OpenPlaylistRenameDialog { playlist, name } => {
                 state.dialog = Dialog::RenamePlaylist { playlist, name }
             }
-            Message::RenamePlaylist { playlist, name } => todo!(),
+            Message::RenamePlaylist { playlist, name } => {
+                if let Err(e) = chilen_backend::music_lib::rename_playlist(&playlist.name, &name) {
+                    error!("Could not rename the playlist: {e}");
+                    state.dialog = Dialog::Error(format!("Couldn't rename the playlist: {e}"));
+                } else {
+                    state.dialog = Dialog::None;
+                }
+            }
         }
         Task::none()
     }
