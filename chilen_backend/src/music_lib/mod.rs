@@ -165,7 +165,7 @@ pub fn export_playlist_to_m3u8(name: String, path: PathBuf) -> Result<(), Error>
     let lib = unwrap_lib_ref(guard.as_ref())?;
     let pl = match lib.find_playlist(&name) {
         Some(pl) => pl,
-        None => return Err(Error::UnknownPlaylist),
+        None => return Err(Error::UnknownPlaylist(name)),
     };
     let music_dir = MUSIC_DIR.read().unwrap().as_ref().unwrap().clone();
     let segments = pl
@@ -215,6 +215,14 @@ pub fn create_playlist(name: String, track_paths: &Option<Vec<PathBuf>>) -> Resu
     };
     lib.create_playlist(name, track_paths)?;
 
+    drop(guard);
+    save_library()
+}
+
+pub fn rename_playlist(source: &str, target: &str) -> Result<(), Error> {
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+    lib.rename_playlist(source, target)?;
     drop(guard);
     save_library()
 }

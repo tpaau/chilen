@@ -128,9 +128,10 @@ fn playlist_deletion() {
     );
     assert_eq!(lib.playlists.len(), 2);
 
+    let name = "Test1".to_string();
     assert_eq!(
-        lib.remove_playlists(vec!["Test1".to_string()]).unwrap_err(),
-        Error::UnknownPlaylist
+        lib.remove_playlists(vec![name.clone()]).unwrap_err(),
+        Error::UnknownPlaylist(name)
     );
     assert_eq!(lib.playlists.len(), 2);
 
@@ -153,7 +154,7 @@ fn track_append() {
     assert_eq!(
         lib.add_tracks("Test2", vec![tracks[0].path.clone()])
             .unwrap_err(),
-        Error::UnknownPlaylist
+        Error::UnknownPlaylist("Test2".to_string())
     );
     assert_eq!(
         lib.add_tracks("Test1", vec!["/nonexistent/path".into()])
@@ -180,7 +181,7 @@ fn lib_track_removal() {
     lib.remove_tracks("Test1", vec![0]).unwrap();
     assert_eq!(
         lib.remove_tracks("Test2", vec![1]).unwrap_err(),
-        Error::UnknownPlaylist
+        Error::UnknownPlaylist("Test2".to_string())
     );
     assert_eq!(
         lib.remove_tracks("Test1", vec![2]).unwrap_err(),

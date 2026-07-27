@@ -98,7 +98,7 @@ pub enum Error {
     LibraryNotInitialized,
     /// There is no [playlist](music_lib::state::Playlist) in the
     /// [music library](music_lib::state::MusicLibrary) with the provided name.
-    UnknownPlaylist,
+    UnknownPlaylist(String),
     /// The provided item index was out of bounds.
     IndexOutOfBounds,
     /// The provided list contained duplicate values.
@@ -156,7 +156,9 @@ impl std::fmt::Display for Error {
             }
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not initialized"),
-            Self::UnknownPlaylist => write!(f, "There is no playlist with this name"),
+            Self::UnknownPlaylist(name) => {
+                write!(f, "There is no playlist with the name: \"{name}\"")
+            }
             Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
             Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),
             Self::StateNotReadable => {

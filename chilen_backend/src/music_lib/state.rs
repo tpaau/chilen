@@ -330,7 +330,7 @@ impl MusicLibrary {
         Ok(lib)
     }
 
-    fn check_playlist_name(&self, name: &str) -> Result<(), Error> {
+    fn check_name(&self, name: &str) -> Result<(), Error> {
         let name = name.trim();
         if name.is_empty() {
             return Err(Error::EmptyName);
@@ -342,7 +342,7 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn new_from_tracks(tracks: Vec<Track>) -> Self {
+    pub(crate) fn new_from_tracks(tracks: Vec<Track>) -> Self {
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
         let playlists: HashSet<Arc<Playlist>> = HashSet::new();
 
@@ -367,6 +367,26 @@ impl MusicLibrary {
 
     pub fn find_playlist(&self, name: &str) -> Option<&Arc<Playlist>> {
         self.playlists_by_name.get(name)
+    }
+
+    pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
+        self.tracks_by_path
+            .get(&path.to_string_lossy().to_string())
+            .cloned()
+    }
+
+    /// Returns the default playlist name ("New Playlist").
+    ///
+    /// If a playlist with the default name exists, then a number will be added to the end of the
+    /// playlist name so it's unique, eg. "New Playlist 1", "New Playlist 2", etc.
+    pub fn get_default_playlist_name(&self) -> String {
+        let mut i = 0;
+        let mut playlist_name = DEFAULT_PLAYLIST_NAME.to_string();
+        while self.find_playlist(&playlist_name).is_some() {
+            i += 1;
+            playlist_name = format!("{DEFAULT_PLAYLIST_NAME} {i}");
+        }
+        playlist_name
     }
 
     pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, Error> {
@@ -394,16 +414,12 @@ impl MusicLibrary {
                 self.playlists.remove(&playlist);
                 self.playlists_by_name.remove(name);
             } else {
-                return Err(Error::UnknownPlaylist);
+                return Err(Error::UnknownPlaylist(name.to_string()));
             }
         }
-        Ok(())
-    }
 
-    pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
-        self.tracks_by_path
-            .get(&path.to_string_lossy().to_string())
-            .cloned()
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
+        Ok(())
     }
 
     pub fn create_playlist(
@@ -414,7 +430,7 @@ impl MusicLibrary {
         trace!("Creating a new playlist \"{name}\" from a list of tracks");
 
         let name = name.trim();
-        self.check_playlist_name(name)?;
+        self.check_name(name)?;
 
         let tracks = if let Some(tracks) = track_paths {
             let mut out = Vec::with_capacity(tracks.len());
@@ -441,12 +457,36 @@ impl MusicLibrary {
         Ok(())
     }
 
+    pub fn rename_playlist(&mut self, source: &str, target: &str) -> Result<(), Error> {
+        let source = source.trim();
+        let target = target.trim();
+        trace!("Renaming playlist \"{source}\" to \"{target}\"!");
+        self.check_name(target)?;
+
+        let source = if let Some(source) = self.find_playlist(source) {
+            source.clone()
+        } else {
+            return Err(Error::UnknownPlaylist(source.to_string()));
+        };
+        let mut playlist = source.as_ref().clone();
+        playlist.name = target.to_string();
+
+        self.playlists.remove(&source);
+        let playlist = Arc::new(playlist);
+        self.playlists.insert(playlist.clone());
+        self.playlists_by_name.insert(target.to_string(), playlist);
+
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
+        Ok(())
+    }
+
     pub fn add_tracks(&mut self, name: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
+        let name = name.trim();
         trace!("Adding tracks to playlist \"{name}\"");
 
         let mut playlist = match self.find_playlist(name) {
             Some(playlist) => playlist.clone(),
-            None => return Err(Error::UnknownPlaylist),
+            None => return Err(Error::UnknownPlaylist(name.to_string())),
         }
         .as_ref()
         .clone();
@@ -470,15 +510,17 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist);
 
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
     }
 
     pub fn remove_tracks(&mut self, name: &str, tracks: Vec<usize>) -> Result<(), Error> {
+        let name = name.trim();
         trace!("Removing tracks from playlist \"{name}\"");
 
         let mut playlist = match self.find_playlist(name) {
             Some(playlist) => playlist,
-            None => return Err(Error::UnknownPlaylist),
+            None => return Err(Error::UnknownPlaylist(name.to_string())),
         }
         .as_ref()
         .clone();
@@ -492,21 +534,8 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist);
 
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
-    }
-
-    /// Returns the default playlist name ("New Playlist").
-    ///
-    /// If a playlist with the default name exists, then a number will be added to the end of the
-    /// playlist name so it's unique, eg. "New Playlist 1", "New Playlist 2", etc.
-    pub fn get_default_playlist_name(&self) -> String {
-        let mut i = 0;
-        let mut playlist_name = DEFAULT_PLAYLIST_NAME.to_string();
-        while self.find_playlist(&playlist_name).is_some() {
-            i += 1;
-            playlist_name = format!("{DEFAULT_PLAYLIST_NAME} {i}");
-        }
-        playlist_name
     }
 
     // TEST: Check if importing M3U8 files works correctly
