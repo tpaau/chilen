@@ -1,9 +1,6 @@
 ## AI Usage Policy
 
-> [!NOTE]
-> Significant part of this policy is adopted from [the Ghostty AI Policy](https://github.com/ghostty-org/ghostty/blob/main/AI_POLICY.md).
-
- This policy defines how contributors may use AI tools when submitting their work to Chilen. It only applies to outside contributors.
+This policy defines how contributors may use AI tools when submitting their work to Chilen. It only applies to outside contributors, Chilen maintainers are not confined by this policy.
 
 - **All AI usage in any form must be disclosed.** You must state the tool you used (e.g. Claude Code, Cursor, Amp) along with the extent that the work was AI-assisted.
 - **The human-in-the-loop must fully understand all code.** If you can't explain what your changes do and how they interact with the greater system without the aid of AI tools, do not contribute to this project.
