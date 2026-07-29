@@ -1,8 +1,8 @@
 name: Bug report
 description: Report unintended behavior (not security implicated)
 title: "[BUG] Unintended behavior found in ..."
-labels: []
-assignees: []
+labels: [bug]
+assignees: [tpaau]
 
 body:
   - type: textarea

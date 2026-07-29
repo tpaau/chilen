@@ -1,8 +1,8 @@
 name: Feature request
 description: Suggest an in-scope idea for the project
 title: "[FEAT] ... would improve the project"
-labels: []
-assignees: []
+labels: [enhancement]
+assignees: [tpaau]
 
 body:
   - type: textarea
