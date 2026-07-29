@@ -1,5 +1,12 @@
 ## Project structure
 
+
+## Use of generative AI
+See the [AI Usage Policy](https://github.com/tpaau/chilen/blob/main/AI_POLICY.md).
+
+
+## Modules
+
 Project modules are managed in a
 [Cargo workspace](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html).
 
@@ -9,6 +16,9 @@ The project has three main workspace members:
         manages the music library, audio playback, etc. Formerly `chilen_daemon`.
     - [`iced_m3`](https://tpaau.github.io/chilen/iced_m3/) - Material Design 3 widget library for
         [iced](https://iced.rs/)
+
+
+## Architecture
 
 > [!NOTE]
 > This file tree is not regularly updated and may be out of date.
@@ -117,6 +127,3 @@ Check dependencies:
 ```bash
 cargo deny check
 ```
-
-## Use of generative AI
-See the [Chilen AI Usage Policy](https://github.com/tpaau/chilen/blob/main/AI_POLICY.md).

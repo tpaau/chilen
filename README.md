@@ -19,9 +19,9 @@ Documentation on Chilen submodules:
 
 Other projects related to Chilen:
 - [`lrc_rs`](https://github.com/tpaau/lrc_rs) - Robust crate for working with synced lyrics content in the LRC format with support for the A2 extension
-- [`m3u8_rs`](https://github.com/tpaau/m3u8_rs) - Rust crate for M3U8 playlist files
+- [`m3u8_rs`](https://github.com/tpaau/m3u8_rs) - Crate for working with M3U8 playlist files
 
-[Homepage](https://tpaau.github.io/chilen/).
+Also see the [homepage](https://tpaau.github.io/chilen/).
 
 
 <a name="features"></a>
