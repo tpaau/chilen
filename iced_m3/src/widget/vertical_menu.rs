@@ -1,7 +1,7 @@
 use std::sync::LazyLock;
 
 use iced::{Alignment, Border, Color, Element, Font, Length, Pixels, border::Radius, padding};
-use iced_widget::{button, column, container, row, space, text};
+use iced_widget::{button, column, container, row, rule, space, text};
 
 use crate::{
     DIM_ALPHA, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
@@ -108,12 +108,14 @@ where
     Theme: 'a
         + iced_widget::container::Catalog
         + iced_widget::text::Catalog
-        + iced_widget::button::Catalog,
+        + iced_widget::button::Catalog
+        + iced_widget::rule::Catalog,
     <Theme as iced_widget::container::Catalog>::Class<'a>:
         From<iced_widget::container::StyleFn<'a, Theme>>,
     <Theme as iced_widget::text::Catalog>::Class<'a>: From<iced_widget::text::StyleFn<'a, Theme>>,
     <Theme as iced_widget::button::Catalog>::Class<'a>:
         From<iced_widget::button::StyleFn<'a, Theme>>,
+    <Theme as iced_widget::rule::Catalog>::Class<'a>: From<iced_widget::rule::StyleFn<'a, Theme>>,
 {
     fn from(menu: Menu<'a, Message>) -> Self {
         let vibrant = menu.vibrant;
@@ -322,15 +324,12 @@ where
                             }
                         }
                         Entry::Separator => children.push(
-                            container(
-                                container(space())
-                                    .style(move |_| container::Style {
-                                        background: Some(iced::Background::Color(separator_color)),
-                                        ..Default::default()
-                                    })
-                                    .width(Length::Fill)
-                                    .height(1.0),
-                            )
+                            container(rule::horizontal(1).style(move |_| rule::Style {
+                                color: separator_color,
+                                radius: Radius::from(u32::MAX),
+                                fill_mode: rule::FillMode::Full,
+                                snap: true,
+                            }))
                             .width(Length::Fill)
                             .padding(padding::horizontal(8.0).vertical(2.0))
                             .into(),
