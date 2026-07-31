@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
     thread,
     time::Duration,
 };
@@ -37,7 +37,7 @@ fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
 }
 
 fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, Error> {
-    let tracks = Arc::new(Mutex::new(Vec::new()));
+    let tracks = Arc::new(RwLock::new(Vec::with_capacity(files.len())));
     let mut handles = Vec::new();
 
     for file in files {
@@ -91,7 +91,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
             }
 
             track.path = file;
-            lock.lock().unwrap().push(track)
+            lock.write().unwrap().push(track)
         }));
     }
 
@@ -99,6 +99,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
         handle.join().unwrap();
     }
 
+    tracks.write().unwrap().shrink_to_fit();
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
@@ -107,29 +108,32 @@ pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, Error> {
 
     trace!("Indexing directory: {music_dir:?}");
 
-    let mut files = Vec::new();
+    let files: Vec<_> = WalkDir::new(music_dir)
+        .into_iter()
+        .filter_map(|result| {
+            let entry = match result {
+                Ok(entry) => entry,
+                Err(e) => {
+                    warn!("Error while trying to access the file: {e}");
+                    return None;
+                }
+            };
 
-    for result in WalkDir::new(music_dir).into_iter() {
-        let entry = match result {
-            Ok(entry) => entry,
-            Err(e) => {
-                warn!("Error while trying to access the file: {e}");
-                continue;
-            }
-        };
-
-        match entry.metadata() {
-            Ok(meta) => {
-                if meta.is_file() {
-                    files.push(PathBuf::from(entry.path()));
+            match entry.metadata() {
+                Ok(meta) => {
+                    if meta.is_file() {
+                        Some(PathBuf::from(entry.path()))
+                    } else {
+                        None
+                    }
+                }
+                Err(e) => {
+                    warn!("Could not get path metadata: {e}");
+                    None
                 }
             }
-            Err(e) => {
-                warn!("Could not get path metadata: {e}");
-                continue;
-            }
-        };
-    }
+        })
+        .collect();
 
     index_files(files, load_mode)
 }
