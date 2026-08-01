@@ -3,14 +3,11 @@ use std::sync::Arc;
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
     Background, Border, Length, Padding, Shadow, color,
-    widget::{Button, Space, button, column, container, row, space, text},
+    widget::{Button, button, column, container, row, space, text},
 };
 use iced_m3::{
     theme::ColorScheme,
-    widget::{
-        drop_down_menu::{DropDownMenu, Placement},
-        vertical_menu,
-    },
+    widget::{drop_down_menu, vertical_menu},
 };
 
 use crate::gui::{
@@ -24,7 +21,7 @@ const THUMBNAIL_SIZE: f32 = 64.0;
 pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
     button(
         row(vec![
-            container(Space::new())
+            container(space())
                 .style(|_| {
                     container::Style::default()
                         .background(color!(0xff0000))
@@ -37,6 +34,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                 text(playlist.name.clone())
                     .size(SIZE_REGULAR)
                     .color(state.theme.on_surface())
+                    .wrapping(text::Wrapping::None)
                     .into(),
                 text({
                     if playlist.tracks.is_empty() {
@@ -49,12 +47,13 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                 .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
                 .into(),
             ]))
+            .width(Length::Fill)
+            .clip(true)
             .center_y(Length::Fill)
             .into(),
-            space().width(Length::Fill).into(),
             container(
                 // TODO: Should be more like a button
-                DropDownMenu::new(
+                drop_down_menu(
                     |_| {
                         text(*icons::MORE_HORIZ)
                             .font(icons::filled())
@@ -141,7 +140,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                         .icon_font(icons::filled())
                         .vibrant(false),
                     ),
-                    Placement::BottomRight,
+                    iced_m3::widget::drop_down_menu::Placement::BottomRight,
                 ),
             )
             .center_y(Length::Fill)
