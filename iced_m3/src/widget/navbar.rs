@@ -4,7 +4,7 @@ use iced::{
     padding,
 };
 use iced_widget::{
-    button, center, center_x, column, container, responsive, row,
+    button, center, center_x, column, responsive, row,
     text::{LineHeight, Shaping, Wrapping},
 };
 
@@ -332,11 +332,11 @@ where
                 LARGE_VERTICAL_PADDING
             };
             let spacing = if compact { 0.0 } else { LARGE_BUTTON_SPACING };
-            container(center(row(buttons).spacing(spacing)))
-                .height(Length::Shrink)
+            center_x(row(buttons).spacing(spacing))
                 .padding(padding::vertical(padding))
                 .into()
         })
+        .height(Length::Shrink)
         .into()
     }
 }

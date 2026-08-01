@@ -1,6 +1,3 @@
-## Project structure
-
-
 ## Use of generative AI
 See the [AI Usage Policy](https://github.com/tpaau/chilen/blob/main/AI_POLICY.md).
 
