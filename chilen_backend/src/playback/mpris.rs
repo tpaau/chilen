@@ -358,7 +358,7 @@ pub(crate) fn launch_server() {
             identity: APP_NAME.to_string(),
         };
 
-        smol::block_on(async {
+        pollster::block_on(async {
             let server = match Server::new(APP_ID, interface).await {
                 Ok(server) => server,
                 Err(e) => {
@@ -405,7 +405,7 @@ pub(crate) fn update_properties(properties: Vec<Property>) {
                 return;
             }
         };
-        smol::block_on(async {
+        pollster::block_on(async {
             if let Err(e) = server.properties_changed(properties).await {
                 error!("Cannot update MPRIS properties: {e}");
             }
@@ -424,7 +424,7 @@ pub(crate) fn set_position(position: Duration) {
                 return;
             }
         };
-        smol::block_on(async {
+        pollster::block_on(async {
             if let Err(e) = server
                 .emit(mpris_server::Signal::Seeked {
                     position: Time::from_nanos(position.as_nanos().try_into().unwrap_or(i64::MAX)),
