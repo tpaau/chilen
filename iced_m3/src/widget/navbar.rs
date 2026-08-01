@@ -124,21 +124,9 @@ impl<'a, Message> Navbar<'a, Message> {
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Navbar<'a, Message>>
-    for Element<'a, Message, Theme, Renderer>
+impl<'a, Message> From<Navbar<'a, Message>> for Element<'a, Message, iced::Theme, iced::Renderer>
 where
-    Message: 'a + std::clone::Clone,
-    Theme: 'a
-        + iced_widget::container::Catalog
-        + iced_widget::text::Catalog
-        + iced_widget::button::Catalog,
-    <Theme as iced_widget::container::Catalog>::Class<'a>:
-        From<iced_widget::container::StyleFn<'a, Theme>>,
-    <Theme as iced_widget::text::Catalog>::Class<'a>: From<iced_widget::text::StyleFn<'a, Theme>>,
-    <Theme as iced_widget::button::Catalog>::Class<'a>:
-        From<iced_widget::button::StyleFn<'a, Theme>>,
-    Renderer: 'a + iced::advanced::Renderer + iced::advanced::text::Renderer,
-    <Renderer as iced::advanced::text::Renderer>::Font: std::convert::From<iced::Font>,
+    Message: 'a + Clone,
 {
     fn from(navbar: Navbar<'a, Message>) -> Self {
         responsive(move |size| {

@@ -23,7 +23,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 View::Artists => 2,
                 View::Genres => 3,
             };
-            iced_m3::widget::navbar::Navbar::new(
+            iced_m3::widget::navbar::<_, iced::Theme, iced::Renderer>(
                 vec![
                     iced_m3::widget::navbar::Item {
                         icon: &icons::MUSIC_NOTE,

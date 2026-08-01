@@ -12,10 +12,12 @@ use crate::{
     widget::{
         dialog::Dialog,
         drop_down_menu::{DropDownMenu, Placement},
+        navbar::Navbar,
         text_input::TextInput,
     },
 };
 
+#[must_use]
 pub fn dialog<'a, Message, Theme, Renderer>(
     is_open: bool,
     base: impl Into<Element<'a, Message, Theme, Renderer>>,
@@ -31,6 +33,7 @@ where
     Dialog::new(is_open, base, content, palette)
 }
 
+#[must_use]
 pub fn drop_down_menu<'a, Message, Theme, Renderer>(
     trigger: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
     menu: Option<impl Into<Element<'a, Message, Theme, Renderer>>>,
@@ -39,6 +42,7 @@ pub fn drop_down_menu<'a, Message, Theme, Renderer>(
     DropDownMenu::<'a, Message, Theme, Renderer>::new(trigger, menu, placement)
 }
 
+#[must_use]
 pub fn menu<'a, Message>(
     sections: Vec<vertical_menu::Group<'a, Message>>,
     theme: &'a dyn ColorScheme,
@@ -46,10 +50,19 @@ pub fn menu<'a, Message>(
     vertical_menu::Menu::new(sections, theme)
 }
 
+#[must_use]
 pub fn text_input<'a, Message: Clone, Renderer>(
     placeholder: &str,
     value: &'a str,
     theme: &'a impl ColorScheme,
 ) -> TextInput<'a, Message> {
     TextInput::new(placeholder, value, theme)
+}
+
+#[must_use]
+pub fn navbar<'a, Message, Theme, Renderer>(
+    items: Vec<navbar::Item<'a, Message>>,
+    theme: &'a impl ColorScheme,
+) -> Navbar<'a, Message> {
+    Navbar::new(items, theme)
 }
