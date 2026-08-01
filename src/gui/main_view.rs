@@ -48,7 +48,6 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                 ],
                 &state.theme,
             )
-            .button_width(110.0)
             .focused_index(index)
             .icon_font_active(icons::filled())
             .icon_font_inactive(icons::outlined())

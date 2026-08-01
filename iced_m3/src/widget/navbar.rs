@@ -1,5 +1,12 @@
-use iced::{Alignment, Border, Element, Font, Length, Size, padding};
-use iced_widget::{button, center, center_x, column, container, responsive, row, text};
+use iced::{
+    Alignment, Border, Element, Font, Length, Size,
+    advanced::{Text, text::Paragraph},
+    padding,
+};
+use iced_widget::{
+    button, center, center_x, column, container, responsive, row,
+    text::{LineHeight, Shaping, Wrapping},
+};
 
 use crate::{style::mix_colors, theme::ColorScheme};
 
@@ -16,6 +23,8 @@ const DEFAULT_LABEL_SIZE: f32 = 14.0;
 const DEFAULT_ICON_SIZE: f32 = 24.0;
 const COMPACT_VERTICAL_PADDING: f32 = 6.0;
 const LARGE_VERTICAL_PADDING: f32 = 12.0;
+const LARGE_BUTTON_INTERNAL_SPACING: f32 = 4.0;
+const LARGE_BUTTON_PADDING: f32 = 16.0;
 
 #[derive(Default)]
 pub enum Mode {
@@ -42,7 +51,6 @@ pub struct Navbar<'a, Message> {
     focused_index: usize,
     icon_size: f32,
     label_size: f32,
-    button_width: f32,
 }
 
 impl<'a, Message> Navbar<'a, Message> {
@@ -59,7 +67,6 @@ impl<'a, Message> Navbar<'a, Message> {
             focused_index: 0,
             icon_size: DEFAULT_ICON_SIZE,
             label_size: DEFAULT_LABEL_SIZE,
-            button_width: LARGE_BUTTON_SIZE.width,
         }
     }
 
@@ -116,12 +123,6 @@ impl<'a, Message> Navbar<'a, Message> {
         self.label_size = size;
         self
     }
-
-    #[must_use]
-    pub fn button_width(mut self, width: f32) -> Self {
-        self.button_width = width;
-        self
-    }
 }
 
 impl<'a, Message> From<Navbar<'a, Message>> for Element<'a, Message, iced::Theme, iced::Renderer>
@@ -129,12 +130,42 @@ where
     Message: 'a + Clone,
 {
     fn from(navbar: Navbar<'a, Message>) -> Self {
+        let font = navbar.font.unwrap_or_default();
+
+        let mut max_width = 0.0;
+        for item in &navbar.items {
+            let p = iced::advanced::graphics::text::Paragraph::with_text(Text {
+                content: item.label,
+                bounds: Size::INFINITE,
+                size: navbar.label_size.into(),
+                line_height: LineHeight::default(),
+                font,
+                align_x: iced_widget::text::Alignment::Left,
+                align_y: iced::alignment::Vertical::Top,
+                shaping: Shaping::Advanced,
+                wrapping: Wrapping::None,
+            });
+            let width = p.min_bounds().width;
+
+            if width > max_width {
+                max_width = width
+            }
+        }
+
+        // There seems to be a slight mismatch between the calculated and actual text size. The one
+        // I estimate here is sometimes less than one pixel off than the actual size, but that
+        // already causes the text to wrap which just looks bad.
+        //
+        // So I apply the padding here because that less than 1px won't even make a difference
+        // visually.
+        max_width += navbar.icon_size + LARGE_BUTTON_INTERNAL_SPACING + 2.0 * LARGE_BUTTON_PADDING;
+
         responsive(move |size| {
             let compact = match navbar.mode {
                 Mode::Compact => true,
                 Mode::Large => false,
                 Mode::Auto => {
-                    navbar.items.len() as f32 * navbar.button_width
+                    navbar.items.len() as f32 * max_width
                         + (navbar.items.len() as i64 - 1) as f32 * LARGE_BUTTON_SPACING
                         > size.width
                 }
@@ -174,7 +205,7 @@ where
                             center_x(
                                 column![
                                     button(center(
-                                        text(item.icon)
+                                        iced_widget::text(item.icon)
                                             .font(icon_font)
                                             .color(icon_color)
                                             .size(navbar.icon_size)
@@ -211,11 +242,11 @@ where
                                     .on_press(item.message.clone())
                                     .width(Length::Fixed(COMPACT_BUTTON_SIZE.width))
                                     .height(Length::Fixed(COMPACT_BUTTON_SIZE.height)),
-                                    text(item.label)
+                                    iced_widget::text(item.label)
                                         .font(font)
                                         .color(label_color)
                                         .size(navbar.label_size)
-                                        .wrapping(text::Wrapping::None),
+                                        .wrapping(Wrapping::None),
                                 ]
                                 .align_x(Alignment::Center)
                                 .spacing(4.0),
@@ -247,17 +278,17 @@ where
                         buttons.push(
                             button(center(
                                 row![
-                                    text(item.icon)
+                                    iced_widget::text(item.icon)
                                         .font(icon_font)
                                         .color(icon_color)
                                         .size(navbar.icon_size),
-                                    text(item.label)
+                                    iced_widget::text(item.label)
                                         .font(font)
                                         .color(label_color)
                                         .size(navbar.label_size)
                                 ]
                                 .align_y(Alignment::Center)
-                                .spacing(4.0),
+                                .spacing(LARGE_BUTTON_INTERNAL_SPACING),
                             ))
                             .style(move |_, status| {
                                 let state_layer_color = navbar.theme.on_secondary_container();
@@ -286,8 +317,7 @@ where
                                 }
                             })
                             .on_press(item.message.clone())
-                            .padding(padding::horizontal(16.0))
-                            .width(Length::Fixed(navbar.button_width))
+                            .width(Length::Fixed(max_width))
                             .height(Length::Fixed(LARGE_BUTTON_SIZE.height))
                             .into(),
                         )
