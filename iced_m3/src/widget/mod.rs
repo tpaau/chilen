@@ -1,5 +1,6 @@
 pub mod dialog;
 pub mod drop_down_menu;
+pub mod navbar;
 pub mod text_input;
 pub mod vertical_menu;
 

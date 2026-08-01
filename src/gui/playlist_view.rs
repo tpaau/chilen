@@ -60,7 +60,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                     DropDownMenu::new(
                         move |opened| container(center(
                             text(if opened { *icons::CLOSE } else { *icons::ADD })
-                                .font(icons::font())
+                                .font(icons::filled())
                                 .size(icons::SIZE_REGULAR)
                         ))
                         .style(move |_| container::Style {
@@ -90,7 +90,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                 iced::widget::button(center(
                                     row(vec![
                                         text(*icons::UPLOAD_FILE)
-                                            .font(icons::font())
+                                            .font(icons::filled())
                                             .size(icons::SIZE_SMALLER)
                                             .into(),
                                         text("Import playlist").size(font::SIZE_REGULAR).into()
@@ -114,7 +114,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                 iced::widget::button(center(
                                     row(vec![
                                         text(*icons::PLAYLIST_ADD)
-                                            .font(icons::font())
+                                            .font(icons::filled())
                                             .size(icons::SIZE_SMALLER)
                                             .into(),
                                         text("New playlist").size(font::SIZE_REGULAR).into()

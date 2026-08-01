@@ -1,6 +1,7 @@
 mod dialog;
 mod font;
 mod icons;
+mod main_view;
 mod playlist_view;
 #[cfg(test)]
 mod tests;
@@ -14,7 +15,7 @@ use std::{
 
 use chilen_backend::music_lib::state::{MusicLibrary, Playlist};
 use iced::{
-    self, Border, Element, Font, Length, Padding, Subscription, Task,
+    self, Element, Font, Length, Padding, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
     widget::{column, container, row},
@@ -28,7 +29,7 @@ use rfd::FileHandle;
 use crate::{
     gui::{
         font::{BYTES_BOLD, BYTES_REGULAR},
-        icons::ICONS_FONT_BYTES,
+        icons::{FILLED_ICONS_FONT_BYTES, OUTLINED_ICONS_FONT_BYTES},
     },
     settings::Settings,
 };
@@ -59,6 +60,7 @@ pub enum Message {
     DeletePlaylist(Arc<Playlist>),
     OpenPlaylistExportPicker(String),
     ExportPlaylist(String, Option<FileHandle>),
+    ChangeMainView(main_view::View),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -89,6 +91,7 @@ struct Chilen {
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
+    main_view: main_view::View,
 }
 
 impl Default for Chilen {
@@ -100,6 +103,7 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
+            main_view: main_view::View::default(),
         }
     }
 }
@@ -155,16 +159,7 @@ impl Chilen {
                     .width(Length::Fixed(350.0))
                     .height(Length::Fill)
                     .into(),
-                container("Main view")
-                    .style(|_| {
-                        container::Style::default()
-                            .background(state.theme.background())
-                            .border(Border::default().rounded(ROUNDING_REGULAR))
-                    })
-                    .padding(Padding::new(SPACING_SMALL as f32))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .into(),
+                main_view::view(state),
                 // TODO: I should be able to resize this
                 container("Currently playing")
                     .padding(Padding::new(SPACING_SMALL as f32))
@@ -333,6 +328,7 @@ impl Chilen {
                     info!("Didn't get the file handle, guessing the user cancelled the export");
                 }
             },
+            Message::ChangeMainView(view) => state.main_view = view,
         }
         Task::none()
     }
@@ -360,7 +356,8 @@ impl Chilen {
 fn load_fonts() -> Task<Message> {
     trace!("Loading fonts...");
     Task::batch([
-        iced::font::load(ICONS_FONT_BYTES).discard(),
+        iced::font::load(FILLED_ICONS_FONT_BYTES).discard(),
+        iced::font::load(OUTLINED_ICONS_FONT_BYTES).discard(),
         iced::font::load(BYTES_REGULAR).discard(),
         iced::font::load(BYTES_BOLD).discard(),
     ])

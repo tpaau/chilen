@@ -15,7 +15,7 @@ use iced_m3::{
 
 use crate::gui::{
     Chilen, DIM_TEXT_ALPHA, Message, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-    font::{self, SIZE_REGULAR, SIZE_SMALL},
+    font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
 };
 
@@ -57,7 +57,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                 DropDownMenu::new(
                     |_| {
                         text(*icons::MORE_HORIZ)
-                            .font(icons::font())
+                            .font(icons::filled())
                             .size(icons::SIZE_REGULAR)
                             .into()
                     },
@@ -138,8 +138,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                             ],
                             &state.theme,
                         )
-                        .font(font::font())
-                        .icon_font(icons::font())
+                        .icon_font(icons::filled())
                         .vibrant(false),
                     ),
                     Placement::BottomRight,
