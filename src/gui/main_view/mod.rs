@@ -1,3 +1,8 @@
+mod albums;
+mod artists;
+mod genres;
+mod tracks;
+
 use iced::{Border, Element, Length, Padding};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container};
@@ -54,10 +59,10 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
         },
         {
             let content = match state.main_view {
-                View::Tracks => "Track view",
-                View::Albums => "Album view",
-                View::Artists => "Artist view",
-                View::Genres => "Genre view",
+                View::Tracks => tracks::view(state),
+                View::Albums => albums::view(state),
+                View::Artists => artists::view(state),
+                View::Genres => genres::view(state),
             };
             center(content)
         }

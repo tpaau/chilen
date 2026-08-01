@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::Playlist;
+use chilen_backend::music_lib::state::Track;
 use iced::{
     Background, Border, Length, Padding, Shadow, color,
     widget::{Button, button, column, container, row, space, text},
@@ -17,7 +17,7 @@ use crate::gui::{
     widgets::THUMBNAIL_SIZE,
 };
 
-pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
+pub fn track_button<'a>(state: &'a Chilen, track: &'a Arc<Track>) -> Button<'a, Message> {
     button(
         row(vec![
             container(space())
@@ -30,17 +30,19 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                 .height(Length::Fixed(THUMBNAIL_SIZE))
                 .into(),
             container(column(vec![
-                text(playlist.name.clone())
-                    .size(SIZE_REGULAR)
-                    .color(state.theme.on_surface())
-                    .wrapping(text::Wrapping::None)
-                    .into(),
-                text({
-                    if playlist.tracks.is_empty() {
-                        "No tracks".to_string()
-                    } else {
-                        format!("{} tracks", playlist.tracks.len())
-                    }
+                text(if let Some(title) = &track.title {
+                    title.clone()
+                } else {
+                    "Unknown".to_string()
+                })
+                .size(SIZE_REGULAR)
+                .color(state.theme.on_surface())
+                .wrapping(text::Wrapping::None)
+                .into(),
+                text(if let Some(artist) = &track.artist {
+                    artist.clone()
+                } else {
+                    "Unknown".to_string()
                 })
                 .size(SIZE_SMALL)
                 .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
@@ -90,48 +92,13 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                                 },
                                 vertical_menu::Group {
                                     label: None,
-                                    entries: vec![
-                                        vertical_menu::Entry::Button {
-                                            icon: Some(&icons::UPLOAD),
-                                            label: "Export",
-                                            supporting_text: None,
-                                            error: false,
-                                            action: vertical_menu::Action::Message(Some(
-                                                Message::OpenPlaylistExportPicker(
-                                                    playlist.name.clone(),
-                                                ),
-                                            )),
-                                        },
-                                        vertical_menu::Entry::Button {
-                                            icon: Some(&icons::IMAGE),
-                                            label: "Change image",
-                                            supporting_text: None,
-                                            error: false,
-                                            action: vertical_menu::Action::Message(None),
-                                        },
-                                        vertical_menu::Entry::Button {
-                                            icon: Some(&icons::EDIT),
-                                            label: "Rename",
-                                            supporting_text: None,
-                                            error: false,
-                                            action: vertical_menu::Action::Message(Some(
-                                                Message::OpenPlaylistRenameDialog {
-                                                    playlist: playlist.name.clone(),
-                                                    name: playlist.name.clone(),
-                                                },
-                                            )),
-                                        },
-                                        vertical_menu::Entry::Separator,
-                                        vertical_menu::Entry::Button {
-                                            icon: Some(&icons::DELETE),
-                                            label: "Delete",
-                                            supporting_text: None,
-                                            error: true,
-                                            action: vertical_menu::Action::Message(Some(
-                                                Message::ConfirmPlaylistDeletion(playlist.clone()),
-                                            )),
-                                        },
-                                    ],
+                                    entries: vec![vertical_menu::Entry::Button {
+                                        icon: Some(&icons::UPLOAD),
+                                        label: "Details",
+                                        supporting_text: None,
+                                        error: false,
+                                        action: vertical_menu::Action::Message(None),
+                                    }],
                                 },
                             ],
                             &state.theme,
@@ -164,5 +131,5 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
             _ => style,
         }
     })
-    .on_press(Message::OpenPlaylist(playlist.clone()))
+    .on_press(Message::CloseDialog)
 }
