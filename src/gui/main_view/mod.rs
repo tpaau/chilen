@@ -18,6 +18,8 @@ pub enum View {
     Genres,
 }
 
+pub const THUMBNAIL_SIZE: f32 = 64.0;
+
 pub fn view(state: &Chilen) -> Element<'_, Message> {
     container(column![
         // TODO: Custom ordering

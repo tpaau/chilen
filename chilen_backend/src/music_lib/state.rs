@@ -230,6 +230,28 @@ impl Track {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Album {
+    pub name: String,
+    pub artists: Vec<String>,
+    pub tracks: Vec<Arc<Track>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Artist {
+    pub name: String,
+    pub tracks: Vec<Arc<Track>>,
+    pub albums: Vec<Arc<Album>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Genre {
+    pub name: String,
+    pub artists: Vec<Arc<Artist>>,
+    pub albums: Vec<Arc<Album>>,
+    pub tracks: Vec<Arc<Track>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Playlist {
     pub name: String,
     pub tracks: Vec<Arc<Track>>,
@@ -289,6 +311,9 @@ impl From<Playlist> for ConfPlaylist {
 pub struct MusicLibrary {
     pub playlists: HashSet<Arc<Playlist>>,
     pub tracks: HashSet<Arc<Track>>,
+    pub albums: Vec<Arc<Album>>,
+    pub artists: Vec<Arc<Artist>>,
+    pub genres: Vec<Arc<Genre>>,
     tracks_by_path: HashMap<String, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
     playlists_by_name: HashMap<String, Arc<Playlist>>,
@@ -300,23 +325,128 @@ impl MusicLibrary {
         tracks: HashSet<Track>,
     ) -> Result<Self, Error> {
         let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
-        let playlists: HashSet<Arc<Playlist>> = HashSet::new();
 
-        let mut path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
-        for t in tracks.iter() {
-            path_map.insert(t.path.to_string_lossy().to_string(), t.clone());
+        let album_names: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
+        let artist_names: HashSet<_> = tracks.iter().flat_map(|t| &t.artist).collect();
+        let genre_names: HashSet<_> = tracks.iter().flat_map(|t| &t.genre).collect();
+
+        let mut tracks_by_artist: HashMap<&String, HashSet<Arc<Track>>> =
+            HashMap::with_capacity(artist_names.len());
+        let mut tracks_by_album: HashMap<&String, HashSet<Arc<Track>>> =
+            HashMap::with_capacity(album_names.len());
+        let mut tracks_by_genre: HashMap<&String, HashSet<Arc<Track>>> =
+            HashMap::with_capacity(genre_names.len());
+
+        for track in &tracks {
+            if let Some(name) = &track.artist {
+                if let Some(val) = tracks_by_artist.get_mut(name) {
+                    val.insert(track.clone());
+                } else {
+                    tracks_by_artist.insert(name, [track.clone()].into_iter().collect());
+                }
+            }
+            if let Some(name) = &track.album {
+                if let Some(val) = tracks_by_album.get_mut(name) {
+                    val.insert(track.clone());
+                } else {
+                    tracks_by_album.insert(name, [track.clone()].into_iter().collect());
+                }
+            }
+            if let Some(name) = &track.genre {
+                if let Some(val) = tracks_by_genre.get_mut(name) {
+                    val.insert(track.clone());
+                } else {
+                    tracks_by_genre.insert(name, [track.clone()].into_iter().collect());
+                }
+            }
         }
 
-        let mut hash_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        let albums_len = album_names.len();
+
+        let albums: Vec<_> = album_names
+            .into_iter()
+            .map(|name| {
+                let tracks: Vec<_> = tracks_by_album[name].clone().into_iter().collect();
+                let artists: HashSet<String> =
+                    tracks.iter().flat_map(|t| t.artist.clone()).collect();
+                Arc::new(Album {
+                    name: name.to_string(),
+                    tracks,
+                    artists: artists.into_iter().collect(),
+                })
+            })
+            .collect();
+
+        let mut albums_by_artist: HashMap<&String, HashSet<Arc<Album>>> =
+            HashMap::with_capacity(artist_names.len());
+        for album in &albums {
+            for artist in &album.artists {
+                if let Some(val) = albums_by_artist.get_mut(&artist) {
+                    val.insert(album.clone());
+                } else {
+                    albums_by_artist.insert(artist, [album.clone()].into_iter().collect());
+                }
+            }
+        }
+
+        let artists: Vec<_> = artist_names
+            .into_iter()
+            .map(|name| {
+                let albums = if let Some(albums) = albums_by_artist.get(name) {
+                    albums.iter().cloned().collect()
+                } else {
+                    Vec::new()
+                };
+                Arc::new(Artist {
+                    name: name.to_string(),
+                    tracks: tracks_by_artist[name].clone().into_iter().collect(),
+                    albums,
+                })
+            })
+            .collect();
+
+        let mut artists_by_album: HashMap<&String, HashSet<Arc<Artist>>> =
+            HashMap::with_capacity(albums_len);
+        for artist in &artists {
+            for album in &artist.albums {
+                if let Some(val) = artists_by_album.get_mut(&album.name) {
+                    val.insert(artist.clone());
+                } else {
+                    artists_by_album.insert(&album.name, [artist.clone()].into_iter().collect());
+                }
+            }
+        }
+
+        let genres: Vec<_> = genre_names
+            .into_iter()
+            .map(|name| {
+                Arc::new(Genre {
+                    name: name.to_string(),
+                    tracks: tracks_by_genre[name].clone().into_iter().collect(),
+                    albums: Vec::new(),
+                    artists: Vec::new(),
+                })
+            })
+            .collect();
+
+        let mut track_path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
-            hash_map.insert(t.hash_self(), t.clone());
+            track_path_map.insert(t.path.to_string_lossy().to_string(), t.clone());
+        }
+
+        let mut track_hash_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        for t in tracks.iter() {
+            track_hash_map.insert(t.hash_self(), t.clone());
         }
 
         let mut lib = Self {
-            playlists,
+            playlists: HashSet::new(),
             tracks,
-            tracks_by_path: path_map,
-            tracks_by_hash: hash_map,
+            albums,
+            artists,
+            genres,
+            tracks_by_path: track_path_map,
+            tracks_by_hash: track_hash_map,
             playlists_by_name: HashMap::new(),
         };
 
@@ -359,6 +489,9 @@ impl MusicLibrary {
         Self {
             playlists,
             tracks,
+            artists: Vec::new(),
+            albums: Vec::new(),
+            genres: Vec::new(),
             tracks_by_path: path_map,
             tracks_by_hash: hash_map,
             playlists_by_name: HashMap::new(),

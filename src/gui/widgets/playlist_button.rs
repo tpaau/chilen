@@ -14,7 +14,7 @@ use crate::gui::{
     Chilen, DIM_TEXT_ALPHA, Message, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
-    widgets::THUMBNAIL_SIZE,
+    main_view::THUMBNAIL_SIZE,
 };
 
 pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
