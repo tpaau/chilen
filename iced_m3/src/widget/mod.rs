@@ -1,3 +1,4 @@
+pub mod button;
 pub mod dialog;
 pub mod drop_down_menu;
 pub mod navbar;
