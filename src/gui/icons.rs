@@ -34,11 +34,11 @@ pub static ALBUM: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe019).unwra
 pub static MUSIC_NOTE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe405).unwrap());
 pub static GENRES: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe022).unwrap());
 
-pub const SIZE_SMALLER: u32 = 20;
-pub const SIZE_SMALL: u32 = 26;
-pub const SIZE_REGULAR: u32 = 32;
-pub const SIZE_LARGE: u32 = 38;
-pub const SIZE_LARGER: u32 = 44;
+pub const SIZE_SMALLER: u32 = 16;
+pub const SIZE_SMALL: u32 = 20;
+pub const SIZE_REGULAR: u32 = 24;
+pub const SIZE_LARGE: u32 = 28;
+pub const SIZE_LARGER: u32 = 32;
 
 pub fn filled() -> iced::Font {
     iced::Font {

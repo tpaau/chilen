@@ -15,11 +15,13 @@ log = "0.4.29"
 clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 dirs = "6.0.0"
-iced = { version = "0.14.0", features = ["advanced"] }
-iced_widget = "0.14.2"
+iced = { version = "0.14.0", features = [ "advanced" ] }
+iced_widget = { version = "0.14.2", features = [ "image" ] }
 chilen_backend = { path = "chilen_backend" }
 iced_m3 = { path = "iced_m3" }
 rfd = "0.17.2"
+sweeten = "0.14.0"
+iced_core = "0.14.0"
 
 [features]
 mpris = [ "chilen_backend/mpris" ]

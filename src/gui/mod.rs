@@ -91,7 +91,7 @@ struct Chilen {
     loading_state: LoadingState,
     theme: Theme,
     settings: Settings,
-    main_view: main_view::View,
+    main_view: main_view::State,
 }
 
 impl Default for Chilen {
@@ -103,7 +103,9 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.dark_mode()),
             settings: Settings::load(),
-            main_view: main_view::View::default(),
+            main_view: main_view::State {
+                view: main_view::View::default(),
+            },
         }
     }
 }
@@ -328,7 +330,7 @@ impl Chilen {
                     info!("Didn't get the file handle, guessing the user cancelled the export");
                 }
             },
-            Message::ChangeMainView(view) => state.main_view = view,
+            Message::ChangeMainView(view) => state.main_view.view = view,
         }
         Task::none()
     }

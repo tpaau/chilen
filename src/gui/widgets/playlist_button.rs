@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Background, Border, Length, Padding, Shadow, color,
+    Border, Color, Length, Padding, color,
     widget::{Button, button, column, container, row, space, text},
 };
 use iced_m3::{
+    HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
@@ -136,8 +137,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                             ],
                             &state.theme,
                         )
-                        .icon_font(icons::filled())
-                        .vibrant(false),
+                        .icon_font(icons::filled()),
                     ),
                     iced_m3::widget::drop_down_menu::Placement::BottomRight,
                 ),
@@ -149,19 +149,23 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
     )
     .padding(Padding::new(SPACING_SMALLER as f32))
     .style(|_, status| {
-        let style = button::Style {
-            background: Some(Background::Color(state.theme.surface_container())),
-            text_color: state.theme.on_surface(),
+        let content_color = state.theme.on_surface();
+        iced_widget::button::Style {
+            background: Some(iced::Background::Color(match status {
+                iced_widget::button::Status::Active => Color::TRANSPARENT,
+                iced_widget::button::Status::Hovered => {
+                    content_color.scale_alpha(HOVER_STATE_LAYER_OPACITY)
+                }
+                iced_widget::button::Status::Pressed => {
+                    content_color.scale_alpha(PRESSED_STATE_LAYER_OPACITY)
+                }
+                iced_widget::button::Status::Disabled => {
+                    unreachable!("There should be no inactive buttons in the playlist view")
+                }
+            })),
+            text_color: content_color,
             border: Border::default().rounded(ROUNDING_REGULAR),
-            shadow: Shadow::default(),
-            snap: true,
-        };
-
-        match status {
-            button::Status::Hovered => {
-                style.with_background(Background::Color(state.theme.surface_container_high()))
-            }
-            _ => style,
+            ..Default::default()
         }
     })
     .on_press(Message::OpenPlaylist(playlist.clone()))
