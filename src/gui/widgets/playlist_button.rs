@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Border, Color, Length, Padding, color,
+    Border, Color, Length, Padding,
     widget::{Button, button, column, container, row, space, text},
 };
 use iced_m3::{
@@ -10,10 +10,11 @@ use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
+use iced_widget::{center, stack};
 
 use crate::gui::{
     BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, Chilen, DIM_TEXT_ALPHA, Message,
-    ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, THUMBNAIL_SIZE,
+    THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
 };
@@ -21,14 +22,23 @@ use crate::gui::{
 pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
     button(
         row![
-            container(space())
-                .style(|_| {
-                    container::Style::default()
-                        .background(color!(0xff0000))
-                        .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
-                })
-                .width(Length::Fixed(THUMBNAIL_SIZE))
-                .height(Length::Fixed(THUMBNAIL_SIZE)),
+            stack![
+                container(space())
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.surface_container_highest())
+                            .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
+                    })
+                    .width(Length::Fixed(THUMBNAIL_SIZE))
+                    .height(Length::Fixed(THUMBNAIL_SIZE)),
+                center(
+                    text(*icons::PLAYLIST_PLAY)
+                        .font(icons::filled())
+                        .color(state.theme.on_surface())
+                        .size(icons::SIZE_LARGE)
+                ),
+                // TODO: Thumbnail
+            ],
             container(column![
                 text(playlist.name.clone())
                     .size(SIZE_REGULAR)
