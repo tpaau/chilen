@@ -150,6 +150,6 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
             .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
             .into()
     } else {
-        text("Loading...").into()
+        center(text("Loading...")).into()
     }
 }

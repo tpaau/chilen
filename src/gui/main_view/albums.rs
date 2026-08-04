@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Album;
 use iced::{
-    Border, Element, Length, Padding,
+    Alignment, Border, Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
@@ -12,7 +12,8 @@ use iced_m3::{
 use iced_widget::{center, column, image, sensor, stack, text};
 
 use crate::gui::{
-    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, THUMBNAIL_SIZE,
+    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
+    THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
     main_view::{self, BUTTON_ROUNDING, button_style},
@@ -54,17 +55,32 @@ pub fn album_button<'a>(
                         .size(SIZE_REGULAR)
                         .color(state.theme.on_surface())
                         .wrapping(text::Wrapping::None),
-                    text({
-                        let len = album.artists.len();
-                        match len {
-                            0 => "No artists".to_string(),
+                    row![
+                        text(match album.tracks.len() {
+                            1 => "1 track".to_string(),
+                            _ => format!("{} tracks", album.tracks.len()),
+                        })
+                        .size(SIZE_SMALL)
+                        .color(state.theme.on_surface_variant())
+                        .wrapping(text::Wrapping::None),
+                        container(
+                            space()
+                                .width(Length::Fixed(SIZE_SMALL / 3.0))
+                                .height(Length::Fixed(SIZE_SMALL / 3.0))
+                        )
+                        .style(|_| container::Style::default()
+                            .border(Border::default().rounded(f32::MAX))
+                            .background(state.theme.on_surface_variant())),
+                        text(match album.artists.len() {
                             1 => "1 artist".to_string(),
-                            _ => format!("{len} artists"),
-                        }
-                    })
-                    .size(SIZE_SMALL)
-                    .color(state.theme.on_surface_variant())
-                    .wrapping(text::Wrapping::None),
+                            _ => format!("{} artists", album.artists.len()),
+                        })
+                        .size(SIZE_SMALL)
+                        .color(state.theme.on_surface_variant())
+                        .wrapping(text::Wrapping::None),
+                    ]
+                    .align_y(Alignment::Center)
+                    .spacing(SPACING_SMALLER),
                 ])
                 .width(Length::Fill)
                 .clip(true)
@@ -151,6 +167,6 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
             .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
             .into()
     } else {
-        text("Loading...").into()
+        center(text("Loading...")).into()
     }
 }

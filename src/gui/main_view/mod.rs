@@ -5,7 +5,7 @@ mod tracks;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::{Album, Artist, Track};
+use chilen_backend::music_lib::state::{Album, Artist, Genre, Track};
 use iced::{Border, Color, Element, Length, Padding, Task};
 use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
 use iced_widget::{center, column, container, space, stack};
@@ -27,6 +27,7 @@ pub struct State {
     pub tracks: Option<Vec<Option<Arc<Track>>>>,
     pub albums: Option<Vec<Option<Arc<Album>>>>,
     pub artists: Option<Vec<Option<Arc<Artist>>>>,
+    pub genres: Option<Vec<Option<Arc<Genre>>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,8 @@ pub enum Message {
     AlbumButtonPoppedOut(usize),
     ArtistButtonPoppedIn(usize),
     ArtistButtonPoppedOut(usize),
+    GenreButtonPoppedIn(usize),
+    GenreButtonPoppedOut(usize),
 }
 
 fn button_style(
@@ -256,6 +259,45 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 }
             } else {
                 warn!("Artist list in the main view state is not initialized!");
+            }
+        }
+        Message::GenreButtonPoppedIn(index) => {
+            if let Some(lib) = &state.library {
+                if index < lib.genres.len() {
+                    if let Some(genres) = &mut state.main_view.genres {
+                        if index < genres.len() {
+                            genres[index] = Some(lib.genres[index].clone());
+                        } else {
+                            warn!(
+                                "Index {index} is out of bounds for genre count in the main view ({})",
+                                genres.len()
+                            );
+                        }
+                    } else {
+                        warn!("Genre list in the main view state is not initialized!");
+                    }
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for genre count in the music library ({})",
+                        lib.genres.len()
+                    );
+                }
+            } else {
+                warn!("Can't render genre button, library not initialized!");
+            }
+        }
+        Message::GenreButtonPoppedOut(index) => {
+            if let Some(genres) = &mut state.main_view.genres {
+                if index < genres.len() {
+                    genres[index] = None;
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for genre count in the main view ({})",
+                        genres.len()
+                    );
+                }
+            } else {
+                warn!("Genre list in the main view state is not initialized!");
             }
         }
     }

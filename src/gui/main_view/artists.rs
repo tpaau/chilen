@@ -50,9 +50,9 @@ pub fn artist_button<'a>(
                         .color(state.theme.on_surface())
                         .wrapping(text::Wrapping::None),
                     row![
-                        text(match artist.tracks.len() {
-                            1 => "1 track".to_string(),
-                            _ => format!("{} tracks", artist.tracks.len()),
+                        text(match artist.albums.len() {
+                            1 => "1 album".to_string(),
+                            _ => format!("{} albums", artist.albums.len()),
                         })
                         .size(SIZE_SMALL)
                         .color(state.theme.on_surface_variant())
@@ -65,9 +65,9 @@ pub fn artist_button<'a>(
                         .style(|_| container::Style::default()
                             .border(Border::default().rounded(f32::MAX))
                             .background(state.theme.on_surface_variant())),
-                        text(match artist.albums.len() {
-                            1 => "1 album".to_string(),
-                            _ => format!("{} albums", artist.albums.len()),
+                        text(match artist.tracks.len() {
+                            1 => "1 track".to_string(),
+                            _ => format!("{} tracks", artist.tracks.len()),
                         })
                         .size(SIZE_SMALL)
                         .color(state.theme.on_surface_variant())
@@ -161,6 +161,6 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
             .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
             .into()
     } else {
-        text("Loading...").into()
+        center(text("Loading...")).into()
     }
 }
