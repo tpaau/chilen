@@ -10,9 +10,9 @@ use std::{
 
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
-    tag::{Accessor, ItemValue, Tag, items::Timestamp},
+    tag::{Accessor, ItemValue, items::Timestamp},
 };
-use log::{error, trace};
+use log::{error, trace, warn};
 use lrc_rs::SyncedLyrics;
 #[cfg(feature = "mpris")]
 use mpris_server::TrackId;
@@ -24,7 +24,7 @@ use crate::{
     Error, Event,
     music_lib::{
         DATA_DIR,
-        covers::{CoverError, LoadMode, get_track_cover},
+        covers::{LoadMode, get_track_cover},
         indexer::{self},
         tracks_from_m3u8,
     },
@@ -69,10 +69,13 @@ impl std::fmt::Display for Track {
     }
 }
 
-impl TryFrom<&TaggedFile> for Track {
-    type Error = String;
-    fn try_from(value: &TaggedFile) -> Result<Self, Self::Error> {
-        let tag = match value.primary_tag() {
+impl Track {
+    pub fn new(
+        path: PathBuf,
+        tagged_file: &TaggedFile,
+        load_mode: &LoadMode,
+    ) -> Result<Self, String> {
+        let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
             None => {
                 return Err(String::from("The provided tagged file had no tags"));
@@ -96,10 +99,10 @@ impl TryFrom<&TaggedFile> for Track {
             None
         };
 
-        Ok(Track {
-            path: PathBuf::new(),
+        let mut track = Track {
+            path,
             cover_path: None,
-            duration: value.properties().duration(),
+            duration: tagged_file.properties().duration(),
             artist: tag.artist().map(|artist| artist.into()),
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
@@ -111,21 +114,26 @@ impl TryFrom<&TaggedFile> for Track {
             disc: tag.disk(),
             disc_total: tag.disk_total(),
             date: tag.date(),
-        })
-    }
-}
+        };
 
-impl Track {
-    /// Set the cover art from cache or extract it from the source file.
-    pub fn get_cover(&mut self, tag: &Tag) -> Result<(), CoverError> {
-        self.cover_path = Some(get_track_cover(self, tag, &LoadMode::Load)?);
-        Ok(())
-    }
+        #[cfg(not(test))]
+        match get_track_cover(track.hash_self(), tag, load_mode) {
+            Ok(cover) => track.cover_path = Some(cover),
+            Err(e) => {
+                warn!("Could not get the cover image: {e}");
+            }
+        }
+        #[cfg(test)]
+        if load_mode != &LoadMode::None {
+            match get_track_cover(track.hash_self(), tag, load_mode) {
+                Ok(cover) => track.cover_path = Some(cover),
+                Err(e) => {
+                    warn!("Could not get the cover image: {e}");
+                }
+            }
+        }
 
-    /// Extract the cover art from the source file discarding the cache contents.
-    pub fn extract_cover(&mut self, tag: &Tag) -> Result<(), CoverError> {
-        self.cover_path = Some(get_track_cover(self, tag, &LoadMode::Rebuild)?);
-        Ok(())
+        Ok(track)
     }
 
     pub fn hash_self(&self) -> u64 {

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Track;
 use iced::{
-    Border, Element, Length, Padding,
+    Border, ContentFit, Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
@@ -24,14 +24,15 @@ pub fn track_button<'a>(
     maybe_track: &'a Option<Arc<Track>>,
 ) -> Element<'a, gui::Message> {
     let content: Element<'a, gui::Message> = if let Some(track) = maybe_track {
+        let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
         button(
             row![
                 stack![
                     container(space())
-                        .style(|_| {
+                        .style(move |_| {
                             container::Style::default()
                                 .background(state.theme.surface_container_high())
-                                .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
+                                .border(Border::default().rounded(thumbnail_border_radius))
                         })
                         .width(Length::Fixed(THUMBNAIL_SIZE))
                         .height(Length::Fixed(THUMBNAIL_SIZE)),
@@ -43,8 +44,10 @@ pub fn track_button<'a>(
                     ),
                     track.cover_path.as_ref().map(|cover| {
                         image(cover)
+                            .content_fit(ContentFit::Cover)
                             .width(Length::Fixed(THUMBNAIL_SIZE))
                             .height(Length::Fixed(THUMBNAIL_SIZE))
+                            .border_radius(thumbnail_border_radius)
                     })
                 ],
                 container(column![

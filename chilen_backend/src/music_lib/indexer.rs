@@ -5,10 +5,7 @@ use std::{
     time::Duration,
 };
 
-use lofty::{
-    error::LoftyError,
-    file::{TaggedFile, TaggedFileExt},
-};
+use lofty::{error::LoftyError, file::TaggedFile};
 use log::{info, trace, warn};
 use walkdir::WalkDir;
 
@@ -59,15 +56,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
                 }
             };
 
-            let tag = match tagged_file.primary_tag() {
-                Some(tag) => tag,
-                None => {
-                    warn!("Found an audio file with no tags: {file:?}. Ignoring");
-                    return;
-                }
-            };
-
-            let mut track = match Track::try_from(&tagged_file) {
+            let track = match Track::new(file, &tagged_file, &load_mode) {
                 Ok(track) => track,
                 Err(e) => {
                     warn!("Could not create a track struct: {e}");
@@ -75,22 +64,6 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
                 }
             };
 
-            match load_mode {
-                #[cfg(test)]
-                LoadMode::None => {}
-                LoadMode::Load => {
-                    if let Err(e) = track.get_cover(tag) {
-                        trace!("Could not obtain a cover from file {file:?}: {e}")
-                    }
-                }
-                LoadMode::Rebuild => {
-                    if let Err(e) = track.extract_cover(tag) {
-                        trace!("Could not extract a cover from file {file:?}: {e}")
-                    }
-                }
-            }
-
-            track.path = file;
             lock.write().unwrap().push(track)
         }));
     }

@@ -1,3 +1,5 @@
+mod infer_image;
+
 use std::{
     fs::{File, create_dir_all},
     hash::Hash,
@@ -12,10 +14,10 @@ use lofty::{
     picture::{Picture, PictureType},
     tag::Tag,
 };
-use log::error;
+use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::{music_lib::CACHE_DIR, music_lib::Track};
+use crate::music_lib::CACHE_DIR;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CoverError {
@@ -23,6 +25,7 @@ pub enum CoverError {
     NoSuitablePictures,
     CoverWriteError(String),
     CacheDirError(String),
+    UnknownFileType,
 }
 
 impl std::fmt::Display for CoverError {
@@ -35,6 +38,7 @@ impl std::fmt::Display for CoverError {
             ),
             Self::CoverWriteError(e) => write!(f, "Could not write the cover image to cache: {e}"),
             Self::CacheDirError(e) => write!(f, "Could not create the cache directory: {e}"),
+            CoverError::UnknownFileType => write!(f, "Could not determine the image type"),
         }
     }
 }
@@ -130,7 +134,7 @@ fn safe_file_create(path: &PathBuf) -> Result<File, std::io::Error> {
 
 // TODO: Add quality options
 pub(crate) fn get_track_cover(
-    track: &Track,
+    track_hash: u64,
     tag: &Tag,
     load_mode: &LoadMode,
 ) -> Result<PathBuf, CoverError> {
@@ -142,9 +146,16 @@ pub(crate) fn get_track_cover(
         return Err(CoverError::CacheDirError(e.to_string()));
     }
 
-    let hash = track.hash_self();
+    let pic = pick_front_cover_or_replacement(tag.pictures())?.data();
+    let extension = if let Some(extension) = infer_image::extension(pic) {
+        extension
+    } else {
+        warn!("Could not determine the image type for track {track_hash}");
+        return Err(CoverError::UnknownFileType);
+    };
+
     let mut cover_path = cover_cache.clone();
-    cover_path.push(hash.to_string());
+    cover_path.push(format!("{track_hash}.{extension}"));
 
     if load_mode == &LoadMode::Load && cover_path.is_file() {
         return Ok(cover_path);
@@ -160,8 +171,7 @@ pub(crate) fn get_track_cover(
         }
     };
 
-    let pic = pick_front_cover_or_replacement(tag.pictures())?;
-    if let Err(e) = file.write_all(pic.data()) {
+    if let Err(e) = file.write_all(pic) {
         error!("Could not write the cover image to the cache directory: {e}");
         return Err(CoverError::CoverWriteError(e.to_string()));
     }
