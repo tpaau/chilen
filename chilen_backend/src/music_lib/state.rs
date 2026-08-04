@@ -310,7 +310,7 @@ impl From<Playlist> for ConfPlaylist {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MusicLibrary {
     pub playlists: HashSet<Arc<Playlist>>,
-    pub tracks: HashSet<Arc<Track>>,
+    pub tracks: Vec<Arc<Track>>,
     pub albums: Vec<Arc<Album>>,
     pub artists: Vec<Arc<Artist>>,
     pub genres: Vec<Arc<Genre>>,
@@ -324,7 +324,7 @@ impl MusicLibrary {
         loaded: ConfMusicLibrary,
         tracks: HashSet<Track>,
     ) -> Result<Self, Error> {
-        let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
+        let tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
         let album_names: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
         let artist_names: HashSet<_> = tracks.iter().flat_map(|t| &t.artist).collect();
@@ -473,7 +473,7 @@ impl MusicLibrary {
     }
 
     pub(crate) fn new_from_tracks(tracks: Vec<Track>) -> Self {
-        let tracks: HashSet<Arc<Track>> = tracks.into_iter().map(Arc::new).collect();
+        let tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
         let playlists: HashSet<Arc<Playlist>> = HashSet::new();
 
         let mut path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());

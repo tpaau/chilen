@@ -60,7 +60,7 @@ pub enum Message {
     DeletePlaylist(Arc<Playlist>),
     OpenPlaylistExportPicker(String),
     ExportPlaylist(String, Option<FileHandle>),
-    ChangeMainView(main_view::View),
+    MainView(main_view::Message),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -105,6 +105,8 @@ impl Default for Chilen {
             settings: Settings::load(),
             main_view: main_view::State {
                 view: main_view::View::default(),
+                tracks: None,
+                albums: None,
             },
         }
     }
@@ -116,17 +118,17 @@ static WINDOW_MODE: LazyLock<Arc<RwLock<Option<window::Mode>>>> =
 static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
-const SPACING_SMALLER: u32 = 8;
-const SPACING_SMALL: u32 = 12;
-const SPACING_REGULAR: u32 = 16;
-const SPACING_LARGE: u32 = 20;
-const SPACING_LARGER: u32 = 24;
+const SPACING_SMALLER: f32 = 8.0;
+const SPACING_SMALL: f32 = 12.0;
+const SPACING_REGULAR: f32 = 16.0;
+const SPACING_LARGE: f32 = 20.0;
+const SPACING_LARGER: f32 = 24.0;
 
-const ROUNDING_SMALLER: u32 = 12;
-const ROUNDING_SMALL: u32 = 14;
-const ROUNDING_REGULAR: u32 = 14;
-const ROUNDING_LARGE: u32 = 18;
-const ROUNDING_LARGER: u32 = 20;
+const ROUNDING_SMALLER: f32 = 12.0;
+const ROUNDING_SMALL: f32 = 14.0;
+const ROUNDING_REGULAR: f32 = 14.0;
+const ROUNDING_LARGE: f32 = 18.0;
+const ROUNDING_LARGER: f32 = 20.0;
 
 const DIM_TEXT_ALPHA: f32 = 0.7;
 
@@ -157,14 +159,14 @@ impl Chilen {
             container(column([row([
                 // TODO: I should be able to resize this
                 container(playlist_view::view(state))
-                    .padding(Padding::new(SPACING_SMALL as f32))
+                    .padding(Padding::new(SPACING_SMALL))
                     .width(Length::Fixed(350.0))
                     .height(Length::Fill)
                     .into(),
                 main_view::view(state),
                 // TODO: I should be able to resize this
                 container("Currently playing")
-                    .padding(Padding::new(SPACING_SMALL as f32))
+                    .padding(Padding::new(SPACING_SMALL))
                     .width(Length::Fixed(500.0))
                     .height(Length::Fill)
                     .into(),
@@ -183,6 +185,8 @@ impl Chilen {
                 Event::Backend(event) => match event {
                     chilen_backend::Event::LibraryChanged(lib) => {
                         state.loading_state = LoadingState::Loaded;
+                        state.main_view.tracks = Some(vec![None; lib.tracks.len()]);
+                        state.main_view.albums = Some(vec![None; lib.albums.len()]);
                         state.library = Some(lib);
                     }
                     chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
@@ -330,7 +334,9 @@ impl Chilen {
                     info!("Didn't get the file handle, guessing the user cancelled the export");
                 }
             },
-            Message::ChangeMainView(view) => state.main_view.view = view,
+            Message::MainView(msg) => {
+                return main_view::update(state, msg).map(Message::MainView);
+            }
         }
         Task::none()
     }

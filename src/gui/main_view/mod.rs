@@ -5,14 +5,15 @@ mod tracks;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::Track;
-use iced::{Border, Color, Element, Length, Padding};
+use chilen_backend::music_lib::state::{Album, Track};
+use iced::{Border, Color, Element, Length, Padding, Task};
 use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
-use iced_widget::{center, column, container};
+use iced_widget::{center, column, container, space, stack};
+use log::warn;
 
-use crate::gui::{Chilen, Message, ROUNDING_REGULAR, SPACING_SMALL, icons};
+use crate::gui::{self, Chilen, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, icons};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum View {
     #[default]
     Tracks,
@@ -23,7 +24,23 @@ pub enum View {
 
 pub struct State {
     pub view: View,
+    pub tracks: Option<Vec<Option<Arc<Track>>>>,
+    pub albums: Option<Vec<Option<Arc<Album>>>>,
 }
+
+#[derive(Debug, Clone)]
+pub enum Message {
+    ChangeMainView(View),
+    TrackButtonPoppedIn(usize),
+    TrackButtonPoppedOut(usize),
+    AlbumButtonPoppedIn(usize),
+    AlbumButtonPoppedOut(usize),
+}
+
+const BUTTON_ROUNDING: f32 = ROUNDING_REGULAR;
+const BUTTON_PADDING: f32 = SPACING_SMALLER;
+const BUTTON_HEIGHT: Length = Length::Fixed(THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING);
+const BUTTON_SPACING: f32 = SPACING_SMALLER;
 
 fn button_style(
     status: iced_widget::button::Status,
@@ -44,14 +61,14 @@ fn button_style(
             }
         })),
         text_color: content_color,
-        border: Border::default().rounded(ROUNDING_REGULAR),
+        border: Border::default().rounded(BUTTON_ROUNDING),
         ..Default::default()
     }
 }
 
 pub const THUMBNAIL_SIZE: f32 = 64.0;
 
-pub fn view(state: &Chilen) -> Element<'_, Message> {
+pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
     container(column![
         // TODO: Custom ordering
         {
@@ -66,22 +83,22 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                     iced_m3::widget::navbar::Item {
                         icon: &icons::MUSIC_NOTE,
                         label: "Tracks",
-                        message: Message::ChangeMainView(View::Tracks),
+                        message: gui::Message::MainView(Message::ChangeMainView(View::Tracks)),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::ALBUM,
                         label: "Albums",
-                        message: Message::ChangeMainView(View::Albums),
+                        message: gui::Message::MainView(Message::ChangeMainView(View::Albums)),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::ARTIST,
                         label: "Artists",
-                        message: Message::ChangeMainView(View::Artists),
+                        message: gui::Message::MainView(Message::ChangeMainView(View::Artists)),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::GENRES,
                         label: "Genres",
-                        message: Message::ChangeMainView(View::Genres),
+                        message: gui::Message::MainView(Message::ChangeMainView(View::Genres)),
                     },
                 ],
                 &state.theme,
@@ -91,11 +108,25 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
             .icon_font_inactive(icons::outlined())
         },
         {
+            // FIX: This is a WORKAROUND.
+            // The `Scrollable` widget doesn't correctly manage its state which makes multiple
+            // scrollables in the same state tree share a state.
+            //
+            // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
             let content = match state.main_view.view {
                 View::Tracks => tracks::view(state),
-                View::Albums => albums::view(state),
-                View::Artists => artists::view(state),
-                View::Genres => genres::view(state),
+                View::Albums => stack![albums::view(state)].into(),
+                View::Artists => stack![
+                    space().width(Length::Fill).height(Length::Fill),
+                    artists::view(state)
+                ]
+                .into(),
+                View::Genres => stack![
+                    space().width(Length::Fill).height(Length::Fill),
+                    space().width(Length::Fill).height(Length::Fill),
+                    genres::view(state)
+                ]
+                .into(),
             };
             center(content)
         }
@@ -105,8 +136,93 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
             .background(state.theme.background())
             .border(Border::default().rounded(ROUNDING_REGULAR))
     })
-    .padding(Padding::new(SPACING_SMALL as f32))
+    .padding(Padding::new(SPACING_SMALL))
     .width(Length::Fill)
     .height(Length::Fill)
     .into()
+}
+
+pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+    match message {
+        Message::ChangeMainView(view) => state.main_view.view = view,
+        Message::TrackButtonPoppedIn(index) => {
+            if let Some(lib) = &state.library {
+                if index < lib.tracks.len() {
+                    if let Some(tracks) = &mut state.main_view.tracks {
+                        if index < tracks.len() {
+                            tracks[index] = Some(lib.tracks[index].clone());
+                        } else {
+                            warn!(
+                                "Index {index} is out of bounds for track count in the main view ({})",
+                                tracks.len()
+                            );
+                        }
+                    } else {
+                        warn!("Track list in the main view state is not initialized!");
+                    }
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for track count in the music library ({})",
+                        lib.tracks.len()
+                    );
+                }
+            } else {
+                warn!("Can't render track button, library not initialized!");
+            }
+        }
+        Message::TrackButtonPoppedOut(index) => {
+            if let Some(tracks) = &mut state.main_view.tracks {
+                if index < tracks.len() {
+                    tracks[index] = None;
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for track count in the main view ({})",
+                        tracks.len()
+                    );
+                }
+            } else {
+                warn!("Track list in the main view state is not initialized!");
+            }
+        }
+        Message::AlbumButtonPoppedIn(index) => {
+            if let Some(lib) = &state.library {
+                if index < lib.albums.len() {
+                    if let Some(albums) = &mut state.main_view.albums {
+                        if index < albums.len() {
+                            albums[index] = Some(lib.albums[index].clone());
+                        } else {
+                            warn!(
+                                "Index {index} is out of bounds for album count in the main view ({})",
+                                albums.len()
+                            );
+                        }
+                    } else {
+                        warn!("Album list in the main view state is not initialized!");
+                    }
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for album count in the music library ({})",
+                        lib.albums.len()
+                    );
+                }
+            } else {
+                warn!("Can't render album button, library not initialized!");
+            }
+        }
+        Message::AlbumButtonPoppedOut(index) => {
+            if let Some(albums) = &mut state.main_view.albums {
+                if index < albums.len() {
+                    albums[index] = None;
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for album count in the main view ({})",
+                        albums.len()
+                    );
+                }
+            } else {
+                warn!("Album list in the main view state is not initialized!");
+            }
+        }
+    }
+    Task::none()
 }

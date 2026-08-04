@@ -147,7 +147,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
         ])
         .spacing(SPACING_SMALL),
     )
-    .padding(Padding::new(SPACING_SMALLER as f32))
+    .padding(Padding::new(SPACING_SMALLER))
     .style(|_, status| {
         let content_color = state.theme.on_surface();
         iced_widget::button::Style {

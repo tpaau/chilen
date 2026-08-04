@@ -26,7 +26,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                         .border(Border::default().rounded(ROUNDING_REGULAR))
                 })
                 .width(Length::Fill)
-                .padding(Padding::new(SPACING_SMALLER as f32))
+                .padding(Padding::new(SPACING_SMALLER))
                 .into()
         }
         LoadingState::Loaded => {
