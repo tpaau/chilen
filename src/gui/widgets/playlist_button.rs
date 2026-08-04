@@ -12,10 +12,10 @@ use iced_m3::{
 };
 
 use crate::gui::{
-    Chilen, DIM_TEXT_ALPHA, Message, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+    BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, Chilen, DIM_TEXT_ALPHA, Message,
+    ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
-    main_view::THUMBNAIL_SIZE,
 };
 
 pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
@@ -25,7 +25,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                 .style(|_| {
                     container::Style::default()
                         .background(color!(0xff0000))
-                        .border(Border::default().rounded(ROUNDING_REGULAR - SPACING_SMALLER))
+                        .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
                 })
                 .width(Length::Fixed(THUMBNAIL_SIZE))
                 .height(Length::Fixed(THUMBNAIL_SIZE)),
@@ -140,9 +140,9 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
             )
             .center_y(Length::Fill),
         ]
-        .spacing(SPACING_SMALL),
+        .spacing(BUTTON_SPACING),
     )
-    .padding(Padding::new(SPACING_SMALLER))
+    .padding(Padding::new(BUTTON_PADDING))
     .style(|_, status| {
         let content_color = state.theme.on_surface();
         iced_widget::button::Style {
@@ -159,7 +159,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                 }
             })),
             text_color: content_color,
-            border: Border::default().rounded(ROUNDING_REGULAR),
+            border: Border::default().rounded(BUTTON_ROUNDING),
             ..Default::default()
         }
     })

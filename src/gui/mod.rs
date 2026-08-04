@@ -107,6 +107,7 @@ impl Default for Chilen {
                 view: main_view::View::default(),
                 tracks: None,
                 albums: None,
+                artists: None,
             },
         }
     }
@@ -131,6 +132,12 @@ const ROUNDING_LARGE: f32 = 18.0;
 const ROUNDING_LARGER: f32 = 20.0;
 
 const DIM_TEXT_ALPHA: f32 = 0.7;
+
+const THUMBNAIL_SIZE: f32 = 64.0;
+const BUTTON_ROUNDING: f32 = ROUNDING_LARGE;
+const BUTTON_PADDING: f32 = SPACING_SMALLER;
+const BUTTON_HEIGHT: Length = Length::Fixed(THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING);
+const BUTTON_SPACING: f32 = SPACING_SMALLER;
 
 pub fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()
@@ -187,6 +194,7 @@ impl Chilen {
                         state.loading_state = LoadingState::Loaded;
                         state.main_view.tracks = Some(vec![None; lib.tracks.len()]);
                         state.main_view.albums = Some(vec![None; lib.albums.len()]);
+                        state.main_view.artists = Some(vec![None; lib.artists.len()]);
                         state.library = Some(lib);
                     }
                     chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),

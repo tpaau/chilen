@@ -5,13 +5,13 @@ mod tracks;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::{Album, Track};
+use chilen_backend::music_lib::state::{Album, Artist, Track};
 use iced::{Border, Color, Element, Length, Padding, Task};
 use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
 use iced_widget::{center, column, container, space, stack};
 use log::warn;
 
-use crate::gui::{self, Chilen, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, icons};
+use crate::gui::{self, BUTTON_ROUNDING, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum View {
@@ -26,6 +26,7 @@ pub struct State {
     pub view: View,
     pub tracks: Option<Vec<Option<Arc<Track>>>>,
     pub albums: Option<Vec<Option<Arc<Album>>>>,
+    pub artists: Option<Vec<Option<Arc<Artist>>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -35,12 +36,9 @@ pub enum Message {
     TrackButtonPoppedOut(usize),
     AlbumButtonPoppedIn(usize),
     AlbumButtonPoppedOut(usize),
+    ArtistButtonPoppedIn(usize),
+    ArtistButtonPoppedOut(usize),
 }
-
-const BUTTON_ROUNDING: f32 = ROUNDING_REGULAR;
-const BUTTON_PADDING: f32 = SPACING_SMALLER;
-const BUTTON_HEIGHT: Length = Length::Fixed(THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING);
-const BUTTON_SPACING: f32 = SPACING_SMALLER;
 
 fn button_style(
     status: iced_widget::button::Status,
@@ -65,8 +63,6 @@ fn button_style(
         ..Default::default()
     }
 }
-
-pub const THUMBNAIL_SIZE: f32 = 64.0;
 
 pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
     container(column![
@@ -221,6 +217,45 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 }
             } else {
                 warn!("Album list in the main view state is not initialized!");
+            }
+        }
+        Message::ArtistButtonPoppedIn(index) => {
+            if let Some(lib) = &state.library {
+                if index < lib.artists.len() {
+                    if let Some(artists) = &mut state.main_view.artists {
+                        if index < artists.len() {
+                            artists[index] = Some(lib.artists[index].clone());
+                        } else {
+                            warn!(
+                                "Index {index} is out of bounds for artist count in the main view ({})",
+                                artists.len()
+                            );
+                        }
+                    } else {
+                        warn!("Artist list in the main view state is not initialized!");
+                    }
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for artist count in the music library ({})",
+                        lib.albums.len()
+                    );
+                }
+            } else {
+                warn!("Can't render artist button, library not initialized!");
+            }
+        }
+        Message::ArtistButtonPoppedOut(index) => {
+            if let Some(artists) = &mut state.main_view.artists {
+                if index < artists.len() {
+                    artists[index] = None;
+                } else {
+                    warn!(
+                        "Index {index} is out of bounds for artist count in the main view ({})",
+                        artists.len()
+                    );
+                }
+            } else {
+                warn!("Artist list in the main view state is not initialized!");
             }
         }
     }

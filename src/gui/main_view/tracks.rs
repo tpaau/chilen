@@ -12,13 +12,11 @@ use iced_m3::{
 use iced_widget::{center, column, image, sensor, stack, text};
 
 use crate::gui::{
-    self, Chilen, DIM_TEXT_ALPHA, SPACING_SMALL,
+    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, DIM_TEXT_ALPHA, SPACING_SMALL,
+    THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
-    main_view::{
-        self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, THUMBNAIL_SIZE,
-        button_style,
-    },
+    main_view::{self, BUTTON_ROUNDING, button_style},
 };
 
 pub fn track_button<'a>(
@@ -124,7 +122,6 @@ pub fn track_button<'a>(
             ]
             .spacing(SPACING_SMALL),
         )
-        .height(BUTTON_HEIGHT)
         .padding(Padding::new(BUTTON_PADDING))
         .style(|_, status| button_style(status, &state.theme))
         .on_press(gui::Message::CloseDialog)
@@ -150,13 +147,9 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
         )
         .spacing(BUTTON_SPACING);
 
-        if state.main_view.view == main_view::View::Tracks {
-            iced_widget::scrollable(content)
-                .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
-                .into()
-        } else {
-            content.into()
-        }
+        iced_widget::scrollable(content)
+            .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
+            .into()
     } else {
         text("Loading...").into()
     }

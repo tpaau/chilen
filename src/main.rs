@@ -10,6 +10,7 @@ use log::{error, info};
 
 use crate::argparse::parse_args;
 
+
 fn handle_events(receiver: Receiver<chilen_backend::Event>) {
     // TODO: Cleaner way of doing this?
     loop {
