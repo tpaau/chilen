@@ -70,6 +70,8 @@ impl std::fmt::Display for Track {
 }
 
 impl Track {
+    // TODO: Have a separate thumbnail path for the track to make the image load faster, look
+    // better, and avoid resampling during runtime.
     pub fn new(
         path: PathBuf,
         tagged_file: &TaggedFile,

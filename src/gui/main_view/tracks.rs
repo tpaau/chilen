@@ -47,6 +47,7 @@ pub fn track_button<'a>(
                             .content_fit(ContentFit::Cover)
                             .width(Length::Fixed(THUMBNAIL_SIZE))
                             .height(Length::Fixed(THUMBNAIL_SIZE))
+                            .filter_method(image::FilterMethod::Linear)
                             .border_radius(thumbnail_border_radius)
                     })
                 ],
