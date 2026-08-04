@@ -1,3 +1,5 @@
+//! From https://docs.rs/infer/latest/src/infer/matchers/image.rs.html
+
 use core::convert::TryInto;
 
 /// Returns the corresponding extension for image data.
@@ -322,7 +324,7 @@ pub fn is_dwg(buf: &[u8]) -> bool {
 }
 
 // GetFtyp returns the major brand, minor version and compatible brands of the ISO-BMFF data
-fn get_ftyp(buf: &[u8]) -> Option<(&[u8], &[u8], impl Iterator<Item = &[u8]>)> {
+fn get_ftyp(buf: &[u8]) -> Option<(&[u8], &[u8], impl Iterator<Item = &[u8; 4]>)> {
     if buf.len() < 16 {
         return None;
     }
@@ -332,7 +334,9 @@ fn get_ftyp(buf: &[u8]) -> Option<(&[u8], &[u8], impl Iterator<Item = &[u8]>)> {
     let major = &buf[8..12];
     let minor = &buf[12..16];
     let compatible = buf[16..]
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .take((ftyp_length / 4).saturating_sub(16 / 4));
 
     Some((major, minor, compatible))
