@@ -9,11 +9,11 @@ pub(super) const BYTES_BOLD: &[u8] = include_bytes!("..\\..\\resources\\Roboto\\
 #[cfg(unix)]
 pub(super) const BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Bold.ttf");
 
-pub const SIZE_SMALLER: u32 = 12;
-pub const SIZE_SMALL: u32 = 14;
-pub const SIZE_REGULAR: u32 = 16;
-pub const SIZE_LARGE: u32 = 18;
-pub const SIZE_LARGER: u32 = 18;
+pub const SIZE_SMALLER: f32 = 12.0;
+pub const SIZE_SMALL: f32 = 14.0;
+pub const SIZE_REGULAR: f32 = 16.0;
+pub const SIZE_LARGE: f32 = 18.0;
+pub const SIZE_LARGER: f32 = 20.0;
 
 const NAME: &str = "Noto Sans";
 

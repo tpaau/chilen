@@ -13,8 +13,7 @@ use iced_m3::{
 use iced_widget::{center, stack};
 
 use crate::gui::{
-    BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, Chilen, DIM_TEXT_ALPHA, Message,
-    THUMBNAIL_SIZE,
+    BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, Chilen, Message, THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
 };
@@ -52,7 +51,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                     }
                 })
                 .size(SIZE_SMALL)
-                .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA)),
+                .color(state.theme.on_surface_variant()),
             ])
             .width(Length::Fill)
             .clip(true)

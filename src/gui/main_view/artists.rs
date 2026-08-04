@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Artist;
 use iced::{
-    Border, Element, Length, Padding,
+    Alignment, Border, Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
@@ -12,7 +12,7 @@ use iced_m3::{
 use iced_widget::{center, column, sensor, stack, text};
 
 use crate::gui::{
-    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, DIM_TEXT_ALPHA, SPACING_SMALL,
+    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
     THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
@@ -55,9 +55,26 @@ pub fn artist_button<'a>(
                             _ => format!("{} tracks", artist.tracks.len()),
                         })
                         .size(SIZE_SMALL)
-                        .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
+                        .color(state.theme.on_surface_variant())
                         .wrapping(text::Wrapping::None),
-                    ],
+                        container(
+                            space()
+                                .width(Length::Fixed(SIZE_SMALL / 3.0))
+                                .height(Length::Fixed(SIZE_SMALL / 3.0))
+                        )
+                        .style(|_| container::Style::default()
+                            .border(Border::default().rounded(f32::MAX))
+                            .background(state.theme.on_surface_variant())),
+                        text(match artist.albums.len() {
+                            1 => "1 album".to_string(),
+                            _ => format!("{} albums", artist.albums.len()),
+                        })
+                        .size(SIZE_SMALL)
+                        .color(state.theme.on_surface_variant())
+                        .wrapping(text::Wrapping::None),
+                    ]
+                    .align_y(Alignment::Center)
+                    .spacing(SPACING_SMALLER),
                 ])
                 .width(Length::Fill)
                 .clip(true)

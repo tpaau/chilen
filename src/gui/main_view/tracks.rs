@@ -12,8 +12,7 @@ use iced_m3::{
 use iced_widget::{center, column, image, sensor, stack, text};
 
 use crate::gui::{
-    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, DIM_TEXT_ALPHA, SPACING_SMALL,
-    THUMBNAIL_SIZE,
+    self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
     main_view::{self, BUTTON_ROUNDING, button_style},
@@ -63,7 +62,7 @@ pub fn track_button<'a>(
                         "Unknown"
                     })
                     .size(SIZE_SMALL)
-                    .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
+                    .color(state.theme.on_surface_variant())
                     .wrapping(text::Wrapping::None),
                 ])
                 .width(Length::Fill)
