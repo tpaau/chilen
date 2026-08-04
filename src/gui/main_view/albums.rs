@@ -95,8 +95,8 @@ pub fn album_button<'a>(
                                                 action: vertical_menu::Action::Message(None),
                                             },
                                             vertical_menu::Entry::Button {
-                                                icon: Some(&icons::ADD_TO_QUEUE),
-                                                label: "Add to queue",
+                                                icon: Some(&icons::SHUFFLE),
+                                                label: "Shuffle",
                                                 supporting_text: None,
                                                 error: false,
                                                 action: vertical_menu::Action::Message(None),

@@ -20,7 +20,7 @@ use crate::gui::{
 
 pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Button<'a, Message> {
     button(
-        row(vec![
+        row![
             container(space())
                 .style(|_| {
                     container::Style::default()
@@ -28,14 +28,12 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                         .border(Border::default().rounded(ROUNDING_REGULAR - SPACING_SMALLER))
                 })
                 .width(Length::Fixed(THUMBNAIL_SIZE))
-                .height(Length::Fixed(THUMBNAIL_SIZE))
-                .into(),
-            container(column(vec![
+                .height(Length::Fixed(THUMBNAIL_SIZE)),
+            container(column![
                 text(playlist.name.clone())
                     .size(SIZE_REGULAR)
                     .color(state.theme.on_surface())
-                    .wrapping(text::Wrapping::None)
-                    .into(),
+                    .wrapping(text::Wrapping::None),
                 text({
                     if playlist.tracks.is_empty() {
                         "No tracks".to_string()
@@ -44,13 +42,11 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                     }
                 })
                 .size(SIZE_SMALL)
-                .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA))
-                .into(),
-            ]))
+                .color(state.theme.on_surface().scale_alpha(DIM_TEXT_ALPHA)),
+            ])
             .width(Length::Fill)
             .clip(true)
-            .center_y(Length::Fill)
-            .into(),
+            .center_y(Length::Fill),
             container(
                 // TODO: Should be more like a button
                 drop_down_menu(
@@ -142,9 +138,8 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                     iced_m3::widget::drop_down_menu::Placement::BottomRight,
                 ),
             )
-            .center_y(Length::Fill)
-            .into(),
-        ])
+            .center_y(Length::Fill),
+        ]
         .spacing(SPACING_SMALL),
     )
     .padding(Padding::new(SPACING_SMALLER))
