@@ -156,8 +156,11 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     }
     match message {
         Message::ChangeView(view) => {
-            state.main_view.visible = state.library.as_ref().map(|lib| init_visible(lib, &view));
-            state.main_view.view = view
+            if state.main_view.view != view {
+                state.main_view.visible =
+                    state.library.as_ref().map(|lib| init_visible(lib, &view));
+                state.main_view.view = view
+            }
         }
         Message::ButtonPoppedIn(index) => {
             change_button(state.main_view.visible.as_mut().unwrap(), index, true);
