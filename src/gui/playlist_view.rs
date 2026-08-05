@@ -115,7 +115,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                     row(vec![
                                         text(*icons::PLAYLIST_ADD)
                                             .font(icons::filled())
-                                            .size(icons::SIZE_SMALL)
+                                            .size(icons::SIZE_REGULAR)
                                             .into(),
                                         text("New playlist").size(font::SIZE_REGULAR).into()
                                     ])
