@@ -1,4 +1,4 @@
-pub(crate) mod covers;
+pub mod covers;
 pub(crate) mod indexer;
 
 pub mod state;

@@ -44,12 +44,11 @@ pub fn album_button<'a>(
                             .size(icons::SIZE_LARGE)
                     ),
                     album.tracks.iter().find_map(|t| {
-                        t.cover_path.as_ref().map(|path| {
-                            image(path.clone())
+                        t.cover.thumbnail.as_ref().map(|thumbnail| {
+                            image(thumbnail.clone())
                                 .content_fit(iced::ContentFit::Cover)
                                 .width(Length::Fixed(THUMBNAIL_SIZE))
                                 .height(Length::Fixed(THUMBNAIL_SIZE))
-                                .filter_method(image::FilterMethod::Linear)
                                 .border_radius(thumbnail_border_radius)
                         })
                     }),

@@ -24,7 +24,7 @@ use crate::{
     Error, Event,
     music_lib::{
         DATA_DIR,
-        covers::{LoadMode, get_track_cover},
+        covers::{self, Cover, LoadMode, get_track_cover},
         indexer::{self},
         tracks_from_m3u8,
     },
@@ -43,7 +43,7 @@ pub enum Lyrics {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Track {
     pub path: PathBuf,
-    pub cover_path: Option<PathBuf>,
+    pub cover: Cover,
     pub duration: Duration,
     pub artist: Option<String>,
     pub title: Option<String>,
@@ -76,6 +76,7 @@ impl Track {
         path: PathBuf,
         tagged_file: &TaggedFile,
         load_mode: &LoadMode,
+        config: &covers::Config,
     ) -> Result<Self, String> {
         let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
@@ -103,7 +104,7 @@ impl Track {
 
         let mut track = Track {
             path,
-            cover_path: None,
+            cover: Cover::none(),
             duration: tagged_file.properties().duration(),
             artist: tag.artist().map(|artist| artist.into()),
             title: tag.title().map(|title| title.into()),
@@ -119,16 +120,16 @@ impl Track {
         };
 
         #[cfg(not(test))]
-        match get_track_cover(track.hash_self(), tag, load_mode) {
-            Ok(cover) => track.cover_path = Some(cover),
+        match get_track_cover(track.hash_self(), tag, load_mode, *config) {
+            Ok(cover) => track.cover = cover,
             Err(e) => {
                 warn!("Could not get the cover image: {e}");
             }
         }
         #[cfg(test)]
         if load_mode != &LoadMode::None {
-            match get_track_cover(track.hash_self(), tag, load_mode) {
-                Ok(cover) => track.cover_path = Some(cover),
+            match get_track_cover(track.hash_self(), tag, load_mode, *config) {
+                Ok(cover) => track.cover = cover,
                 Err(e) => {
                     warn!("Could not get the cover image: {e}");
                 }
@@ -172,17 +173,11 @@ impl Track {
     pub fn get_meta(&self, position: usize) -> mpris_server::Metadata {
         use mpris_server::{Time, builder::MetadataBuilder};
 
-        MetadataBuilder::default()
+        let builder = MetadataBuilder::default()
             .length(Time::from_nanos(
                 self.duration.as_nanos().try_into().unwrap_or(i64::MAX),
             ))
             .url(self.path.to_string_lossy())
-            .art_url(
-                self.cover_path
-                    .clone()
-                    .unwrap_or_default()
-                    .to_string_lossy(),
-            )
             .artist(self.artist.clone())
             .title(self.title.clone().unwrap_or_default())
             .album(self.album.clone().unwrap_or_default())
@@ -201,8 +196,14 @@ impl Track {
                 }
                 None => String::new(),
             })
-            .trackid(self.track_id(position))
-            .build()
+            .trackid(self.track_id(position));
+
+        let builder = match &self.cover.hires {
+            Some(cover) => builder.art_url(cover.to_string_lossy().to_string()),
+            None => builder,
+        };
+
+        builder.build()
     }
 
     pub fn open_file(&self) -> std::io::Result<File> {
@@ -793,12 +794,12 @@ pub(crate) fn save_library() -> Result<(), Error> {
 
 // FIX: This function hangs if if the `MusicLibrary` struct changes (and can't be deserialized)
 /// Load the music library from the playlists file.
-pub(crate) fn load(load_mode: LoadMode) -> Result<(), Error> {
+pub(crate) fn load(load_mode: LoadMode, config: covers::Config) -> Result<(), Error> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
 
-    let tracks = match indexer::index(load_mode) {
+    let tracks = match indexer::index(load_mode, config) {
         Ok(tracks) => tracks,
         Err(e) => {
             crate::send_event(Event::LibraryLoadFailed(e.to_string()));

@@ -11,7 +11,10 @@ use walkdir::WalkDir;
 
 use crate::{
     Error,
-    music_lib::{MUSIC_DIR, Track, covers::LoadMode},
+    music_lib::{
+        MUSIC_DIR, Track,
+        covers::{self, LoadMode},
+    },
 };
 
 fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
@@ -33,7 +36,11 @@ fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
     }
 }
 
-fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, Error> {
+fn index_files(
+    files: Vec<PathBuf>,
+    load_mode: LoadMode,
+    config: covers::Config,
+) -> Result<Vec<Track>, Error> {
     let tracks = Arc::new(RwLock::new(Vec::with_capacity(files.len())));
     let mut handles = Vec::new();
 
@@ -56,7 +63,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
                 }
             };
 
-            let track = match Track::new(file, &tagged_file, &load_mode) {
+            let track = match Track::new(file, &tagged_file, &load_mode, &config) {
                 Ok(track) => track,
                 Err(e) => {
                     warn!("Could not create a track struct: {e}");
@@ -76,7 +83,7 @@ fn index_files(files: Vec<PathBuf>, load_mode: LoadMode) -> Result<Vec<Track>, E
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, Error> {
+pub(crate) fn index(load_mode: LoadMode, config: covers::Config) -> Result<Vec<Track>, Error> {
     let music_dir = MUSIC_DIR.read().unwrap().clone().unwrap();
 
     trace!("Indexing directory: {music_dir:?}");
@@ -108,5 +115,5 @@ pub(crate) fn index(load_mode: LoadMode) -> Result<Vec<Track>, Error> {
         })
         .collect();
 
-    index_files(files, load_mode)
+    index_files(files, load_mode, config)
 }

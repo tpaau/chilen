@@ -693,6 +693,7 @@ dependencies = [
 name = "chilen_backend"
 version = "0.1.0"
 dependencies = [
+ "image",
  "lofty",
  "log",
  "lrc_rs",
@@ -1946,6 +1947,7 @@ dependencies = [
  "ravif",
  "rayon",
  "rgb",
+ "serde",
  "tiff",
  "zune-core",
  "zune-jpeg",

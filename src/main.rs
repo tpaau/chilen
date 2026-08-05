@@ -3,13 +3,12 @@ mod gui;
 pub mod settings;
 use std::{env::home_dir, process::exit, sync::mpsc::Receiver, thread, time::Duration};
 
-use chilen_backend::Config;
+use chilen_backend::{Config, music_lib::covers};
 use dirs::{cache_dir, data_dir};
 
 use log::{error, info};
 
-use crate::argparse::parse_args;
-
+use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
 
 fn handle_events(receiver: Receiver<chilen_backend::Event>) {
     // TODO: Cleaner way of doing this?
@@ -79,6 +78,11 @@ fn main() {
             data_dir,
             music_dir,
             cache_dir,
+            covers: covers::Config {
+                format: covers::ImageFormat::Png,
+                thumbnail_resolution: covers::Pixels(THUMBNAIL_SIZE as u32),
+                cover_quality: covers::Quality::Default,
+            },
         };
 
         let receiver = match chilen_backend::init(config) {

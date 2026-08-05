@@ -42,12 +42,11 @@ pub fn track_button<'a>(
                             .color(state.theme.on_surface_variant())
                             .size(icons::SIZE_LARGE)
                     ),
-                    track.cover_path.as_ref().map(|cover| {
-                        image(cover)
+                    track.cover.thumbnail.as_ref().map(|thumbnail| {
+                        image(thumbnail)
                             .content_fit(iced::ContentFit::Cover)
                             .width(Length::Fixed(THUMBNAIL_SIZE))
                             .height(Length::Fixed(THUMBNAIL_SIZE))
-                            .filter_method(image::FilterMethod::Linear)
                             .border_radius(thumbnail_border_radius)
                     })
                 ],

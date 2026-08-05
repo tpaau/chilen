@@ -12,7 +12,11 @@ use std::{
 use log::{error, warn};
 
 use crate::{
-    music_lib::{covers::LoadMode, set_dirs, state::MusicLibrary},
+    music_lib::{
+        covers::{self, LoadMode},
+        set_dirs,
+        state::MusicLibrary,
+    },
     playback::state::PlayerState,
 };
 
@@ -30,6 +34,7 @@ pub struct Config {
     // TODO: Support for multiple music library directories
     pub music_dir: PathBuf,
     pub data_dir: PathBuf,
+    pub covers: covers::Config,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -213,7 +218,7 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
         error!("Could not set the initial directories: {e}");
         return Err(e);
     }
-    if let Err(e) = music_lib::state::load(LoadMode::Load) {
+    if let Err(e) = music_lib::state::load(LoadMode::Load, config.covers) {
         error!("Could not load the music library: {e}");
         return Err(e);
     }
