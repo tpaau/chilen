@@ -84,6 +84,12 @@ fn index_files(
 }
 
 pub(crate) fn index(load_mode: LoadMode, config: covers::Config) -> Result<Vec<Track>, Error> {
+    #[cfg(debug_assertions)]
+    warn!(
+        "\x1b[1mINDEXER RUNNING IN DEBUG MODE\x1b[0m, image decoding will be EXTREMELY SLOW. Consider running {} in release mode for the first indexing",
+        crate::APP_NAME
+    );
+
     let music_dir = MUSIC_DIR.read().unwrap().clone().unwrap();
 
     trace!("Indexing directory: {music_dir:?}");
