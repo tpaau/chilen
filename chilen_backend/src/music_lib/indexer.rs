@@ -15,21 +15,20 @@ use crate::{
     music_lib::{
         MUSIC_DIR, Track,
         covers::{self, LoadMode},
+        indexer,
     },
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ValueSeparators {
     pub artist: Vec<String>,
-    pub album: Vec<String>,
     pub genre: Vec<String>,
 }
 
 impl ValueSeparators {
-    fn new(separators: Vec<String>) -> Self {
+    pub fn new(separators: Vec<String>) -> Self {
         Self {
             artist: separators.clone(),
-            album: separators.clone(),
             genre: separators,
         }
     }
@@ -64,13 +63,15 @@ fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
 fn index_files(
     files: Vec<PathBuf>,
     load_mode: LoadMode,
-    config: covers::Config,
+    config: indexer::Config,
 ) -> Result<Vec<Track>, Error> {
     let tracks = Arc::new(RwLock::new(Vec::with_capacity(files.len())));
     let mut handles = Vec::new();
+    let config = Arc::new(config);
 
     for file in files {
         let lock = tracks.clone();
+        let config = config.clone();
 
         handles.push(thread::spawn(move || {
             let tagged_file = match safe_read_from_path(&file) {
@@ -108,7 +109,7 @@ fn index_files(
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-pub(crate) fn index(load_mode: LoadMode, config: covers::Config) -> Result<Vec<Track>, Error> {
+pub(crate) fn index(load_mode: LoadMode, config: indexer::Config) -> Result<Vec<Track>, Error> {
     #[cfg(debug_assertions)]
     warn!(
         "\x1b[1mINDEXER RUNNING IN DEBUG MODE\x1b[0m, image decoding will be EXTREMELY SLOW. Consider running the program in release mode for the first indexing",

@@ -214,7 +214,7 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
         error!("Could not set the initial directories: {e}");
         return Err(e);
     }
-    if let Err(e) = music_lib::state::load(LoadMode::Load, config.indexer.covers) {
+    if let Err(e) = music_lib::state::load(LoadMode::Load, config.indexer) {
         error!("Could not load the music library: {e}");
         return Err(e);
     }

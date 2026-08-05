@@ -61,11 +61,13 @@ pub fn track_button<'a>(
                     .size(SIZE_REGULAR)
                     .color(state.theme.on_surface())
                     .wrapping(text::Wrapping::None),
-                    text(if let Some(artist) = &track.artist {
-                        artist
-                    } else {
-                        "Unknown"
-                    })
+                    text(
+                        track
+                            .artists
+                            .as_ref()
+                            .map(|a| a.join(&state.settings.value_separator))
+                            .unwrap_or("Unknown".to_string())
+                    )
                     .size(SIZE_SMALL)
                     .color(state.theme.on_surface_variant())
                     .wrapping(text::Wrapping::None),

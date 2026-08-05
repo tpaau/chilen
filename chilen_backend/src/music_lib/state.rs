@@ -24,7 +24,7 @@ use crate::{
     Error, Event,
     music_lib::{
         DATA_DIR,
-        covers::{self, Cover, LoadMode, get_track_cover},
+        covers::{Cover, LoadMode, get_track_cover},
         indexer::{self},
         tracks_from_m3u8,
     },
@@ -45,10 +45,10 @@ pub struct Track {
     pub path: PathBuf,
     pub cover: Cover,
     pub duration: Duration,
-    pub artist: Option<String>,
     pub title: Option<String>,
+    pub artists: Option<Vec<String>>,
+    pub genres: Option<Vec<String>>,
     pub album: Option<String>,
-    pub genre: Option<String>,
     pub lyrics: Option<Lyrics>,
     pub comment: Option<String>,
     pub track: Option<u32>,
@@ -63,7 +63,10 @@ impl std::fmt::Display for Track {
         write!(
             f,
             "{} - {}",
-            self.artist.clone().unwrap_or(String::from("Unknown")),
+            self.artists
+                .clone()
+                .unwrap_or(vec![String::from("Unknown")])
+                .join(", "),
             self.title.clone().unwrap_or(String::from("Unknown")),
         )
     }
@@ -76,7 +79,7 @@ impl Track {
         path: PathBuf,
         tagged_file: &TaggedFile,
         load_mode: &LoadMode,
-        config: &covers::Config,
+        config: &indexer::Config,
     ) -> Result<Self, String> {
         let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
@@ -102,9 +105,43 @@ impl Track {
             None
         };
 
+        let artists = {
+            let artists: Vec<_> = tag.get_strings(lofty::tag::ItemKey::TrackArtists).collect();
+            if artists.len() <= 1 {
+                tag.artist().map(|a| {
+                    a.split(|c| {
+                        config
+                            .value_separators
+                            .artist
+                            .iter()
+                            .any(|s| s.chars().any(|sc| sc == c))
+                    })
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+                })
+            } else {
+                Some(artists.into_iter().map(|s| s.trim().to_string()).collect())
+            }
+        };
+
+        let genres: Option<Vec<_>> = tag.genre().map(|genre| {
+            genre
+                .split(|c| {
+                    config
+                        .value_separators
+                        .genre
+                        .iter()
+                        .any(|s| s.chars().any(|sc| sc == c))
+                })
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        });
+
         let cover = {
             #[cfg(not(test))]
-            match get_track_cover(tag, load_mode, *config) {
+            match get_track_cover(tag, load_mode, config.covers) {
                 Ok(cover) => cover,
                 Err(e) => {
                     warn!("Could not get the cover image: {e}");
@@ -113,7 +150,7 @@ impl Track {
             }
             #[cfg(test)]
             if load_mode != &LoadMode::None {
-                match get_track_cover(tag, load_mode, *config) {
+                match get_track_cover(tag, load_mode, config.covers) {
                     Ok(cover) => cover,
                     Err(e) => {
                         warn!("Could not get the cover image: {e}");
@@ -129,10 +166,10 @@ impl Track {
             path,
             cover,
             duration: tagged_file.properties().duration(),
-            artist: tag.artist().map(|artist| artist.into()),
+            artists,
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
-            genre: tag.genre().map(|genre| genre.into()),
+            genres,
             lyrics,
             comment: tag.comment().map(|comment| comment.into()),
             track: tag.track(),
@@ -184,10 +221,18 @@ impl Track {
                 self.duration.as_nanos().try_into().unwrap_or(i64::MAX),
             ))
             .url(self.path.to_string_lossy())
-            .artist(self.artist.clone())
+            .artist(
+                self.artists
+                    .clone()
+                    .unwrap_or(vec!["Unknown artist".to_string()]),
+            )
             .title(self.title.clone().unwrap_or_default())
             .album(self.album.clone().unwrap_or_default())
-            .genre(self.genre.clone())
+            .genre(
+                self.genres
+                    .clone()
+                    .unwrap_or(vec!["Unknown genre".to_string()]),
+            )
             .comment(self.comment.clone())
             .track_number(self.track.unwrap_or(0).try_into().unwrap_or(0))
             .disc_number(self.disc.unwrap_or(0).try_into().unwrap_or(0))
@@ -347,8 +392,14 @@ impl MusicLibrary {
         let tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
         let album_names: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
-        let artist_names: HashSet<_> = tracks.iter().flat_map(|t| &t.artist).collect();
-        let genre_names: HashSet<_> = tracks.iter().flat_map(|t| &t.genre).collect();
+        let artist_names: HashSet<_> = tracks
+            .iter()
+            .flat_map(|t| t.artists.as_ref().into_iter().flatten())
+            .collect();
+        let genre_names: HashSet<_> = tracks
+            .iter()
+            .flat_map(|t| t.genres.as_ref().into_iter().flatten())
+            .collect();
 
         let mut tracks_by_artist: HashMap<&String, HashSet<Arc<Track>>> =
             HashMap::with_capacity(artist_names.len());
@@ -358,25 +409,29 @@ impl MusicLibrary {
             HashMap::with_capacity(genre_names.len());
 
         for track in &tracks {
-            if let Some(name) = &track.artist {
-                if let Some(val) = tracks_by_artist.get_mut(name) {
-                    val.insert(track.clone());
-                } else {
-                    tracks_by_artist.insert(name, [track.clone()].into_iter().collect());
+            if let Some(artists) = &track.artists {
+                for artist in artists {
+                    if let Some(val) = tracks_by_artist.get_mut(artist) {
+                        val.insert(track.clone());
+                    } else {
+                        tracks_by_artist.insert(artist, [track.clone()].into_iter().collect());
+                    }
                 }
             }
-            if let Some(name) = &track.album {
-                if let Some(val) = tracks_by_album.get_mut(name) {
+            if let Some(album) = &track.album {
+                if let Some(val) = tracks_by_album.get_mut(album) {
                     val.insert(track.clone());
                 } else {
-                    tracks_by_album.insert(name, [track.clone()].into_iter().collect());
+                    tracks_by_album.insert(album, [track.clone()].into_iter().collect());
                 }
             }
-            if let Some(name) = &track.genre {
-                if let Some(val) = tracks_by_genre.get_mut(name) {
-                    val.insert(track.clone());
-                } else {
-                    tracks_by_genre.insert(name, [track.clone()].into_iter().collect());
+            if let Some(genres) = &track.genres {
+                for genre in genres {
+                    if let Some(val) = tracks_by_genre.get_mut(genre) {
+                        val.insert(track.clone());
+                    } else {
+                        tracks_by_genre.insert(genre, [track.clone()].into_iter().collect());
+                    }
                 }
             }
         }
@@ -385,8 +440,10 @@ impl MusicLibrary {
             .into_iter()
             .map(|name| {
                 let tracks: Vec<_> = tracks_by_album[name].clone().into_iter().collect();
-                let artists: HashSet<String> =
-                    tracks.iter().flat_map(|t| t.artist.clone()).collect();
+                let artists: HashSet<String> = tracks
+                    .iter()
+                    .flat_map(|t| t.artists.clone().into_iter().flatten())
+                    .collect();
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
                 for track in &tracks {
@@ -457,11 +514,13 @@ impl MusicLibrary {
             HashMap::with_capacity(albums.len());
         for album in &albums {
             for track in &album.tracks {
-                if let Some(genre) = &track.genre {
-                    if let Some(val) = albums_by_genre.get_mut(genre) {
-                        val.insert(album.clone());
-                    } else {
-                        albums_by_genre.insert(genre, [album.clone()].into_iter().collect());
+                if let Some(genres) = &track.genres {
+                    for genre in genres {
+                        if let Some(val) = albums_by_genre.get_mut(genre) {
+                            val.insert(album.clone());
+                        } else {
+                            albums_by_genre.insert(genre, [album.clone()].into_iter().collect());
+                        }
                     }
                 }
             }
@@ -471,11 +530,13 @@ impl MusicLibrary {
             HashMap::with_capacity(artists.len());
         for artist in &artists {
             for track in &artist.tracks {
-                if let Some(genre) = &track.genre {
-                    if let Some(val) = artists_by_genre.get_mut(genre) {
-                        val.insert(artist.clone());
-                    } else {
-                        artists_by_genre.insert(genre, [artist.clone()].into_iter().collect());
+                if let Some(genres) = &track.genres {
+                    for genre in genres {
+                        if let Some(val) = artists_by_genre.get_mut(genre) {
+                            val.insert(artist.clone());
+                        } else {
+                            artists_by_genre.insert(genre, [artist.clone()].into_iter().collect());
+                        }
                     }
                 }
             }
@@ -857,7 +918,7 @@ pub(crate) fn save_library() -> Result<(), Error> {
 
 // FIX: This function hangs if if the `MusicLibrary` struct changes (and can't be deserialized)
 /// Load the music library from the playlists file.
-pub(crate) fn load(load_mode: LoadMode, config: covers::Config) -> Result<(), Error> {
+pub(crate) fn load(load_mode: LoadMode, config: indexer::Config) -> Result<(), Error> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();

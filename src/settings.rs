@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Settings {
     // TODO: Get dark mode preference from the host
-    dark_mode: bool,
+    pub dark_mode: bool,
+    pub value_separator: String,
 }
 
 impl Settings {
@@ -14,7 +15,10 @@ impl Settings {
 
     pub fn load() -> Self {
         // TODO: Actually load the settings from here
-        Self { dark_mode: true }
+        Self {
+            dark_mode: true,
+            value_separator: ", ".to_string(),
+        }
     }
 
     pub fn set_dark_theme(&mut self, dark_mode: bool) {

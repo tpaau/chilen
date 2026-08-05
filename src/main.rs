@@ -93,10 +93,12 @@ fn main() {
             music_dir,
             cache_dir,
             indexer: indexer::Config {
-                value_separators: ValueSeparators::default(),
+                // TODO: Should be user-controlled
+                value_separators: ValueSeparators::new(vec![",".to_string(), "/".to_string()]),
                 covers: covers::Config {
                     format: covers::ImageFormat::Png,
                     thumbnail_resolution: THUMBNAIL_SIZE as u32,
+                    // TODO: Should be user-controlled
                     cover_quality: covers::Quality::Default,
                 },
             },
