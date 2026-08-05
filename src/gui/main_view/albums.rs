@@ -45,14 +45,12 @@ pub fn album_button<'a>(
                     })
                     .width(Length::Fixed(THUMBNAIL_SIZE))
                     .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    album.tracks.iter().find_map(|t| {
-                        t.cover.thumbnail.as_ref().map(|thumbnail| {
-                            image(thumbnail.clone())
-                                .content_fit(iced::ContentFit::Cover)
-                                .width(Length::Fixed(THUMBNAIL_SIZE))
-                                .height(Length::Fixed(THUMBNAIL_SIZE))
-                                .border_radius(thumbnail_border_radius)
-                        })
+                    album.cover.thumbnail.as_ref().map(|t| {
+                        image(t)
+                            .content_fit(iced::ContentFit::Cover)
+                            .width(Length::Fixed(THUMBNAIL_SIZE))
+                            .height(Length::Fixed(THUMBNAIL_SIZE))
+                            .border_radius(thumbnail_border_radius)
                     }),
                 ],
                 container(column![
@@ -62,7 +60,7 @@ pub fn album_button<'a>(
                         .wrapping(text::Wrapping::None),
                     row![
                         text(match album.tracks.len() {
-                            1 => "1 track".to_string(),
+                            1 => "Single".to_string(),
                             _ => format!("{} tracks", album.tracks.len()),
                         })
                         .size(SIZE_SMALL)

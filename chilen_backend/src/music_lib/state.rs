@@ -243,6 +243,7 @@ impl Track {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Album {
     pub name: String,
+    pub cover: Cover,
     pub artists: Vec<String>,
     pub tracks: Vec<Arc<Track>>,
 }
@@ -380,8 +381,17 @@ impl MusicLibrary {
                 let tracks: Vec<_> = tracks_by_album[name].clone().into_iter().collect();
                 let artists: HashSet<String> =
                     tracks.iter().flat_map(|t| t.artist.clone()).collect();
+
+                let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
+                for track in &tracks {
+                    *counts.entry(track.cover.clone()).or_insert(0) += 1;
+                }
+                let commonest = counts.into_iter().max_by_key(|(_, c)| *c).map(|(k, _)| k);
+                let cover = commonest.unwrap_or(tracks[0].cover.clone());
+
                 Arc::new(Album {
                     name: name.to_string(),
+                    cover,
                     tracks,
                     artists: artists.into_iter().collect(),
                 })
