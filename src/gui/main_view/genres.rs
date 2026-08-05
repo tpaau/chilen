@@ -31,20 +31,19 @@ pub fn genre_button<'a>(
         button(
             row![
                 stack![
-                    container(space())
-                        .style(|_| {
-                            container::Style::default()
-                                .background(state.theme.surface_container_high())
-                                .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
-                        })
-                        .width(Length::Fixed(THUMBNAIL_SIZE))
-                        .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    center(
+                    container(center(
                         text(*icons::GENRES)
                             .font(icons::filled())
                             .color(state.theme.on_surface_variant())
                             .size(icons::SIZE_LARGE)
-                    ),
+                    ))
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.surface_container_high())
+                            .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
+                    })
+                    .width(Length::Fixed(THUMBNAIL_SIZE))
+                    .height(Length::Fixed(THUMBNAIL_SIZE)),
                     // TODO: Cover image
                 ],
                 container(column![

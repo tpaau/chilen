@@ -31,20 +31,19 @@ pub fn artist_button<'a>(
         button(
             row![
                 stack![
-                    container(space())
-                        .style(|_| {
-                            container::Style::default()
-                                .background(state.theme.surface_container_high())
-                                .border(Border::default().rounded(f32::MAX))
-                        })
-                        .width(Length::Fixed(THUMBNAIL_SIZE))
-                        .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    center(
+                    container(center(
                         text(*icons::ARTIST)
                             .font(icons::filled())
                             .color(state.theme.on_surface_variant())
                             .size(icons::SIZE_LARGE)
-                    ),
+                    ))
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.surface_container_high())
+                            .border(Border::default().rounded(f32::MAX))
+                    })
+                    .width(Length::Fixed(THUMBNAIL_SIZE))
+                    .height(Length::Fixed(THUMBNAIL_SIZE)),
                     // TODO: Artist profile
                 ],
                 container(column![

@@ -32,20 +32,19 @@ pub fn album_button<'a>(
         button(
             row![
                 stack![
-                    container(space())
-                        .style(move |_| {
-                            container::Style::default()
-                                .background(state.theme.surface_container_high())
-                                .border(Border::default().rounded(thumbnail_border_radius))
-                        })
-                        .width(Length::Fixed(THUMBNAIL_SIZE))
-                        .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    center(
+                    container(center(
                         text(*icons::ALBUM)
                             .font(icons::filled())
                             .color(state.theme.on_surface_variant())
                             .size(icons::SIZE_LARGE)
-                    ),
+                    ))
+                    .style(move |_| {
+                        container::Style::default()
+                            .background(state.theme.surface_container_high())
+                            .border(Border::default().rounded(thumbnail_border_radius))
+                    })
+                    .width(Length::Fixed(THUMBNAIL_SIZE))
+                    .height(Length::Fixed(THUMBNAIL_SIZE)),
                     album.tracks.iter().find_map(|t| {
                         t.cover.thumbnail.as_ref().map(|thumbnail| {
                             image(thumbnail.clone())
