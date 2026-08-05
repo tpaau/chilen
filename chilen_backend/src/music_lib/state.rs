@@ -373,8 +373,6 @@ impl MusicLibrary {
             }
         }
 
-        let albums_len = album_names.len();
-
         let albums: Vec<_> = album_names
             .into_iter()
             .map(|name| {
@@ -427,7 +425,7 @@ impl MusicLibrary {
             .collect();
 
         let mut artists_by_album: HashMap<&String, HashSet<Arc<Artist>>> =
-            HashMap::with_capacity(albums_len);
+            HashMap::with_capacity(albums.len());
         for artist in &artists {
             for album in &artist.albums {
                 if let Some(val) = artists_by_album.get_mut(&album.name) {
@@ -438,14 +436,42 @@ impl MusicLibrary {
             }
         }
 
+        let mut albums_by_genre: HashMap<&String, HashSet<Arc<Album>>> =
+            HashMap::with_capacity(albums.len());
+        for album in &albums {
+            for track in &album.tracks {
+                if let Some(genre) = &track.genre {
+                    if let Some(val) = albums_by_genre.get_mut(genre) {
+                        val.insert(album.clone());
+                    } else {
+                        albums_by_genre.insert(genre, [album.clone()].into_iter().collect());
+                    }
+                }
+            }
+        }
+
+        let mut artists_by_genre: HashMap<&String, HashSet<Arc<Artist>>> =
+            HashMap::with_capacity(artists.len());
+        for artist in &artists {
+            for track in &artist.tracks {
+                if let Some(genre) = &track.genre {
+                    if let Some(val) = artists_by_genre.get_mut(genre) {
+                        val.insert(artist.clone());
+                    } else {
+                        artists_by_genre.insert(genre, [artist.clone()].into_iter().collect());
+                    }
+                }
+            }
+        }
+
         let genres: Vec<_> = genre_names
             .into_iter()
             .map(|name| {
                 Arc::new(Genre {
                     name: name.to_string(),
                     tracks: tracks_by_genre[name].clone().into_iter().collect(),
-                    albums: Vec::new(),
-                    artists: Vec::new(),
+                    albums: albums_by_genre[name].clone().into_iter().collect(),
+                    artists: artists_by_genre[name].clone().into_iter().collect(),
                 })
             })
             .collect();
