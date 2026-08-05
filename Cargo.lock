@@ -686,7 +686,6 @@ dependencies = [
  "log",
  "rfd",
  "serde",
- "sweeten",
 ]
 
 [[package]]
@@ -4050,18 +4049,6 @@ dependencies = [
  "skrifa",
  "yazi",
  "zeno",
-]
-
-[[package]]
-name = "sweeten"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e743407da2564f19dc27f8b926214d015effd97e3eb08d08c4a39f70afe6c15"
-dependencies = [
- "iced_core",
- "iced_runtime",
- "iced_widget",
- "unicode-segmentation",
 ]
 
 [[package]]

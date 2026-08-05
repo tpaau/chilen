@@ -22,9 +22,12 @@ use crate::gui::{
 pub fn album_button<'a>(
     state: &'a Chilen,
     index: usize,
-    maybe_album: &'a Option<Arc<Album>>,
+    album: &'a Arc<Album>,
 ) -> Element<'a, gui::Message> {
-    let content: Element<'a, gui::Message> = if let Some(album) = maybe_album {
+    let content: Element<'a, gui::Message> = if let Some(visible) = &state.main_view.visible
+        && index < visible.len()
+        && visible[index]
+    {
         let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
         button(
             row![
@@ -149,17 +152,17 @@ pub fn album_button<'a>(
         space().height(BUTTON_HEIGHT).width(Length::Fill).into()
     };
     sensor(content)
-        .on_show(move |_| gui::Message::MainView(main_view::Message::AlbumButtonPoppedIn(index)))
-        .on_hide(gui::Message::MainView(
-            main_view::Message::AlbumButtonPoppedOut(index),
-        ))
+        .on_show(move |_| gui::Message::MainView(main_view::Message::ButtonPoppedIn(index)))
+        .on_hide(gui::Message::MainView(main_view::Message::ButtonPoppedOut(
+            index,
+        )))
         .into()
 }
 
 pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
-    if let Some(albums) = &state.main_view.albums {
+    if let Some(lib) = &state.library {
         let content = column(
-            albums
+            lib.albums
                 .iter()
                 .enumerate()
                 .map(|(i, a)| album_button(state, i, a)),

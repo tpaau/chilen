@@ -22,9 +22,12 @@ use crate::gui::{
 pub fn artist_button<'a>(
     state: &'a Chilen,
     index: usize,
-    maybe_artist: &'a Option<Arc<Artist>>,
+    artist: &'a Arc<Artist>,
 ) -> Element<'a, gui::Message> {
-    let content: Element<'a, gui::Message> = if let Some(artist) = maybe_artist {
+    let content: Element<'a, gui::Message> = if let Some(visible) = &state.main_view.visible
+        && index < visible.len()
+        && visible[index]
+    {
         button(
             row![
                 stack![
@@ -140,17 +143,17 @@ pub fn artist_button<'a>(
         space().height(BUTTON_HEIGHT).width(Length::Fill).into()
     };
     sensor(content)
-        .on_show(move |_| gui::Message::MainView(main_view::Message::ArtistButtonPoppedIn(index)))
-        .on_hide(gui::Message::MainView(
-            main_view::Message::ArtistButtonPoppedOut(index),
-        ))
+        .on_show(move |_| gui::Message::MainView(main_view::Message::ButtonPoppedIn(index)))
+        .on_hide(gui::Message::MainView(main_view::Message::ButtonPoppedOut(
+            index,
+        )))
         .into()
 }
 
 pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
-    if let Some(artists) = &state.main_view.artists {
+    if let Some(lib) = &state.library {
         let content = column(
-            artists
+            lib.artists
                 .iter()
                 .enumerate()
                 .map(|(i, a)| artist_button(state, i, a)),

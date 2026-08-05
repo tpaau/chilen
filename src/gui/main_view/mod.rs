@@ -3,13 +3,10 @@ mod artists;
 mod genres;
 mod tracks;
 
-use std::sync::Arc;
-
-use chilen_backend::music_lib::state::{Album, Artist, Genre, Track};
+use chilen_backend::music_lib::state::MusicLibrary;
 use iced::{Border, Color, Element, Length, Padding, Task};
 use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
 use iced_widget::{center, column, container, space, stack};
-use log::warn;
 
 use crate::gui::{self, BUTTON_ROUNDING, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons};
 
@@ -24,23 +21,17 @@ pub enum View {
 
 pub struct State {
     pub view: View,
-    pub tracks: Option<Vec<Option<Arc<Track>>>>,
-    pub albums: Option<Vec<Option<Arc<Album>>>>,
-    pub artists: Option<Vec<Option<Arc<Artist>>>>,
-    pub genres: Option<Vec<Option<Arc<Genre>>>>,
+    /// Holds which elements are visible and which are not.
+    /// Sadly I couldn't use a range for this, it would've used much less memory but it lagged too
+    /// much when I was scrolling erratically.
+    pub visible: Option<Vec<bool>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
-    ChangeMainView(View),
-    TrackButtonPoppedIn(usize),
-    TrackButtonPoppedOut(usize),
-    AlbumButtonPoppedIn(usize),
-    AlbumButtonPoppedOut(usize),
-    ArtistButtonPoppedIn(usize),
-    ArtistButtonPoppedOut(usize),
-    GenreButtonPoppedIn(usize),
-    GenreButtonPoppedOut(usize),
+    ChangeView(View),
+    ButtonPoppedIn(usize),
+    ButtonPoppedOut(usize),
 }
 
 fn button_style(
@@ -82,22 +73,22 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
                     iced_m3::widget::navbar::Item {
                         icon: &icons::MUSIC_NOTE,
                         label: "Tracks",
-                        message: gui::Message::MainView(Message::ChangeMainView(View::Tracks)),
+                        message: gui::Message::MainView(Message::ChangeView(View::Tracks)),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::ALBUM,
                         label: "Albums",
-                        message: gui::Message::MainView(Message::ChangeMainView(View::Albums)),
+                        message: gui::Message::MainView(Message::ChangeView(View::Albums)),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::ARTIST,
                         label: "Artists",
-                        message: gui::Message::MainView(Message::ChangeMainView(View::Artists)),
+                        message: gui::Message::MainView(Message::ChangeView(View::Artists)),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::GENRES,
                         label: "Genres",
-                        message: gui::Message::MainView(Message::ChangeMainView(View::Genres)),
+                        message: gui::Message::MainView(Message::ChangeView(View::Genres)),
                     },
                 ],
                 &state.theme,
@@ -141,164 +132,38 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
     .into()
 }
 
+fn init_visible(lib: &MusicLibrary, view: &View) -> Vec<bool> {
+    match view {
+        View::Tracks => vec![false; lib.tracks.len()],
+        View::Albums => vec![false; lib.albums.len()],
+        View::Artists => vec![false; lib.artists.len()],
+        View::Genres => vec![false; lib.genres.len()],
+    }
+}
+
+fn change_button(vec: &mut [bool], index: usize, visible: bool) {
+    if index < vec.len() {
+        vec[index] = visible;
+    }
+}
+
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+    if state.main_view.visible.is_none()
+        && let Some(lib) = &state.library
+        && !matches!(message, Message::ChangeView(_))
+    {
+        state.main_view.visible = Some(init_visible(lib, &state.main_view.view));
+    }
     match message {
-        Message::ChangeMainView(view) => state.main_view.view = view,
-        Message::TrackButtonPoppedIn(index) => {
-            if let Some(lib) = &state.library {
-                if index < lib.tracks.len() {
-                    if let Some(tracks) = &mut state.main_view.tracks {
-                        if index < tracks.len() {
-                            tracks[index] = Some(lib.tracks[index].clone());
-                        } else {
-                            warn!(
-                                "Index {index} is out of bounds for track count in the main view ({})",
-                                tracks.len()
-                            );
-                        }
-                    } else {
-                        warn!("Track list in the main view state is not initialized!");
-                    }
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for track count in the music library ({})",
-                        lib.tracks.len()
-                    );
-                }
-            } else {
-                warn!("Can't render track button, library not initialized!");
-            }
+        Message::ChangeView(view) => {
+            state.main_view.visible = state.library.as_ref().map(|lib| init_visible(lib, &view));
+            state.main_view.view = view
         }
-        Message::TrackButtonPoppedOut(index) => {
-            if let Some(tracks) = &mut state.main_view.tracks {
-                if index < tracks.len() {
-                    tracks[index] = None;
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for track count in the main view ({})",
-                        tracks.len()
-                    );
-                }
-            } else {
-                warn!("Track list in the main view state is not initialized!");
-            }
+        Message::ButtonPoppedIn(index) => {
+            change_button(state.main_view.visible.as_mut().unwrap(), index, true);
         }
-        Message::AlbumButtonPoppedIn(index) => {
-            if let Some(lib) = &state.library {
-                if index < lib.albums.len() {
-                    if let Some(albums) = &mut state.main_view.albums {
-                        if index < albums.len() {
-                            albums[index] = Some(lib.albums[index].clone());
-                        } else {
-                            warn!(
-                                "Index {index} is out of bounds for album count in the main view ({})",
-                                albums.len()
-                            );
-                        }
-                    } else {
-                        warn!("Album list in the main view state is not initialized!");
-                    }
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for album count in the music library ({})",
-                        lib.albums.len()
-                    );
-                }
-            } else {
-                warn!("Can't render album button, library not initialized!");
-            }
-        }
-        Message::AlbumButtonPoppedOut(index) => {
-            if let Some(albums) = &mut state.main_view.albums {
-                if index < albums.len() {
-                    albums[index] = None;
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for album count in the main view ({})",
-                        albums.len()
-                    );
-                }
-            } else {
-                warn!("Album list in the main view state is not initialized!");
-            }
-        }
-        Message::ArtistButtonPoppedIn(index) => {
-            if let Some(lib) = &state.library {
-                if index < lib.artists.len() {
-                    if let Some(artists) = &mut state.main_view.artists {
-                        if index < artists.len() {
-                            artists[index] = Some(lib.artists[index].clone());
-                        } else {
-                            warn!(
-                                "Index {index} is out of bounds for artist count in the main view ({})",
-                                artists.len()
-                            );
-                        }
-                    } else {
-                        warn!("Artist list in the main view state is not initialized!");
-                    }
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for artist count in the music library ({})",
-                        lib.albums.len()
-                    );
-                }
-            } else {
-                warn!("Can't render artist button, library not initialized!");
-            }
-        }
-        Message::ArtistButtonPoppedOut(index) => {
-            if let Some(artists) = &mut state.main_view.artists {
-                if index < artists.len() {
-                    artists[index] = None;
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for artist count in the main view ({})",
-                        artists.len()
-                    );
-                }
-            } else {
-                warn!("Artist list in the main view state is not initialized!");
-            }
-        }
-        Message::GenreButtonPoppedIn(index) => {
-            if let Some(lib) = &state.library {
-                if index < lib.genres.len() {
-                    if let Some(genres) = &mut state.main_view.genres {
-                        if index < genres.len() {
-                            genres[index] = Some(lib.genres[index].clone());
-                        } else {
-                            warn!(
-                                "Index {index} is out of bounds for genre count in the main view ({})",
-                                genres.len()
-                            );
-                        }
-                    } else {
-                        warn!("Genre list in the main view state is not initialized!");
-                    }
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for genre count in the music library ({})",
-                        lib.genres.len()
-                    );
-                }
-            } else {
-                warn!("Can't render genre button, library not initialized!");
-            }
-        }
-        Message::GenreButtonPoppedOut(index) => {
-            if let Some(genres) = &mut state.main_view.genres {
-                if index < genres.len() {
-                    genres[index] = None;
-                } else {
-                    warn!(
-                        "Index {index} is out of bounds for genre count in the main view ({})",
-                        genres.len()
-                    );
-                }
-            } else {
-                warn!("Genre list in the main view state is not initialized!");
-            }
+        Message::ButtonPoppedOut(index) => {
+            change_button(state.main_view.visible.as_mut().unwrap(), index, false);
         }
     }
     Task::none()

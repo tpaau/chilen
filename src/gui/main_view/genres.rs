@@ -22,9 +22,12 @@ use crate::gui::{
 pub fn genre_button<'a>(
     state: &'a Chilen,
     index: usize,
-    maybe_genre: &'a Option<Arc<Genre>>,
+    genre: &'a Arc<Genre>,
 ) -> Element<'a, gui::Message> {
-    let content: Element<'a, gui::Message> = if let Some(genre) = maybe_genre {
+    let content: Element<'a, gui::Message> = if let Some(visible) = &state.main_view.visible
+        && index < visible.len()
+        && visible[index]
+    {
         button(
             row![
                 stack![
@@ -140,20 +143,20 @@ pub fn genre_button<'a>(
         space().height(BUTTON_HEIGHT).width(Length::Fill).into()
     };
     sensor(content)
-        .on_show(move |_| gui::Message::MainView(main_view::Message::GenreButtonPoppedIn(index)))
-        .on_hide(gui::Message::MainView(
-            main_view::Message::GenreButtonPoppedOut(index),
-        ))
+        .on_show(move |_| gui::Message::MainView(main_view::Message::ButtonPoppedIn(index)))
+        .on_hide(gui::Message::MainView(main_view::Message::ButtonPoppedOut(
+            index,
+        )))
         .into()
 }
 
 pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
-    if let Some(genres) = &state.main_view.genres {
+    if let Some(lib) = &state.library {
         let content = column(
-            genres
+            lib.genres
                 .iter()
                 .enumerate()
-                .map(|(i, t)| genre_button(state, i, t)),
+                .map(|(i, g)| genre_button(state, i, g)),
         )
         .spacing(BUTTON_SPACING);
 

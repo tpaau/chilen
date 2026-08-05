@@ -105,10 +105,7 @@ impl Default for Chilen {
             settings: Settings::load(),
             main_view: main_view::State {
                 view: main_view::View::default(),
-                tracks: None,
-                albums: None,
-                artists: None,
-                genres: None,
+                visible: None,
             },
         }
     }
@@ -192,10 +189,6 @@ impl Chilen {
                 Event::Backend(event) => match event {
                     chilen_backend::Event::LibraryChanged(lib) => {
                         state.loading_state = LoadingState::Loaded;
-                        state.main_view.tracks = Some(vec![None; lib.tracks.len()]);
-                        state.main_view.albums = Some(vec![None; lib.albums.len()]);
-                        state.main_view.artists = Some(vec![None; lib.artists.len()]);
-                        state.main_view.genres = Some(vec![None; lib.genres.len()]);
                         state.library = Some(lib);
                     }
                     chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
