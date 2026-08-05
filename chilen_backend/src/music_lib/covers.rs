@@ -1,6 +1,6 @@
 use std::{
     fs::{File, create_dir_all},
-    hash::Hash,
+    hash::{DefaultHasher, Hash, Hasher},
     io::Cursor,
     path::PathBuf,
     sync::LazyLock,
@@ -233,7 +233,6 @@ fn safe_file_create(path: &PathBuf) -> Result<File, std::io::Error> {
 
 // TODO: Add quality options
 pub(crate) fn get_track_cover(
-    track_hash: u64,
     tag: &Tag,
     load_mode: &LoadMode,
     config: Config,
@@ -261,28 +260,33 @@ pub(crate) fn get_track_cover(
         });
     }
 
+    let image_buf = pick_front_cover_or_replacement(tag.pictures())?.data();
+    let mut hasher = DefaultHasher::new();
+    image_buf.hash(&mut hasher);
+    let hash = hasher.finish();
+
     let extension = config.extension();
     let mut hires_path = hires_cache.clone();
-    hires_path.push(format!("{track_hash}.{extension}"));
+    hires_path.push(format!("{hash}.{extension}"));
     let mut thumbnail_path = thumbnail_cache.clone();
-    thumbnail_path.push(format!("{track_hash}.{extension}"));
+    thumbnail_path.push(format!("{hash}.{extension}"));
 
-    let image = LazyLock::new(|| {
-        let buf = pick_front_cover_or_replacement(tag.pictures())?.data();
-        match ImageReader::new(Cursor::new(buf)).with_guessed_format() {
-            Ok(image) => match image.decode() {
-                Ok(i) => Ok(i),
+    let image =
+        LazyLock::new(
+            || match ImageReader::new(Cursor::new(image_buf)).with_guessed_format() {
+                Ok(image) => match image.decode() {
+                    Ok(i) => Ok(i),
+                    Err(e) => {
+                        warn!("Couldn't decode image data: {e}");
+                        Err(CoverError::DecodingError)
+                    }
+                },
                 Err(e) => {
-                    warn!("Couldn't decode image data: {e}");
-                    Err(CoverError::DecodingError)
+                    warn!("{e}");
+                    Err(CoverError::UnknownFileFormat)
                 }
             },
-            Err(e) => {
-                warn!("{e}");
-                Err(CoverError::UnknownFileFormat)
-            }
-        }
-    });
+        );
 
     let thumbnail = if load_mode == &LoadMode::Load && thumbnail_path.is_file() {
         Some(thumbnail_path)

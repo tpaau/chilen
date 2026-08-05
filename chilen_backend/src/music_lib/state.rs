@@ -72,7 +72,7 @@ impl std::fmt::Display for Track {
 impl Track {
     // TODO: Have a separate thumbnail path for the track to make the image load faster, look
     // better, and avoid resampling during runtime.
-    pub fn new(
+    pub(crate) fn new(
         path: PathBuf,
         tagged_file: &TaggedFile,
         load_mode: &LoadMode,
@@ -102,9 +102,32 @@ impl Track {
             None
         };
 
-        let mut track = Track {
+        let cover = {
+            #[cfg(not(test))]
+            match get_track_cover(tag, load_mode, *config) {
+                Ok(cover) => cover,
+                Err(e) => {
+                    warn!("Could not get the cover image: {e}");
+                    Cover::none()
+                }
+            }
+            #[cfg(test)]
+            if load_mode != &LoadMode::None {
+                match get_track_cover(tag, load_mode, *config) {
+                    Ok(cover) => cover,
+                    Err(e) => {
+                        warn!("Could not get the cover image: {e}");
+                        Cover::none()
+                    }
+                }
+            } else {
+                Cover::none()
+            }
+        };
+
+        let track = Track {
             path,
-            cover: Cover::none(),
+            cover,
             duration: tagged_file.properties().duration(),
             artist: tag.artist().map(|artist| artist.into()),
             title: tag.title().map(|title| title.into()),
@@ -118,23 +141,6 @@ impl Track {
             disc_total: tag.disk_total(),
             date: tag.date(),
         };
-
-        #[cfg(not(test))]
-        match get_track_cover(track.hash_self(), tag, load_mode, *config) {
-            Ok(cover) => track.cover = cover,
-            Err(e) => {
-                warn!("Could not get the cover image: {e}");
-            }
-        }
-        #[cfg(test)]
-        if load_mode != &LoadMode::None {
-            match get_track_cover(track.hash_self(), tag, load_mode, *config) {
-                Ok(cover) => track.cover = cover,
-                Err(e) => {
-                    warn!("Could not get the cover image: {e}");
-                }
-            }
-        }
 
         Ok(track)
     }
