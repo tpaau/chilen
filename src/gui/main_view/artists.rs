@@ -9,7 +9,7 @@ use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
-use iced_widget::{center, column, sensor, stack, text};
+use iced_widget::{center, column, image, sensor, stack, text};
 
 use crate::gui::{
     self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
@@ -44,7 +44,13 @@ pub fn artist_button<'a>(
                     })
                     .width(Length::Fixed(THUMBNAIL_SIZE))
                     .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    // TODO: Artist profile
+                    artist.cover.thumbnail.as_ref().map(|t| {
+                        image(t)
+                            .content_fit(iced::ContentFit::Cover)
+                            .width(Length::Fixed(THUMBNAIL_SIZE))
+                            .height(Length::Fixed(THUMBNAIL_SIZE))
+                            .border_radius(f32::MAX)
+                    }),
                 ],
                 container(column![
                     text(&artist.name)
@@ -53,6 +59,7 @@ pub fn artist_button<'a>(
                         .wrapping(text::Wrapping::None),
                     row![
                         text(match artist.albums.len() {
+                            0 => "No albums".to_string(),
                             1 => "1 album".to_string(),
                             _ => format!("{} albums", artist.albums.len()),
                         })

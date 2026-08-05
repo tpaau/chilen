@@ -53,6 +53,7 @@ pub fn genre_button<'a>(
                         .wrapping(text::Wrapping::None),
                     row![
                         text(match genre.artists.len() {
+                            0 => "Unknown artist".to_string(),
                             1 => "1 artist".to_string(),
                             _ => format!("{} artists", genre.artists.len()),
                         })
@@ -68,6 +69,7 @@ pub fn genre_button<'a>(
                             .border(Border::default().rounded(f32::MAX))
                             .background(state.theme.on_surface_variant())),
                         text(match genre.albums.len() {
+                            0 => "No albums".to_string(),
                             1 => "1 album".to_string(),
                             _ => format!("{} albums", genre.albums.len()),
                         })

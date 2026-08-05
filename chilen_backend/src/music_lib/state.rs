@@ -251,6 +251,7 @@ pub struct Album {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Artist {
     pub name: String,
+    pub cover: Cover,
     pub tracks: Vec<Arc<Track>>,
     pub albums: Vec<Arc<Album>>,
 }
@@ -411,14 +412,23 @@ impl MusicLibrary {
         let artists: Vec<_> = artist_names
             .into_iter()
             .map(|name| {
+                let tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
                 let albums = if let Some(albums) = albums_by_artist.get(name) {
                     albums.iter().cloned().collect()
                 } else {
                     Vec::new()
                 };
+                let cover = tracks
+                    .iter()
+                    .max_by_key(|t| t.date)
+                    .unwrap_or(&tracks[0])
+                    .cover
+                    .clone();
+
                 Arc::new(Artist {
                     name: name.to_string(),
-                    tracks: tracks_by_artist[name].clone().into_iter().collect(),
+                    cover,
+                    tracks,
                     albums,
                 })
             })
