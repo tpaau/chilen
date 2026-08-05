@@ -7,6 +7,7 @@ use std::{
 
 use lofty::{error::LoftyError, file::TaggedFile};
 use log::{info, trace, warn};
+use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use crate::{
@@ -16,6 +17,30 @@ use crate::{
         covers::{self, LoadMode},
     },
 };
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ValueSeparators {
+    pub artist: Vec<String>,
+    pub album: Vec<String>,
+    pub genre: Vec<String>,
+}
+
+impl ValueSeparators {
+    fn new(separators: Vec<String>) -> Self {
+        Self {
+            artist: separators.clone(),
+            album: separators.clone(),
+            genre: separators,
+        }
+    }
+}
+
+#[cfg_attr(test, derive(Default))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Config {
+    pub value_separators: ValueSeparators,
+    pub covers: covers::Config,
+}
 
 fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
     let sleep_dur = Duration::from_millis(100);

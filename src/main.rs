@@ -3,7 +3,13 @@ mod gui;
 pub mod settings;
 use std::{env::home_dir, process::exit, sync::mpsc::Receiver, thread, time::Duration};
 
-use chilen_backend::{Config, music_lib::covers};
+use chilen_backend::{
+    Config,
+    music_lib::{
+        covers,
+        indexer::{self, ValueSeparators},
+    },
+};
 use dirs::{cache_dir, data_dir};
 
 use log::{error, info};
@@ -86,10 +92,13 @@ fn main() {
             data_dir,
             music_dir,
             cache_dir,
-            covers: covers::Config {
-                format: covers::ImageFormat::Png,
-                thumbnail_resolution: THUMBNAIL_SIZE as u32,
-                cover_quality: covers::Quality::Default,
+            indexer: indexer::Config {
+                value_separators: ValueSeparators::default(),
+                covers: covers::Config {
+                    format: covers::ImageFormat::Png,
+                    thumbnail_resolution: THUMBNAIL_SIZE as u32,
+                    cover_quality: covers::Quality::Default,
+                },
             },
         };
 

@@ -1,5 +1,5 @@
 pub mod covers;
-pub(crate) mod indexer;
+pub mod indexer;
 
 pub mod state;
 #[cfg(test)]
