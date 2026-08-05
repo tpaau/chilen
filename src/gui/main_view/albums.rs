@@ -25,14 +25,15 @@ pub fn album_button<'a>(
     maybe_album: &'a Option<Arc<Album>>,
 ) -> Element<'a, gui::Message> {
     let content: Element<'a, gui::Message> = if let Some(album) = maybe_album {
+        let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
         button(
             row![
                 stack![
                     container(space())
-                        .style(|_| {
+                        .style(move |_| {
                             container::Style::default()
                                 .background(state.theme.surface_container_high())
-                                .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
+                                .border(Border::default().rounded(thumbnail_border_radius))
                         })
                         .width(Length::Fixed(THUMBNAIL_SIZE))
                         .height(Length::Fixed(THUMBNAIL_SIZE)),
@@ -45,8 +46,11 @@ pub fn album_button<'a>(
                     album.tracks.iter().find_map(|t| {
                         t.cover_path.as_ref().map(|path| {
                             image(path.clone())
+                                .content_fit(iced::ContentFit::Cover)
                                 .width(Length::Fixed(THUMBNAIL_SIZE))
                                 .height(Length::Fixed(THUMBNAIL_SIZE))
+                                .filter_method(image::FilterMethod::Linear)
+                                .border_radius(thumbnail_border_radius)
                         })
                     }),
                 ],

@@ -91,7 +91,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                     row(vec![
                                         text(*icons::UPLOAD_FILE)
                                             .font(icons::filled())
-                                            .size(icons::SIZE_SMALLER)
+                                            .size(icons::SIZE_SMALL)
                                             .into(),
                                         text("Import playlist").size(font::SIZE_REGULAR).into()
                                     ])
@@ -115,7 +115,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                     row(vec![
                                         text(*icons::PLAYLIST_ADD)
                                             .font(icons::filled())
-                                            .size(icons::SIZE_SMALLER)
+                                            .size(icons::SIZE_SMALL)
                                             .into(),
                                         text("New playlist").size(font::SIZE_REGULAR).into()
                                     ])

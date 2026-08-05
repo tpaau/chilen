@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Track;
 use iced::{
-    Border, ContentFit, Element, Length, Padding,
+    Border, Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
@@ -44,7 +44,7 @@ pub fn track_button<'a>(
                     ),
                     track.cover_path.as_ref().map(|cover| {
                         image(cover)
-                            .content_fit(ContentFit::Cover)
+                            .content_fit(iced::ContentFit::Cover)
                             .width(Length::Fixed(THUMBNAIL_SIZE))
                             .height(Length::Fixed(THUMBNAIL_SIZE))
                             .filter_method(image::FilterMethod::Linear)
