@@ -80,7 +80,7 @@ fn main() {
             cache_dir,
             covers: covers::Config {
                 format: covers::ImageFormat::Png,
-                thumbnail_resolution: covers::Pixels(THUMBNAIL_SIZE as u32),
+                thumbnail_resolution: THUMBNAIL_SIZE as u32,
                 cover_quality: covers::Quality::Default,
             },
         };

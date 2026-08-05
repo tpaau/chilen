@@ -21,3 +21,4 @@ image = { version = "0.25.10", features = [ "serde" ] }
 
 [features]
 mpris = [ "dep:mpris-server" ]
+

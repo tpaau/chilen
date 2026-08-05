@@ -35,9 +35,6 @@ impl Cover {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Pixels(pub u32);
-
 #[cfg_attr(test, derive(Default))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Quality {
@@ -46,15 +43,15 @@ pub enum Quality {
     Default,
     High,
     Lossless,
-    Custom(Pixels),
+    Custom(u32),
 }
 
 impl Quality {
-    fn resolution(self) -> Option<Pixels> {
+    fn resolution(self) -> Option<u32> {
         match self {
-            Quality::Low => Some(Pixels(256)),
-            Quality::Default => Some(Pixels(512)),
-            Quality::High => Some(Pixels(1024)),
+            Quality::Low => Some(256),
+            Quality::Default => Some(512),
+            Quality::High => Some(1024),
             Quality::Lossless => None,
             Quality::Custom(pixels) => Some(pixels),
         }
@@ -64,7 +61,7 @@ impl Quality {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     pub format: ImageFormat,
-    pub thumbnail_resolution: Pixels,
+    pub thumbnail_resolution: u32,
     pub cover_quality: Quality,
 }
 
@@ -73,7 +70,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             format: ImageFormat::Png,
-            thumbnail_resolution: Pixels(40),
+            thumbnail_resolution: 40,
             cover_quality: Quality::default(),
         }
     }
@@ -264,34 +261,43 @@ pub(crate) fn get_track_cover(
         });
     }
 
-    let buf = pick_front_cover_or_replacement(tag.pictures())?.data();
-    let image = match ImageReader::new(Cursor::new(buf)).with_guessed_format() {
-        Ok(image) => match image.decode() {
-            Ok(i) => i,
-            Err(e) => {
-                warn!("Couldn't decode image data: {e}");
-                return Err(CoverError::DecodingError);
-            }
-        },
-        Err(e) => {
-            warn!("{e}");
-            return Err(CoverError::UnknownFileFormat);
-        }
-    };
-
     let extension = config.extension();
     let mut hires_path = hires_cache.clone();
     hires_path.push(format!("{track_hash}.{extension}"));
     let mut thumbnail_path = thumbnail_cache.clone();
     thumbnail_path.push(format!("{track_hash}.{extension}"));
 
+    let image = LazyLock::new(|| {
+        let buf = pick_front_cover_or_replacement(tag.pictures())?.data();
+        match ImageReader::new(Cursor::new(buf)).with_guessed_format() {
+            Ok(image) => match image.decode() {
+                Ok(i) => Ok(i),
+                Err(e) => {
+                    warn!("Couldn't decode image data: {e}");
+                    Err(CoverError::DecodingError)
+                }
+            },
+            Err(e) => {
+                warn!("{e}");
+                Err(CoverError::UnknownFileFormat)
+            }
+        }
+    });
+
     let thumbnail = if load_mode == &LoadMode::Load && thumbnail_path.is_file() {
         Some(thumbnail_path)
     } else {
+        let image = match &*image {
+            Ok(image) => image,
+            Err(e) => {
+                return Err(e.clone());
+            }
+        };
+
         let thumbnail = resize(
-            &image,
-            config.thumbnail_resolution.0,
-            config.thumbnail_resolution.0,
+            image,
+            config.thumbnail_resolution,
+            config.thumbnail_resolution,
             COVER_FILTER,
         );
 
@@ -313,9 +319,22 @@ pub(crate) fn get_track_cover(
     let hires = if load_mode == &LoadMode::Load && hires_path.is_file() {
         Some(hires_path)
     } else {
+        let image = match image.as_ref() {
+            Ok(image) => image,
+            Err(e) => {
+                return Err(e.clone());
+            }
+        };
+
         let cover = match config.cover_quality.resolution() {
-            Some(res) => resize(&image, res.0, res.0, COVER_FILTER).buffer_like(),
-            None => image.into(),
+            Some(res) => {
+                if image.height() > res && image.height() > res {
+                    resize(image, res, res, COVER_FILTER).buffer_like()
+                } else {
+                    image.clone().into()
+                }
+            }
+            None => image.clone().into(),
         };
 
         match safe_file_create(&hires_path) {
