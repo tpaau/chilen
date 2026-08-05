@@ -9,7 +9,7 @@ use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
-use iced_widget::{center, column, sensor, stack, text};
+use iced_widget::{center, column, image, sensor, stack, text};
 
 use crate::gui::{
     self, BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
@@ -28,6 +28,7 @@ pub fn genre_button<'a>(
         && index < visible.len()
         && visible[index]
     {
+        let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
         button(
             row![
                 stack![
@@ -37,14 +38,20 @@ pub fn genre_button<'a>(
                             .color(state.theme.on_surface_variant())
                             .size(icons::SIZE_LARGE)
                     ))
-                    .style(|_| {
+                    .style(move |_| {
                         container::Style::default()
                             .background(state.theme.surface_container_high())
-                            .border(Border::default().rounded(BUTTON_ROUNDING - BUTTON_PADDING))
+                            .border(Border::default().rounded(thumbnail_border_radius))
                     })
                     .width(Length::Fixed(THUMBNAIL_SIZE))
                     .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    // TODO: Cover image
+                    genre.cover.thumbnail.as_ref().map(|t| {
+                        image(t)
+                            .content_fit(iced::ContentFit::Cover)
+                            .width(Length::Fixed(THUMBNAIL_SIZE))
+                            .height(Length::Fixed(THUMBNAIL_SIZE))
+                            .border_radius(thumbnail_border_radius)
+                    }),
                 ],
                 container(column![
                     text(&genre.name)
@@ -68,10 +75,9 @@ pub fn genre_button<'a>(
                         .style(|_| container::Style::default()
                             .border(Border::default().rounded(f32::MAX))
                             .background(state.theme.on_surface_variant())),
-                        text(match genre.albums.len() {
-                            0 => "No albums".to_string(),
-                            1 => "1 album".to_string(),
-                            _ => format!("{} albums", genre.albums.len()),
+                        text(match genre.tracks.len() {
+                            1 => "1 track".to_string(),
+                            _ => format!("{} tracks", genre.albums.len()),
                         })
                         .size(SIZE_SMALL)
                         .color(state.theme.on_surface_variant())
