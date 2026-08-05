@@ -10,6 +10,10 @@ use log::{error, info};
 
 use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
 
+const APP_NAME: &str = "Chilen";
+#[cfg(feature = "mpris")]
+const APP_ID: &str = "dev.tpaau.Chilen";
+
 fn handle_events(receiver: Receiver<chilen_backend::Event>) {
     // TODO: Cleaner way of doing this?
     loop {
@@ -38,7 +42,7 @@ fn main() {
             Some(dir) => dir,
             None => match data_dir() {
                 Some(mut dir) => {
-                    dir.push(chilen_backend::APP_NAME.to_lowercase());
+                    dir.push(APP_NAME.to_lowercase());
                     dir
                 }
                 None => {
@@ -51,7 +55,7 @@ fn main() {
             Some(dir) => dir,
             None => match cache_dir() {
                 Some(mut dir) => {
-                    dir.push(chilen_backend::APP_NAME.to_lowercase());
+                    dir.push(APP_NAME.to_lowercase());
                     dir
                 }
                 None => {
@@ -75,6 +79,10 @@ fn main() {
         };
 
         let config = Config {
+            #[cfg(feature = "mpris")]
+            identity: APP_NAME.to_string(),
+            #[cfg(feature = "mpris")]
+            identifier: APP_ID.to_string(),
             data_dir,
             music_dir,
             cache_dir,

@@ -8,7 +8,7 @@ use log::{error, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::{
-    APP_ID, APP_NAME, Event,
+    Event,
     playback::{
         self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
         open_uri,
@@ -351,15 +351,13 @@ impl PlayerInterface for MprisInterface {
     }
 }
 
-pub(crate) fn launch_server() {
+pub(crate) fn launch_server(identity: String, identifier: String) {
     thread::spawn(move || {
         trace!("Starting the MPRIS server");
-        let interface = MprisInterface {
-            identity: APP_NAME.to_string(),
-        };
+        let interface = MprisInterface { identity };
 
         pollster::block_on(async {
-            let server = match Server::new(APP_ID, interface).await {
+            let server = match Server::new(&identifier, interface).await {
                 Ok(server) => server,
                 Err(e) => {
                     error!("Cannot start the MPRIS server: {e}");

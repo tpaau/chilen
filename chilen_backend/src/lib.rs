@@ -25,11 +25,11 @@ pub mod playback;
 #[cfg(test)]
 mod tests;
 
-pub const APP_NAME: &str = "Chilen";
-#[cfg(feature = "mpris")]
-const APP_ID: &str = "dev.tpaau.Chilen";
-
 pub struct Config {
+    #[cfg(feature = "mpris")]
+    pub identity: String,
+    #[cfg(feature = "mpris")]
+    pub identifier: String,
     pub cache_dir: PathBuf,
     // TODO: Support for multiple music library directories
     pub music_dir: PathBuf,
@@ -222,7 +222,14 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
         error!("Could not load the music library: {e}");
         return Err(e);
     }
-    thread::spawn(playback::init);
+    thread::spawn(|| {
+        playback::init(
+            #[cfg(feature = "mpris")]
+            config.identity,
+            #[cfg(feature = "mpris")]
+            config.identifier,
+        )
+    });
 
     Ok(receiver)
 }
