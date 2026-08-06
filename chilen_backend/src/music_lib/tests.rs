@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 #[cfg(test)]
 use crate::{
@@ -91,10 +91,11 @@ fn playlist_creation() {
     assert_eq!(lib.playlists.len(), 1);
     assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
 
+    let path: PathBuf = "/nonexistent/path".into();
     assert_eq!(
-        lib.create_playlist("Test2".to_string(), &Some(vec!["/nonexistent/path".into()]))
+        lib.create_playlist("Test2".to_string(), &Some(vec![path.clone()]))
             .unwrap_err(),
-        Error::UnknownTrack
+        Error::UnknownTrackPath(path)
     );
     assert_eq!(lib.playlists.len(), 1);
     assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
@@ -156,10 +157,11 @@ fn track_append() {
             .unwrap_err(),
         Error::UnknownPlaylist("Test2".to_string())
     );
+
+    let path: PathBuf = "/nonexistent/path".into();
     assert_eq!(
-        lib.add_tracks("Test1", vec!["/nonexistent/path".into()])
-            .unwrap_err(),
-        Error::UnknownTrack
+        lib.add_tracks("Test1", vec![path.clone()]).unwrap_err(),
+        Error::UnknownTrackPath(path)
     );
 }
 

@@ -618,6 +618,7 @@ impl MusicLibrary {
         Ok(lib)
     }
 
+    #[cfg(test)]
     pub(crate) fn new_testing(tracks: Vec<Track>) -> Self {
         Self::new(tracks)
     }
@@ -663,7 +664,7 @@ impl MusicLibrary {
         for hash in hashes {
             match self.tracks_by_hash.get(&hash) {
                 Some(track) => tracks.push(track.clone()),
-                None => return Err(Error::UnknownTrack),
+                None => return Err(Error::UnknownTrackHash(hash)),
             }
         }
 
@@ -708,7 +709,7 @@ impl MusicLibrary {
                     out.push(track);
                 } else {
                     error!("The track {path:?} was not found in the music library");
-                    return Err(Error::UnknownTrack);
+                    return Err(Error::UnknownTrackPath(path.to_path_buf()));
                 }
             }
             out
@@ -769,7 +770,7 @@ impl MusicLibrary {
             if let Some(track) = self.find_track_by_path(&path) {
                 out.push(track.clone());
             } else {
-                return Err(Error::UnknownTrack);
+                return Err(Error::UnknownTrackPath(path.to_path_buf()));
             }
         }
 

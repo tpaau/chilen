@@ -137,7 +137,7 @@ pub(crate) fn tracks_from_paths(
         if let Some(track) = lib.find_track_by_path(path) {
             out.push(track.as_ref().clone());
         } else if !allow_failure {
-            return Err(Error::UnknownTrack);
+            return Err(Error::UnknownTrackPath(path.to_path_buf()));
         }
     }
 

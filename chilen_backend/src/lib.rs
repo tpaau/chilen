@@ -107,21 +107,23 @@ pub enum Error {
     /// There is no [playlist](music_lib::state::Playlist) in the
     /// [music library](music_lib::state::MusicLibrary) with the provided name.
     UnknownPlaylist(String),
-    /// The provided item index was out of bounds.
+    /// The item index was out of bounds.
     IndexOutOfBounds,
-    /// The provided list contained duplicate values.
+    /// The list contained duplicate values.
     DuplicateItems,
-    /// The provided track is not registered in the library.
-    UnknownTrack,
+    /// The track hash was not found in the music library.
+    UnknownTrackHash(u64),
+    /// The track was not found in the music library.
+    UnknownTrackPath(PathBuf),
     /// Could not read the contents of the library state file.
     StateNotReadable,
     /// Could not write the library state to a file.
     StateWriteFailed,
     /// The library state path is not a file.
     StateNotAFile,
-    /// The provided path does not exist or access to it was denied.
+    /// The path does not exist or access to it was denied.
     PathDoesNotExist,
-    /// Could not find any audio files in the provided directory path.
+    /// Could not find any audio files in the directory path.
     DirectoryWithNoTracks,
     /// Could not parse the M3U8 playlist.
     ///
@@ -154,34 +156,41 @@ impl std::fmt::Display for Error {
             Self::NoTrackAtIndex(index) => write!(f, "No track was found at index {index}"),
             Self::InvalidDuration => write!(
                 f,
-                "The player position could not be set because the duration provided was invalid"
+                "The player position could not be set because the duration was invalid"
             ),
             Self::DurationOverflow => {
                 write!(f, "Overflow detected while performing a seek operation")
             }
-            Self::UnknownTrack => {
-                write!(f, "The provided track was not found in the music library")
+            Self::UnknownTrackHash(hash) => {
+                write!(
+                    f,
+                    "The track hash doesn't exist in the music library: {hash}"
+                )
+            }
+            Self::UnknownTrackPath(path) => {
+                write!(
+                    f,
+                    "The track track doesn't exist the music library: {path:?}"
+                )
             }
             Self::PlaylistExists => write!(f, "Playlist with this name already exists"),
             Self::LibraryNotInitialized => write!(f, "The music library is not initialized"),
             Self::UnknownPlaylist(name) => {
                 write!(f, "There is no playlist with the name \"{name}\"")
             }
-            Self::IndexOutOfBounds => write!(f, "The provided item index was out of bounds"),
-            Self::DuplicateItems => write!(f, "The provided vector contained duplicate values"),
+            Self::IndexOutOfBounds => write!(f, "The item index was out of bounds"),
+            Self::DuplicateItems => write!(f, "The vector contained duplicate values"),
             Self::StateNotReadable => {
                 write!(f, "Could not read the contents of the library state file")
             }
             Self::StateWriteFailed => write!(f, "Could not write the library state to a file"),
             Self::StateNotAFile => write!(f, "The library state path is not a file"),
-            Self::PathDoesNotExist => write!(
-                f,
-                "The provided path does not exist or access to it was denied"
-            ),
-            Self::DirectoryWithNoTracks => write!(
-                f,
-                "Could not find any audio files in the provided directory path"
-            ),
+            Self::PathDoesNotExist => {
+                write!(f, "The path does not exist or access to it was denied")
+            }
+            Self::DirectoryWithNoTracks => {
+                write!(f, "Could not find any audio files in the directory path")
+            }
             Self::PlaylistParsingError => write!(f, "Could not parse the M3U8 playlist"),
             Self::PlaylistExportFailed => write!(f, "Could not export the playlist to M3U8"),
             Error::PathInaccessible(path_buf) => write!(f, "Path inaccessible: {path_buf:?}"),
@@ -192,7 +201,7 @@ impl std::fmt::Display for Error {
             Error::DirectoryCreationFailed(path_buf, e) => {
                 write!(f, "Could not create a directory at {path_buf:?}: {e}")
             }
-            Error::EmptyName => write!(f, "The provided name was empty"),
+            Error::EmptyName => write!(f, "The name is empty"),
         }
     }
 }
