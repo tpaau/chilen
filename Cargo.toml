@@ -8,7 +8,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 env_logger = "0.11.10"
 log = "0.4.29"
-clap = { version = "4.5.53", features = [ "derive", "cargo" ] }
+clap = { version = "4.6.6", features = [ "derive", "cargo" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
 dirs = "6.0.0"
 iced = { version = "0.14.0", features = [ "advanced", "image" ] }
