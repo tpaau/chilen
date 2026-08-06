@@ -1,6 +1,10 @@
 use std::{
+    num::NonZero,
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
+    },
     thread,
     time::Duration,
 };
@@ -38,48 +42,48 @@ fn index_files(
     load_mode: LoadMode,
     config: music_lib::Config,
 ) -> Result<Vec<Track>, Error> {
-    let tracks = Arc::new(RwLock::new(Vec::with_capacity(files.len())));
-    let mut handles = Vec::new();
-    let config = Arc::new(config);
+    let mut tracks = Mutex::new(Vec::with_capacity(files.len()));
+    let i = AtomicUsize::new(0);
 
-    for file in files {
-        let lock = tracks.clone();
-        let config = config.clone();
+    std::thread::scope(|s| {
+        for _ in 0..std::thread::available_parallelism().map_or(1, NonZero::get) {
+            s.spawn(|| {
+                loop {
+                    let Some(file) = files.get(i.fetch_add(1, Ordering::Relaxed)) else {
+                        return;
+                    };
 
-        handles.push(thread::spawn(move || {
-            let tagged_file = match safe_read_from_path(&file) {
-                Ok(tagged_file) => tagged_file,
-                Err(e) => {
-                    match e.kind() {
-                        lofty::error::ErrorKind::UnknownFormat => {
-                            info!("Likely not an audio file: {file:?}");
+                    let tagged_file = match safe_read_from_path(&file) {
+                        Ok(tagged_file) => tagged_file,
+                        Err(e) => {
+                            match e.kind() {
+                                lofty::error::ErrorKind::UnknownFormat => {
+                                    info!("Likely not an audio file: {file:?}");
+                                }
+                                _ => {
+                                    warn!("Could not get tags from file {file:?}: {e}");
+                                }
+                            }
+                            return;
                         }
-                        _ => {
-                            warn!("Could not get tags from file {file:?}: {e}");
+                    };
+
+                    let track = match Track::new(file.clone(), &tagged_file, &load_mode, &config) {
+                        Ok(track) => track,
+                        Err(e) => {
+                            warn!("Could not create a track struct: {e}");
+                            return;
                         }
-                    }
-                    return;
+                    };
+
+                    tracks.lock().unwrap().push(track);
                 }
-            };
+            });
+        }
+    });
 
-            let track = match Track::new(file, &tagged_file, &load_mode, &config) {
-                Ok(track) => track,
-                Err(e) => {
-                    warn!("Could not create a track struct: {e}");
-                    return;
-                }
-            };
-
-            lock.write().unwrap().push(track)
-        }));
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
-
-    tracks.write().unwrap().shrink_to_fit();
-    Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
+    tracks.get_mut().unwrap().shrink_to_fit();
+    Ok(tracks.into_inner().unwrap())
 }
 
 pub(crate) fn index(load_mode: LoadMode, config: music_lib::Config) -> Result<Vec<Track>, Error> {
