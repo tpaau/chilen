@@ -8,10 +8,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use icu::{
-    collator::{Collator, options::CollatorOptions},
-    locale::Locale,
-};
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, items::Timestamp},
@@ -25,7 +21,7 @@ use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Error, Event,
+    COLLATOR, Error, Event,
     music_lib::{
         self, DATA_DIR,
         covers::{Cover, LoadMode, get_track_cover},
@@ -392,18 +388,12 @@ impl MusicLibrary {
     fn try_from_loaded_lib(
         loaded: ConfMusicLibrary,
         tracks: HashSet<Track>,
-        locale: Locale,
     ) -> Result<Self, Error> {
-        let collator = match Collator::try_new(locale.into(), CollatorOptions::default()) {
-            Ok(c) => Some(c),
-            Err(e) => {
-                error!("Could not initialize the collator, things will be unsorted!: {e}");
-                None
-            }
-        };
         let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
-        if let Some(collator) = &collator {
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        if let Some(collator) = collator {
             tracks.sort_by(|t1, t2| {
                 collator.compare(
                     t1.title.as_deref().unwrap_or(""),
@@ -482,7 +472,7 @@ impl MusicLibrary {
             })
             .collect();
 
-        if let Some(collator) = &collator {
+        if let Some(collator) = collator {
             albums.sort_by(|a1, a2| collator.compare(&a1.title, &a2.title));
         }
 
@@ -523,7 +513,7 @@ impl MusicLibrary {
             })
             .collect();
 
-        if let Some(collator) = &collator {
+        if let Some(collator) = collator {
             artists.sort_by(|a1, a2| collator.compare(&a1.name, &a2.name));
         }
 
@@ -593,7 +583,7 @@ impl MusicLibrary {
             })
             .collect();
 
-        if let Some(collator) = &collator {
+        if let Some(collator) = collator {
             genres.sort_by(|g1, g2| collator.compare(&g1.name, &g2.name));
         }
 
@@ -1006,11 +996,8 @@ pub(crate) fn load(load_mode: LoadMode, config: music_lib::Config) -> Result<(),
 
         let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
             Ok(data) => {
-                match MusicLibrary::try_from_loaded_lib(
-                    data,
-                    tracks.clone().into_iter().collect(),
-                    config.locale,
-                ) {
+                match MusicLibrary::try_from_loaded_lib(data, tracks.clone().into_iter().collect())
+                {
                     Ok(lib) => lib,
                     Err(e) => {
                         error!("Could not open the music library: {e}");

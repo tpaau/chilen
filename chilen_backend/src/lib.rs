@@ -9,7 +9,12 @@ use std::{
     thread,
 };
 
+use icu::{
+    collator::{Collator, CollatorBorrowed, options::CollatorOptions},
+    locale::Locale,
+};
 use log::{error, warn};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     music_lib::{covers::LoadMode, set_dirs, state::MusicLibrary},
@@ -21,6 +26,7 @@ pub mod playback;
 #[cfg(test)]
 mod tests;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     #[cfg(feature = "mpris")]
     pub identity: String,
@@ -30,7 +36,8 @@ pub struct Config {
     // TODO: Support for multiple music library directories
     pub music_dir: PathBuf,
     pub data_dir: PathBuf,
-    pub indexer: music_lib::Config,
+    pub locale: Locale,
+    pub library: music_lib::Config,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -205,16 +212,29 @@ fn send_event(event: Event) {
 pub(crate) static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
+static CONFIG: RwLock<Option<Arc<Config>>> = RwLock::new(None);
+pub(crate) static COLLATOR: RwLock<Option<Arc<CollatorBorrowed<'_>>>> = RwLock::new(None);
+
 // TODO: Unused cached cover art cleanup here somewhere
 pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
     let (sender, receiver) = mpsc::channel();
     *EVENT_SENDER.write().unwrap() = Some(sender);
+    *CONFIG.write().unwrap() = Some(Arc::new(config.clone()));
+
+    *COLLATOR.write().unwrap() =
+        match Collator::try_new(config.locale.clone().into(), CollatorOptions::default()) {
+            Ok(c) => Some(Arc::new(c)),
+            Err(e) => {
+                error!("Could not initialize the collator, things will be unsorted!: {e}");
+                None
+            }
+        };
 
     if let Err(e) = set_dirs(config.data_dir, config.cache_dir, config.music_dir) {
         error!("Could not set the initial directories: {e}");
         return Err(e);
     }
-    if let Err(e) = music_lib::state::load(LoadMode::Load, config.indexer) {
+    if let Err(e) = music_lib::state::load(LoadMode::Load, config.library) {
         error!("Could not load the music library: {e}");
         return Err(e);
     }

@@ -102,7 +102,14 @@ fn main() {
             data_dir,
             music_dir,
             cache_dir,
-            indexer: music_lib::Config {
+            locale: match locale.parse() {
+                Ok(l) => l,
+                Err(e) => {
+                    error!("Couldn't parse the locale string: {e}");
+                    locale!("en-US")
+                }
+            },
+            library: music_lib::Config {
                 value_separators: ValueSeparators::new(vec![
                     ",".to_string(),
                     "/".to_string(),
@@ -112,13 +119,6 @@ fn main() {
                     format: covers::ImageFormat::Png,
                     thumbnail_resolution: THUMBNAIL_SIZE as u32,
                     cover_quality: covers::Quality::Default,
-                },
-                locale: match locale.parse() {
-                    Ok(l) => l,
-                    Err(e) => {
-                        error!("Couldn't parse the locale string: {e}");
-                        locale!("en-US")
-                    }
                 },
             },
         };
