@@ -1,5 +1,5 @@
 pub mod covers;
-pub mod indexer;
+pub(crate) mod indexer;
 
 pub mod state;
 #[cfg(test)]
@@ -12,8 +12,10 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use icu::locale::Locale;
 use log::{error, trace};
 use m3u8_rs::{MediaPlaylist, MediaSegment};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     Error,
@@ -23,6 +25,41 @@ use crate::{
 pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static CACHE_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ValueSeparators {
+    pub artist: Vec<String>,
+    pub genre: Vec<String>,
+}
+
+impl ValueSeparators {
+    pub fn new(separators: Vec<String>) -> Self {
+        Self {
+            artist: separators.clone(),
+            genre: separators,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Config {
+    pub locale: Locale,
+    pub value_separators: ValueSeparators,
+    pub covers: covers::Config,
+}
+
+#[cfg(test)]
+impl Default for Config {
+    fn default() -> Self {
+        use icu::locale::locale;
+
+        Self {
+            locale: locale!("en-US"),
+            value_separators: ValueSeparators::default(),
+            covers: covers::Config::default(),
+        }
+    }
+}
 
 fn init_dir(dir: &PathBuf) -> Result<(), Error> {
     if dir.is_dir() {

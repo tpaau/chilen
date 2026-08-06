@@ -45,7 +45,7 @@ pub fn playlist_button<'a>(state: &'a Chilen, playlist: &'a Arc<Playlist>) -> Bu
                     .wrapping(text::Wrapping::None),
                 text({
                     if playlist.tracks.is_empty() {
-                        "No tracks".to_string()
+                        "Empty".to_string()
                     } else {
                         format!("{} tracks", playlist.tracks.len())
                     }

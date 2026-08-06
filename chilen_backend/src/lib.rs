@@ -12,7 +12,7 @@ use std::{
 use log::{error, warn};
 
 use crate::{
-    music_lib::{covers::LoadMode, indexer, set_dirs, state::MusicLibrary},
+    music_lib::{covers::LoadMode, set_dirs, state::MusicLibrary},
     playback::state::PlayerState,
 };
 
@@ -30,7 +30,7 @@ pub struct Config {
     // TODO: Support for multiple music library directories
     pub music_dir: PathBuf,
     pub data_dir: PathBuf,
-    pub indexer: indexer::Config,
+    pub indexer: music_lib::Config,
 }
 
 #[derive(Debug, Clone, PartialEq)]

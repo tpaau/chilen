@@ -8,6 +8,10 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use icu::{
+    collator::{Collator, options::CollatorOptions},
+    locale::Locale,
+};
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, items::Timestamp},
@@ -23,7 +27,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     Error, Event,
     music_lib::{
-        DATA_DIR,
+        self, DATA_DIR,
         covers::{Cover, LoadMode, get_track_cover},
         indexer::{self},
         tracks_from_m3u8,
@@ -79,7 +83,7 @@ impl Track {
         path: PathBuf,
         tagged_file: &TaggedFile,
         load_mode: &LoadMode,
-        config: &indexer::Config,
+        config: &music_lib::Config,
     ) -> Result<Self, String> {
         let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
@@ -293,7 +297,7 @@ impl Track {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Album {
-    pub name: String,
+    pub title: String,
     pub cover: Cover,
     pub artists: Vec<String>,
     pub tracks: Vec<Arc<Track>>,
@@ -388,10 +392,27 @@ impl MusicLibrary {
     fn try_from_loaded_lib(
         loaded: ConfMusicLibrary,
         tracks: HashSet<Track>,
+        locale: Locale,
     ) -> Result<Self, Error> {
-        let tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
+        let collator = match Collator::try_new(locale.into(), CollatorOptions::default()) {
+            Ok(c) => Some(c),
+            Err(e) => {
+                error!("Could not initialize the collator, things will be unsorted!: {e}");
+                None
+            }
+        };
+        let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
-        let album_names: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
+        if let Some(collator) = &collator {
+            tracks.sort_by(|t1, t2| {
+                collator.compare(
+                    t1.title.as_deref().unwrap_or(""),
+                    t2.title.as_deref().unwrap_or(""),
+                )
+            });
+        }
+
+        let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
         let artist_names: HashSet<_> = tracks
             .iter()
             .flat_map(|t| t.artists.as_ref().into_iter().flatten())
@@ -404,7 +425,7 @@ impl MusicLibrary {
         let mut tracks_by_artist: HashMap<&String, HashSet<Arc<Track>>> =
             HashMap::with_capacity(artist_names.len());
         let mut tracks_by_album: HashMap<&String, HashSet<Arc<Track>>> =
-            HashMap::with_capacity(album_names.len());
+            HashMap::with_capacity(album_titles.len());
         let mut tracks_by_genre: HashMap<&String, HashSet<Arc<Track>>> =
             HashMap::with_capacity(genre_names.len());
 
@@ -436,10 +457,10 @@ impl MusicLibrary {
             }
         }
 
-        let albums: Vec<_> = album_names
+        let mut albums: Vec<_> = album_titles
             .into_iter()
-            .map(|name| {
-                let tracks: Vec<_> = tracks_by_album[name].clone().into_iter().collect();
+            .map(|title| {
+                let tracks: Vec<_> = tracks_by_album[title].clone().into_iter().collect();
                 let artists: HashSet<String> = tracks
                     .iter()
                     .flat_map(|t| t.artists.clone().into_iter().flatten())
@@ -453,13 +474,17 @@ impl MusicLibrary {
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
                 Arc::new(Album {
-                    name: name.to_string(),
+                    title: title.to_string(),
                     cover,
                     tracks,
                     artists: artists.into_iter().collect(),
                 })
             })
             .collect();
+
+        if let Some(collator) = &collator {
+            albums.sort_by(|a1, a2| collator.compare(&a1.title, &a2.title));
+        }
 
         let mut albums_by_artist: HashMap<&String, HashSet<Arc<Album>>> =
             HashMap::with_capacity(artist_names.len());
@@ -473,7 +498,7 @@ impl MusicLibrary {
             }
         }
 
-        let artists: Vec<_> = artist_names
+        let mut artists: Vec<_> = artist_names
             .into_iter()
             .map(|name| {
                 let tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
@@ -498,14 +523,18 @@ impl MusicLibrary {
             })
             .collect();
 
+        if let Some(collator) = &collator {
+            artists.sort_by(|a1, a2| collator.compare(&a1.name, &a2.name));
+        }
+
         let mut artists_by_album: HashMap<&String, HashSet<Arc<Artist>>> =
             HashMap::with_capacity(albums.len());
         for artist in &artists {
             for album in &artist.albums {
-                if let Some(val) = artists_by_album.get_mut(&album.name) {
+                if let Some(val) = artists_by_album.get_mut(&album.title) {
                     val.insert(artist.clone());
                 } else {
-                    artists_by_album.insert(&album.name, [artist.clone()].into_iter().collect());
+                    artists_by_album.insert(&album.title, [artist.clone()].into_iter().collect());
                 }
             }
         }
@@ -542,7 +571,7 @@ impl MusicLibrary {
             }
         }
 
-        let genres: Vec<_> = genre_names
+        let mut genres: Vec<_> = genre_names
             .into_iter()
             .map(|name| {
                 let tracks: Vec<_> = tracks_by_genre[name].clone().into_iter().collect();
@@ -563,6 +592,10 @@ impl MusicLibrary {
                 })
             })
             .collect();
+
+        if let Some(collator) = &collator {
+            genres.sort_by(|g1, g2| collator.compare(&g1.name, &g2.name));
+        }
 
         let mut track_path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
@@ -918,12 +951,12 @@ pub(crate) fn save_library() -> Result<(), Error> {
 
 // FIX: This function hangs if if the `MusicLibrary` struct changes (and can't be deserialized)
 /// Load the music library from the playlists file.
-pub(crate) fn load(load_mode: LoadMode, config: indexer::Config) -> Result<(), Error> {
+pub(crate) fn load(load_mode: LoadMode, config: music_lib::Config) -> Result<(), Error> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
 
-    let tracks = match indexer::index(load_mode, config) {
+    let tracks = match indexer::index(load_mode, config.clone()) {
         Ok(tracks) => tracks,
         Err(e) => {
             crate::send_event(Event::LibraryLoadFailed(e.to_string()));
@@ -973,8 +1006,11 @@ pub(crate) fn load(load_mode: LoadMode, config: indexer::Config) -> Result<(), E
 
         let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
             Ok(data) => {
-                match MusicLibrary::try_from_loaded_lib(data, tracks.clone().into_iter().collect())
-                {
+                match MusicLibrary::try_from_loaded_lib(
+                    data,
+                    tracks.clone().into_iter().collect(),
+                    config.locale,
+                ) {
                     Ok(lib) => lib,
                     Err(e) => {
                         error!("Could not open the music library: {e}");

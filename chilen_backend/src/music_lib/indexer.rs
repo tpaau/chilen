@@ -7,39 +7,12 @@ use std::{
 
 use lofty::{error::LoftyError, file::TaggedFile};
 use log::{info, trace, warn};
-use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use crate::{
     Error,
-    music_lib::{
-        MUSIC_DIR, Track,
-        covers::{self, LoadMode},
-        indexer,
-    },
+    music_lib::{self, MUSIC_DIR, Track, covers::LoadMode},
 };
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ValueSeparators {
-    pub artist: Vec<String>,
-    pub genre: Vec<String>,
-}
-
-impl ValueSeparators {
-    pub fn new(separators: Vec<String>) -> Self {
-        Self {
-            artist: separators.clone(),
-            genre: separators,
-        }
-    }
-}
-
-#[cfg_attr(test, derive(Default))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Config {
-    pub value_separators: ValueSeparators,
-    pub covers: covers::Config,
-}
 
 fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
     let sleep_dur = Duration::from_millis(100);
@@ -63,7 +36,7 @@ fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
 fn index_files(
     files: Vec<PathBuf>,
     load_mode: LoadMode,
-    config: indexer::Config,
+    config: music_lib::Config,
 ) -> Result<Vec<Track>, Error> {
     let tracks = Arc::new(RwLock::new(Vec::with_capacity(files.len())));
     let mut handles = Vec::new();
@@ -109,7 +82,7 @@ fn index_files(
     Ok(Arc::into_inner(tracks).unwrap().into_inner().unwrap())
 }
 
-pub(crate) fn index(load_mode: LoadMode, config: indexer::Config) -> Result<Vec<Track>, Error> {
+pub(crate) fn index(load_mode: LoadMode, config: music_lib::Config) -> Result<Vec<Track>, Error> {
     #[cfg(debug_assertions)]
     warn!(
         "\x1b[1mINDEXER RUNNING IN DEBUG MODE\x1b[0m, image decoding will be EXTREMELY SLOW. Consider running the program in release mode for the first indexing",

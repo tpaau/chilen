@@ -37,7 +37,7 @@ pub(crate) fn setup_music_library() {
     let path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("assets/audio");
     path.canonicalize().expect("path should exist");
     *MUSIC_DIR.write().unwrap() = Some(path);
-    let tracks = indexer::index(LoadMode::None, indexer::Config::default())
+    let tracks = indexer::index(LoadMode::None, crate::music_lib::Config::default())
         .expect("Couldn't index the audio asset directory");
     *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
 }

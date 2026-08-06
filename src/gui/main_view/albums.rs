@@ -54,7 +54,7 @@ pub fn album_button<'a>(
                     }),
                 ],
                 container(column![
-                    text(&album.name)
+                    text(&album.title)
                         .size(SIZE_REGULAR)
                         .color(state.theme.on_surface())
                         .wrapping(text::Wrapping::None),

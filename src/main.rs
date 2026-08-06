@@ -5,13 +5,11 @@ use std::{env::home_dir, process::exit, sync::mpsc::Receiver, thread, time::Dura
 
 use chilen_backend::{
     Config,
-    music_lib::{
-        covers,
-        indexer::{self, ValueSeparators},
-    },
+    music_lib::{self, ValueSeparators, covers},
 };
 use dirs::{cache_dir, data_dir};
 
+use icu::locale::locale;
 use log::{error, info};
 
 use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
@@ -84,6 +82,8 @@ fn main() {
             },
         };
 
+        // TODO: Some values in here should be user-controlled
+        // That's the whole point of not hardcoding them on the backend
         let config = Config {
             #[cfg(feature = "mpris")]
             identity: APP_NAME.to_string(),
@@ -92,15 +92,18 @@ fn main() {
             data_dir,
             music_dir,
             cache_dir,
-            indexer: indexer::Config {
-                // TODO: Should be user-controlled
-                value_separators: ValueSeparators::new(vec![",".to_string(), "/".to_string()]),
+            indexer: music_lib::Config {
+                value_separators: ValueSeparators::new(vec![
+                    ",".to_string(),
+                    "/".to_string(),
+                    ";".to_string(),
+                ]),
                 covers: covers::Config {
                     format: covers::ImageFormat::Png,
                     thumbnail_resolution: THUMBNAIL_SIZE as u32,
-                    // TODO: Should be user-controlled
                     cover_quality: covers::Quality::Default,
                 },
+                locale: locale!("en-US"),
             },
         };
 

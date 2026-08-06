@@ -18,6 +18,7 @@ rmp-serde = "1.3.1"
 rand = "0.10.2"
 pollster = "1.0.1"
 image = { version = "0.25.10", features = [ "serde" ] }
+icu = { version = "2.2.0", features = ["serde"] }
 
 [features]
 mpris = [ "dep:mpris-server" ]
