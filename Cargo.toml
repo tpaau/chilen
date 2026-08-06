@@ -18,6 +18,7 @@ iced_m3 = { path = "iced_m3" }
 rfd = "0.17.2"
 iced_core = "0.14.0"
 icu = "2.2.0"
+sys-locale = "0.3.2"
 
 [features]
 mpris = [ "chilen_backend/mpris" ]

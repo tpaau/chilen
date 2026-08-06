@@ -697,6 +697,7 @@ dependencies = [
  "log",
  "rfd",
  "serde",
+ "sys-locale",
 ]
 
 [[package]]

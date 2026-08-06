@@ -10,7 +10,8 @@ use chilen_backend::{
 use dirs::{cache_dir, data_dir};
 
 use icu::locale::locale;
-use log::{error, info};
+use log::{debug, error, info, warn};
+use sys_locale::get_locale;
 
 use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
 
@@ -82,6 +83,18 @@ fn main() {
             },
         };
 
+        let locale = match get_locale() {
+            Some(l) => {
+                debug!("Using locale \"{l}\" (system default)");
+                l
+            }
+            None => {
+                let l = String::from("en-US");
+                warn!("Using fallback locale \"{l}\"");
+                l
+            }
+        };
+
         // TODO: Some values in here should be user-controlled
         // That's the whole point of not hardcoding them on the backend
         let config = Config {
@@ -103,7 +116,13 @@ fn main() {
                     thumbnail_resolution: THUMBNAIL_SIZE as u32,
                     cover_quality: covers::Quality::Default,
                 },
-                locale: locale!("en-US"),
+                locale: match locale.parse() {
+                    Ok(l) => l,
+                    Err(e) => {
+                        error!("Couldn't parse the locale string: {e}");
+                        locale!("en-US")
+                    }
+                },
             },
         };
 
