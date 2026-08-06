@@ -6,7 +6,7 @@ edition = "2024"
 license = "GPL-3.0-or-later"
 
 [dependencies]
-env_logger = "0.11.10"
+env_logger = "0.11.11"
 log = "0.4.29"
 clap = { version = "4.6.6", features = [ "derive", "cargo" ] }
 serde = { version = "1.0.228", features = [ "derive" ] }
