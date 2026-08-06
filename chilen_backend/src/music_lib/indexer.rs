@@ -50,11 +50,7 @@ fn index_files(
     std::thread::scope(|s| {
         for _ in 0..std::thread::available_parallelism().map_or(1, NonZero::get) {
             s.spawn(|| {
-                loop {
-                    let Some(file) = files.get(i.fetch_add(1, Ordering::Relaxed)) else {
-                        return;
-                    };
-
+                while let Some(file) = files.get(i.fetch_add(1, Ordering::Relaxed)) {
                     let tagged_file = match safe_read_from_path(file) {
                         Ok(tagged_file) => tagged_file,
                         Err(e) => {
@@ -66,7 +62,7 @@ fn index_files(
                                     warn!("Could not get tags from file {file:?}: {e}");
                                 }
                             }
-                            return;
+                            continue;
                         }
                     };
 
@@ -80,7 +76,7 @@ fn index_files(
                         Ok(track) => track,
                         Err(e) => {
                             warn!("Could not create a track struct: {e}");
-                            return;
+                            continue;
                         }
                     };
 
