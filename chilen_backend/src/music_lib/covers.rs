@@ -5,8 +5,6 @@ use std::{
     io::Cursor,
     path::PathBuf,
     sync::{LazyLock, RwLock},
-    thread,
-    time::Duration,
 };
 
 pub use image::ImageFormat;
@@ -215,24 +213,6 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cov
     Err(CoverError::NoSuitablePictures)
 }
 
-fn safe_file_create(path: &PathBuf) -> Result<File, std::io::Error> {
-    let sleep_dur = Duration::from_millis(100);
-    loop {
-        match File::create(path) {
-            Ok(handle) => return Ok(handle),
-            Err(e) => {
-                if e.kind() == std::io::ErrorKind::TooManyOpenFiles {
-                    thread::sleep(sleep_dur);
-                    continue;
-                } else {
-                    return Err(e);
-                }
-            }
-        }
-    }
-}
-
-// TODO: Add quality options
 pub(crate) fn get_track_cover(
     tag: &Tag,
     load_mode: &LoadMode,
@@ -305,7 +285,7 @@ pub(crate) fn get_track_cover(
             COVER_FILTER,
         );
 
-        match safe_file_create(&thumbnail_path) {
+        match File::create(&thumbnail_path) {
             Ok(mut file) => match thumbnail.write_to(&mut file, config.format) {
                 Ok(_) => Some(thumbnail_path),
                 Err(e) => {
@@ -359,7 +339,7 @@ pub(crate) fn get_track_cover(
             None => image.clone().into(),
         };
 
-        match safe_file_create(&hires_path) {
+        match File::create(&hires_path) {
             Ok(mut file) => match cover.write_to(&mut file, config.format) {
                 Ok(_) => Some(hires_path),
                 Err(e) => {

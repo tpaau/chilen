@@ -8,7 +8,6 @@ pub struct Settings {
 }
 
 impl Settings {
-    // TODO: Add error handling here for when the indexer is running (too many open files)
     fn save(&self) {
         todo!()
     }

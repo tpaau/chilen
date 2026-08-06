@@ -6,11 +6,8 @@ use std::{
         Mutex, RwLock,
         atomic::{AtomicUsize, Ordering},
     },
-    thread,
-    time::Duration,
 };
 
-use lofty::{error::LoftyError, file::TaggedFile};
 use log::{info, trace, warn};
 use walkdir::WalkDir;
 
@@ -18,25 +15,6 @@ use crate::{
     Error,
     music_lib::{self, MUSIC_DIR, Track, covers::LoadMode},
 };
-
-fn safe_read_from_path(path: &PathBuf) -> Result<TaggedFile, LoftyError> {
-    let sleep_dur = Duration::from_millis(100);
-    loop {
-        match lofty::read_from_path(path) {
-            Ok(file) => return Ok(file),
-            Err(e) => {
-                if let lofty::error::ErrorKind::Io(e) = e.kind()
-                    && e.kind() == std::io::ErrorKind::TooManyOpenFiles
-                {
-                    thread::sleep(sleep_dur);
-                    continue;
-                } else {
-                    return Err(e);
-                }
-            }
-        }
-    }
-}
 
 fn index_files(
     files: Vec<PathBuf>,
@@ -51,7 +29,7 @@ fn index_files(
         for _ in 0..std::thread::available_parallelism().map_or(1, NonZero::get) {
             s.spawn(|| {
                 while let Some(file) = files.get(i.fetch_add(1, Ordering::Relaxed)) {
-                    let tagged_file = match safe_read_from_path(file) {
+                    let tagged_file = match lofty::read_from_path(file) {
                         Ok(tagged_file) => tagged_file,
                         Err(e) => {
                             match e.kind() {
