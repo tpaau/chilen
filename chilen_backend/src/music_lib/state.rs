@@ -80,6 +80,7 @@ impl Track {
         tagged_file: &TaggedFile,
         load_mode: &LoadMode,
         config: &music_lib::Config,
+        covers_lookup_set: &RwLock<HashSet<PathBuf>>,
     ) -> Result<Self, String> {
         let tag = match tagged_file.primary_tag() {
             Some(tag) => tag,
@@ -141,7 +142,7 @@ impl Track {
 
         let cover = {
             #[cfg(not(test))]
-            match get_track_cover(tag, load_mode, config.covers) {
+            match get_track_cover(tag, load_mode, config.covers, covers_lookup_set) {
                 Ok(cover) => cover,
                 Err(e) => {
                     warn!("Could not get the cover image: {e}");
@@ -150,7 +151,7 @@ impl Track {
             }
             #[cfg(test)]
             if load_mode != &LoadMode::None {
-                match get_track_cover(tag, load_mode, config.covers) {
+                match get_track_cover(tag, load_mode, config.covers, covers_lookup_set) {
                     Ok(cover) => cover,
                     Err(e) => {
                         warn!("Could not get the cover image: {e}");

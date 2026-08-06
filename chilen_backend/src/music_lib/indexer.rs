@@ -1,8 +1,9 @@
 use std::{
+    collections::HashSet,
     num::NonZero,
     path::PathBuf,
     sync::{
-        Arc, Mutex,
+        Mutex, RwLock,
         atomic::{AtomicUsize, Ordering},
     },
     thread,
@@ -44,6 +45,7 @@ fn index_files(
 ) -> Result<Vec<Track>, Error> {
     let mut tracks = Mutex::new(Vec::with_capacity(files.len()));
     let i = AtomicUsize::new(0);
+    let covers_lookup_set: RwLock<HashSet<PathBuf>> = RwLock::new(HashSet::new());
 
     std::thread::scope(|s| {
         for _ in 0..std::thread::available_parallelism().map_or(1, NonZero::get) {
@@ -53,7 +55,7 @@ fn index_files(
                         return;
                     };
 
-                    let tagged_file = match safe_read_from_path(&file) {
+                    let tagged_file = match safe_read_from_path(file) {
                         Ok(tagged_file) => tagged_file,
                         Err(e) => {
                             match e.kind() {
@@ -68,7 +70,13 @@ fn index_files(
                         }
                     };
 
-                    let track = match Track::new(file.clone(), &tagged_file, &load_mode, &config) {
+                    let track = match Track::new(
+                        file.clone(),
+                        &tagged_file,
+                        &load_mode,
+                        &config,
+                        &covers_lookup_set,
+                    ) {
                         Ok(track) => track,
                         Err(e) => {
                             warn!("Could not create a track struct: {e}");

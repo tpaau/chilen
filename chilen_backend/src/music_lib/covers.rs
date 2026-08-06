@@ -1,9 +1,10 @@
 use std::{
+    collections::HashSet,
     fs::{File, create_dir_all},
     hash::{DefaultHasher, Hash, Hasher},
     io::Cursor,
     path::PathBuf,
-    sync::LazyLock,
+    sync::{LazyLock, RwLock},
     thread,
     time::Duration,
 };
@@ -236,29 +237,10 @@ pub(crate) fn get_track_cover(
     tag: &Tag,
     load_mode: &LoadMode,
     config: Config,
+    covers_lookup_set: &RwLock<HashSet<PathBuf>>,
 ) -> Result<Cover, CoverError> {
     let hires_cache = HIRES_COVER_CACHE_DIR.clone();
     let thumbnail_cache = THUMBNAIL_CACHE_DIR.clone();
-
-    if !hires_cache.is_dir()
-        && let Err(e) = create_dir_all(&hires_cache)
-    {
-        error!("Could not create the cache directory {hires_cache:?}: {e}");
-        return Err(CoverError::CacheDirError {
-            path: hires_cache,
-            error: e.to_string(),
-        });
-    }
-
-    if !thumbnail_cache.is_dir()
-        && let Err(e) = create_dir_all(&thumbnail_cache)
-    {
-        error!("Could not create the cache directory {thumbnail_cache:?}: {e}");
-        return Err(CoverError::CacheDirError {
-            path: thumbnail_cache,
-            error: e.to_string(),
-        });
-    }
 
     let image_buf = pick_front_cover_or_replacement(tag.pictures())?.data();
     let mut hasher = DefaultHasher::new();
@@ -288,9 +270,27 @@ pub(crate) fn get_track_cover(
             },
         );
 
-    let thumbnail = if load_mode == &LoadMode::Load && thumbnail_path.is_file() {
+    let thumbnail = if load_mode == &LoadMode::Load
+        && covers_lookup_set.read().unwrap().contains(&thumbnail_path)
+    {
+        Some(thumbnail_path)
+    } else if load_mode == &LoadMode::Load && thumbnail_path.is_file() {
+        covers_lookup_set
+            .write()
+            .unwrap()
+            .insert(thumbnail_path.clone());
         Some(thumbnail_path)
     } else {
+        if !thumbnail_cache.is_dir()
+            && let Err(e) = create_dir_all(&thumbnail_cache)
+        {
+            error!("Could not create the cache directory {thumbnail_cache:?}: {e}");
+            return Err(CoverError::CacheDirError {
+                path: thumbnail_cache,
+                error: e.to_string(),
+            });
+        }
+
         let image = match &*image {
             Ok(image) => image,
             Err(e) => {
@@ -320,9 +320,27 @@ pub(crate) fn get_track_cover(
         }
     };
 
-    let hires = if load_mode == &LoadMode::Load && hires_path.is_file() {
+    let hires = if load_mode == &LoadMode::Load
+        && covers_lookup_set.read().unwrap().contains(&hires_path)
+    {
+        Some(hires_path)
+    } else if load_mode == &LoadMode::Load && hires_path.is_file() {
+        covers_lookup_set
+            .write()
+            .unwrap()
+            .insert(hires_path.clone());
         Some(hires_path)
     } else {
+        if !hires_cache.is_dir()
+            && let Err(e) = create_dir_all(&hires_cache)
+        {
+            error!("Could not create the cache directory {hires_cache:?}: {e}");
+            return Err(CoverError::CacheDirError {
+                path: hires_cache,
+                error: e.to_string(),
+            });
+        }
+
         let image = match image.as_ref() {
             Ok(image) => image,
             Err(e) => {
