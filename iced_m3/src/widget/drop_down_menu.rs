@@ -76,7 +76,6 @@ impl Placement {
         }
     }
 
-    // TODO: Make sure the menu stays in bounds
     fn offset(&self, bounds: &Rectangle, overlay_bounds: &Rectangle) -> Vector {
         match self {
             Placement::TopLeft => {

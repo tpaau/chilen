@@ -445,7 +445,6 @@ impl Theme {
     }
 
     pub fn default(dark_mode: bool) -> Self {
-        // TODO: Add a default light theme
         Self {
             dark: Palette::default_dark(),
             light: Palette::default_light(),

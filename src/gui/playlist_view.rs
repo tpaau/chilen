@@ -38,7 +38,6 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                         .font(gui::font::font_bold()),
                     iced::widget::scrollable(
                         column({
-                            // TODO: Proper sorting with support for numbers and non-ASCII characters
                             let mut playlists: Vec<_> =
                                 state.library.as_ref().unwrap().playlists.iter().collect();
                             playlists.sort_by_key(|pl| pl.name.clone());
