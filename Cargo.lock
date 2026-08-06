@@ -1992,7 +1992,6 @@ dependencies = [
  "icu_locale",
  "icu_locale_core",
  "icu_provider",
- "ixdtf",
  "serde",
  "tinystr",
  "zerovec",
@@ -2325,7 +2324,6 @@ version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5c0794db0b1a86193ac9c48768d0e6c52c54448e0870ad87907d456ee0dac964"
 dependencies = [
- "core_maths",
  "icu_collections",
  "icu_locale",
  "icu_provider",
@@ -2354,7 +2352,6 @@ dependencies = [
  "icu_locale_core",
  "icu_provider",
  "icu_time_data",
- "ixdtf",
  "serde",
  "zerotrie",
  "zerovec",
@@ -2456,12 +2453,6 @@ name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
-
-[[package]]
-name = "ixdtf"
-version = "0.6.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ceaf4c6c48465bead8cb6a0b7c4ee0c86ecbb31239032b9c66ab9a08d2f3ee1"
 
 [[package]]
 name = "jiff"

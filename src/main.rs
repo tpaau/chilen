@@ -3,10 +3,7 @@ mod gui;
 pub mod settings;
 use std::{env::home_dir, process::exit, sync::mpsc::Receiver, thread, time::Duration};
 
-use chilen_backend::{
-    Config,
-    music_lib::{self, ValueSeparators, covers},
-};
+use chilen_backend::music_lib::{self, ValueSeparators, covers};
 use dirs::{cache_dir, data_dir};
 
 use icu::locale::locale;
@@ -97,7 +94,7 @@ fn main() {
 
         // TODO: Some values in here should be user-controlled
         // That's the whole point of not hardcoding them on the backend
-        let config = Config {
+        let config = chilen_backend::Config {
             #[cfg(feature = "mpris")]
             identity: APP_NAME.to_string(),
             #[cfg(feature = "mpris")]
