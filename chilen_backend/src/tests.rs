@@ -39,7 +39,7 @@ pub(crate) fn setup_music_library() {
     *MUSIC_DIR.write().unwrap() = Some(path);
     let tracks = indexer::index(LoadMode::None, crate::music_lib::Config::default())
         .expect("Couldn't index the audio asset directory");
-    *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
+    *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_testing(tracks));
 }
 
 pub(crate) fn setup_test_env() {

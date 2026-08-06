@@ -385,10 +385,7 @@ pub struct MusicLibrary {
 }
 
 impl MusicLibrary {
-    fn try_from_loaded_lib(
-        loaded: ConfMusicLibrary,
-        tracks: HashSet<Track>,
-    ) -> Result<Self, Error> {
+    fn new(tracks: Vec<Track>) -> Self {
         let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
         let guard = COLLATOR.read().unwrap();
@@ -597,7 +594,7 @@ impl MusicLibrary {
             track_hash_map.insert(t.hash_self(), t.clone());
         }
 
-        let mut lib = Self {
+        Self {
             playlists: HashSet::new(),
             tracks,
             albums,
@@ -606,8 +603,11 @@ impl MusicLibrary {
             tracks_by_path: track_path_map,
             tracks_by_hash: track_hash_map,
             playlists_by_name: HashMap::new(),
-        };
+        }
+    }
 
+    fn load(loaded: ConfMusicLibrary, tracks: Vec<Track>) -> Result<Self, Error> {
+        let mut lib = Self::new(tracks);
         for p in loaded.playlists {
             let playlist = Arc::new(Playlist::try_from_loaded_playlist(&lib, p)?);
             lib.playlists.insert(playlist.clone());
@@ -616,6 +616,10 @@ impl MusicLibrary {
         }
 
         Ok(lib)
+    }
+
+    pub(crate) fn new_testing(tracks: Vec<Track>) -> Self {
+        Self::new(tracks)
     }
 
     fn check_name(&self, name: &str) -> Result<(), Error> {
@@ -628,32 +632,6 @@ impl MusicLibrary {
             return Err(Error::PlaylistExists);
         }
         Ok(())
-    }
-
-    pub(crate) fn new_from_tracks(tracks: Vec<Track>) -> Self {
-        let tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
-        let playlists: HashSet<Arc<Playlist>> = HashSet::new();
-
-        let mut path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
-        for t in tracks.iter() {
-            path_map.insert(t.path.to_string_lossy().to_string(), t.clone());
-        }
-
-        let mut hash_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
-        for t in tracks.iter() {
-            hash_map.insert(t.hash_self(), t.clone());
-        }
-
-        Self {
-            playlists,
-            tracks,
-            artists: Vec::new(),
-            albums: Vec::new(),
-            genres: Vec::new(),
-            tracks_by_path: path_map,
-            tracks_by_hash: hash_map,
-            playlists_by_name: HashMap::new(),
-        }
     }
 
     pub fn find_playlist(&self, name: &str) -> Option<&Arc<Playlist>> {
@@ -995,27 +973,24 @@ pub(crate) fn load(load_mode: LoadMode, config: music_lib::Config) -> Result<(),
         };
 
         let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
-            Ok(data) => {
-                match MusicLibrary::try_from_loaded_lib(data, tracks.clone().into_iter().collect())
-                {
-                    Ok(lib) => lib,
-                    Err(e) => {
-                        error!("Could not open the music library: {e}");
-                        MusicLibrary::new_from_tracks(tracks.into_iter().collect())
-                    }
+            Ok(lib) => match MusicLibrary::load(lib, tracks.clone().into_iter().collect()) {
+                Ok(lib) => lib,
+                Err(e) => {
+                    error!("Could not open the music library: {e}");
+                    MusicLibrary::new(tracks.into_iter().collect())
                 }
-            }
+            },
             Err(e) => {
                 error!("Could not decode the contents of the library state file: {e}");
                 trace!("Creating a new library");
-                MusicLibrary::new_from_tracks(tracks.into_iter().collect())
+                MusicLibrary::new(tracks.into_iter().collect())
             }
         };
 
         *MUSIC_LIBRARY.write().unwrap() = Some(lib);
     } else {
         trace!("The library file does not exist, creating a new library");
-        *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_from_tracks(tracks));
+        *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new(tracks));
     }
     crate::send_event(Event::LibraryChanged(Box::new(
         MUSIC_LIBRARY.read().unwrap().as_ref().unwrap().clone(),

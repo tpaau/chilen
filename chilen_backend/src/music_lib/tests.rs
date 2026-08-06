@@ -41,7 +41,7 @@ fn playlist_track_removal() {
 #[test]
 fn playlist_removal() {
     let playlists = unique_playlists(10);
-    let mut lib = MusicLibrary::new_from_tracks(Vec::new());
+    let mut lib = MusicLibrary::new_testing(Vec::new());
     for p in playlists.iter() {
         lib.create_playlist(p.name.clone(), &None).unwrap();
     }
@@ -75,7 +75,7 @@ fn playlist_removal() {
 #[test]
 fn playlist_creation() {
     let tracks = Track::unique_tracks(10);
-    let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
+    let mut lib = MusicLibrary::new_testing(tracks.clone());
 
     assert!(lib.find_playlist("Test1").is_none());
     assert_eq!(lib.playlists.len(), 0);
@@ -102,7 +102,7 @@ fn playlist_creation() {
 
 #[test]
 fn playlist_deletion() {
-    let mut lib = MusicLibrary::new_from_tracks(Track::unique_tracks(10));
+    let mut lib = MusicLibrary::new_testing(Track::unique_tracks(10));
 
     assert!(lib.find_playlist("Test1").is_none());
     lib.create_playlist("Test1".to_string(), &None).unwrap();
@@ -146,7 +146,7 @@ fn playlist_deletion() {
 #[test]
 fn track_append() {
     let tracks = Track::unique_tracks(10);
-    let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
+    let mut lib = MusicLibrary::new_testing(tracks.clone());
 
     lib.create_playlist("Test1".to_string(), &None).unwrap();
     lib.add_tracks("Test1", vec![tracks[0].path.clone()])
@@ -166,7 +166,7 @@ fn track_append() {
 #[test]
 fn lib_track_removal() {
     let tracks = Track::unique_tracks(10);
-    let mut lib = MusicLibrary::new_from_tracks(tracks.clone());
+    let mut lib = MusicLibrary::new_testing(tracks.clone());
 
     lib.create_playlist(
         "Test1".to_string(),
