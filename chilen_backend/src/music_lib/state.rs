@@ -21,11 +21,13 @@ use rmp_serde::{Deserializer, Serializer};
 use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+use crate::music_lib::indexer::covers;
 use crate::{
     COLLATOR, Error, Event,
     music_lib::{
         self, DATA_DIR,
-        covers::{Cover, LoadMode, get_track_cover},
+        indexer::covers::{Cover, get_track_cover},
         indexer::{self},
         tracks_from_m3u8,
     },
@@ -77,7 +79,6 @@ impl Track {
     pub(crate) fn new(
         path: PathBuf,
         tagged_file: &TaggedFile,
-        load_mode: &LoadMode,
         config: &music_lib::Config,
         covers_lookup_set: &RwLock<HashSet<PathBuf>>,
     ) -> Result<Self, String> {
@@ -141,7 +142,7 @@ impl Track {
 
         let cover = {
             #[cfg(not(test))]
-            match get_track_cover(tag, load_mode, config.covers, covers_lookup_set) {
+            match get_track_cover(tag, config.indexer, covers_lookup_set) {
                 Ok(cover) => cover,
                 Err(e) => {
                     warn!("Could not get the cover image: {e}");
@@ -149,8 +150,8 @@ impl Track {
                 }
             }
             #[cfg(test)]
-            if load_mode != &LoadMode::None {
-                match get_track_cover(tag, load_mode, config.covers, covers_lookup_set) {
+            if config.indexer.cache_mode != covers::CacheMode::Disabled {
+                match get_track_cover(tag, config.indexer, covers_lookup_set) {
                     Ok(cover) => cover,
                     Err(e) => {
                         warn!("Could not get the cover image: {e}");
@@ -945,12 +946,12 @@ pub(crate) fn save_library() -> Result<(), Error> {
 
 // FIX: This function hangs if if the `MusicLibrary` struct changes (and can't be deserialized)
 /// Load the music library from the playlists file.
-pub(crate) fn load(load_mode: LoadMode, config: music_lib::Config) -> Result<(), Error> {
+pub(crate) fn load(config: music_lib::Config) -> Result<(), Error> {
     trace!("Loading the music library");
 
     let time_start = SystemTime::now();
 
-    let tracks = match indexer::index(load_mode, config.clone()) {
+    let tracks = match indexer::index(config.clone()) {
         Ok(tracks) => tracks,
         Err(e) => {
             crate::send_event(Event::LibraryLoadFailed(e.to_string()));

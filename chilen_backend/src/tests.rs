@@ -5,8 +5,7 @@ use rodio::Player;
 use crate::{
     music_lib::{
         MUSIC_DIR,
-        covers::LoadMode,
-        indexer,
+        indexer::{self},
         state::{MUSIC_LIBRARY, MusicLibrary},
     },
     playback::{
@@ -37,8 +36,10 @@ pub(crate) fn setup_music_library() {
     let path = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("assets/audio");
     path.canonicalize().expect("path should exist");
     *MUSIC_DIR.write().unwrap() = Some(path);
-    let tracks = indexer::index(LoadMode::None, crate::music_lib::Config::default())
+
+    let tracks = indexer::index(crate::music_lib::Config::default())
         .expect("Couldn't index the audio asset directory");
+
     *MUSIC_LIBRARY.write().unwrap() = Some(MusicLibrary::new_testing(tracks));
 }
 

@@ -1,5 +1,4 @@
-pub mod covers;
-pub(crate) mod indexer;
+pub mod indexer;
 
 pub mod state;
 #[cfg(test)]
@@ -46,7 +45,7 @@ impl ValueSeparators {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     pub value_separators: ValueSeparators,
-    pub covers: covers::Config,
+    pub indexer: indexer::Config,
 }
 
 fn init_dir(dir: &PathBuf) -> Result<(), Error> {

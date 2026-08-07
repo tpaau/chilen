@@ -12,7 +12,7 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    music_lib::{covers::LoadMode, set_dirs, state::MusicLibrary},
+    music_lib::{indexer::covers::CacheMode, set_dirs, state::MusicLibrary},
     playback::state::PlayerState,
 };
 
@@ -229,7 +229,7 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
         error!("Could not set the initial directories: {e}");
         return Err(e);
     }
-    if let Err(e) = music_lib::state::load(LoadMode::Load, config.library) {
+    if let Err(e) = music_lib::state::load(config.library) {
         error!("Could not load the music library: {e}");
         return Err(e);
     }

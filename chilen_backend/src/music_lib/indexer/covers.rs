@@ -16,7 +16,46 @@ use lofty::{
 use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::CACHE_DIR;
+use crate::music_lib::{CACHE_DIR, indexer};
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Quality {
+    Low,
+    #[default]
+    Default,
+    High,
+    Lossless,
+    Custom(u32),
+}
+
+impl Quality {
+    pub(crate) fn resolution(self) -> Option<u32> {
+        match self {
+            Quality::Low => Some(256),
+            Quality::Default => Some(512),
+            Quality::High => Some(1024),
+            Quality::Lossless => None,
+            Quality::Custom(pixels) => Some(pixels),
+        }
+    }
+}
+
+/// Track cover art caching mode used when indexing the music library.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CacheMode {
+    /// Don't attempt to obtain cover art images for indexed tracks.
+    ///
+    /// This should only be used for testing.
+    ///
+    #[cfg_attr(test, default)]
+    #[cfg(test)]
+    Disabled,
+    #[cfg_attr(not(test), default)]
+    /// Use cached cover art images when possible.
+    UseCache,
+    /// Discard cached cover art images and extract them when indexing.
+    RebuildCache,
+}
 
 #[cfg_attr(test, derive(Default))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -31,71 +70,6 @@ impl Cover {
             hires: None,
             thumbnail: None,
         }
-    }
-}
-
-#[cfg_attr(test, derive(Default))]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Quality {
-    #[cfg_attr(test, default)]
-    Low,
-    Default,
-    High,
-    Lossless,
-    Custom(u32),
-}
-
-impl Quality {
-    fn resolution(self) -> Option<u32> {
-        match self {
-            Quality::Low => Some(256),
-            Quality::Default => Some(512),
-            Quality::High => Some(1024),
-            Quality::Lossless => None,
-            Quality::Custom(pixels) => Some(pixels),
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Config {
-    pub format: ImageFormat,
-    pub thumbnail_resolution: u32,
-    pub cover_quality: Quality,
-}
-
-#[cfg(test)]
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            format: ImageFormat::Png,
-            thumbnail_resolution: 40,
-            cover_quality: Quality::default(),
-        }
-    }
-}
-
-impl Config {
-    fn extension(&self) -> String {
-        match self.format {
-            ImageFormat::Png => "png",
-            ImageFormat::Jpeg => "jpg",
-            ImageFormat::Gif => "gif",
-            ImageFormat::WebP => "webp",
-            ImageFormat::Pnm => "pnm",
-            ImageFormat::Tiff => "tiff",
-            ImageFormat::Tga => "tga",
-            ImageFormat::Dds => "dds",
-            ImageFormat::Bmp => "bmp",
-            ImageFormat::Ico => "ico",
-            ImageFormat::Hdr => "hdr",
-            ImageFormat::OpenExr => "exr",
-            ImageFormat::Farbfeld => "ff",
-            ImageFormat::Avif => "avif",
-            ImageFormat::Qoi => "qoi",
-            _ => "img",
-        }
-        .to_string()
     }
 }
 
@@ -129,32 +103,6 @@ impl std::fmt::Display for CoverError {
             }
             CoverError::UnknownFileFormat => write!(f, "Could not guess the image format"),
             CoverError::DecodingError => write!(f, "Could not decode the image data"),
-        }
-    }
-}
-
-/// Track cover art caching mode used when indexing the music library.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LoadMode {
-    /// Don't cache cover arts.
-    ///
-    /// This should only be used for testing.
-    #[cfg(test)]
-    None,
-    #[default]
-    /// Use cached cover art images when possible.
-    Load,
-    /// Discard cached cover art images and extract them when indexing.
-    Rebuild,
-}
-
-impl std::fmt::Display for LoadMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            #[cfg(test)]
-            Self::None => write!(f, "None"),
-            Self::Load => write!(f, "Load"),
-            Self::Rebuild => write!(f, "Rebuild"),
         }
     }
 }
@@ -215,8 +163,7 @@ fn pick_front_cover_or_replacement(pictures: &[Picture]) -> Result<&Picture, Cov
 
 pub(crate) fn get_track_cover(
     tag: &Tag,
-    load_mode: &LoadMode,
-    config: Config,
+    config: indexer::Config,
     covers_lookup_set: &RwLock<HashSet<PathBuf>>,
 ) -> Result<Cover, CoverError> {
     let hires_cache = HIRES_COVER_CACHE_DIR.clone();
@@ -250,11 +197,11 @@ pub(crate) fn get_track_cover(
             },
         );
 
-    let thumbnail = if load_mode == &LoadMode::Load
+    let thumbnail = if config.cache_mode == CacheMode::UseCache
         && covers_lookup_set.read().unwrap().contains(&thumbnail_path)
     {
         Some(thumbnail_path)
-    } else if load_mode == &LoadMode::Load && thumbnail_path.is_file() {
+    } else if config.cache_mode == CacheMode::UseCache && thumbnail_path.is_file() {
         covers_lookup_set
             .write()
             .unwrap()
@@ -306,11 +253,11 @@ pub(crate) fn get_track_cover(
         }
     };
 
-    let hires = if load_mode == &LoadMode::Load
+    let hires = if config.cache_mode == CacheMode::UseCache
         && covers_lookup_set.read().unwrap().contains(&hires_path)
     {
         Some(hires_path)
-    } else if load_mode == &LoadMode::Load && hires_path.is_file() {
+    } else if config.cache_mode == CacheMode::UseCache && hires_path.is_file() {
         covers_lookup_set
             .write()
             .unwrap()
