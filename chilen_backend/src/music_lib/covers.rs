@@ -287,7 +287,13 @@ pub(crate) fn get_track_cover(
 
         match File::create(&thumbnail_path) {
             Ok(mut file) => match thumbnail.write_to(&mut file, config.format) {
-                Ok(_) => Some(thumbnail_path),
+                Ok(_) => {
+                    covers_lookup_set
+                        .write()
+                        .unwrap()
+                        .insert(thumbnail_path.clone());
+                    Some(thumbnail_path)
+                }
                 Err(e) => {
                     warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
                     None
@@ -341,7 +347,13 @@ pub(crate) fn get_track_cover(
 
         match File::create(&hires_path) {
             Ok(mut file) => match cover.write_to(&mut file, config.format) {
-                Ok(_) => Some(hires_path),
+                Ok(_) => {
+                    covers_lookup_set
+                        .write()
+                        .unwrap()
+                        .insert(hires_path.clone());
+                    Some(hires_path)
+                }
                 Err(e) => {
                     warn!("Couldn't write thumbnail to {hires_path:?}: {e}");
                     None
