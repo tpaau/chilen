@@ -33,8 +33,8 @@ pub struct PlayerState {
     pub player_position: Duration,
     pub player_volume: PlayerVolume,
     pub playback_state: PlaybackState,
-    pub tracks: Vec<Track>,
-    pub shuffled_tracks: Vec<Track>,
+    pub tracks: Vec<Arc<Track>>,
+    pub shuffled_tracks: Vec<Arc<Track>>,
     pub shuffle_state: ShuffleState,
     pub loop_state: LoopState,
 }
@@ -52,22 +52,14 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
                 if !result.unmatched.is_empty() {
                     warn!("{} missing tracks in the queue", result.unmatched.len());
                 }
-                result
-                    .matched
-                    .into_iter()
-                    .map(|t| t.as_ref().clone())
-                    .collect()
+                result.matched
             },
             shuffled_tracks: {
                 let result = tracks_from_hashes(value.shuffled_track_hashes)?;
                 if !result.unmatched.is_empty() {
                     warn!("{} missing tracks in the queue", result.unmatched.len());
                 }
-                result
-                    .matched
-                    .into_iter()
-                    .map(|t| t.as_ref().clone())
-                    .collect()
+                result.matched
             },
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
@@ -133,7 +125,7 @@ impl PlayerState {
         ]
     }
 
-    pub fn set_tracks(&mut self, tracks: Vec<Track>) {
+    pub fn set_tracks(&mut self, tracks: Vec<Arc<Track>>) {
         self.position = 0;
         self.tracks = tracks;
         self.set_playback_state(PlaybackState::Stopped);
@@ -143,7 +135,7 @@ impl PlayerState {
         self.on_track_changed();
     }
 
-    pub fn append_tracks(&mut self, tracks: &mut Vec<Track>) {
+    pub fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
         self.tracks.append(tracks);
         if self.shuffle_state == ShuffleState::On {
             self.shuffle();
@@ -188,7 +180,7 @@ impl PlayerState {
     pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
         if self.shuffle_state != shuffle_state {
             if shuffle_state == ShuffleState::Off
-                && let Some(track) = self.current().cloned()
+                && let Some(track) = self.current()
             {
                 match self.tracks.iter().position(|t| *t == track) {
                     Some(pos) => self.position = pos,
@@ -299,23 +291,23 @@ impl PlayerState {
         }
     }
 
-    pub fn current(&self) -> Option<&Track> {
+    pub fn current(&self) -> Option<Arc<Track>> {
         match self.shuffle_state {
             ShuffleState::Off => {
                 if self.position < self.tracks.len() {
-                    return Some(&self.tracks[self.position]);
+                    return Some(self.tracks[self.position].clone());
                 }
             }
             ShuffleState::On => {
                 if self.position < self.shuffled_tracks.len() {
-                    return Some(&self.shuffled_tracks[self.position]);
+                    return Some(self.shuffled_tracks[self.position].clone());
                 }
             }
         }
         None
     }
 
-    pub fn play_track(&mut self, index: usize) -> Option<&Track> {
+    pub fn play_track(&mut self, index: usize) -> Option<Arc<Track>> {
         if index < self.tracks.len() {
             self.position = index;
             self.on_track_changed();
@@ -366,7 +358,7 @@ impl PlayerState {
         }
     }
 
-    pub fn next_track(&mut self) -> Option<&Track> {
+    pub fn next_track(&mut self) -> Option<Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
                 let tracks = match self.shuffle_state {
@@ -417,7 +409,7 @@ impl PlayerState {
         }
     }
 
-    pub fn previous_track(&mut self) -> Option<&Track> {
+    pub fn previous_track(&mut self) -> Option<Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
                 let tracks = match self.shuffle_state {
@@ -472,8 +464,8 @@ struct PlayerStateRaw {
 
 impl From<PlayerState> for PlayerStateRaw {
     fn from(value: PlayerState) -> Self {
-        let track_hashes = Track::hash_tracks(&value.tracks);
-        let shuffled_track_hashes = Track::hash_tracks(&value.shuffled_tracks);
+        let track_hashes = Track::hash_tracks(value.tracks);
+        let shuffled_track_hashes = Track::hash_tracks(value.shuffled_tracks);
         Self {
             position: value.position,
             player_position: value.player_position,

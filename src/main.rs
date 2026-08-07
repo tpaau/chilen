@@ -95,7 +95,6 @@ fn main() {
         // TODO: Some values in here should be user-controlled
         // That's the whole point of not hardcoding them on the backend
         let config = chilen_backend::Config {
-            #[cfg(feature = "mpris")]
             identity: APP_NAME.to_string(),
             #[cfg(feature = "mpris")]
             identifier: APP_ID.to_string(),

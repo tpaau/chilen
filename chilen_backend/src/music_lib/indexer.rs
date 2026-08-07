@@ -71,10 +71,8 @@ fn index_files(
 pub(crate) fn index(load_mode: LoadMode, config: music_lib::Config) -> Result<Vec<Track>, Error> {
     #[cfg(debug_assertions)]
     {
-        let guard = crate::CONFIG.read().unwrap();
-        let identity = &guard.as_ref().unwrap().identity;
         warn!(
-            "\x1b[1mINDEXER RUNNING IN DEBUG MODE\x1b[0m, image decoding will be EXTREMELY SLOW. Consider running {identity} in release mode for the initial indexing",
+            "\x1b[1mINDEXER RUNNING IN DEBUG MODE\x1b[0m, image decoding will be EXTREMELY SLOW. Consider running Chilen in release mode for the initial indexing",
         );
     }
 

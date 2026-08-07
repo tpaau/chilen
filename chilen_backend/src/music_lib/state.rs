@@ -3,6 +3,7 @@ use std::{
     fs::{File, read},
     hash::{DefaultHasher, Hash, Hasher},
     io::{BufReader, Write},
+    ops::Deref,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock, RwLock},
     time::{Duration, SystemTime},
@@ -193,12 +194,15 @@ impl Track {
         hasher.finish()
     }
 
-    pub fn hash_tracks(tracks: &Vec<Track>) -> Vec<u64> {
-        let mut hashes = Vec::new();
-        for track in tracks {
-            hashes.push(Self::hash_track(track));
-        }
-        hashes
+    pub fn hash_tracks<I, T>(tracks: I) -> Vec<u64>
+    where
+        I: IntoIterator<Item = T>,
+        T: Deref<Target = Track>,
+    {
+        tracks
+            .into_iter()
+            .map(|track| Self::hash_track(track.deref()))
+            .collect()
     }
 
     // TODO: Am I doing this right???

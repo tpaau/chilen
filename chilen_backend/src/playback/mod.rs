@@ -362,7 +362,7 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), Error> {
     }
 }
 
-pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), Error> {
+pub(crate) fn set_queue(queue: Vec<Arc<Track>>) -> Result<(), Error> {
     trace!("Setting a new queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
@@ -388,7 +388,7 @@ pub(crate) fn set_queue(queue: Vec<Track>) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn append_to_queue(queue: &mut Vec<Track>) -> Result<(), Error> {
+pub fn append_to_queue(queue: &mut Vec<Arc<Track>>) -> Result<(), Error> {
     trace!("Appending tracks to queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;

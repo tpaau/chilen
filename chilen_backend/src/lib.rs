@@ -23,7 +23,6 @@ mod tests;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
-    #[cfg(feature = "mpris")]
     pub identity: String,
     #[cfg(feature = "mpris")]
     pub identifier: String,

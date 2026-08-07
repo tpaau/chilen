@@ -9,7 +9,7 @@ use std::{
     fs::{File, create_dir_all, read},
     io::Write,
     path::{Path, PathBuf},
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
 
 use log::{error, trace};
@@ -130,14 +130,14 @@ pub(crate) fn tracks_from_paths(
     track_paths: &[PathBuf],
     // Whether nonexistent paths should result in a failure.
     allow_failure: bool,
-) -> Result<Vec<Track>, Error> {
+) -> Result<Vec<Arc<Track>>, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
     let mut out = Vec::with_capacity(track_paths.len());
 
     for path in track_paths {
         if let Some(track) = lib.find_track_by_path(path) {
-            out.push(track.as_ref().clone());
+            out.push(track);
         } else if !allow_failure {
             return Err(Error::UnknownTrackPath(path.to_path_buf()));
         }
