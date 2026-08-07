@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use log::{error, trace};
+use log::{error, trace, warn};
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
@@ -47,14 +47,28 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
             player_position: value.player_position,
             player_volume: value.player_volume,
             playback_state: PlaybackState::Stopped,
-            tracks: tracks_from_hashes(value.track_hashes)?
-                .into_iter()
-                .map(|t| t.as_ref().clone())
-                .collect(),
-            shuffled_tracks: tracks_from_hashes(value.shuffled_track_hashes)?
-                .into_iter()
-                .map(|t| t.as_ref().clone())
-                .collect(),
+            tracks: {
+                let result = tracks_from_hashes(value.track_hashes)?;
+                if !result.unmatched.is_empty() {
+                    warn!("{} missing tracks in the queue", result.unmatched.len());
+                }
+                result
+                    .matched
+                    .into_iter()
+                    .map(|t| t.as_ref().clone())
+                    .collect()
+            },
+            shuffled_tracks: {
+                let result = tracks_from_hashes(value.shuffled_track_hashes)?;
+                if !result.unmatched.is_empty() {
+                    warn!("{} missing tracks in the queue", result.unmatched.len());
+                }
+                result
+                    .matched
+                    .into_iter()
+                    .map(|t| t.as_ref().clone())
+                    .collect()
+            },
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         })

@@ -322,11 +322,20 @@ pub struct Playlist {
 }
 
 impl Playlist {
-    fn try_from_loaded_playlist(lib: &MusicLibrary, loaded: ConfPlaylist) -> Result<Self, Error> {
-        Ok(Self {
+    fn load(lib: &MusicLibrary, loaded: ConfPlaylist) -> Self {
+        let result = lib.tracks_from_hashes(loaded.track_hashes);
+        if !result.unmatched.is_empty() {
+            warn!(
+                "{} missing tracks in playlist {}",
+                result.unmatched.len(),
+                loaded.name
+            );
+        }
+
+        Self {
             name: loaded.name,
-            tracks: lib.tracks_from_hashes(loaded.track_hashes)?,
-        })
+            tracks: result.matched,
+        }
     }
 
     pub(crate) fn remove_tracks(&mut self, mut ids: Vec<usize>) -> Result<(), Error> {
@@ -381,6 +390,12 @@ pub struct MusicLibrary {
     tracks_by_path: HashMap<String, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
     playlists_by_name: HashMap<String, Arc<Playlist>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct HashMatchingResult {
+    pub matched: Vec<Arc<Track>>,
+    pub unmatched: Vec<u64>,
 }
 
 impl MusicLibrary {
@@ -605,16 +620,16 @@ impl MusicLibrary {
         }
     }
 
-    fn load(loaded: ConfMusicLibrary, tracks: Vec<Track>) -> Result<Self, Error> {
+    fn load(loaded: ConfMusicLibrary, tracks: Vec<Track>) -> Self {
         let mut lib = Self::new(tracks);
         for p in loaded.playlists {
-            let playlist = Arc::new(Playlist::try_from_loaded_playlist(&lib, p)?);
+            let playlist = Arc::new(Playlist::load(&lib, p));
             lib.playlists.insert(playlist.clone());
             lib.playlists_by_name
                 .insert(playlist.name.clone(), playlist);
         }
 
-        Ok(lib)
+        lib
     }
 
     #[cfg(test)]
@@ -658,16 +673,23 @@ impl MusicLibrary {
         playlist_name
     }
 
-    pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, Error> {
+    /// Retrieves tracks corresponding to a list of provided hashes.
+    pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> HashMatchingResult {
+        // In most cases all tracks will match
         let mut tracks = Vec::with_capacity(hashes.len());
+        let mut unmatched = Vec::new();
         for hash in hashes {
-            match self.tracks_by_hash.get(&hash) {
-                Some(track) => tracks.push(track.clone()),
-                None => return Err(Error::UnknownTrackHash(hash)),
+            if let Some(track) = self.tracks_by_hash.get(&hash) {
+                tracks.push(track.clone());
+            } else {
+                unmatched.push(hash);
             }
         }
-
-        Ok(tracks)
+        tracks.shrink_to_fit();
+        HashMatchingResult {
+            matched: tracks,
+            unmatched,
+        }
     }
 
     pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), Error> {
@@ -973,13 +995,7 @@ pub(crate) fn load(load_mode: LoadMode, config: music_lib::Config) -> Result<(),
         };
 
         let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
-            Ok(lib) => match MusicLibrary::load(lib, tracks.clone().into_iter().collect()) {
-                Ok(lib) => lib,
-                Err(e) => {
-                    error!("Could not open the music library: {e}");
-                    MusicLibrary::new(tracks.into_iter().collect())
-                }
-            },
+            Ok(lib) => MusicLibrary::load(lib, tracks.clone().into_iter().collect()),
             Err(e) => {
                 error!("Could not decode the contents of the library state file: {e}");
                 trace!("Creating a new library");

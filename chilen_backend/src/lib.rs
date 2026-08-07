@@ -106,8 +106,6 @@ pub enum Error {
     IndexOutOfBounds,
     /// The list contained duplicate values.
     DuplicateItems,
-    /// The track hash was not found in the music library.
-    UnknownTrackHash(u64),
     /// The track was not found in the music library.
     UnknownTrackPath(PathBuf),
     /// Could not read the contents of the library state file.
@@ -155,12 +153,6 @@ impl std::fmt::Display for Error {
             ),
             Self::DurationOverflow => {
                 write!(f, "Overflow detected while performing a seek operation")
-            }
-            Self::UnknownTrackHash(hash) => {
-                write!(
-                    f,
-                    "The track hash doesn't exist in the music library: {hash}"
-                )
             }
             Self::UnknownTrackPath(path) => {
                 write!(

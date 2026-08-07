@@ -9,7 +9,7 @@ use std::{
     fs::{File, create_dir_all, read},
     io::Write,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::RwLock,
 };
 
 use log::{error, trace};
@@ -18,7 +18,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Error,
-    music_lib::state::{MUSIC_LIBRARY, Track, save_library, unwrap_lib_mut, unwrap_lib_ref},
+    music_lib::state::{
+        HashMatchingResult, MUSIC_LIBRARY, Track, save_library, unwrap_lib_mut, unwrap_lib_ref,
+    },
 };
 
 pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
@@ -144,10 +146,10 @@ pub(crate) fn tracks_from_paths(
     Ok(out)
 }
 
-pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<Vec<Arc<Track>>, Error> {
+pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<HashMatchingResult, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
-    lib.tracks_from_hashes(hashes)
+    Ok(lib.tracks_from_hashes(hashes))
 }
 
 // TEST: Check if import works correctly
