@@ -4,6 +4,34 @@ use clap::{Parser, ValueHint};
 use env_logger::Builder;
 use log::{LevelFilter, trace};
 
+#[derive(Debug, Default, Clone, Copy, clap::ValueEnum)]
+pub enum IndexingIntensity {
+    #[default]
+    Fast,
+    Balanced,
+    Lightweight,
+}
+
+impl std::fmt::Display for IndexingIntensity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IndexingIntensity::Fast => write!(f, "fast"),
+            IndexingIntensity::Balanced => write!(f, "balanced"),
+            IndexingIntensity::Lightweight => write!(f, "lightweight"),
+        }
+    }
+}
+
+impl From<IndexingIntensity> for chilen_backend::music_lib::indexer::IndexingIntensity {
+    fn from(value: IndexingIntensity) -> Self {
+        match value {
+            IndexingIntensity::Fast => Self::Fast,
+            IndexingIntensity::Balanced => Self::Balanced,
+            IndexingIntensity::Lightweight => Self::Lightweight,
+        }
+    }
+}
+
 #[derive(Parser)]
 #[command(
     version,
@@ -34,7 +62,10 @@ pub struct Args {
     #[arg(long, value_hint = ValueHint::DirPath)]
     pub data_dir_override: Option<PathBuf>,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(long, short, default_value_t = IndexingIntensity::default())]
+    pub indexing_intensity: IndexingIntensity,
+
+    #[arg(long, short, default_value_t = false)]
     pub rebuild_cache: bool,
 }
 

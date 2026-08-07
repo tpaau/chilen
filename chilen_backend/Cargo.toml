@@ -22,4 +22,3 @@ icu = { version = "2.2.0", default-features = false, features = [ "serde", "comp
 
 [features]
 mpris = [ "dep:mpris-server" ]
-
