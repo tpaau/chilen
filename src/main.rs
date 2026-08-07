@@ -1,13 +1,14 @@
 mod argparse;
 mod gui;
 pub mod settings;
-use std::{env::home_dir, process::exit, sync::mpsc::Receiver, thread, time::Duration};
+use std::{
+    env::home_dir, path::PathBuf, process::exit, sync::mpsc::Receiver, thread, time::Duration,
+};
 
 use chilen_backend::music_lib::{
     self, ValueSeparators,
     indexer::{self, covers},
 };
-use dirs::{cache_dir, data_dir};
 
 use icu::locale::locale;
 use log::{debug, error, info, warn};
@@ -39,49 +40,76 @@ fn handle_events(receiver: Receiver<chilen_backend::Event>) {
     }
 }
 
+fn data_dir() -> PathBuf {
+    match dirs::data_dir() {
+        Some(mut dir) => {
+            dir.push(APP_NAME.to_lowercase());
+            dir
+        }
+        None => {
+            error!("Could not get the path to the data directory");
+            exit(1);
+        }
+    }
+}
+
+fn cache_dir() -> PathBuf {
+    match dirs::cache_dir() {
+        Some(mut dir) => {
+            dir.push(APP_NAME.to_lowercase());
+            dir
+        }
+        None => {
+            error!("Could not get the path to the cache directory");
+            exit(1);
+        }
+    }
+}
+
+// TODO: This should be user-configurable
+fn audio_dir() -> PathBuf {
+    match dirs::audio_dir() {
+        Some(dir) => dir,
+        None => match home_dir() {
+            Some(mut dir) => {
+                dir.push("Music");
+                dir
+            }
+            None => {
+                error!("Could not get the path to the music directory");
+                exit(1);
+            }
+        },
+    }
+}
+
 fn main() {
     thread::spawn(|| {
         let args = parse_args();
 
-        let data_dir = match args.data_dir {
+        #[cfg(feature = "dev-opts")]
+        let data_dir = match args.data_dir_override {
             Some(dir) => dir,
-            None => match data_dir() {
-                Some(mut dir) => {
-                    dir.push(APP_NAME.to_lowercase());
-                    dir
-                }
-                None => {
-                    error!("Could not get the path to the data directory");
-                    exit(1);
-                }
-            },
+            None => data_dir(),
         };
-        let cache_dir = match args.cache_dir {
+        #[cfg(not(feature = "dev-opts"))]
+        let data_dir = data_dir();
+
+        #[cfg(feature = "dev-opts")]
+        let cache_dir = match args.cache_dir_override {
             Some(dir) => dir,
-            None => match cache_dir() {
-                Some(mut dir) => {
-                    dir.push(APP_NAME.to_lowercase());
-                    dir
-                }
-                None => {
-                    error!("Could not get the path to the cache directory");
-                    exit(1);
-                }
-            },
+            None => cache_dir(),
         };
-        let music_dir = match args.music_dir {
+        #[cfg(not(feature = "dev-opts"))]
+        let cache_dir = cache_dir();
+
+        #[cfg(feature = "dev-opts")]
+        let music_dir = match args.music_dir_override {
             Some(dir) => dir,
-            None => match home_dir() {
-                Some(mut dir) => {
-                    dir.push("Music");
-                    dir
-                }
-                None => {
-                    error!("Could not get the path to the home directory");
-                    exit(1);
-                }
-            },
+            None => audio_dir(),
         };
+        #[cfg(not(feature = "dev-opts"))]
+        let music_dir = audio_dir();
 
         let locale = match get_locale() {
             Some(l) => {

@@ -22,11 +22,11 @@ sys-locale = "0.3.2"
 
 [features]
 mpris = [ "chilen_backend/mpris" ]
-linux_package = [ "mpris" ]
-linux_flatpak = [ "mpris" ]
+linux = [ "mpris" ]
 windows = []
 macos = []
 default = []
+dev-opts = []
 
 [workspace]
 members = [ "chilen_backend", "iced_m3" ]

@@ -15,21 +15,26 @@ use log::{LevelFilter, trace};
 "
 )]
 pub struct Args {
-    #[arg(long, short)]
     /// Set the log filter level
+    #[arg(long, short)]
     pub log_filter: Option<LevelFilter>,
 
-    // TODO: Clearly label those three paths as overrides
-    #[arg(long, short, value_hint = ValueHint::DirPath)]
-    pub music_dir: Option<PathBuf>,
+    /// Override the music library directory
+    #[cfg(feature = "dev-opts")]
+    #[arg(long, value_hint = ValueHint::DirPath)]
+    pub music_dir_override: Option<PathBuf>,
 
-    #[arg(long, short, value_hint = ValueHint::DirPath)]
-    pub cache_dir: Option<PathBuf>,
+    /// Override the cache directory
+    #[cfg(feature = "dev-opts")]
+    #[arg(long, value_hint = ValueHint::DirPath)]
+    pub cache_dir_override: Option<PathBuf>,
 
-    #[arg(long, short, value_hint = ValueHint::DirPath)]
-    pub data_dir: Option<PathBuf>,
+    /// Override the data directory
+    #[cfg(feature = "dev-opts")]
+    #[arg(long, value_hint = ValueHint::DirPath)]
+    pub data_dir_override: Option<PathBuf>,
 
-    #[arg(long, short, default_value_t = false)]
+    #[arg(long, default_value_t = false)]
     pub rebuild_cache: bool,
 }
 

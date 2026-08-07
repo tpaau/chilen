@@ -12,7 +12,7 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    music_lib::{indexer::covers::CacheMode, set_dirs, state::MusicLibrary},
+    music_lib::{set_dirs, state::MusicLibrary},
     playback::state::PlayerState,
 };
 
