@@ -98,8 +98,11 @@ fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Result<Vec<Tra
 
     std::thread::scope(|s| {
         let mult = config.indexer.indexing_intensity.multiplier();
-        let available_threads = std::thread::available_parallelism()
-            .map_or(1, |v| (NonZero::get(v) as f32 * mult).max(1.0) as u32);
+        let available_threads = std::thread::available_parallelism().map_or(1, |v| {
+            (NonZero::get(v) as f32 * mult)
+                .max(1.0)
+                .min(files.len() as f32) as u32
+        });
         trace!("Starting {available_threads} indexing threads");
 
         for _ in 0..available_threads {

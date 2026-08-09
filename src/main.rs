@@ -21,12 +21,8 @@ const APP_NAME: &str = "Chilen";
 const APP_ID: &str = "dev.tpaau.Chilen";
 
 fn handle_events(receiver: Receiver<chilen_backend::Event>) {
-    // TODO: Cleaner way of doing this?
-    loop {
-        if gui::event_sender_initialized() {
-            break;
-        }
-        thread::sleep(Duration::from_secs_f32(0.1));
+    while !gui::event_sender_initialized() {
+        thread::sleep(Duration::from_millis(10));
     }
     loop {
         let event = match receiver.recv() {
