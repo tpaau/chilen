@@ -11,7 +11,7 @@ use std::{
 };
 
 use image::ImageFormat;
-use log::{info, trace, warn};
+use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
@@ -91,7 +91,7 @@ impl Config {
     }
 }
 
-fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Result<Vec<Track>, Error> {
+fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Vec<Track> {
     let mut tracks = Mutex::new(Vec::with_capacity(files.len()));
     let i = AtomicUsize::new(0);
     let covers_lookup_set: RwLock<HashSet<PathBuf>> = RwLock::new(HashSet::new());
@@ -139,7 +139,7 @@ fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Result<Vec<Tra
     });
 
     tracks.get_mut().unwrap().shrink_to_fit();
-    Ok(tracks.into_inner().unwrap())
+    tracks.into_inner().unwrap()
 }
 
 pub(crate) fn index(config: music_lib::Config) -> Result<Vec<Track>, Error> {
@@ -152,7 +152,15 @@ pub(crate) fn index(config: music_lib::Config) -> Result<Vec<Track>, Error> {
 
     let music_dir = MUSIC_DIR.read().unwrap().clone().unwrap();
 
-    trace!("Indexing directory: {music_dir:?}");
+    match music_dir.is_dir() {
+        true => {
+            trace!("Indexing directory: {music_dir:?}");
+        }
+        false => {
+            error!("Music library path is not a directory!");
+            return Err(Error::NotADirectory(music_dir));
+        }
+    }
 
     let files: Vec<_> = WalkDir::new(music_dir)
         .into_iter()
@@ -181,5 +189,5 @@ pub(crate) fn index(config: music_lib::Config) -> Result<Vec<Track>, Error> {
         })
         .collect();
 
-    index_files(files, config)
+    Ok(index_files(files, config))
 }
