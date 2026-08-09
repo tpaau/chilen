@@ -33,6 +33,50 @@ use crate::{
     },
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Progress {
+    /// First step of the loading process.
+    ///
+    /// The indexer finds files in the music library to index.
+    ///
+    /// This step usually takes under 100ms.
+    FindingTracks,
+
+    /// Second step of the loading process.
+    ///
+    /// The indexer goes through all of the found files and attempts to gather audio metadata from
+    /// them. During this process track covers are also cached.
+    ///
+    /// This is the longest step of the loading process. The time it takes to complete this step
+    /// heavily depends on on whether track covers are already cached (warm start) or not (cold
+    /// start), and how many tracks are in the library.
+    ///
+    /// Eg. for my 908-track music library, cold start takes about 4.24s, and warm start just 0.26s.
+    Indexing,
+
+    /// Third step of the loading process.
+    ///
+    /// After all the tracks have been gathered, the backend rebuilds the virtual library from the
+    /// track tags. It rebuilds artists, albums and genres, as well as hash maps used to quickly
+    /// find items in the music library.
+    ///
+    /// Usually takes under a 100ms, depending on library size.
+    RebuildingLibrary,
+
+    /// Fourth step of the loading process.
+    ///
+    /// The playlists are restored from disk.
+    ///
+    /// **NOTE**: This step is skipped if the `playlists` file is not present.
+    RestoringState,
+
+    /// The loading process has finished.
+    Done,
+
+    /// The loading process has failed irrecoverably and will not restart.
+    Failed(Error),
+}
+
 /// Lyrics data, can be either synced or unsynced.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Lyrics {
@@ -405,6 +449,8 @@ pub struct HashMatchingResult {
 
 impl MusicLibrary {
     fn new(tracks: Vec<Track>) -> Self {
+        crate::send_event(Event::LoadProgressChanged(Progress::RebuildingLibrary));
+
         let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
         let guard = COLLATOR.read().unwrap();
@@ -626,6 +672,8 @@ impl MusicLibrary {
     }
 
     fn load(loaded: ConfMusicLibrary, tracks: Vec<Track>) -> Self {
+        crate::send_event(Event::LoadProgressChanged(Progress::RestoringState));
+
         let mut lib = Self::new(tracks);
         for p in loaded.playlists {
             let playlist = Arc::new(Playlist::load(&lib, p));
@@ -1023,6 +1071,8 @@ pub(crate) fn load(config: music_lib::Config) -> Result<(), Error> {
         "Done loading the music library in {:.2}s",
         time_elapsed.as_secs_f64()
     );
+
+    crate::send_event(Event::LoadProgressChanged(Progress::Done));
 
     Ok(())
 }

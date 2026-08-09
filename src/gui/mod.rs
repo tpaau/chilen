@@ -211,6 +211,8 @@ impl Chilen {
                             )
                         });
                     }
+                    // TODO: Display the progress
+                    chilen_backend::Event::LoadProgressChanged(progress) => {}
                 },
                 Event::Window { event, id } => {
                     return match event {

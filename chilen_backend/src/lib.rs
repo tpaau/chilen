@@ -40,6 +40,7 @@ pub enum Event {
     Quit,
     SetFullscreen(bool),
     PlayerStateChanged(PlayerState),
+    LoadProgressChanged(music_lib::state::Progress),
     LibraryLoadFailed(String),
     LibraryChanged(Box<MusicLibrary>),
 }
@@ -214,26 +215,32 @@ pub(crate) static COLLATOR: RwLock<Option<Arc<CollatorBorrowed<'_>>>> = RwLock::
 pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
     let (sender, receiver) = mpsc::channel();
     *EVENT_SENDER.write().unwrap() = Some(sender);
-    *CONFIG.write().unwrap() = Some(Arc::new(config.clone()));
 
-    *COLLATOR.write().unwrap() =
-        match Collator::try_new(config.locale.clone().into(), CollatorOptions::default()) {
-            Ok(c) => Some(Arc::new(c)),
-            Err(e) => {
-                error!("Could not initialize the collator, things will be unsorted!: {e}");
-                None
-            }
-        };
-
-    if let Err(e) = set_dirs(config.data_dir, config.cache_dir, config.music_dir) {
-        error!("Could not set the initial directories: {e}");
-        return Err(e);
-    }
-    if let Err(e) = music_lib::state::load(config.library) {
-        error!("Could not load the music library: {e}");
-        return Err(e);
-    }
     thread::spawn(|| {
+        *CONFIG.write().unwrap() = Some(Arc::new(config.clone()));
+        *COLLATOR.write().unwrap() =
+            match Collator::try_new(config.locale.clone().into(), CollatorOptions::default()) {
+                Ok(c) => Some(Arc::new(c)),
+                Err(e) => {
+                    error!("Could not initialize the collator, things will be unordered: {e}");
+                    None
+                }
+            };
+
+        if let Err(e) = set_dirs(config.data_dir, config.cache_dir, config.music_dir) {
+            error!("Could not set the initial directories: {e}");
+            send_event(Event::LoadProgressChanged(
+                music_lib::state::Progress::Failed(e),
+            ));
+            return;
+        }
+        if let Err(e) = music_lib::state::load(config.library) {
+            error!("Could not load the music library: {e}");
+            send_event(Event::LoadProgressChanged(
+                music_lib::state::Progress::Failed(e),
+            ));
+            return;
+        }
         playback::init(
             #[cfg(feature = "mpris")]
             config.identity,

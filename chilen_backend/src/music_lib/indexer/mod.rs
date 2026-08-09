@@ -96,6 +96,10 @@ fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Vec<Track> {
     let i = AtomicUsize::new(0);
     let covers_lookup_set: RwLock<HashSet<PathBuf>> = RwLock::new(HashSet::new());
 
+    crate::send_event(crate::Event::LoadProgressChanged(
+        music_lib::state::Progress::Indexing,
+    ));
+
     std::thread::scope(|s| {
         let mult = config.indexer.indexing_intensity.multiplier();
         let available_threads = std::thread::available_parallelism().map_or(1, |v| {
@@ -161,6 +165,10 @@ pub(crate) fn index(config: music_lib::Config) -> Result<Vec<Track>, Error> {
             return Err(Error::NotADirectory(music_dir));
         }
     }
+
+    crate::send_event(crate::Event::LoadProgressChanged(
+        music_lib::state::Progress::FindingTracks,
+    ));
 
     let files: Vec<_> = WalkDir::new(music_dir)
         .into_iter()
