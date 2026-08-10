@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::Track;
+use chilen_backend::music_lib::state::{MusicLibrary, Track};
 use iced::{
     Border, Element, Length, Padding,
     widget::{button, container, row, space},
@@ -143,20 +143,16 @@ pub fn track_button<'a>(
         .into()
 }
 
-pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
-    if let Some(lib) = &state.library {
-        let content = column(
-            lib.tracks
-                .iter()
-                .enumerate()
-                .map(|(i, t)| track_button(state, i, t)),
-        )
-        .spacing(BUTTON_SPACING);
+pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, gui::Message> {
+    let content = column(
+        lib.tracks
+            .iter()
+            .enumerate()
+            .map(|(i, t)| track_button(state, i, t)),
+    )
+    .spacing(BUTTON_SPACING);
 
-        iced_widget::scrollable(content)
-            .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
-            .into()
-    } else {
-        center(text("Loading...")).into()
-    }
+    iced_widget::scrollable(content)
+        .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
+        .into()
 }

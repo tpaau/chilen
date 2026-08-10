@@ -6,9 +6,12 @@ mod tracks;
 use chilen_backend::music_lib::state::MusicLibrary;
 use iced::{Border, Color, Element, Length, Padding, Task};
 use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
-use iced_widget::{center, column, container, space, stack};
+use iced_widget::{center, column, container, mouse_area, responsive, scrollable, space, stack};
 
-use crate::gui::{self, BUTTON_ROUNDING, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons};
+use crate::gui::{
+    self, BUTTON_HEIGHT, BUTTON_ROUNDING, BUTTON_SPACING, Chilen, ROUNDING_REGULAR, SPACING_SMALL,
+    icons,
+};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum View {
@@ -98,27 +101,85 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
             .icon_font_inactive(icons::outlined())
         },
         {
-            // FIX: This is a WORKAROUND.
-            // The `Scrollable` widget doesn't correctly manage its state which makes multiple
-            // scrollables in the same state tree share a state.
-            //
-            // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
-            let content = match state.main_view.view {
-                View::Tracks => tracks::view(state),
-                View::Albums => stack![albums::view(state)].into(),
-                View::Artists => stack![
-                    space().width(Length::Fill).height(Length::Fill),
-                    artists::view(state)
-                ]
-                .into(),
-                View::Genres => stack![
-                    space().width(Length::Fill).height(Length::Fill),
-                    space().width(Length::Fill).height(Length::Fill),
-                    genres::view(state)
-                ]
-                .into(),
-            };
-            center(content)
+            if let Some(lib) = &state.library {
+                // FIX: This is a WORKAROUND.
+                // The `Scrollable` widget doesn't correctly manage its state which makes multiple
+                // scrollables in the same state tree share a state.
+                //
+                // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
+                let content = match state.main_view.view {
+                    View::Tracks => tracks::view(state, lib),
+                    View::Albums => stack![albums::view(state, lib)].into(),
+                    View::Artists => stack![
+                        space().width(Length::Fill).height(Length::Fill),
+                        artists::view(state, lib)
+                    ]
+                    .into(),
+                    View::Genres => stack![
+                        space().width(Length::Fill).height(Length::Fill),
+                        space().width(Length::Fill).height(Length::Fill),
+                        genres::view(state, lib)
+                    ]
+                    .into(),
+                };
+                center(content)
+            } else {
+                center(responsive(|size| {
+                    let num_buttons = if let Length::Fixed(button_height) = BUTTON_HEIGHT {
+                        (size.height / button_height) as u32
+                    } else {
+                        unreachable!()
+                    };
+
+                    let items = (0..num_buttons)
+                        .map(|_| {
+                            container(space().height(BUTTON_HEIGHT).width(Length::Fill))
+                                .style(|_| iced_widget::container::Style {
+                                    background: Some(iced::Background::Color(
+                                        state.theme.primary(),
+                                    )),
+                                    border: Border::default().rounded(BUTTON_ROUNDING),
+                                    ..Default::default()
+                                })
+                                .into()
+                        })
+                        .collect::<Vec<_>>();
+                    stack![
+                        scrollable(column(items).spacing(BUTTON_SPACING)).style(|_, _| {
+                            iced_widget::scrollable::Style {
+                                container: container::Style::default(),
+                                vertical_rail: iced_widget::scrollable::Rail {
+                                    background: None,
+                                    border: Border::default(),
+                                    scroller: scrollable::Scroller {
+                                        background: iced::Background::Color(Color::TRANSPARENT),
+                                        border: Border::default(),
+                                    },
+                                },
+                                horizontal_rail: scrollable::Rail {
+                                    background: None,
+                                    border: Border::default(),
+                                    scroller: scrollable::Scroller {
+                                        background: iced::Background::Color(Color::TRANSPARENT),
+                                        border: Border::default(),
+                                    },
+                                },
+                                gap: None,
+                                auto_scroll: scrollable::AutoScroll {
+                                    background: iced::Background::Color(Color::TRANSPARENT),
+                                    border: Border::default(),
+                                    shadow: iced::Shadow::default(),
+                                    icon: Color::TRANSPARENT,
+                                },
+                            }
+                        }),
+                        mouse_area(space().width(Length::Fill).height(Length::Fill))
+                            .on_press(gui::Message::CloseDialog)
+                            .on_scroll(|_| gui::Message::CloseDialog),
+                    ]
+                    .into()
+                }))
+            }
         }
     ])
     .style(|_| {
