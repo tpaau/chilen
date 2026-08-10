@@ -22,6 +22,7 @@ use iced_widget::stack;
 use log::{error, trace};
 
 use crate::{
+    APP_NAME,
     gui::{
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::{FILLED_ICONS_FONT_BYTES, OUTLINED_ICONS_FONT_BYTES},
@@ -317,7 +318,7 @@ pub fn start() -> iced::Result {
         Chilen::update,
         Chilen::view,
     )
-    .title("Chilen")
+    .title(APP_NAME)
     .default_font(Font::with_name("Noto Sans"))
     .subscription(|_| {
         Subscription::batch(vec![

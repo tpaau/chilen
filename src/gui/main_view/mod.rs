@@ -136,7 +136,7 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
                             container(space().height(BUTTON_HEIGHT).width(Length::Fill))
                                 .style(|_| iced_widget::container::Style {
                                     background: Some(iced::Background::Color(
-                                        state.theme.primary(),
+                                        state.theme.surface_container_low(),
                                     )),
                                     border: Border::default().rounded(BUTTON_ROUNDING),
                                     ..Default::default()
@@ -144,6 +144,7 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
                                 .into()
                         })
                         .collect::<Vec<_>>();
+                    // FIX: This is VERY hacky
                     stack![
                         scrollable(column(items).spacing(BUTTON_SPACING)).style(|_, _| {
                             iced_widget::scrollable::Style {
