@@ -37,8 +37,13 @@ pub struct State {
 }
 
 pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
-    match &state.loading_state {
-        LoadingState::Loading => text!("Loading...").color(state.theme.on_surface()).into(),
+    let heading = text!("Playlists")
+        .color(state.theme.on_surface())
+        .size(font::SIZE_LARGE)
+        .font(gui::font::font_bold());
+
+    let content = match &state.loading_state {
+        LoadingState::Loading => center(text("Loading...")),
         LoadingState::Failed(e) => {
             container(text!("Load failed: {e}").color(state.theme.on_error()))
                 .style(|_| {
@@ -48,15 +53,10 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
                 })
                 .width(Length::Fill)
                 .padding(Padding::new(SPACING_SMALLER))
-                .into()
         }
         LoadingState::Loaded => {
-            stack!(
+            center(stack!(
                 column![
-                    text!("Playlists")
-                        .color(state.theme.on_surface())
-                        .size(font::SIZE_LARGE)
-                        .font(gui::font::font_bold()),
                     iced::widget::scrollable(
                         column({
                             let mut playlists: Vec<_> =
@@ -167,10 +167,10 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
                     )
                     .menu_transparent(true)
                 )
-            )
-            .into()
+            ))
         }
-    }
+    };
+    column![heading, content].into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
