@@ -1,5 +1,8 @@
+use std::{env::home_dir, path::PathBuf, sync::Arc};
+
+use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Alignment, Border, Element, Length, Padding,
+    Alignment, Border, Element, Length, Padding, Task,
     border::Radius,
     widget::{column, container, text},
 };
@@ -9,13 +12,31 @@ use iced_m3::{
     widget::drop_down_menu::{DropDownMenu, Placement},
 };
 use iced_widget::{bottom_right, center, row, space, stack};
+use log::{error, info, trace};
 
 use crate::gui::{
-    self, Chilen, LoadingState, Message, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
-    SPACING_SMALLER, font, icons, widgets::playlist_button::playlist_button,
+    self, Chilen, Dialog, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
+    SPACING_SMALLER, font, icons, playlist_view, widgets::playlist_button::playlist_button,
 };
 
-pub fn view(state: &Chilen) -> Element<'_, Message> {
+#[derive(Debug, Clone)]
+pub enum Message {
+    ButtonPoppedIn(usize),
+    ButtonPoppedOut(usize),
+    OpenPlaylist(Arc<Playlist>),
+    CreatePlaylist,
+    ExportPlaylist(String),
+    ImportPlaylist,
+    OpenPlaylistImportDialog(Option<rfd::FileHandle>),
+    OpenPlaylistRenameDialog { playlist: String, name: String },
+    ConfirmPlaylistDeletion(Arc<Playlist>),
+}
+
+pub struct State {
+    pub visible: Option<Vec<bool>>,
+}
+
+pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
     match &state.loading_state {
         LoadingState::Loading => text!("Loading...").color(state.theme.on_surface()).into(),
         LoadingState::Failed(e) => {
@@ -43,7 +64,8 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                             playlists.sort_by_key(|pl| pl.name.clone());
                             playlists
                                 .into_iter()
-                                .map(|p| playlist_button(state, p).width(Length::Fill).into())
+                                .enumerate()
+                                .map(|(i, p)| playlist_button(state, p, i))
                         })
                         .spacing(SPACING_SMALLER)
                     )
@@ -109,7 +131,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                 .padding(Padding::from(16.0))
                                 .height(Length::Fixed(56.0))
                                 .width(Length::Shrink)
-                                .on_press(Message::OpenPlaylistImportFilePicker),
+                                .on_press(Message::ImportPlaylist),
                                 iced::widget::button(center(
                                     row(vec![
                                         text(*icons::PLAYLIST_ADD)
@@ -133,7 +155,7 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
                                 .padding(Padding::from(16.0))
                                 .height(Length::Fixed(56.0))
                                 .width(Length::Shrink)
-                                .on_press(Message::OpenPlaylistCreationDialog),
+                                .on_press(Message::CreatePlaylist),
                                 space().height(4.0)
                             ]
                             .align_x(Alignment::End)
@@ -149,4 +171,60 @@ pub fn view(state: &Chilen) -> Element<'_, Message> {
             .into()
         }
     }
+}
+
+pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+    if state.playlist_view.visible.is_none()
+        && let Some(lib) = &state.library
+    {
+        state.playlist_view.visible = Some(vec![false; lib.playlists.len()]);
+    }
+    match message {
+        Message::ButtonPoppedIn(i) => {
+            let visible = state.playlist_view.visible.as_mut().unwrap();
+            if let Some(val) = visible.get_mut(i) {
+                *val = true
+            } else {
+                visible.push(true);
+            }
+        }
+        Message::ButtonPoppedOut(i) => state.playlist_view.visible.as_mut().unwrap()[i] = false,
+        Message::CreatePlaylist => {
+            state.dialog = Dialog::CreatePlaylist(String::new());
+        }
+        Message::ExportPlaylist(name) => todo!(),
+        Message::ImportPlaylist => {
+            return Task::perform(
+                rfd::AsyncFileDialog::new()
+                    .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
+                    .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
+                    .pick_file(),
+                Message::OpenPlaylistImportDialog,
+            );
+        }
+        Message::OpenPlaylistImportDialog(handle) => match handle {
+            Some(handle) => {
+                trace!("Showing import dialog for playlist {handle:?}");
+                state.dialog = Dialog::ImportPlaylist(String::new(), handle);
+            }
+            None => info!("Didn't get the file handle, guessing the user cancelled the import"),
+        },
+        Message::OpenPlaylistRenameDialog { playlist, name } => {
+            state.dialog = Dialog::RenamePlaylist { playlist, name }
+        }
+        Message::ConfirmPlaylistDeletion(playlist) => {
+            if playlist.tracks.is_empty() {
+                if let Err(e) =
+                    chilen_backend::music_lib::delete_playlists(vec![playlist.name.clone()])
+                {
+                    error!("Couldn't delete playlist: {e}");
+                    state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
+                }
+            } else {
+                state.dialog = Dialog::DeletePlaylist(playlist)
+            }
+        }
+        Message::OpenPlaylist(pl) => todo!(),
+    }
+    Task::none()
 }

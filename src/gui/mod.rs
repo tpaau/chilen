@@ -7,11 +7,7 @@ mod playlist_view;
 mod tests;
 mod widgets;
 
-use std::{
-    env::home_dir,
-    path::PathBuf,
-    sync::{Arc, LazyLock, RwLock},
-};
+use std::sync::{Arc, LazyLock, RwLock};
 
 use chilen_backend::music_lib::state::{MusicLibrary, Playlist};
 use iced::{
@@ -23,8 +19,7 @@ use iced::{
 };
 use iced_m3::theme::{ColorScheme, Theme};
 use iced_widget::stack;
-use log::{error, info, trace};
-use rfd::FileHandle;
+use log::{error, trace};
 
 use crate::{
     gui::{
@@ -47,20 +42,13 @@ pub(super) enum Event {
 pub enum Message {
     Event(Event),
     CloseDialog,
-    OpenPlaylist(Arc<Playlist>),
     PlaylistNameEdited(String),
-    OpenPlaylistCreationDialog,
     CreatePlaylist(String),
-    OpenPlaylistImportFilePicker,
-    OpenPlaylistImportDialog(Option<rfd::FileHandle>),
     ImportPlaylist(Option<String>, rfd::FileHandle),
-    OpenPlaylistRenameDialog { playlist: String, name: String },
     RenamePlaylist { playlist: String, name: String },
-    ConfirmPlaylistDeletion(Arc<Playlist>),
     DeletePlaylist(Arc<Playlist>),
-    OpenPlaylistExportPicker(String),
-    ExportPlaylist(String, Option<FileHandle>),
     MainView(main_view::Message),
+    PlaylistView(playlist_view::Message),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -92,6 +80,7 @@ struct Chilen {
     theme: Theme,
     settings: Settings,
     main_view: main_view::State,
+    playlist_view: playlist_view::State,
 }
 
 impl Default for Chilen {
@@ -107,6 +96,7 @@ impl Default for Chilen {
                 view: main_view::View::default(),
                 visible: None,
             },
+            playlist_view: playlist_view::State { visible: None },
         }
     }
 }
@@ -162,7 +152,7 @@ impl Chilen {
         stack![
             container(column([row([
                 // TODO: I should be able to resize this
-                container(playlist_view::view(state))
+                container(playlist_view::view(state).map(Message::PlaylistView))
                     .padding(Padding::new(SPACING_SMALL))
                     .width(Length::Fixed(350.0))
                     .height(Length::Fill)
@@ -252,13 +242,6 @@ impl Chilen {
                     state.dialog = Dialog::None;
                 }
             }
-            Message::OpenPlaylistImportDialog(handle) => match handle {
-                Some(handle) => {
-                    trace!("Showing import dialog for playlist {handle:?}");
-                    state.dialog = Dialog::ImportPlaylist(String::new(), handle);
-                }
-                None => info!("Didn't get the file handle, guessing the user cancelled the import"),
-            },
             Message::ImportPlaylist(name, handle) => {
                 if let Err(e) =
                     chilen_backend::music_lib::import_playlist_from_m3u8(name, &handle.into())
@@ -269,40 +252,12 @@ impl Chilen {
                     state.dialog = Dialog::None;
                 }
             }
-            Message::OpenPlaylist(pl) => todo!(),
-            Message::OpenPlaylistCreationDialog => {
-                state.dialog = Dialog::CreatePlaylist(String::new());
-            }
-            Message::OpenPlaylistImportFilePicker => {
-                return Task::perform(
-                    rfd::AsyncFileDialog::new()
-                        .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
-                        .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
-                        .pick_file(),
-                    Message::OpenPlaylistImportDialog,
-                );
-            }
-            Message::OpenPlaylistRenameDialog { playlist, name } => {
-                state.dialog = Dialog::RenamePlaylist { playlist, name }
-            }
             Message::RenamePlaylist { playlist, name } => {
                 if let Err(e) = chilen_backend::music_lib::rename_playlist(&playlist, &name) {
                     error!("Could not rename the playlist: {e}");
                     state.dialog = Dialog::Error(format!("Couldn't rename the playlist: {e}"));
                 } else {
                     state.dialog = Dialog::None;
-                }
-            }
-            Message::ConfirmPlaylistDeletion(playlist) => {
-                if playlist.tracks.is_empty() {
-                    if let Err(e) =
-                        chilen_backend::music_lib::delete_playlists(vec![playlist.name.clone()])
-                    {
-                        error!("Couldn't delete playlist: {e}");
-                        state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
-                    }
-                } else {
-                    state.dialog = Dialog::DeletePlaylist(playlist)
                 }
             }
             Message::DeletePlaylist(playlist) => {
@@ -315,31 +270,11 @@ impl Chilen {
                     state.dialog = Dialog::None;
                 }
             }
-            Message::OpenPlaylistExportPicker(name) => {
-                return Task::perform(
-                    rfd::AsyncFileDialog::new()
-                        .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
-                        .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
-                        .set_file_name(format!("{name}.m3u8"))
-                        .save_file(),
-                    |handle| Message::ExportPlaylist(name, handle),
-                );
-            }
-            Message::ExportPlaylist(name, handle) => match handle {
-                Some(path) => {
-                    if let Err(e) =
-                        chilen_backend::music_lib::export_playlist_to_m3u8(name, path.path())
-                    {
-                        state.dialog =
-                            Dialog::Error(format!("Couldn't export the playlist to M3U8: {e}"));
-                    }
-                }
-                None => {
-                    info!("Didn't get the file handle, guessing the user cancelled the export");
-                }
-            },
             Message::MainView(msg) => {
                 return main_view::update(state, msg).map(Message::MainView);
+            }
+            Message::PlaylistView(msg) => {
+                return playlist_view::update(state, msg).map(Message::PlaylistView);
             }
         }
         Task::none()
