@@ -29,7 +29,7 @@ default = []
 dev-opts = []
 
 [workspace]
-members = [ "chilen_backend", "iced_m3" ]
+members = [ "chilen_backend", "iced_m3", "iced_m3/demos/buttons", "iced_m3/demos/fonts" ]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]

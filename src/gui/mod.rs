@@ -91,7 +91,7 @@ impl Default for Chilen {
             library: None,
             dialog: Dialog::default(),
             loading_state: LoadingState::default(),
-            theme: Theme::default(settings.dark_mode()),
+            theme: Theme::default(settings.theme_mode()),
             settings: Settings::load(),
             main_view: main_view::State {
                 view: main_view::View::default(),

@@ -23,8 +23,9 @@ pub fn playlist_button<'a>(
     playlist: &'a Arc<Playlist>,
     index: usize,
 ) -> Element<'a, playlist_view::Message> {
-    let content: Element<'_, playlist_view::Message> = if let Some(val) =
-        state.playlist_view.visible.as_ref().unwrap().get(index)
+    let content: Element<'_, playlist_view::Message> = if let Some(visible) =
+        &state.playlist_view.visible
+        && let Some(val) = visible.get(index)
         && *val
     {
         button(

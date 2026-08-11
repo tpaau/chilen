@@ -223,8 +223,8 @@ where
                                         };
                                         let color = if active {
                                             mix_colors(
-                                                state_layer_color,
                                                 navbar.theme.secondary_container(),
+                                                state_layer_color,
                                                 layer_opacity,
                                             )
                                         } else {
@@ -300,8 +300,8 @@ where
                                 };
                                 let color = if active {
                                     mix_colors(
-                                        state_layer_color,
                                         navbar.theme.secondary_container(),
+                                        state_layer_color,
                                         layer_opacity,
                                     )
                                 } else {

@@ -23,15 +23,11 @@ pub fn button(
     let (color_regular, color_hovered, color_pressed, content_color, border_color) = match style {
         Button::Primary => (
             theme.primary(),
+            mix_colors(theme.primary(), theme.surface(), FOCUS_STATE_LAYER_OPACITY),
             mix_colors(
                 theme.primary(),
                 theme.surface(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
-            ),
-            mix_colors(
-                theme.primary(),
-                theme.surface(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
+                PRESSED_STATE_LAYER_OPACITY,
             ),
             theme.on_primary(),
             None,
@@ -41,12 +37,12 @@ pub fn button(
             mix_colors(
                 theme.on_primary(),
                 theme.surface(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
+                FOCUS_STATE_LAYER_OPACITY,
             ),
             mix_colors(
                 theme.on_primary(),
                 theme.surface(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
+                PRESSED_STATE_LAYER_OPACITY,
             ),
             theme.primary(),
             None,
@@ -56,12 +52,12 @@ pub fn button(
             mix_colors(
                 theme.secondary(),
                 theme.surface(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
+                FOCUS_STATE_LAYER_OPACITY,
             ),
             mix_colors(
                 theme.secondary(),
                 theme.surface(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
+                PRESSED_STATE_LAYER_OPACITY,
             ),
             theme.on_secondary(),
             None,
@@ -71,27 +67,23 @@ pub fn button(
             mix_colors(
                 theme.on_secondary(),
                 theme.surface(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
+                FOCUS_STATE_LAYER_OPACITY,
             ),
             mix_colors(
                 theme.on_secondary(),
                 theme.surface(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
+                PRESSED_STATE_LAYER_OPACITY,
             ),
             theme.secondary(),
             None,
         ),
         Button::Tertiary => (
             theme.tertiary(),
+            mix_colors(theme.tertiary(), theme.surface(), FOCUS_STATE_LAYER_OPACITY),
             mix_colors(
                 theme.tertiary(),
                 theme.surface(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
-            ),
-            mix_colors(
-                theme.tertiary(),
-                theme.surface(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
+                PRESSED_STATE_LAYER_OPACITY,
             ),
             theme.on_tertiary(),
             None,
@@ -101,12 +93,12 @@ pub fn button(
             mix_colors(
                 theme.on_tertiary(),
                 theme.surface(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
+                FOCUS_STATE_LAYER_OPACITY,
             ),
             mix_colors(
                 theme.on_tertiary(),
                 theme.surface(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
+                PRESSED_STATE_LAYER_OPACITY,
             ),
             theme.tertiary(),
             None,
@@ -124,16 +116,8 @@ pub fn button(
         ),
         Button::Error => (
             theme.error(),
-            mix_colors(
-                theme.error(),
-                theme.on_error(),
-                1.0 - FOCUS_STATE_LAYER_OPACITY,
-            ),
-            mix_colors(
-                theme.error(),
-                theme.on_error(),
-                1.0 - PRESSED_STATE_LAYER_OPACITY,
-            ),
+            mix_colors(theme.error(), theme.on_error(), FOCUS_STATE_LAYER_OPACITY),
+            mix_colors(theme.error(), theme.on_error(), PRESSED_STATE_LAYER_OPACITY),
             theme.on_error(),
             None,
         ),

@@ -11,6 +11,7 @@ use iced_widget::container;
 use crate::{
     theme::{ColorScheme, Palette},
     widget::{
+        button::Button,
         dialog::Dialog,
         drop_down_menu::{DropDownMenu, Placement},
         navbar::Navbar,
@@ -66,4 +67,9 @@ pub fn navbar<'a, Message, Theme, Renderer>(
     theme: &'a impl ColorScheme,
 ) -> Navbar<'a, Message> {
     Navbar::new(items, theme)
+}
+
+#[must_use]
+pub fn button<'a, Message>(theme: &'a dyn ColorScheme) -> Button<'a, Message> {
+    Button::new(theme)
 }

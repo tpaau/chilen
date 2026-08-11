@@ -429,26 +429,42 @@ impl ColorScheme for Palette {
     }
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub enum Mode {
+    #[default]
+    Light,
+    Dark,
+}
+
+impl Mode {
+    pub fn is_dark(&self) -> bool {
+        match self {
+            Mode::Light => false,
+            Mode::Dark => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
-    dark: Palette,
-    light: Palette,
-    dark_mode: bool,
+    pub dark: Palette,
+    pub light: Palette,
+    pub mode: Mode,
 }
 
 impl Theme {
     pub fn current(&self) -> &Palette {
-        match self.dark_mode {
-            true => &self.dark,
-            false => &self.light,
+        match self.mode {
+            Mode::Light => &self.light,
+            Mode::Dark => &self.dark,
         }
     }
 
-    pub fn default(dark_mode: bool) -> Self {
+    pub fn default(mode: Mode) -> Self {
         Self {
             dark: Palette::default_dark(),
             light: Palette::default_light(),
-            dark_mode,
+            mode,
         }
     }
 }
