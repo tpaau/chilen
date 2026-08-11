@@ -2,21 +2,16 @@ use std::{env::home_dir, path::PathBuf, sync::Arc};
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Alignment, Border, Element, Length, Padding, Task,
-    border::Radius,
+    Border, Element, Length, Padding, Task,
     widget::{column, container, text},
 };
-use iced_m3::{
-    style::shadow,
-    theme::ColorScheme,
-    widget::drop_down_menu::{DropDownMenu, Placement},
-};
-use iced_widget::{bottom_right, center, row, space, stack};
+use iced_m3::{theme::ColorScheme, widget::fab_menu};
+use iced_widget::{bottom_right, center, stack};
 use log::{error, info, trace};
 
 use crate::gui::{
-    self, Chilen, Dialog, LoadingState, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_SMALL,
-    SPACING_SMALLER, font, icons, playlist_view, widgets::playlist_button::playlist_button,
+    self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
+    icons, playlist_view, widgets::playlist_button::playlist_button,
 };
 
 #[derive(Debug, Clone)]
@@ -54,121 +49,47 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
                 .width(Length::Fill)
                 .padding(Padding::new(SPACING_SMALLER))
         }
-        LoadingState::Loaded => {
-            center(stack!(
-                column![
-                    iced::widget::scrollable(
-                        column({
-                            let mut playlists: Vec<_> =
-                                state.library.as_ref().unwrap().playlists.iter().collect();
-                            playlists.sort_by_key(|pl| pl.name.clone());
-                            playlists
-                                .into_iter()
-                                .enumerate()
-                                .map(|(i, p)| playlist_button(state, p, i))
-                        })
-                        .spacing(SPACING_SMALLER)
-                    )
-                    .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
-                    .height(Length::Fill)
-                    .width(Length::Fill),
-                ]
-                .spacing(SPACING_SMALL)
+        LoadingState::Loaded => center(stack!(
+            column![
+                iced::widget::scrollable(
+                    column({
+                        let mut playlists: Vec<_> =
+                            state.library.as_ref().unwrap().playlists.iter().collect();
+                        playlists.sort_by_key(|pl| pl.name.clone());
+                        playlists
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, p)| playlist_button(state, p, i))
+                    })
+                    .spacing(SPACING_SMALLER)
+                )
+                .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
                 .height(Length::Fill)
                 .width(Length::Fill),
-                bottom_right(
-                    // TODO: The overlay should pass down mouse clicks in transparent mode too
-                    DropDownMenu::new(
-                        move |opened| container(center(
-                            text(if opened { *icons::CLOSE } else { *icons::ADD })
-                                .font(icons::filled())
-                                .size(icons::SIZE_REGULAR)
-                        ))
-                        .style(move |_| container::Style {
-                            text_color: Some(if opened {
-                                state.theme.primary()
-                            } else {
-                                state.theme.on_primary()
-                            }),
-                            background: Some(iced::Background::Color(if opened {
-                                state.theme.on_primary()
-                            } else {
-                                state.theme.primary()
-                            })),
-                            border: Border::default().rounded(if opened {
-                                Radius::from(u32::MAX)
-                            } else {
-                                Radius::from(ROUNDING_LARGE)
-                            }),
-                            shadow: shadow(state.theme.shadow(), 0.4),
-                            snap: true
-                        })
-                        .width(Length::Fixed(56.0))
-                        .height(Length::Fixed(56.0))
-                        .into(),
-                        Some(
-                            column![
-                                iced::widget::button(center(
-                                    row(vec![
-                                        text(*icons::UPLOAD_FILE)
-                                            .font(icons::filled())
-                                            .size(icons::SIZE_SMALL)
-                                            .into(),
-                                        text("Import playlist").size(font::SIZE_REGULAR).into()
-                                    ])
-                                    .align_y(Alignment::Center)
-                                    .spacing(8)
-                                ))
-                                .style(|_, status| {
-                                    let mut style = iced_m3::style::button(
-                                        status,
-                                        &state.theme,
-                                        iced_m3::style::Button::Primary,
-                                    );
-                                    style.border.radius = Radius::from(f32::MAX);
-                                    style
-                                })
-                                .padding(Padding::from(16.0))
-                                .height(Length::Fixed(56.0))
-                                .width(Length::Shrink)
-                                .on_press(Message::ImportPlaylist),
-                                iced::widget::button(center(
-                                    row(vec![
-                                        text(*icons::PLAYLIST_ADD)
-                                            .font(icons::filled())
-                                            .size(icons::SIZE_REGULAR)
-                                            .into(),
-                                        text("New playlist").size(font::SIZE_REGULAR).into()
-                                    ])
-                                    .align_y(Alignment::Center)
-                                    .spacing(8)
-                                ))
-                                .style(|_, status| {
-                                    let mut style = iced_m3::style::button(
-                                        status,
-                                        &state.theme,
-                                        iced_m3::style::Button::Primary,
-                                    );
-                                    style.border.radius = Radius::from(f32::MAX);
-                                    style
-                                })
-                                .padding(Padding::from(16.0))
-                                .height(Length::Fixed(56.0))
-                                .width(Length::Shrink)
-                                .on_press(Message::CreatePlaylist),
-                                space().height(4.0)
-                            ]
-                            .align_x(Alignment::End)
-                            .width(Length::Shrink)
-                            .height(Length::Shrink)
-                            .spacing(4)
-                        ),
-                        Placement::TopLeft,
-                    )
-                    .menu_transparent(true)
+            ]
+            .spacing(SPACING_SMALL)
+            .height(Length::Fill)
+            .width(Length::Fill),
+            bottom_right(
+                fab_menu(
+                    vec![
+                        iced_m3::widget::fab_menu::Entry {
+                            message: Message::ImportPlaylist,
+                            label: "Import playlist",
+                            icon: Some(&*icons::UPLOAD_FILE)
+                        },
+                        iced_m3::widget::fab_menu::Entry {
+                            message: Message::CreatePlaylist,
+                            label: "New playlist",
+                            icon: Some(&*icons::PLAYLIST_ADD)
+                        }
+                    ],
+                    &|opened| if opened { *icons::CLOSE } else { *icons::ADD },
+                    &state.theme
                 )
-            ))
-        }
+                .icon_font(icons::filled()),
+            )
+        )),
     };
     column![heading, content].into()
 }
