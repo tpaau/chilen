@@ -1,6 +1,9 @@
 use iced::{Element, Length, border::Radius};
-use iced_m3::{theme::ColorScheme, widget::dialog};
-use iced_widget::{button, container, space, text};
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{button, button::Style, dialog},
+};
+use iced_widget::{container, space, text};
 
 use crate::gui::{
     Chilen, Dialog,
@@ -12,16 +15,10 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
     let cancel_button = match &state.dialog {
         Dialog::None => None,
         _ => Some(
-            button("Cancel")
-                .style(|_, status| {
-                    iced_m3::style::button(
-                        status,
-                        state.theme.current(),
-                        iced_m3::style::Button::Outlined,
-                    )
-                })
-                .padding(12)
-                .on_press(Message::CloseDialog),
+            button(&state.theme)
+                .on_press(Message::CloseDialog)
+                .label("Cancel")
+                .style(Style::Outlined),
         ),
     };
 
@@ -60,15 +57,9 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .push_button(space().width(Length::Fill))
             .push_button(cancel_button)
             .push_button(
-                button("Create")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Primary,
-                        )
-                    })
-                    .padding(12)
+                button(&state.theme)
+                    .label("Create")
+                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
                     .on_press_maybe(maybe_message),
             )
             .width(350)
@@ -121,15 +112,9 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .push_button(space().width(Length::Fill))
             .push_button(cancel_button)
             .push_button(
-                button("Import")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Primary,
-                        )
-                    })
-                    .padding(12)
+                button(&state.theme)
+                    .label("Import")
+                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
                     .on_press_maybe(maybe_message),
             )
             .width(350)
@@ -158,15 +143,9 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
             .push_button(
-                button("Dismiss")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Primary,
-                        )
-                    })
-                    .padding(12)
+                button(&state.theme)
+                    .label("Dismiss")
+                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
                     .on_press(Message::CloseDialog),
             )
             .width(350)
@@ -205,15 +184,9 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .push_button(space().width(Length::Fill))
             .push_button(cancel_button)
             .push_button(
-                button("Rename")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Primary,
-                        )
-                    })
-                    .padding(12)
+                button(&state.theme)
+                    .label("Rename")
+                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
                     .on_press_maybe(maybe_message),
             )
             .width(350)
@@ -235,15 +208,9 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .push_button(space().width(Length::Fill))
             .push_button(cancel_button)
             .push_button(
-                button("Delete")
-                    .style(|_, status| {
-                        iced_m3::style::button(
-                            status,
-                            state.theme.current(),
-                            iced_m3::style::Button::Error,
-                        )
-                    })
-                    .padding(12)
+                button(&state.theme)
+                    .label("Delete")
+                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
                     .on_press(Message::DeletePlaylist(playlist.clone())),
             )
             .width(350)

@@ -91,7 +91,7 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
             )
         )),
     };
-    column![heading, content].into()
+    column![heading, content].spacing(SPACING_SMALLER).into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
