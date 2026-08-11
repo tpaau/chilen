@@ -14,7 +14,7 @@ dirs = "6.0.0"
 iced = { version = "0.14.0", features = [ "advanced", "image" ] }
 iced_widget = { version = "0.14.2" }
 chilen_backend = { path = "chilen_backend" }
-iced_m3 = { path = "iced_m3", features = [ "advanced" ] }
+iced_m3 = { path = "iced_m3" }
 rfd = "0.17.2"
 iced_core = "0.14.0"
 icu = { version = "2.2.0", default-features = false }
