@@ -522,7 +522,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
                 }
             }
             Event::Mouse(mouse::Event::ButtonReleased { .. })
-                if shell.is_event_captured() && cursor.is_over(layout.bounds()) =>
+                if cursor.is_over(layout.bounds()) =>
             {
                 self.state.position = None;
                 self.just_closed.set(true);
@@ -566,7 +566,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
         );
 
         if interaction == Interaction::None && cursor.is_over(layout.bounds()) {
-            Interaction::Idle
+            Interaction::None
         } else {
             interaction
         }
