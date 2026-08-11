@@ -1,5 +1,6 @@
 pub mod button;
 pub mod dialog;
+#[cfg(feature = "advanced")]
 pub mod drop_down_menu;
 pub mod fab_menu;
 pub mod navbar;
@@ -37,6 +38,7 @@ where
     Dialog::new(is_open, base, content, palette)
 }
 
+#[cfg(feature = "advanced")]
 #[must_use]
 pub fn drop_down_menu<'a, Message, Theme, Renderer>(
     trigger: impl Fn(bool) -> Element<'a, Message, Theme, Renderer> + 'a,
