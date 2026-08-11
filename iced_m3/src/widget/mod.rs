@@ -1,6 +1,7 @@
 pub mod button;
 pub mod dialog;
 pub mod drop_down_menu;
+pub mod fab_menu;
 pub mod navbar;
 pub mod text_input;
 pub mod vertical_menu;
@@ -14,6 +15,7 @@ use crate::{
         button::Button,
         dialog::Dialog,
         drop_down_menu::{DropDownMenu, Placement},
+        fab_menu::FABMenu,
         navbar::Navbar,
         text_input::TextInput,
     },
@@ -72,4 +74,16 @@ pub fn navbar<'a, Message, Theme, Renderer>(
 #[must_use]
 pub fn button<'a, Message>(theme: &'a dyn ColorScheme) -> Button<'a, Message> {
     Button::new(theme)
+}
+
+#[must_use]
+pub fn fab_menu<'a, Message, I>(
+    entries: I,
+    icon: &'a dyn Fn(bool) -> char,
+    theme: &'a dyn ColorScheme,
+) -> FABMenu<'a, Message>
+where
+    I: IntoIterator<Item = fab_menu::Entry<'a, Message>>,
+{
+    FABMenu::new(entries, icon, theme)
 }

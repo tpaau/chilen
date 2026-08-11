@@ -3,6 +3,14 @@ mod tests;
 
 use iced::{Color, color};
 
+#[derive(Default, Clone, Copy)]
+pub enum Accent {
+    #[default]
+    Primary,
+    Secondary,
+    Tertiary,
+}
+
 pub trait ColorScheme {
     fn primary(&self) -> Color;
     fn on_primary(&self) -> Color;

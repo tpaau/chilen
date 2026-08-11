@@ -1,10 +1,12 @@
+use std::sync::LazyLock;
+
 use iced::{
     Alignment, Element, Font, Length, Task,
     widget::{Container, center, column, container, row, text, toggler},
 };
 use iced_m3::{
-    theme::{ColorScheme, Mode, Theme},
-    widget::button::{Accent, Button, CornerStyle, Style},
+    theme::{Accent, ColorScheme, Mode, Theme},
+    widget::button::{Button, CornerStyle, Style},
 };
 
 #[derive(Clone)]
@@ -27,7 +29,7 @@ impl Default for State {
         Self {
             theme: Theme::default(Mode::Dark),
             accent: Accent::Primary,
-            icon: char::from_u32(0xe3c9).unwrap(),
+            icon: *EDIT,
             square: false,
             icons_filled: false,
         }
@@ -35,6 +37,7 @@ impl Default for State {
 }
 
 const APP_NAME: &str = "Buttons demo";
+static EDIT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe3c9).unwrap());
 const CONTAINER_WIDTH: f32 = 220.0;
 
 fn button<'a>(state: &'a State, style: Style) -> Button<'a, Message> {
@@ -213,7 +216,7 @@ impl State {
     }
 }
 
-pub fn start() -> iced::Result {
+fn main() -> iced::Result {
     iced::application(
         || {
             (
@@ -231,8 +234,4 @@ pub fn start() -> iced::Result {
     .title(APP_NAME)
     .default_font(Font::with_name("Noto Sans"))
     .run()
-}
-
-fn main() {
-    start().unwrap()
 }

@@ -3,19 +3,12 @@ use iced_widget::{center, row, text};
 
 use crate::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
-    style::mix_colors, theme::ColorScheme,
+    style::mix_colors,
+    theme::{Accent, ColorScheme},
 };
 
 const DISABLED_CONTAINER_OPACITY: f32 = 0.1;
 const DISABLED_LABEL_OPACITY: f32 = DISABLED_STATE_LAYER_OPACITY;
-
-#[derive(Default, Clone, Copy)]
-pub enum Accent {
-    #[default]
-    Primary,
-    Secondary,
-    Tertiary,
-}
 
 #[derive(Clone, Copy)]
 pub enum Style {
@@ -483,14 +476,32 @@ where
     }
 
     #[must_use]
+    pub fn label_font_maybe(mut self, maybe_font: Option<Renderer::Font>) -> Self {
+        self.label_font = maybe_font;
+        self
+    }
+
+    #[must_use]
     pub fn icon(mut self, icon: &'a char) -> Self {
         self.icon = Some(icon);
         self
     }
 
     #[must_use]
+    pub fn icon_maybe(mut self, maybe_icon: Option<&'a char>) -> Self {
+        self.icon = maybe_icon;
+        self
+    }
+
+    #[must_use]
     pub fn icon_font(mut self, font: Renderer::Font) -> Self {
         self.icon_font = Some(font);
+        self
+    }
+
+    #[must_use]
+    pub fn icon_font_maybe(mut self, maybe_font: Option<Renderer::Font>) -> Self {
+        self.icon_font = maybe_font;
         self
     }
 
@@ -543,8 +554,7 @@ where
     }
 }
 
-// <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
-impl<'a, Message> From<Button<'a, Message>> for Element<'a, Message, iced::Theme, iced::Renderer>
+impl<'a, Message> From<Button<'a, Message>> for Element<'a, Message>
 where
     Message: 'a + Clone,
 {
