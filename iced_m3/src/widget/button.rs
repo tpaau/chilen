@@ -20,10 +20,10 @@ pub enum Style {
     Custom {
         surface: Option<Color>,
         content: Color,
-        outline: Color,
-        surface_disabled: Color,
+        outline: Option<Color>,
+        surface_disabled: Option<Color>,
         content_disabled: Color,
-        outline_disabled: Color,
+        outline_disabled: Option<Color>,
     },
 }
 
@@ -40,7 +40,7 @@ impl Style {
         status: iced_widget::button::Status,
         selected: Option<bool>,
         theme: &(impl ColorScheme + ?Sized),
-    ) -> (Color, Color, Color) {
+    ) -> (Color, Color, Option<Color>) {
         let state_layer_alpha = match status {
             iced_widget::button::Status::Active => 0.0,
             iced_widget::button::Status::Hovered => HOVER_STATE_LAYER_OPACITY,
@@ -54,7 +54,7 @@ impl Style {
                     (
                         theme.on_surface().scale_alpha(DISABLED_CONTAINER_OPACITY),
                         theme.on_surface().scale_alpha(DISABLED_LABEL_OPACITY),
-                        Color::TRANSPARENT,
+                        None,
                     )
                 } else {
                     let content = match selected.unwrap_or(false) {
@@ -78,7 +78,7 @@ impl Style {
                         false => theme.surface_container_low(),
                     };
                     let surface = mix_colors(surface, content, state_layer_alpha);
-                    (surface, content, Color::TRANSPARENT)
+                    (surface, content, None)
                 }
             }
             Style::Filled(accent) => {
@@ -86,7 +86,7 @@ impl Style {
                     (
                         theme.on_surface().scale_alpha(DISABLED_CONTAINER_OPACITY),
                         theme.on_surface().scale_alpha(DISABLED_LABEL_OPACITY),
-                        Color::TRANSPARENT,
+                        None,
                     )
                 } else {
                     let content = match selected.unwrap_or(true) {
@@ -106,7 +106,7 @@ impl Style {
                         false => theme.surface_container(),
                     };
                     let surface = mix_colors(surface, content, state_layer_alpha);
-                    (surface, content, Color::TRANSPARENT)
+                    (surface, content, None)
                 }
             }
             Style::Tonal(accent) => {
@@ -114,7 +114,7 @@ impl Style {
                     (
                         theme.on_surface().scale_alpha(DISABLED_CONTAINER_OPACITY),
                         theme.on_surface().scale_alpha(DISABLED_LABEL_OPACITY),
-                        Color::TRANSPARENT,
+                        None,
                     )
                 } else {
                     let content = match selected.unwrap_or(false) {
@@ -142,7 +142,7 @@ impl Style {
                         },
                     };
                     let surface = mix_colors(surface, content, state_layer_alpha);
-                    (surface, content, Color::TRANSPARENT)
+                    (surface, content, None)
                 }
             }
             Style::Outlined => {
@@ -150,7 +150,7 @@ impl Style {
                     (
                         theme.on_surface().scale_alpha(DISABLED_CONTAINER_OPACITY),
                         theme.on_surface().scale_alpha(DISABLED_LABEL_OPACITY),
-                        theme.outline_variant(),
+                        Some(theme.outline_variant()),
                     )
                 } else {
                     let content = match selected.unwrap_or(false) {
@@ -162,8 +162,8 @@ impl Style {
                         false => content.scale_alpha(state_layer_alpha),
                     };
                     let outline = match selected.unwrap_or(false) {
-                        true => Color::TRANSPARENT,
-                        false => theme.outline_variant(),
+                        true => None,
+                        false => Some(theme.outline_variant()),
                     };
                     (surface, content, outline)
                 }
@@ -173,7 +173,7 @@ impl Style {
                     (
                         theme.on_surface().scale_alpha(DISABLED_CONTAINER_OPACITY),
                         theme.on_surface().scale_alpha(DISABLED_LABEL_OPACITY),
-                        Color::TRANSPARENT,
+                        None,
                     )
                 } else {
                     let content = match accent {
@@ -182,7 +182,7 @@ impl Style {
                         Accent::Tertiary => theme.tertiary(),
                     };
                     let surface = content.scale_alpha(state_layer_alpha);
-                    (surface, content, Color::TRANSPARENT)
+                    (surface, content, None)
                 }
             }
             Style::Custom {
@@ -194,7 +194,11 @@ impl Style {
                 outline_disabled,
             } => {
                 if status == iced_widget::button::Status::Disabled {
-                    (*surface_disabled, *content_disabled, *outline_disabled)
+                    (
+                        surface_disabled.unwrap_or(Color::TRANSPARENT),
+                        *content_disabled,
+                        *outline_disabled,
+                    )
                 } else {
                     let surface = match surface {
                         Some(surface) => mix_colors(*surface, *content, state_layer_alpha),
@@ -403,12 +407,8 @@ pub fn style(
     };
     let border = iced::Border {
         radius: corner_radius,
-        color: outline,
-        width: if outline != Color::TRANSPARENT {
-            1.0
-        } else {
-            0.0
-        },
+        color: outline.unwrap_or(Color::TRANSPARENT),
+        width: if outline.is_some() { 1.0 } else { 0.0 },
     };
 
     iced_widget::button::Style {
