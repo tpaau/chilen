@@ -184,13 +184,13 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
 }
 
 // TEST: Check if export work correctly
-pub fn export_playlist_to_m3u8(name: String, path: &Path) -> Result<(), Error> {
+pub fn export_playlist_to_m3u8(name: &str, path: &Path) -> Result<(), Error> {
     trace!("Exporting a playlist to an M3U8 file in {path:?}");
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
-    let pl = match lib.find_playlist(&name) {
+    let pl = match lib.find_playlist(name) {
         Some(pl) => pl,
-        None => return Err(Error::UnknownPlaylist(name)),
+        None => return Err(Error::UnknownPlaylist(name.to_string())),
     };
     let music_dir = MUSIC_DIR.read().unwrap().as_ref().unwrap().clone();
     let segments = pl

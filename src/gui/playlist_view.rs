@@ -7,7 +7,7 @@ use iced::{
 };
 use iced_m3::{theme::ColorScheme, widget::fab_menu};
 use iced_widget::{bottom_right, center, stack};
-use log::{error, info, trace};
+use log::{debug, error, info, trace};
 
 use crate::gui::{
     self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
@@ -21,6 +21,7 @@ pub enum Message {
     OpenPlaylist(Arc<Playlist>),
     CreatePlaylist,
     ExportPlaylist(String),
+    SaveExportedPlaylist(String, Option<rfd::FileHandle>),
     ImportPlaylist,
     OpenPlaylistImportDialog(Option<rfd::FileHandle>),
     OpenPlaylistRenameDialog { playlist: String, name: String },
@@ -114,7 +115,30 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::CreatePlaylist => {
             state.dialog = Dialog::CreatePlaylist(String::new());
         }
-        Message::ExportPlaylist(name) => todo!(),
+        Message::ExportPlaylist(name) => {
+            return Task::perform(
+                rfd::AsyncFileDialog::new()
+                    .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
+                    .set_file_name(format!("{name}.m3u8"))
+                    .save_file(),
+                |maybe_handle| Message::SaveExportedPlaylist(name, maybe_handle),
+            );
+        }
+        Message::SaveExportedPlaylist(name, file_handle) => match file_handle {
+            Some(handle) => {
+                if let Err(e) =
+                    chilen_backend::music_lib::export_playlist_to_m3u8(&name, handle.path())
+                {
+                    let msg = format!(
+                        "Couldn't export playlist {name} to {:?}: {e}",
+                        handle.path()
+                    );
+                    error!("{msg}");
+                    state.dialog = Dialog::Error(msg);
+                }
+            }
+            None => debug!("User cancelled the export operation"),
+        },
         Message::ImportPlaylist => {
             return Task::perform(
                 rfd::AsyncFileDialog::new()
