@@ -2,7 +2,7 @@ use std::{env::home_dir, path::PathBuf, sync::Arc};
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Border, Element, Length, Padding, Task,
+    Border, Element, Length, Padding, Task, padding,
     widget::{column, container, text},
 };
 use iced_m3::{theme::ColorScheme, widget::fab_menu};
@@ -11,7 +11,7 @@ use log::{error, info, trace};
 
 use crate::gui::{
     self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
-    icons, playlist_view, widgets::playlist_button::playlist_button,
+    icons, main_view::top_view::TopView, playlist_view, widgets::playlist_button::playlist_button,
 };
 
 #[derive(Debug, Clone)]
@@ -89,6 +89,7 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
                 )
                 .icon_font(icons::filled()),
             )
+            .padding(padding::bottom(SPACING_SMALL))
         )),
     };
     column![heading, content].spacing(SPACING_SMALLER).into()
@@ -145,7 +146,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 state.dialog = Dialog::DeletePlaylist(playlist)
             }
         }
-        Message::OpenPlaylist(pl) => todo!(),
+        Message::OpenPlaylist(pl) => state.main_view.nav_stack.navigate(TopView::Playlist(pl)),
     }
     Task::none()
 }

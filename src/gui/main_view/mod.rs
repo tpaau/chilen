@@ -1,17 +1,33 @@
 mod albums;
 mod artists;
 mod genres;
+pub mod top_view;
 mod tracks;
 
 use chilen_backend::music_lib::state::MusicLibrary;
-use iced::{Border, Color, Element, Length, Padding, Task};
+use iced::{Border, Color, Element, Length, Task, padding};
 use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
 use iced_widget::{center, column, container, space, stack, text};
 
-use crate::gui::{self, BUTTON_ROUNDING, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons};
+use crate::gui::{
+    self, BUTTON_ROUNDING, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons,
+    main_view::{self, top_view::TopView},
+};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub enum View {
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum View {
+    Tab(NavTab),
+    Top(TopView),
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self::Tab(NavTab::default())
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum NavTab {
     #[default]
     Tracks,
     Albums,
@@ -19,8 +35,41 @@ pub enum View {
     Genres,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct NavStack {
+    tab: NavTab,
+    stack: Vec<TopView>,
+}
+
+impl NavStack {
+    fn tab(&self) -> NavTab {
+        self.tab
+    }
+
+    fn top(&self) -> View {
+        if !self.stack.is_empty() {
+            View::Top(self.stack[self.stack.len() - 1].clone())
+        } else {
+            View::Tab(self.tab)
+        }
+    }
+
+    pub fn unwind(&mut self) -> Option<TopView> {
+        self.stack.pop()
+    }
+
+    pub fn navigate(&mut self, top_view: TopView) {
+        self.stack.push(top_view);
+    }
+
+    fn switch_tab(&mut self, tab: NavTab) {
+        self.stack = Vec::new();
+        self.tab = tab;
+    }
+}
+
 pub struct State {
-    pub view: View,
+    pub nav_stack: NavStack,
     /// Holds which elements are visible and which are not.
     /// Sadly I couldn't use a range for this, it would've used much less memory but it lagged too
     /// much when I was scrolling erratically.
@@ -29,9 +78,11 @@ pub struct State {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
-    ChangeView(View),
+    Noop,
+    SwitchTab(NavTab),
     ButtonPoppedIn(usize),
     ButtonPoppedOut(usize),
+    TopView(top_view::Message),
 }
 
 fn button_style(
@@ -58,37 +109,37 @@ fn button_style(
     }
 }
 
-pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
+pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
     container(column![
         // TODO: Custom ordering
         {
-            let index = match state.main_view.view {
-                View::Tracks => 0,
-                View::Albums => 1,
-                View::Artists => 2,
-                View::Genres => 3,
+            let index = match state.main_view.nav_stack.tab {
+                NavTab::Tracks => 0,
+                NavTab::Albums => 1,
+                NavTab::Artists => 2,
+                NavTab::Genres => 3,
             };
             iced_m3::widget::navbar::<_, iced::Theme, iced::Renderer>(
                 vec![
                     iced_m3::widget::navbar::Item {
                         icon: &icons::MUSIC_NOTE,
                         label: "Tracks",
-                        message: gui::Message::MainView(Message::ChangeView(View::Tracks)),
+                        message: Message::SwitchTab(NavTab::Tracks),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::ALBUM,
                         label: "Albums",
-                        message: gui::Message::MainView(Message::ChangeView(View::Albums)),
+                        message: Message::SwitchTab(NavTab::Albums),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::ARTIST,
                         label: "Artists",
-                        message: gui::Message::MainView(Message::ChangeView(View::Artists)),
+                        message: Message::SwitchTab(NavTab::Artists),
                     },
                     iced_m3::widget::navbar::Item {
                         icon: &icons::GENRES,
                         label: "Genres",
-                        message: gui::Message::MainView(Message::ChangeView(View::Genres)),
+                        message: Message::SwitchTab(NavTab::Genres),
                     },
                 ],
                 &state.theme,
@@ -99,25 +150,28 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
         },
         {
             if let Some(lib) = &state.library {
-                // FIX: This is a WORKAROUND.
-                // The `Scrollable` widget doesn't correctly manage its state which makes multiple
-                // scrollables in the same state tree share a state.
-                //
-                // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
-                let content = match state.main_view.view {
-                    View::Tracks => tracks::view(state, lib),
-                    View::Albums => stack![albums::view(state, lib)].into(),
-                    View::Artists => stack![
-                        space().width(Length::Fill).height(Length::Fill),
-                        artists::view(state, lib)
-                    ]
-                    .into(),
-                    View::Genres => stack![
-                        space().width(Length::Fill).height(Length::Fill),
-                        space().width(Length::Fill).height(Length::Fill),
-                        genres::view(state, lib)
-                    ]
-                    .into(),
+                let content = match state.main_view.nav_stack.top() {
+                    View::Top(top) => top_view::view(state).map(Message::TopView),
+                    // FIX: This is a WORKAROUND.
+                    // The `Scrollable` widget doesn't correctly manage its state which makes multiple
+                    // scrollables in the same state tree share a state.
+                    //
+                    // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
+                    View::Tab(tab) => match tab {
+                        NavTab::Tracks => tracks::view(state, lib),
+                        NavTab::Albums => stack![albums::view(state, lib)].into(),
+                        NavTab::Artists => stack![
+                            space().width(Length::Fill).height(Length::Fill),
+                            artists::view(state, lib)
+                        ]
+                        .into(),
+                        NavTab::Genres => stack![
+                            space().width(Length::Fill).height(Length::Fill),
+                            space().width(Length::Fill).height(Length::Fill),
+                            genres::view(state, lib)
+                        ]
+                        .into(),
+                    },
                 };
                 center(content)
             } else {
@@ -130,7 +184,7 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
             .background(state.theme.background())
             .border(Border::default().rounded(ROUNDING_REGULAR))
     })
-    .padding(Padding::new(SPACING_SMALL))
+    .padding(padding::horizontal(SPACING_SMALL))
     .width(Length::Fill)
     .height(Length::Fill)
     .into()
@@ -138,10 +192,13 @@ pub fn view(state: &Chilen) -> Element<'_, gui::Message> {
 
 fn init_visible(lib: &MusicLibrary, view: &View) -> Vec<bool> {
     match view {
-        View::Tracks => vec![false; lib.tracks.len()],
-        View::Albums => vec![false; lib.albums.len()],
-        View::Artists => vec![false; lib.artists.len()],
-        View::Genres => vec![false; lib.genres.len()],
+        View::Top(top) => todo!(),
+        View::Tab(tab) => match tab {
+            NavTab::Tracks => vec![false; lib.tracks.len()],
+            NavTab::Albums => vec![false; lib.albums.len()],
+            NavTab::Artists => vec![false; lib.artists.len()],
+            NavTab::Genres => vec![false; lib.genres.len()],
+        },
     }
 }
 
@@ -154,16 +211,16 @@ fn change_button(vec: &mut [bool], index: usize, visible: bool) {
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     if state.main_view.visible.is_none()
         && let Some(lib) = &state.library
-        && !matches!(message, Message::ChangeView(_))
+        && !matches!(message, Message::SwitchTab(_))
     {
-        state.main_view.visible = Some(init_visible(lib, &state.main_view.view));
+        state.main_view.visible = Some(init_visible(lib, &state.main_view.nav_stack.top()));
     }
     match message {
-        Message::ChangeView(view) => {
-            if state.main_view.view != view {
-                state.main_view.visible =
-                    state.library.as_ref().map(|lib| init_visible(lib, &view));
-                state.main_view.view = view
+        Message::SwitchTab(tab) => {
+            let top = state.main_view.nav_stack.top();
+            if top != gui::main_view::View::Tab(tab) {
+                state.main_view.visible = state.library.as_ref().map(|lib| init_visible(lib, &top));
+                state.main_view.nav_stack.switch_tab(tab);
             }
         }
         Message::ButtonPoppedIn(index) => {
@@ -172,6 +229,8 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::ButtonPoppedOut(index) => {
             change_button(state.main_view.visible.as_mut().unwrap(), index, false);
         }
+        Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
+        Message::Noop => {}
     }
     Task::none()
 }

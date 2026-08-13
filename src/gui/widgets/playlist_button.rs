@@ -183,7 +183,7 @@ pub fn playlist_button<'a>(
                         ..Default::default()
                     }
                 })
-                .on_press(playlist_view::Message::OpenPlaylist(playlist.clone())).into()
+                .on_press_with(|| playlist_view::Message::OpenPlaylist(playlist.clone())).into()
     } else {
         space().width(Length::Fill).height(BUTTON_HEIGHT).into()
     };

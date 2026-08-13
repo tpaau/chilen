@@ -11,9 +11,9 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 use chilen_backend::music_lib::state::{MusicLibrary, Playlist};
 use iced::{
-    self, Element, Font, Length, Padding, Subscription, Task,
+    self, Element, Font, Length, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
-    stream,
+    padding, stream,
     widget::{column, container, row},
     window::{self},
 };
@@ -94,7 +94,7 @@ impl Default for Chilen {
             theme: Theme::default(settings.theme_mode()),
             settings: Settings::load(),
             main_view: main_view::State {
-                view: main_view::View::default(),
+                nav_stack: main_view::NavStack::default(),
                 visible: None,
             },
             playlist_view: playlist_view::State { visible: None },
@@ -154,14 +154,14 @@ impl Chilen {
             container(column([row([
                 // TODO: I should be able to resize this
                 container(playlist_view::view(state).map(Message::PlaylistView))
-                    .padding(Padding::new(SPACING_SMALL))
+                    .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
                     .width(Length::Fixed(350.0))
                     .height(Length::Fill)
                     .into(),
-                main_view::view(state),
+                main_view::view(state).map(Message::MainView),
                 // TODO: I should be able to resize this
                 container("Currently playing")
-                    .padding(Padding::new(SPACING_SMALL))
+                    .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
                     .width(Length::Fixed(500.0))
                     .height(Length::Fill)
                     .into(),
