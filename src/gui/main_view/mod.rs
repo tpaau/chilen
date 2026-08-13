@@ -42,10 +42,6 @@ pub struct NavStack {
 }
 
 impl NavStack {
-    fn tab(&self) -> NavTab {
-        self.tab
-    }
-
     fn top(&self) -> View {
         if !self.stack.is_empty() {
             View::Top(self.stack[self.stack.len() - 1].clone())
@@ -59,7 +55,9 @@ impl NavStack {
     }
 
     pub fn navigate(&mut self, top_view: TopView) {
-        self.stack.push(top_view);
+        if self.top() != View::Top(top_view.clone()) {
+            self.stack.push(top_view);
+        }
     }
 
     fn switch_tab(&mut self, tab: NavTab) {
@@ -151,7 +149,7 @@ pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
         {
             if let Some(lib) = &state.library {
                 let content = match state.main_view.nav_stack.top() {
-                    View::Top(top) => top_view::view(state).map(Message::TopView),
+                    View::Top(top) => top_view::view(state, top).map(Message::TopView),
                     // FIX: This is a WORKAROUND.
                     // The `Scrollable` widget doesn't correctly manage its state which makes multiple
                     // scrollables in the same state tree share a state.
@@ -192,7 +190,12 @@ pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
 
 fn init_visible(lib: &MusicLibrary, view: &View) -> Vec<bool> {
     match view {
-        View::Top(top) => todo!(),
+        View::Top(top) => match top {
+            TopView::Playlist(playlist) => vec![false; playlist.tracks.len()],
+            TopView::Album(album) => vec![false; album.tracks.len()],
+            TopView::Artist(artist) => vec![false; artist.tracks.len()],
+            TopView::Genre(genre) => vec![false; genre.tracks.len()],
+        },
         View::Tab(tab) => match tab {
             NavTab::Tracks => vec![false; lib.tracks.len()],
             NavTab::Albums => vec![false; lib.albums.len()],

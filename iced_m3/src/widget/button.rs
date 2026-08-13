@@ -432,7 +432,7 @@ where
     on_press: Option<OnPress<'a, Message>>,
     clip: bool,
     theme: &'a dyn ColorScheme,
-    label: &'a str,
+    label: Option<&'a str>,
     label_font: Option<Renderer::Font>,
     icon: Option<&'a char>,
     icon_font: Option<Renderer::Font>,
@@ -452,7 +452,7 @@ where
             on_press: None,
             clip: false,
             theme,
-            label: "label",
+            label: Some("label"),
             label_font: None,
             icon: None,
             icon_font: None,
@@ -465,7 +465,13 @@ where
 
     #[must_use]
     pub fn label(mut self, label: &'a str) -> Self {
-        self.label = label;
+        self.label = Some(label);
+        self
+    }
+
+    #[must_use]
+    pub fn label_maybe(mut self, maybe_label: Option<&'a str>) -> Self {
+        self.label = maybe_label;
         self
     }
 
@@ -564,10 +570,10 @@ where
                 .wrapping(text::Wrapping::None)
                 .size(button.size.icon_size())
                 .font_maybe(button.icon_font)),
-            text(button.label)
+            button.label.map(|l| text(l)
                 .wrapping(text::Wrapping::None)
                 .size(button.size.font_size())
-                .font_maybe(button.label_font)
+                .font_maybe(button.label_font))
         ]
         .align_y(Alignment::Center)
         .spacing(button.size.spacing());
