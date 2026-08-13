@@ -5,7 +5,7 @@ mod main_view;
 mod playlist_view;
 #[cfg(test)]
 mod tests;
-mod widgets;
+mod widget;
 
 use std::sync::{Arc, LazyLock, RwLock};
 

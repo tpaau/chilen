@@ -324,7 +324,7 @@ where
                             }
                         }
                         Entry::Separator => children.push(
-                            container(rule::horizontal(1).style(move |_| rule::Style {
+                            container(rule::horizontal(1.0).style(move |_| rule::Style {
                                 color: separator_color,
                                 radius: Radius::from(u32::MAX),
                                 fill_mode: rule::FillMode::Full,

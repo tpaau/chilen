@@ -42,6 +42,10 @@ pub struct NavStack {
 }
 
 impl NavStack {
+    fn tab(&self) -> &NavTab {
+        &self.tab
+    }
+
     fn top(&self) -> View {
         if !self.stack.is_empty() {
             View::Top(self.stack[self.stack.len() - 1].clone())
@@ -188,20 +192,12 @@ pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
     .into()
 }
 
-fn init_visible(lib: &MusicLibrary, view: &View) -> Vec<bool> {
-    match view {
-        View::Top(top) => match top {
-            TopView::Playlist(playlist) => vec![false; playlist.tracks.len()],
-            TopView::Album(album) => vec![false; album.tracks.len()],
-            TopView::Artist(artist) => vec![false; artist.tracks.len()],
-            TopView::Genre(genre) => vec![false; genre.tracks.len()],
-        },
-        View::Tab(tab) => match tab {
-            NavTab::Tracks => vec![false; lib.tracks.len()],
-            NavTab::Albums => vec![false; lib.albums.len()],
-            NavTab::Artists => vec![false; lib.artists.len()],
-            NavTab::Genres => vec![false; lib.genres.len()],
-        },
+fn init_visible(lib: &MusicLibrary, tab: &NavTab) -> Vec<bool> {
+    match tab {
+        NavTab::Tracks => vec![false; lib.tracks.len()],
+        NavTab::Albums => vec![false; lib.albums.len()],
+        NavTab::Artists => vec![false; lib.artists.len()],
+        NavTab::Genres => vec![false; lib.genres.len()],
     }
 }
 
@@ -216,13 +212,13 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         && let Some(lib) = &state.library
         && !matches!(message, Message::SwitchTab(_))
     {
-        state.main_view.visible = Some(init_visible(lib, &state.main_view.nav_stack.top()));
+        state.main_view.visible = Some(init_visible(lib, state.main_view.nav_stack.tab()));
     }
     match message {
         Message::SwitchTab(tab) => {
             let top = state.main_view.nav_stack.top();
             if top != gui::main_view::View::Tab(tab) {
-                state.main_view.visible = state.library.as_ref().map(|lib| init_visible(lib, &top));
+                state.main_view.visible = state.library.as_ref().map(|lib| init_visible(lib, &tab));
                 state.main_view.nav_stack.switch_tab(tab);
             }
         }

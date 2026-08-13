@@ -3,7 +3,7 @@ use iced_widget::{center, row, text};
 
 use crate::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
-    style::mix_colors,
+    style::{Elevation, mix_colors, shadow},
     theme::{Accent, ColorScheme},
 };
 
@@ -394,6 +394,7 @@ impl CornerStyle {
 pub fn style(
     status: iced_widget::button::Status,
     selected: Option<bool>,
+    elevation: Elevation,
     button_size: Size,
     button_style: Style,
     corner_style: CornerStyle,
@@ -415,7 +416,7 @@ pub fn style(
         background: Some(iced::Background::Color(surface)),
         text_color: content,
         border,
-        shadow: iced::Shadow::default(),
+        shadow: shadow(theme.shadow(), elevation),
         snap: true,
     }
 }
@@ -439,6 +440,7 @@ where
     size: Size,
     corner_style: CornerStyle,
     style: Style,
+    elevation: Elevation,
     selected: Option<bool>,
 }
 
@@ -459,6 +461,7 @@ where
             size: Size::default(),
             corner_style: CornerStyle::default(),
             style: Style::default(),
+            elevation: Elevation::default(),
             selected: None,
         }
     }
@@ -530,6 +533,12 @@ where
     }
 
     #[must_use]
+    pub fn elevation(mut self, elevation: impl Into<Elevation>) -> Self {
+        self.elevation = elevation.into();
+        self
+    }
+
+    #[must_use]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = Some(selected);
         self
@@ -586,6 +595,7 @@ where
                 style(
                     status,
                     button.selected,
+                    button.elevation,
                     button.size,
                     button.style,
                     button.corner_style,

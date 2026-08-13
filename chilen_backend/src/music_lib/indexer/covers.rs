@@ -8,7 +8,7 @@ use std::{
 };
 
 pub use image::ImageFormat;
-use image::{GenericImageView, ImageReader, imageops::resize};
+use image::{ImageReader, imageops::resize};
 use lofty::{
     picture::{Picture, PictureType},
     tag::Tag,
@@ -284,7 +284,7 @@ pub(crate) fn get_track_cover(
         let cover = match config.cover_quality.resolution() {
             Some(res) => {
                 if image.height() > res && image.height() > res {
-                    resize(image, res, res, COVER_FILTER).buffer_like()
+                    resize(image, res, res, COVER_FILTER)
                 } else {
                     image.clone().into()
                 }

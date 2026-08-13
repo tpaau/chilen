@@ -36,11 +36,11 @@ pub static GENRES: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe022).unwr
 pub static PLAYLIST_PLAY: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe05f).unwrap());
 pub static ARROW_BACK: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5c4).unwrap());
 
-pub const SIZE_SMALLER: u32 = 16;
-pub const SIZE_SMALL: u32 = 20;
-pub const SIZE_REGULAR: u32 = 24;
-pub const SIZE_LARGE: u32 = 28;
-pub const SIZE_LARGER: u32 = 32;
+pub const SIZE_SMALLER: f32 = 16.0;
+pub const SIZE_SMALL: f32 = 20.0;
+pub const SIZE_REGULAR: f32 = 24.0;
+pub const SIZE_LARGE: f32 = 28.0;
+pub const SIZE_LARGER: f32 = 32.0;
 
 pub fn filled() -> iced::Font {
     iced::Font {
@@ -57,5 +57,16 @@ pub fn outlined() -> iced::Font {
         weight: iced::font::Weight::Normal,
         stretch: iced::font::Stretch::Normal,
         style: iced::font::Style::Normal,
+    }
+}
+
+pub struct Icon<'a> {
+    pub char: &'a char,
+    pub size: f32,
+}
+
+impl<'a> Icon<'a> {
+    pub fn new(char: &'a char, size: f32) -> Self {
+        Self { char, size }
     }
 }

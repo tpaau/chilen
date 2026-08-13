@@ -1,5 +1,6 @@
 use iced::{Color, Shadow, Vector};
 
+#[derive(Default, Clone, Copy)]
 pub struct Elevation {
     value: f32,
 }
