@@ -4,7 +4,7 @@ pub mod genre_button;
 pub mod playlist_button;
 pub mod track_button;
 
-use iced::{Border, Color, Length};
+use iced::{Border, Color};
 use iced_m3::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
 };
@@ -14,7 +14,7 @@ use crate::gui::{ROUNDING_LARGE, SPACING_SMALLER};
 pub const THUMBNAIL_SIZE: f32 = 64.0;
 pub const BUTTON_ROUNDING: f32 = ROUNDING_LARGE;
 pub const BUTTON_PADDING: f32 = SPACING_SMALLER;
-pub const BUTTON_HEIGHT: Length = Length::Fixed(THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING);
+pub const BUTTON_HEIGHT: f32 = THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING;
 pub const BUTTON_SPACING: f32 = SPACING_SMALLER;
 
 pub fn button_style(

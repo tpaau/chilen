@@ -7,7 +7,7 @@ mod tracks;
 use chilen_backend::music_lib::state::MusicLibrary;
 use iced::{Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, space, stack, text};
+use iced_widget::{center, column, container, sensor, space, stack, text};
 
 use crate::gui::{
     self, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons,
@@ -85,6 +85,29 @@ pub enum Message {
     ButtonPoppedIn(usize),
     ButtonPoppedOut(usize),
     TopView(top_view::Message),
+}
+
+fn virtualize_entry<'a, E>(
+    state: &'a Chilen,
+    content: impl Fn() -> E + 'a,
+    height: f32,
+    index: usize,
+) -> Element<'a, main_view::Message>
+where
+    E: Into<Element<'a, main_view::Message>>,
+{
+    let content: Element<'a, main_view::Message> = if let Some(visible) = &state.main_view.visible
+        && index < visible.len()
+        && visible[index]
+    {
+        (content)().into()
+    } else {
+        space().height(height).width(Length::Fill).into()
+    };
+    sensor(content)
+        .on_show(move |_| main_view::Message::ButtonPoppedIn(index))
+        .on_hide(main_view::Message::ButtonPoppedOut(index))
+        .into()
 }
 
 pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {

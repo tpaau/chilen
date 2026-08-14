@@ -1,14 +1,13 @@
-use std::sync::Arc;
-
-use chilen_backend::music_lib::state::{Album, MusicLibrary};
-use iced::{Element, Length, widget::space};
-use iced_widget::{column, sensor};
+use chilen_backend::music_lib::state::MusicLibrary;
+use iced::Element;
+use iced_widget::column;
 
 use crate::gui::{
     Chilen,
     main_view::{
         self,
         top_view::{self, TopView},
+        virtualize_entry,
     },
     widget::{
         self,
@@ -16,38 +15,23 @@ use crate::gui::{
     },
 };
 
-pub fn album_button<'a>(
-    state: &'a Chilen,
-    index: usize,
-    album: &'a Arc<Album>,
-) -> Element<'a, main_view::Message> {
-    let content: Element<'a, main_view::Message> = if let Some(visible) = &state.main_view.visible
-        && index < visible.len()
-        && visible[index]
-    {
-        widget::list::album_button::album_button(&state.theme, album.clone())
-            .on_press_with(|| {
-                main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(
-                    album.clone(),
-                )))
-            })
-            .into()
-    } else {
-        space().height(BUTTON_HEIGHT).width(Length::Fill).into()
-    };
-    sensor(content)
-        .on_show(move |_| main_view::Message::ButtonPoppedIn(index))
-        .on_hide(main_view::Message::ButtonPoppedOut(index))
-        .into()
-}
-
 pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_view::Message> {
-    let content = column(
-        lib.albums
-            .iter()
-            .enumerate()
-            .map(|(i, a)| album_button(state, i, a)),
-    )
+    let content = column(lib.albums.iter().enumerate().map(|(index, album)| {
+        virtualize_entry(
+            state,
+            move || {
+                widget::list::album_button::album_button(&state.theme, album.clone()).on_press_with(
+                    || {
+                        main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(
+                            album.clone(),
+                        )))
+                    },
+                )
+            },
+            BUTTON_HEIGHT,
+            index,
+        )
+    }))
     .spacing(BUTTON_SPACING);
 
     iced_widget::scrollable(content)
