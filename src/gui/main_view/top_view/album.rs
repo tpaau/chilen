@@ -7,7 +7,9 @@ use iced_widget::{column, container, responsive, row, rule, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
-    main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, title, unwind_button},
+    main_view::top_view::{
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, title, unwind_button,
+    },
     widget::{
         self, artist_chip::artist_chip, cover_image::cover_image, list::BUTTON_SPACING,
         text_spacer::text_spacer,
@@ -124,34 +126,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let main_buttons = row![
-        iced_m3::widget::button(&state.theme)
-            .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
-            .icon_font(icons::filled())
-            .icon(&icons::PLAY_ARROW)
-            .label("Play")
-            .style(iced_m3::widget::button::Style::Tonal(
-                iced_m3::theme::Accent::Secondary
-            ))
-            .on_press(Message::Noop),
-        iced_m3::widget::button(&state.theme)
-            .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
-            .icon_font(icons::filled())
-            .icon(&icons::SHUFFLE)
-            .label("Shuffle")
-            .style(iced_m3::widget::button::Style::Filled(
-                iced_m3::theme::Accent::Primary
-            ))
-            .on_press(Message::Noop),
-        iced_m3::widget::button(&state.theme)
-            .size(iced_m3::widget::button::Size::Medium)
-            .icon_font(icons::filled())
-            .style(iced_m3::widget::button::Style::Outlined)
-            .icon(&icons::MORE_HORIZ)
-            .label_maybe(None)
-            .on_press(Message::Noop),
-    ]
-    .spacing(SPACING_REGULAR);
+    let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
 
     let track_buttons = album.tracks.iter().map(|t| {
         widget::list::track_button::track_button(state, t.clone())
@@ -162,7 +137,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     column![
         row![
             container(unwind_button(&state.theme)).width(Length::Fixed(50.0)),
-            column![display, main_buttons].spacing(SPACING_REGULAR)
+            column![display, buttons].spacing(SPACING_REGULAR)
         ]
         .spacing(SPACING_REGULAR),
         rule::horizontal(1.0).style(|_| rule::Style {

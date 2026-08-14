@@ -5,9 +5,9 @@ use std::sync::Arc;
 use chilen_backend::music_lib::state::{Album, Artist, Genre, Playlist};
 use iced::{Element, Length, Task};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, scrollable, text};
+use iced_widget::{Row, center, column, container, row, scrollable, text};
 
-use crate::gui::{Chilen, font, icons};
+use crate::gui::{Chilen, SPACING_REGULAR, font, icons};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -45,6 +45,42 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
         .font(font::font_bold())
         .color(theme.on_surface())
         .into()
+}
+
+fn horizontal_buttons<'a, Message: 'a + Clone>(
+    theme: &'a impl ColorScheme,
+    message_play: Message,
+    message_shuffle: Message,
+    message_options: Message,
+) -> Row<'a, Message> {
+    row![
+        iced_m3::widget::button(theme)
+            .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
+            .icon_font(icons::filled())
+            .icon(&icons::PLAY_ARROW)
+            .label("Play")
+            .style(iced_m3::widget::button::Style::Tonal(
+                iced_m3::theme::Accent::Secondary
+            ))
+            .on_press(message_play),
+        iced_m3::widget::button(theme)
+            .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
+            .icon_font(icons::filled())
+            .icon(&icons::SHUFFLE)
+            .label("Shuffle")
+            .style(iced_m3::widget::button::Style::Filled(
+                iced_m3::theme::Accent::Primary
+            ))
+            .on_press(message_shuffle),
+        iced_m3::widget::button(theme)
+            .size(iced_m3::widget::button::Size::Medium)
+            .icon_font(icons::filled())
+            .style(iced_m3::widget::button::Style::Outlined)
+            .icon(&icons::MORE_HORIZ)
+            .label_maybe(None)
+            .on_press(message_options),
+    ]
+    .spacing(SPACING_REGULAR)
 }
 
 const MAX_COVER_SIZE: f32 = 512.0;
