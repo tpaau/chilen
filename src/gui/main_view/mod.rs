@@ -5,12 +5,12 @@ pub mod top_view;
 mod tracks;
 
 use chilen_backend::music_lib::state::MusicLibrary;
-use iced::{Border, Element, Length, Task, padding};
+use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, sensor, space, stack, text};
+use iced_widget::{center, column, container, row, sensor, space, stack, text};
 
 use crate::gui::{
-    self, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons,
+    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, icons,
     main_view::{self, top_view::TopView},
 };
 
@@ -112,43 +112,59 @@ where
 
 pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
     container(column![
-        // TODO: Custom ordering
-        {
-            let index = match state.main_view.nav_stack.tab {
-                NavTab::Tracks => 0,
-                NavTab::Albums => 1,
-                NavTab::Artists => 2,
-                NavTab::Genres => 3,
-            };
-            iced_m3::widget::navbar::<_, iced::Theme, iced::Renderer>(
-                vec![
-                    iced_m3::widget::navbar::Item {
-                        icon: &icons::MUSIC_NOTE,
-                        label: "Tracks",
-                        message: Message::SwitchTab(NavTab::Tracks),
-                    },
-                    iced_m3::widget::navbar::Item {
-                        icon: &icons::ALBUM,
-                        label: "Albums",
-                        message: Message::SwitchTab(NavTab::Albums),
-                    },
-                    iced_m3::widget::navbar::Item {
-                        icon: &icons::ARTIST,
-                        label: "Artists",
-                        message: Message::SwitchTab(NavTab::Artists),
-                    },
-                    iced_m3::widget::navbar::Item {
-                        icon: &icons::GENRES,
-                        label: "Genres",
-                        message: Message::SwitchTab(NavTab::Genres),
-                    },
-                ],
-                &state.theme,
-            )
-            .focused_index(index)
-            .icon_font_active(icons::filled())
-            .icon_font_inactive(icons::outlined())
-        },
+        row![
+            iced_m3::widget::button(&state.theme)
+                .style(iced_m3::widget::button::Style::Filled(
+                    iced_m3::theme::Accent::Primary
+                ))
+                .label_maybe(None)
+                .icon(&icons::SEARCH)
+                .on_press(Message::Noop),
+            // TODO: Custom ordering
+            {
+                let index = match state.main_view.nav_stack.tab {
+                    NavTab::Tracks => 0,
+                    NavTab::Albums => 1,
+                    NavTab::Artists => 2,
+                    NavTab::Genres => 3,
+                };
+                iced_m3::widget::navbar::<_, iced::Theme, iced::Renderer>(
+                    vec![
+                        iced_m3::widget::navbar::Item {
+                            icon: &icons::MUSIC_NOTE,
+                            label: "Tracks",
+                            message: Message::SwitchTab(NavTab::Tracks),
+                        },
+                        iced_m3::widget::navbar::Item {
+                            icon: &icons::ALBUM,
+                            label: "Albums",
+                            message: Message::SwitchTab(NavTab::Albums),
+                        },
+                        iced_m3::widget::navbar::Item {
+                            icon: &icons::ARTIST,
+                            label: "Artists",
+                            message: Message::SwitchTab(NavTab::Artists),
+                        },
+                        iced_m3::widget::navbar::Item {
+                            icon: &icons::GENRES,
+                            label: "Genres",
+                            message: Message::SwitchTab(NavTab::Genres),
+                        },
+                    ],
+                    &state.theme,
+                )
+                .focused_index(index)
+                .icon_font_active(icons::filled())
+                .icon_font_inactive(icons::outlined())
+            },
+            iced_m3::widget::button(&state.theme)
+                .style(iced_m3::widget::button::Style::Outlined)
+                .label_maybe(None)
+                .icon(&icons::SETTINGS)
+                .on_press(Message::Noop),
+        ]
+        .align_y(Alignment::Center)
+        .spacing(SPACING_REGULAR),
         {
             if let Some(lib) = &state.library {
                 let content = match state.main_view.nav_stack.top() {

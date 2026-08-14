@@ -35,6 +35,8 @@ pub static MUSIC_NOTE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe405).
 pub static GENRES: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe022).unwrap());
 pub static PLAYLIST_PLAY: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe05f).unwrap());
 pub static ARROW_BACK: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5c4).unwrap());
+pub static SEARCH: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8b6).unwrap());
+pub static SETTINGS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8b8).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const SIZE_SMALL: f32 = 20.0;
