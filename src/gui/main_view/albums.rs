@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::{Album, MusicLibrary};
 use iced::{
-    Alignment, Border, Element, Length, Padding,
+    Alignment, Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
-use iced_widget::{center, column, image, sensor, stack, text};
+use iced_widget::{column, sensor, text};
 
 use crate::gui::{
     BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
@@ -20,7 +20,7 @@ use crate::gui::{
         self, BUTTON_ROUNDING, button_style,
         top_view::{self, TopView},
     },
-    widget::text_spacer::text_spacer,
+    widget::{cover_image::cover_image, text_spacer::text_spacer},
 };
 
 pub fn album_button<'a>(
@@ -35,28 +35,16 @@ pub fn album_button<'a>(
         let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
         button(
             row![
-                stack![
-                    container(center(
-                        text(*icons::ALBUM)
-                            .font(icons::filled())
-                            .color(state.theme.on_surface_variant())
-                            .size(icons::SIZE_LARGE)
-                    ))
-                    .style(move |_| {
-                        container::Style::default()
-                            .background(state.theme.surface_container_high())
-                            .border(Border::default().rounded(thumbnail_border_radius))
-                    })
-                    .width(Length::Fixed(THUMBNAIL_SIZE))
-                    .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    album.cover.thumbnail.as_ref().map(|t| {
-                        image(t)
-                            .content_fit(iced::ContentFit::Cover)
-                            .width(Length::Fixed(THUMBNAIL_SIZE))
-                            .height(Length::Fixed(THUMBNAIL_SIZE))
-                            .border_radius(thumbnail_border_radius)
-                    }),
-                ],
+                cover_image(
+                    album.cover.thumbnail.clone(),
+                    &icons::ALBUM,
+                    icons::SIZE_LARGE,
+                    state.theme.on_surface_variant(),
+                    state.theme.surface_container_high(),
+                    thumbnail_border_radius
+                )
+                .width(Length::Fixed(THUMBNAIL_SIZE))
+                .height(Length::Fixed(THUMBNAIL_SIZE)),
                 container(column![
                     text(&album.title)
                         .size(font::SIZE_REGULAR)

@@ -2,14 +2,14 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::{Artist, MusicLibrary};
 use iced::{
-    Alignment, Border, Element, Length, Padding,
+    Alignment, Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
-use iced_widget::{center, column, image, sensor, stack, text};
+use iced_widget::{column, sensor, text};
 
 use crate::gui::{
     BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
@@ -20,7 +20,7 @@ use crate::gui::{
         self, button_style,
         top_view::{self, TopView},
     },
-    widget::text_spacer::text_spacer,
+    widget::{cover_image::cover_image, text_spacer::text_spacer},
 };
 
 pub fn artist_button<'a>(
@@ -34,28 +34,16 @@ pub fn artist_button<'a>(
     {
         button(
             row![
-                stack![
-                    container(center(
-                        text(*icons::ARTIST)
-                            .font(icons::filled())
-                            .color(state.theme.on_surface_variant())
-                            .size(icons::SIZE_LARGE)
-                    ))
-                    .style(|_| {
-                        container::Style::default()
-                            .background(state.theme.surface_container_high())
-                            .border(Border::default().rounded(f32::MAX))
-                    })
-                    .width(Length::Fixed(THUMBNAIL_SIZE))
-                    .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    artist.cover.thumbnail.as_ref().map(|t| {
-                        image(t)
-                            .content_fit(iced::ContentFit::Cover)
-                            .width(Length::Fixed(THUMBNAIL_SIZE))
-                            .height(Length::Fixed(THUMBNAIL_SIZE))
-                            .border_radius(f32::MAX)
-                    }),
-                ],
+                cover_image(
+                    artist.cover.thumbnail.clone(),
+                    &icons::ARTIST,
+                    icons::SIZE_LARGE,
+                    state.theme.on_surface_variant(),
+                    state.theme.surface_container_high(),
+                    f32::MAX
+                )
+                .width(Length::Fixed(THUMBNAIL_SIZE))
+                .height(Length::Fixed(THUMBNAIL_SIZE)),
                 container(column![
                     text(&artist.name)
                         .size(font::SIZE_REGULAR)

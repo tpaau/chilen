@@ -2,20 +2,21 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::{MusicLibrary, Track};
 use iced::{
-    Border, Element, Length, Padding,
+    Element, Length, Padding,
     widget::{button, container, row, space},
 };
 use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
-use iced_widget::{center, column, image, sensor, stack, text};
+use iced_widget::{column, sensor, text};
 
 use crate::gui::{
     BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons,
     main_view::{self, BUTTON_ROUNDING, button_style},
+    widget::cover_image::cover_image,
 };
 
 pub fn track_button<'a>(
@@ -30,28 +31,16 @@ pub fn track_button<'a>(
         let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
         button(
             row![
-                stack![
-                    container(center(
-                        text(*icons::MUSIC_NOTE)
-                            .font(icons::filled())
-                            .color(state.theme.on_surface_variant())
-                            .size(icons::SIZE_LARGE)
-                    ))
-                    .style(move |_| {
-                        container::Style::default()
-                            .background(state.theme.surface_container_high())
-                            .border(Border::default().rounded(thumbnail_border_radius))
-                    })
-                    .width(Length::Fixed(THUMBNAIL_SIZE))
-                    .height(Length::Fixed(THUMBNAIL_SIZE)),
-                    track.cover.thumbnail.as_ref().map(|thumbnail| {
-                        image(thumbnail)
-                            .content_fit(iced::ContentFit::Cover)
-                            .width(Length::Fixed(THUMBNAIL_SIZE))
-                            .height(Length::Fixed(THUMBNAIL_SIZE))
-                            .border_radius(thumbnail_border_radius)
-                    })
-                ],
+                cover_image(
+                    track.cover.thumbnail.clone(),
+                    &icons::MUSIC_NOTE,
+                    icons::SIZE_LARGE,
+                    state.theme.on_surface_variant(),
+                    state.theme.surface_container_high(),
+                    thumbnail_border_radius
+                )
+                .width(Length::Fixed(THUMBNAIL_SIZE))
+                .height(Length::Fixed(THUMBNAIL_SIZE)),
                 container(column![
                     text(if let Some(title) = &track.title {
                         title

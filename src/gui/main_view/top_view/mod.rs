@@ -84,6 +84,7 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
                     cover_image(
                         album.cover.hires.clone(),
                         &icons::ALBUM,
+                        cover_size / 4.0,
                         state.theme.on_surface_variant(),
                         state.theme.surface_container(),
                         ROUNDING_LARGE
