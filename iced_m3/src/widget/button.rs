@@ -220,39 +220,21 @@ pub enum Size {
     Large,
     ExtraLarge,
     Custom {
-        height: Length,
         width: Length,
+        height: Length,
         spacing: f32,
-        padding: f32,
+        padding: Padding,
         icon_size: f32,
         font_size: f32,
     },
 }
 
 impl Size {
-    fn height(&self) -> Length {
-        match self {
-            Self::ExtraSmall => Length::Fixed(32.0),
-            Self::Small => Length::Fixed(40.0),
-            Self::Medium => Length::Fixed(56.0),
-            Self::Large => Length::Fixed(96.0),
-            Self::ExtraLarge => Length::Fixed(136.0),
-            Self::Custom {
-                height,
-                padding: _,
-                width: _,
-                spacing: _,
-                icon_size: _,
-                font_size: _,
-            } => *height,
-        }
-    }
-
     fn width(&self) -> Length {
         match self {
             Self::Custom {
-                height: _,
                 width,
+                height: _,
                 spacing: _,
                 padding: _,
                 icon_size: _,
@@ -262,22 +244,44 @@ impl Size {
         }
     }
 
-    fn padding(&self) -> Padding {
-        padding::horizontal(match self {
-            Self::ExtraSmall => 12.0,
-            Self::Small => 16.0,
-            Self::Medium => 24.0,
-            Self::Large => 48.0,
-            Self::ExtraLarge => 64.0,
+    pub fn with_width(self, width: Length) -> Self {
+        Self::Custom {
+            width,
+            height: self.height(),
+            spacing: self.spacing(),
+            padding: self.padding(),
+            icon_size: self.icon_size(),
+            font_size: self.font_size(),
+        }
+    }
+
+    fn height(&self) -> Length {
+        match self {
+            Self::ExtraSmall => Length::Fixed(32.0),
+            Self::Small => Length::Fixed(40.0),
+            Self::Medium => Length::Fixed(56.0),
+            Self::Large => Length::Fixed(96.0),
+            Self::ExtraLarge => Length::Fixed(136.0),
             Self::Custom {
-                height: _,
-                padding,
                 width: _,
+                height,
                 spacing: _,
+                padding: _,
                 icon_size: _,
                 font_size: _,
-            } => *padding,
-        })
+            } => *height,
+        }
+    }
+
+    pub fn with_height(self, height: Length) -> Self {
+        Self::Custom {
+            width: self.width(),
+            height,
+            spacing: self.spacing(),
+            padding: self.padding(),
+            icon_size: self.icon_size(),
+            font_size: self.font_size(),
+        }
     }
 
     fn spacing(&self) -> f32 {
@@ -287,13 +291,53 @@ impl Size {
             Size::Large => 12.0,
             Size::ExtraLarge => 16.0,
             Size::Custom {
-                height: _,
                 width: _,
-                padding: _,
+                height: _,
                 spacing,
+                padding: _,
                 icon_size: _,
                 font_size: _,
             } => *spacing,
+        }
+    }
+
+    pub fn with_spacing(self, spacing: f32) -> Self {
+        Self::Custom {
+            width: self.width(),
+            height: self.height(),
+            spacing,
+            padding: self.padding(),
+            icon_size: self.icon_size(),
+            font_size: self.font_size(),
+        }
+    }
+
+    fn padding(&self) -> Padding {
+        match self {
+            Self::ExtraSmall => padding::horizontal(12.0),
+            Self::Small => padding::horizontal(16.0),
+            Self::Medium => padding::horizontal(24.0),
+            Self::Large => padding::horizontal(48.0),
+            Self::ExtraLarge => padding::horizontal(64.0),
+            Self::Custom {
+                width: _,
+                height: _,
+                spacing: _,
+                padding,
+                icon_size: _,
+                font_size: _,
+            } => *padding,
+        }
+    }
+
+    pub fn with_padding(self, padding: Padding) -> Self {
+        Self::Custom {
+            width: self.width(),
+            height: self.height(),
+            spacing: self.spacing(),
+            padding,
+            icon_size: self.icon_size(),
+            font_size: self.font_size(),
         }
     }
 
@@ -305,13 +349,24 @@ impl Size {
             Size::Large => 32.0,
             Size::ExtraLarge => 40.0,
             Size::Custom {
-                height: _,
                 width: _,
+                height: _,
                 spacing: _,
                 padding: _,
                 icon_size,
                 font_size: _,
             } => *icon_size,
+        }
+    }
+
+    pub fn with_icon_size(self, icon_size: f32) -> Self {
+        Self::Custom {
+            width: self.width(),
+            height: self.height(),
+            spacing: self.spacing(),
+            padding: self.padding(),
+            icon_size,
+            font_size: self.font_size(),
         }
     }
 
@@ -322,13 +377,24 @@ impl Size {
             Size::Medium | Size::Small => 16.0,
             Size::Large | Size::ExtraLarge => 22.0,
             Size::Custom {
-                height: _,
                 width: _,
+                height: _,
                 spacing: _,
                 padding: _,
                 icon_size: _,
                 font_size,
             } => *font_size,
+        }
+    }
+
+    pub fn with_font_size(self, font_size: f32) -> Self {
+        Self::Custom {
+            width: self.width(),
+            height: self.height(),
+            spacing: self.spacing(),
+            padding: self.padding(),
+            icon_size: self.icon_size(),
+            font_size,
         }
     }
 }
@@ -391,7 +457,7 @@ impl CornerStyle {
     }
 }
 
-pub fn style(
+fn style(
     status: iced_widget::button::Status,
     selected: Option<bool>,
     elevation: Elevation,

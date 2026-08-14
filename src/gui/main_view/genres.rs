@@ -14,12 +14,13 @@ use iced_widget::{center, column, image, sensor, stack, text};
 use crate::gui::{
     BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
     THUMBNAIL_SIZE,
-    font::{SIZE_REGULAR, SIZE_SMALL},
+    font::{self},
     icons,
     main_view::{
         self, BUTTON_ROUNDING, button_style,
         top_view::{self, TopView},
     },
+    widget::text_spacer::text_spacer,
 };
 
 pub fn genre_button<'a>(
@@ -58,7 +59,7 @@ pub fn genre_button<'a>(
                 ],
                 container(column![
                     text(&genre.name)
-                        .size(SIZE_REGULAR)
+                        .size(font::SIZE_REGULAR)
                         .color(state.theme.on_surface())
                         .wrapping(text::Wrapping::None),
                     row![
@@ -67,22 +68,15 @@ pub fn genre_button<'a>(
                             1 => "1 artist".to_string(),
                             _ => format!("{} artists", genre.artists.len()),
                         })
-                        .size(SIZE_SMALL)
+                        .size(font::SIZE_SMALL)
                         .color(state.theme.on_surface_variant())
                         .wrapping(text::Wrapping::None),
-                        container(
-                            space()
-                                .width(Length::Fixed(SIZE_SMALL / 3.0))
-                                .height(Length::Fixed(SIZE_SMALL / 3.0))
-                        )
-                        .style(|_| container::Style::default()
-                            .border(Border::default().rounded(f32::MAX))
-                            .background(state.theme.on_surface_variant())),
+                        text_spacer(state.theme.on_surface_variant(), font::SIZE_SMALL),
                         text(match genre.tracks.len() {
                             1 => "1 track".to_string(),
                             _ => format!("{} tracks", genre.albums.len()),
                         })
-                        .size(SIZE_SMALL)
+                        .size(font::SIZE_SMALL)
                         .color(state.theme.on_surface_variant())
                         .wrapping(text::Wrapping::None),
                     ]

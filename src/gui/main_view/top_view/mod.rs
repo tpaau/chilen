@@ -1,11 +1,14 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use chilen_backend::music_lib::state::{Album, Artist, Genre, Playlist};
 use iced::{Alignment, Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, responsive, row, rule, text};
+use iced_widget::{center, column, container, responsive, row, rule, scrollable, text};
 
-use crate::gui::{Chilen, SPACING_REGULAR, font, icons, widget::cover_image::cover_image};
+use crate::gui::{
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font, icons,
+    widget::{cover_image::cover_image, text_spacer::text_spacer},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -17,17 +20,18 @@ pub enum TopView {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
+    Noop,
     Navigate(TopView),
     Unwind,
 }
 
-const SPACING: f32 = SPACING_REGULAR;
-
 fn unwind_button(theme: &impl ColorScheme) -> Element<'_, Message> {
     iced_m3::widget::button(theme)
+        .size(iced_m3::widget::button::Size::Small.with_height(Length::Fill))
         .style(iced_m3::widget::button::Style::Tonal(
             iced_m3::theme::Accent::Tertiary,
         ))
+        .corner_style(iced_m3::widget::button::CornerStyle::Square)
         .label_maybe(None)
         .icon(&icons::ARROW_BACK)
         .icon_font(icons::filled())
@@ -38,83 +42,146 @@ fn unwind_button(theme: &impl ColorScheme) -> Element<'_, Message> {
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
     text(content)
-        .size(32.0)
+        .size(48.0)
         .font(font::font_bold())
         .color(theme.on_surface())
         .into()
+}
+
+fn format_duration(d: Duration) -> String {
+    let total_minutes = d.as_secs() / 60;
+    let hours = total_minutes / 60;
+    let minutes = total_minutes % 60;
+
+    if hours > 0 {
+        if minutes == 0 {
+            format!("{hours} hr")
+        } else {
+            format!("{hours} hr {minutes} min")
+        }
+    } else {
+        format!("{minutes} min")
+    }
 }
 
 const MAX_COVER_SIZE: f32 = 512.0;
 const MIN_COVER_SIZE: f32 = 192.0;
 
 pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
-    match view {
-        TopView::Playlist(playlist) => column![
-            unwind_button(&state.theme),
-            center(text(playlist.name.clone())),
-        ],
-        TopView::Album(album) => column![
-            unwind_button(&state.theme),
-            responsive(move |size| {
+    let content = match view {
+        TopView::Playlist(playlist) => column![center(text(playlist.name.clone())),],
+        TopView::Album(album) => {
+            let display = responsive(move |size| {
+                let song_count_text = if album.tracks.len() == 1 {
+                    "1 track".to_string()
+                } else {
+                    format!("{} tracks", album.tracks.len())
+                };
                 let cover_size =
                     (size.width.min(size.height) / 3.0).clamp(MIN_COVER_SIZE, MAX_COVER_SIZE);
+
                 row![
                     cover_image(
                         album.cover.hires.clone(),
                         &icons::ALBUM,
                         state.theme.on_surface_variant(),
                         state.theme.surface_container(),
-                        12.0
+                        ROUNDING_LARGE
                     )
                     .width(Length::Fixed(cover_size))
                     .height(Length::Fixed(cover_size)),
                     container(
                         column![
-                            text("Album")
-                                .size(font::SIZE_REGULAR)
-                                .color(state.theme.on_surface_variant()),
-                            title(&state.theme, album.title.clone())
+                            row![
+                                text("Album")
+                                    .size(font::SIZE_REGULAR)
+                                    .color(state.theme.on_surface_variant()),
+                                album.date.map(|_| text_spacer(
+                                    state.theme.on_surface_variant(),
+                                    font::SIZE_REGULAR
+                                )),
+                                album.date.map(|date| text(date.year)
+                                    .size(font::SIZE_REGULAR)
+                                    .color(state.theme.on_surface_variant()))
+                            ]
+                            .spacing(SPACING_SMALLER)
+                            .align_y(Alignment::Center),
+                            title(&state.theme, album.title.clone()),
+                            row![
+                                text(song_count_text)
+                                    .size(font::SIZE_LARGE)
+                                    .color(state.theme.on_surface()),
+                                text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
+                                text(format_duration(album.total_duration))
+                                    .size(font::SIZE_LARGE)
+                                    .color(state.theme.on_surface()),
+                            ]
+                            .align_y(Alignment::Center)
+                            .spacing(SPACING_SMALLER),
                         ]
                         .align_x(Alignment::Start)
                     )
                 ]
                 .align_y(Alignment::Center)
-                .spacing(SPACING)
+                .spacing(SPACING_REGULAR)
                 .into()
             })
-            .height(Length::Shrink),
-            row![
+            .height(Length::Shrink)
+            .width(Length::Shrink);
+
+            let main_buttons = row![
                 iced_m3::widget::button(&state.theme)
-                    .size(iced_m3::widget::button::Size::Medium)
+                    .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
                     .icon_font(icons::filled())
                     .icon(&icons::PLAY_ARROW)
-                    .label("Play"),
+                    .label("Play")
+                    .style(iced_m3::widget::button::Style::Tonal(
+                        iced_m3::theme::Accent::Secondary
+                    ))
+                    .on_press(Message::Noop),
                 iced_m3::widget::button(&state.theme)
-                    .size(iced_m3::widget::button::Size::Medium)
+                    .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
                     .icon_font(icons::filled())
                     .icon(&icons::SHUFFLE)
                     .label("Shuffle")
+                    .style(iced_m3::widget::button::Style::Filled(
+                        iced_m3::theme::Accent::Primary
+                    ))
+                    .on_press(Message::Noop),
+                iced_m3::widget::button(&state.theme)
+                    .size(iced_m3::widget::button::Size::Medium)
+                    .icon_font(icons::filled())
+                    .style(iced_m3::widget::button::Style::Outlined)
+                    .icon(&icons::MORE_HORIZ)
+                    .label_maybe(None)
+                    .on_press(Message::Noop),
             ]
-            .spacing(SPACING_REGULAR),
-            rule::horizontal(1.0).style(|_| rule::Style {
-                color: state.theme.outline_variant(),
-                radius: Radius::default(),
-                fill_mode: rule::FillMode::Full,
-                snap: true
-            }),
-        ]
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .spacing(SPACING),
-        TopView::Artist(artist) => column![
-            unwind_button(&state.theme),
-            center(text(artist.name.clone())),
-        ],
-        TopView::Genre(genre) => column![
-            unwind_button(&state.theme),
-            center(text(genre.name.clone())),
-        ],
-    }
+            .spacing(SPACING_REGULAR);
+
+            column![
+                row![
+                    container(unwind_button(&state.theme)).width(Length::Fixed(50.0)),
+                    column![display, main_buttons].spacing(SPACING_REGULAR)
+                ]
+                .spacing(SPACING_REGULAR),
+                rule::horizontal(1.0).style(|_| rule::Style {
+                    color: state.theme.outline_variant(),
+                    radius: Radius::default(),
+                    fill_mode: rule::FillMode::Full,
+                    snap: true
+                }),
+            ]
+            .width(Length::Fill)
+            .spacing(SPACING_REGULAR)
+        }
+        TopView::Artist(artist) => column![center(text(artist.name.clone())),],
+        TopView::Genre(genre) => column![center(text(genre.name.clone())),],
+    };
+
+    container(
+        scrollable(content).style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
+    )
+    .align_top(Length::Fill)
     .into()
 }
 
@@ -123,6 +190,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::Navigate(top_view) => state.main_view.nav_stack.navigate(top_view),
         Message::Unwind => {
             state.main_view.nav_stack.unwind();
+        }
+        Message::Noop => {
+            // TODO: This is a placeholder
         }
     }
     Task::none()

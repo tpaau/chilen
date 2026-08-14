@@ -345,6 +345,8 @@ pub struct Album {
     pub cover: Cover,
     pub artists: Vec<String>,
     pub tracks: Vec<Arc<Track>>,
+    pub date: Option<Timestamp>,
+    pub total_duration: Duration,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -525,11 +527,16 @@ impl MusicLibrary {
                 let commonest = counts.into_iter().max_by_key(|(_, c)| *c).map(|(k, _)| k);
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
+                let date = tracks.iter().filter_map(|t| t.date).max();
+                let total_duration = tracks.iter().map(|t| t.duration).sum();
+
                 Arc::new(Album {
                     title: title.to_string(),
                     cover,
                     tracks,
                     artists: artists.into_iter().collect(),
+                    date,
+                    total_duration,
                 })
             })
             .collect();

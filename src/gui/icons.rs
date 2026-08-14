@@ -59,14 +59,3 @@ pub fn outlined() -> iced::Font {
         style: iced::font::Style::Normal,
     }
 }
-
-pub struct Icon<'a> {
-    pub char: &'a char,
-    pub size: f32,
-}
-
-impl<'a> Icon<'a> {
-    pub fn new(char: &'a char, size: f32) -> Self {
-        Self { char, size }
-    }
-}
