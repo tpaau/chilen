@@ -1,27 +1,29 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::Track;
-use iced::Length;
+use chilen_backend::music_lib::state::Artist;
+use iced::{Alignment, Length};
 use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
 use iced_widget::{Button, button, column, container, row, text};
 
-use crate::gui::{
-    Chilen, SPACING_SMALL, font, icons,
-    widget::{
-        cover_image::cover_image,
-        list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
+use crate::{
+    THUMBNAIL_SIZE,
+    gui::{
+        SPACING_SMALL, SPACING_SMALLER, font, icons,
+        widget::{
+            cover_image::cover_image,
+            list::{BUTTON_PADDING, button_style},
+            text_spacer::text_spacer,
+        },
     },
 };
 
-pub fn track_button<'a, Message: 'a + Clone>(
-    state: &'a Chilen,
-    track: Arc<Track>,
+pub fn artist_button<'a, Message: 'a + Clone>(
+    theme: &'a impl ColorScheme,
+    artist: Arc<Artist>,
 ) -> Button<'a, Message> {
-    let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
-
     let menu = iced_m3::widget::menu(
         vec![
             vertical_menu::Group {
@@ -54,41 +56,47 @@ pub fn track_button<'a, Message: 'a + Clone>(
                 }],
             },
         ],
-        &state.theme,
+        theme,
     )
     .icon_font(icons::filled());
 
     button(
         row![
             cover_image(
-                track.cover.thumbnail.clone(),
-                &icons::MUSIC_NOTE,
+                artist.cover.thumbnail.clone(),
+                &icons::ARTIST,
                 icons::SIZE_LARGE,
-                state.theme.on_surface_variant(),
-                state.theme.surface_container_high(),
-                thumbnail_border_radius
+                theme.on_surface_variant(),
+                theme.surface_container_high(),
+                f32::MAX
             )
             .width(Length::Fixed(THUMBNAIL_SIZE))
             .height(Length::Fixed(THUMBNAIL_SIZE)),
             container(column![
-                text(if let Some(title) = track.title.clone() {
-                    title
-                } else {
-                    "Unknown".to_string()
-                })
-                .size(font::SIZE_REGULAR)
-                .color(state.theme.on_surface())
-                .wrapping(text::Wrapping::None),
-                text(
-                    track
-                        .artists
-                        .as_ref()
-                        .map(|a| a.join(&state.settings.value_separator))
-                        .unwrap_or("Unknown".to_string())
-                )
-                .size(font::SIZE_SMALL)
-                .color(state.theme.on_surface_variant())
-                .wrapping(text::Wrapping::None),
+                text(artist.name.clone())
+                    .size(font::SIZE_REGULAR)
+                    .color(theme.on_surface())
+                    .wrapping(text::Wrapping::None),
+                row![
+                    text(match artist.albums.len() {
+                        0 => "No albums".to_string(),
+                        1 => "1 album".to_string(),
+                        _ => format!("{} albums", artist.albums.len()),
+                    })
+                    .size(font::SIZE_SMALL)
+                    .color(theme.on_surface_variant())
+                    .wrapping(text::Wrapping::None),
+                    text_spacer(theme.on_surface_variant(), font::SIZE_SMALL),
+                    text(match artist.tracks.len() {
+                        1 => "1 track".to_string(),
+                        _ => format!("{} tracks", artist.tracks.len()),
+                    })
+                    .size(font::SIZE_SMALL)
+                    .color(theme.on_surface_variant())
+                    .wrapping(text::Wrapping::None),
+                ]
+                .align_y(Alignment::Center)
+                .spacing(SPACING_SMALLER),
             ])
             .width(Length::Fill)
             .clip(true)
@@ -111,5 +119,5 @@ pub fn track_button<'a, Message: 'a + Clone>(
         .spacing(SPACING_SMALL),
     )
     .padding(BUTTON_PADDING)
-    .style(|_, status| button_style(status, state.theme.on_surface_variant()))
+    .style(|_, status| button_style(status, theme.on_surface_variant()))
 }

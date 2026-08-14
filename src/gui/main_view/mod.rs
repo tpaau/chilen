@@ -5,8 +5,8 @@ pub mod top_view;
 mod tracks;
 
 use chilen_backend::music_lib::state::MusicLibrary;
-use iced::{Border, Color, Element, Length, Task, padding};
-use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::ColorScheme};
+use iced::{Border, Element, Length, Task, padding};
+use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container, space, stack, text};
 
 use crate::gui::{

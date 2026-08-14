@@ -11,7 +11,8 @@ use log::{debug, error, info, trace};
 
 use crate::gui::{
     self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
-    icons, main_view::top_view::TopView, playlist_view, widget::playlist_button::playlist_button,
+    icons, main_view::top_view::TopView, playlist_view,
+    widget::list::playlist_button::playlist_button,
 };
 
 #[derive(Debug, Clone)]

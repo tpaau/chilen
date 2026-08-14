@@ -30,6 +30,8 @@ use crate::{
     settings::Settings,
 };
 
+pub(super) use crate::gui::widget::list::THUMBNAIL_SIZE;
+
 #[derive(Debug, Clone)]
 pub(super) enum Event {
     Backend(chilen_backend::Event),
@@ -119,9 +121,6 @@ const ROUNDING_SMALL: f32 = 14.0;
 const ROUNDING_REGULAR: f32 = 14.0;
 const ROUNDING_LARGE: f32 = 18.0;
 const ROUNDING_LARGER: f32 = 20.0;
-
-pub const THUMBNAIL_SIZE: f32 = 64.0;
-
 
 pub fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()

@@ -52,9 +52,9 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
 }
 
 fn format_duration(d: Duration) -> String {
-    let total_minutes = d.as_secs() / 60;
-    let hours = total_minutes / 60;
-    let minutes = total_minutes % 60;
+    let hours = d.as_secs() / 3600;
+    let minutes = d.as_secs() / 60 - hours * 60;
+    let seconds = d.as_secs() - minutes * 60 - hours * 3600;
 
     if hours > 0 {
         if minutes == 0 {
@@ -63,7 +63,7 @@ fn format_duration(d: Duration) -> String {
             format!("{hours} hr {minutes} min")
         }
     } else {
-        format!("{minutes} min")
+        format!("{minutes} min {seconds} sec")
     }
 }
 

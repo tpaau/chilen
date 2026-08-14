@@ -2,11 +2,10 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Playlist;
 use iced::{
-    Border, Color, Element, Length, Padding,
+    Element, Length, Padding,
     widget::{button, column, container, row, space, text},
 };
 use iced_m3::{
-    HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
