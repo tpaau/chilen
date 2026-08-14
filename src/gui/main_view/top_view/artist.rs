@@ -1,0 +1,125 @@
+use std::sync::Arc;
+
+use chilen_backend::music_lib::state::Artist;
+use iced::{Alignment, Element, Length};
+use iced_m3::theme::ColorScheme;
+use iced_widget::{column, container, responsive, row, text};
+
+use crate::gui::{
+    Chilen, SPACING_REGULAR, SPACING_SMALLER, font, icons,
+    main_view::top_view::{
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title, unwind_button,
+    },
+    widget::{self, cover_image::cover_image, list::BUTTON_SPACING, text_spacer::text_spacer},
+};
+
+pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Message> {
+    let artist_cloned = artist.clone();
+    let display = responsive(move |size| {
+        let cover_size = (size.width.min(size.height) / 3.0).clamp(MIN_COVER_SIZE, MAX_COVER_SIZE);
+
+        let track_count_text = if artist_cloned.tracks.len() == 1 {
+            "1 track".to_string()
+        } else {
+            format!("{} tracks", artist_cloned.tracks.len())
+        };
+        let album_count_text = if artist_cloned.albums.len() == 1 {
+            "1 album".to_string()
+        } else {
+            format!("{} albums", artist_cloned.albums.len())
+        };
+
+        let cover = cover_image(
+            artist_cloned.cover.hires.clone(),
+            &icons::ARTIST,
+            cover_size / 4.0,
+            state.theme.on_surface_variant(),
+            state.theme.surface_container(),
+            f32::MAX,
+        )
+        .width(Length::Fixed(cover_size))
+        .height(Length::Fixed(cover_size));
+
+        let item_data = column![
+            text("Artist")
+                .size(font::SIZE_REGULAR)
+                .color(state.theme.on_surface_variant()),
+            title(&state.theme, artist_cloned.name.to_string()),
+            row![
+                text(track_count_text)
+                    .size(font::SIZE_LARGE)
+                    .color(state.theme.on_surface()),
+                text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
+                text(album_count_text)
+                    .size(font::SIZE_LARGE)
+                    .color(state.theme.on_surface()),
+            ]
+            .align_y(Alignment::Center)
+            .spacing(SPACING_SMALLER),
+        ];
+
+        row![cover, item_data]
+            .align_y(Alignment::Center)
+            .spacing(SPACING_REGULAR)
+            .into()
+    })
+    .height(Length::Shrink)
+    .width(Length::Shrink);
+
+    let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
+
+    let album_buttons: Vec<_> = artist
+        .albums
+        .iter()
+        .map(|a| {
+            widget::list::album_button::album_button(&state.theme, a.clone())
+                .on_press(Message::Navigate(super::TopView::Album(a.clone())))
+                .into()
+        })
+        .collect();
+
+    let track_buttons = artist.tracks.iter().map(|t| {
+        widget::list::track_button::track_button(state, t.clone())
+            .on_press(Message::Noop)
+            .into()
+    });
+
+    let albums_exist = !album_buttons.is_empty();
+    let albums_section = albums_exist.then_some(
+        column![
+            spacer(&state.theme),
+            text("Albums")
+                .font(font::font_bold())
+                .color(state.theme.on_surface())
+                .size(font::SIZE_LARGE),
+            column(album_buttons).spacing(BUTTON_SPACING),
+        ]
+        .spacing(SPACING_REGULAR),
+    );
+
+    column![
+        row![
+            container(unwind_button(&state.theme)).width(Length::Fixed(50.0)),
+            column![display, buttons].spacing(SPACING_REGULAR)
+        ]
+        .spacing(SPACING_REGULAR),
+        albums_section,
+        spacer(&state.theme),
+        {
+            if albums_exist {
+                Some(
+                    text("Tracks")
+                        .font(font::font_bold())
+                        .color(state.theme.on_surface())
+                        .size(font::SIZE_LARGE),
+                )
+            } else {
+                None
+            }
+        },
+        column(track_buttons).spacing(BUTTON_SPACING)
+    ]
+    .width(Length::Fill)
+    .spacing(SPACING_REGULAR)
+    .into()
+}

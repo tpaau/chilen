@@ -1,14 +1,15 @@
 use std::{sync::Arc, time::Duration};
 
 use chilen_backend::music_lib::state::Album;
-use iced::{Alignment, Element, Length, border::Radius};
+use iced::{Alignment, Element, Length};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{column, container, responsive, row, rule, space, text};
+use iced_widget::{column, container, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
     main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, title, unwind_button,
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, spacer, title,
+        unwind_button,
     },
     widget::{
         self, artist_chip::artist_chip, cover_image::cover_image, list::BUTTON_SPACING,
@@ -38,8 +39,9 @@ fn format_duration(d: Duration) -> String {
 
 pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Message> {
     let album_cloned = album.clone();
+
     let display = responsive(move |size| {
-        let song_count_text = if album_cloned.tracks.len() == 1 {
+        let track_count_text = if album_cloned.tracks.len() == 1 {
             "1 track".to_string()
         } else {
             format!("{} tracks", album_cloned.tracks.len())
@@ -100,7 +102,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             .align_y(Alignment::Center),
             title(&state.theme, album_cloned.title.clone()),
             row![
-                text(song_count_text)
+                text(track_count_text)
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
                 text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
@@ -140,12 +142,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             column![display, buttons].spacing(SPACING_REGULAR)
         ]
         .spacing(SPACING_REGULAR),
-        rule::horizontal(1.0).style(|_| rule::Style {
-            color: state.theme.outline_variant(),
-            radius: Radius::default(),
-            fill_mode: rule::FillMode::Full,
-            snap: true
-        }),
+        spacer(&state.theme),
         column(track_buttons).spacing(BUTTON_SPACING)
     ]
     .width(Length::Fill)

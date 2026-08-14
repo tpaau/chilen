@@ -1,11 +1,12 @@
 mod album;
+mod artist;
 
 use std::sync::Arc;
 
 use chilen_backend::music_lib::state::{Album, Artist, Genre, Playlist};
-use iced::{Element, Length, Task};
+use iced::{Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{Row, center, column, container, row, scrollable, text};
+use iced_widget::{Row, Rule, center, column, container, row, rule, scrollable, text};
 
 use crate::gui::{Chilen, SPACING_REGULAR, font, icons};
 
@@ -83,6 +84,15 @@ fn horizontal_buttons<'a, Message: 'a + Clone>(
     .spacing(SPACING_REGULAR)
 }
 
+fn spacer<'a>(theme: &'a impl ColorScheme) -> Rule<'a> {
+    rule::horizontal(1.0).style(|_| rule::Style {
+        color: theme.outline_variant(),
+        radius: Radius::default(),
+        fill_mode: rule::FillMode::Full,
+        snap: true,
+    })
+}
+
 const MAX_COVER_SIZE: f32 = 512.0;
 const MIN_COVER_SIZE: f32 = 192.0;
 
@@ -90,7 +100,7 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
     let content = match view {
         TopView::Playlist(playlist) => column![center(text(playlist.name.clone()))].into(),
         TopView::Album(album) => album::view(state, album),
-        TopView::Artist(artist) => column![center(text(artist.name.clone()))].into(),
+        TopView::Artist(artist) => artist::view(state, artist),
         TopView::Genre(genre) => column![center(text(genre.name.clone()))].into(),
     };
 
