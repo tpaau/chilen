@@ -441,6 +441,7 @@ pub struct MusicLibrary {
     tracks_by_path: HashMap<String, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
     playlists_by_name: HashMap<String, Arc<Playlist>>,
+    artists_by_name: HashMap<String, Arc<Artist>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -666,6 +667,11 @@ impl MusicLibrary {
             track_hash_map.insert(t.hash_self(), t.clone());
         }
 
+        let artists_by_name: HashMap<String, Arc<Artist>> = artists
+            .iter()
+            .map(|a| (a.name.clone(), a.clone()))
+            .collect();
+
         Self {
             playlists: HashSet::new(),
             tracks,
@@ -675,6 +681,7 @@ impl MusicLibrary {
             tracks_by_path: track_path_map,
             tracks_by_hash: track_hash_map,
             playlists_by_name: HashMap::new(),
+            artists_by_name,
         }
     }
 
@@ -707,6 +714,10 @@ impl MusicLibrary {
             return Err(Error::PlaylistExists);
         }
         Ok(())
+    }
+
+    pub fn find_artist(&self, name: &str) -> Option<&Arc<Artist>> {
+        self.artists_by_name.get(name)
     }
 
     pub fn find_playlist(&self, name: &str) -> Option<&Arc<Playlist>> {

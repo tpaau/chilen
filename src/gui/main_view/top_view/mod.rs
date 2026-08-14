@@ -3,11 +3,11 @@ use std::{sync::Arc, time::Duration};
 use chilen_backend::music_lib::state::{Album, Artist, Genre, Playlist};
 use iced::{Alignment, Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, responsive, row, rule, scrollable, text};
+use iced_widget::{center, column, container, responsive, row, rule, scrollable, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font, icons,
-    widget::{cover_image::cover_image, text_spacer::text_spacer},
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
+    widget::{artist_chip::artist_chip, cover_image::cover_image, text_spacer::text_spacer},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,7 +42,7 @@ fn unwind_button(theme: &impl ColorScheme) -> Element<'_, Message> {
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
     text(content)
-        .size(48.0)
+        .size(32.0)
         .font(font::font_bold())
         .color(theme.on_surface())
         .into()
@@ -80,52 +80,79 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
                 let cover_size =
                     (size.width.min(size.height) / 3.0).clamp(MIN_COVER_SIZE, MAX_COVER_SIZE);
 
-                row![
-                    cover_image(
-                        album.cover.hires.clone(),
-                        &icons::ALBUM,
-                        cover_size / 4.0,
-                        state.theme.on_surface_variant(),
-                        state.theme.surface_container(),
-                        ROUNDING_LARGE
-                    )
-                    .width(Length::Fixed(cover_size))
-                    .height(Length::Fixed(cover_size)),
-                    container(
-                        column![
-                            row![
-                                text("Album")
-                                    .size(font::SIZE_REGULAR)
-                                    .color(state.theme.on_surface_variant()),
-                                album.date.map(|_| text_spacer(
+                let artist_chips = state.library.as_ref().map(|lib| {
+                    let mut artist_chips: Vec<Element<'_, Message>> =
+                        Vec::with_capacity(2 * album.artists.len() - 1);
+                    for (i, artist) in album.artists.iter().enumerate() {
+                        if let Some(artist) = lib.find_artist(artist) {
+                            artist_chips.push(
+                                artist_chip(&state.theme, artist.clone())
+                                    .on_press(Message::Navigate(TopView::Artist(artist.clone())))
+                                    .into(),
+                            );
+                            if let Some(len) = album.artists.len().checked_sub(1)
+                                && i < len
+                            {
+                                artist_chips.push(text_spacer(
                                     state.theme.on_surface_variant(),
-                                    font::SIZE_REGULAR
-                                )),
-                                album.date.map(|date| text(date.year)
-                                    .size(font::SIZE_REGULAR)
-                                    .color(state.theme.on_surface_variant()))
-                            ]
-                            .spacing(SPACING_SMALLER)
-                            .align_y(Alignment::Center),
-                            title(&state.theme, album.title.clone()),
-                            row![
-                                text(song_count_text)
-                                    .size(font::SIZE_LARGE)
-                                    .color(state.theme.on_surface()),
-                                text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
-                                text(format_duration(album.total_duration))
-                                    .size(font::SIZE_LARGE)
-                                    .color(state.theme.on_surface()),
-                            ]
-                            .align_y(Alignment::Center)
-                            .spacing(SPACING_SMALLER),
-                        ]
-                        .align_x(Alignment::Start)
-                    )
+                                    font::SIZE_LARGE,
+                                ));
+                            }
+                        }
+                    }
+                    artist_chips
+                });
+
+                let cover = cover_image(
+                    album.cover.hires.clone(),
+                    &icons::ALBUM,
+                    cover_size / 4.0,
+                    state.theme.on_surface_variant(),
+                    state.theme.surface_container(),
+                    ROUNDING_LARGE,
+                )
+                .width(Length::Fixed(cover_size))
+                .height(Length::Fixed(cover_size));
+
+                let item_data = column![
+                    row![
+                        text("Album")
+                            .size(font::SIZE_REGULAR)
+                            .color(state.theme.on_surface_variant()),
+                        album.date.map(|_| text_spacer(
+                            state.theme.on_surface_variant(),
+                            font::SIZE_REGULAR
+                        )),
+                        album.date.map(|date| text(date.year)
+                            .size(font::SIZE_REGULAR)
+                            .color(state.theme.on_surface_variant()))
+                    ]
+                    .spacing(SPACING_SMALLER)
+                    .align_y(Alignment::Center),
+                    title(&state.theme, album.title.clone()),
+                    row![
+                        text(song_count_text)
+                            .size(font::SIZE_LARGE)
+                            .color(state.theme.on_surface()),
+                        text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
+                        text(format_duration(album.total_duration))
+                            .size(font::SIZE_LARGE)
+                            .color(state.theme.on_surface()),
+                    ]
+                    .align_y(Alignment::Center)
+                    .spacing(SPACING_SMALLER),
+                    space().height(Length::Fixed(SPACING_SMALL)),
+                    artist_chips.map(|c| row(c)
+                        .align_y(Alignment::Center)
+                        .spacing(SPACING_SMALLER)
+                        .wrap())
                 ]
-                .align_y(Alignment::Center)
-                .spacing(SPACING_REGULAR)
-                .into()
+                .align_x(Alignment::Start);
+
+                row![cover, item_data]
+                    .align_y(Alignment::Center)
+                    .spacing(SPACING_REGULAR)
+                    .into()
             })
             .height(Length::Shrink)
             .width(Length::Shrink);
