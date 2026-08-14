@@ -12,15 +12,18 @@ use iced_m3::{
 use iced_widget::{column, sensor, text};
 
 use crate::gui::{
-    BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_SPACING, Chilen, SPACING_SMALL, SPACING_SMALLER,
-    THUMBNAIL_SIZE,
+    Chilen, SPACING_SMALL, SPACING_SMALLER, THUMBNAIL_SIZE,
     font::{self},
     icons,
     main_view::{
-        self, BUTTON_ROUNDING, button_style,
+        self,
         top_view::{self, TopView},
     },
-    widget::{cover_image::cover_image, text_spacer::text_spacer},
+    widget::{
+        cover_image::cover_image,
+        list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
+        text_spacer::text_spacer,
+    },
 };
 
 pub fn genre_button<'a>(
@@ -128,7 +131,7 @@ pub fn genre_button<'a>(
             .spacing(SPACING_SMALL),
         )
         .padding(Padding::new(BUTTON_PADDING))
-        .style(|_, status| button_style(status, &state.theme))
+        .style(|_, status| button_style(status, state.theme.on_surface_variant()))
         .on_press_with(|| {
             main_view::Message::TopView(top_view::Message::Navigate(TopView::Genre(genre.clone())))
         })

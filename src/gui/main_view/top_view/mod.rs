@@ -7,7 +7,10 @@ use iced_widget::{center, column, container, responsive, row, rule, scrollable, 
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
-    widget::{artist_chip::artist_chip, cover_image::cover_image, text_spacer::text_spacer},
+    widget::{
+        self, artist_chip::artist_chip, cover_image::cover_image, list::BUTTON_SPACING,
+        text_spacer::text_spacer,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,26 +74,27 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
     let content = match view {
         TopView::Playlist(playlist) => column![center(text(playlist.name.clone())),],
         TopView::Album(album) => {
+            let album_cloned = album.clone();
             let display = responsive(move |size| {
-                let song_count_text = if album.tracks.len() == 1 {
+                let song_count_text = if album_cloned.tracks.len() == 1 {
                     "1 track".to_string()
                 } else {
-                    format!("{} tracks", album.tracks.len())
+                    format!("{} tracks", album_cloned.tracks.len())
                 };
                 let cover_size =
                     (size.width.min(size.height) / 3.0).clamp(MIN_COVER_SIZE, MAX_COVER_SIZE);
 
                 let artist_chips = state.library.as_ref().map(|lib| {
                     let mut artist_chips: Vec<Element<'_, Message>> =
-                        Vec::with_capacity(2 * album.artists.len() - 1);
-                    for (i, artist) in album.artists.iter().enumerate() {
+                        Vec::with_capacity(2 * album_cloned.artists.len() - 1);
+                    for (i, artist) in album_cloned.artists.iter().enumerate() {
                         if let Some(artist) = lib.find_artist(artist) {
                             artist_chips.push(
                                 artist_chip(&state.theme, artist.clone())
                                     .on_press(Message::Navigate(TopView::Artist(artist.clone())))
                                     .into(),
                             );
-                            if let Some(len) = album.artists.len().checked_sub(1)
+                            if let Some(len) = album_cloned.artists.len().checked_sub(1)
                                 && i < len
                             {
                                 artist_chips.push(text_spacer(
@@ -104,7 +108,7 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
                 });
 
                 let cover = cover_image(
-                    album.cover.hires.clone(),
+                    album_cloned.cover.hires.clone(),
                     &icons::ALBUM,
                     cover_size / 4.0,
                     state.theme.on_surface_variant(),
@@ -119,23 +123,23 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
                         text("Album")
                             .size(font::SIZE_REGULAR)
                             .color(state.theme.on_surface_variant()),
-                        album.date.map(|_| text_spacer(
+                        album_cloned.date.map(|_| text_spacer(
                             state.theme.on_surface_variant(),
                             font::SIZE_REGULAR
                         )),
-                        album.date.map(|date| text(date.year)
+                        album_cloned.date.map(|date| text(date.year)
                             .size(font::SIZE_REGULAR)
                             .color(state.theme.on_surface_variant()))
                     ]
                     .spacing(SPACING_SMALLER)
                     .align_y(Alignment::Center),
-                    title(&state.theme, album.title.clone()),
+                    title(&state.theme, album_cloned.title.clone()),
                     row![
                         text(song_count_text)
                             .size(font::SIZE_LARGE)
                             .color(state.theme.on_surface()),
                         text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
-                        text(format_duration(album.total_duration))
+                        text(format_duration(album_cloned.total_duration))
                             .size(font::SIZE_LARGE)
                             .color(state.theme.on_surface()),
                     ]
@@ -186,6 +190,12 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
             ]
             .spacing(SPACING_REGULAR);
 
+            let track_buttons = album.tracks.iter().map(|t| {
+                widget::list::track_button::track_button(state, t.clone())
+                    .on_press(Message::Noop)
+                    .into()
+            });
+
             column![
                 row![
                     container(unwind_button(&state.theme)).width(Length::Fixed(50.0)),
@@ -198,6 +208,7 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
                     fill_mode: rule::FillMode::Full,
                     snap: true
                 }),
+                column(track_buttons).spacing(BUTTON_SPACING)
             ]
             .width(Length::Fill)
             .spacing(SPACING_REGULAR)

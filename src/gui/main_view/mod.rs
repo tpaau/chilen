@@ -10,7 +10,7 @@ use iced_m3::{HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY, theme::Col
 use iced_widget::{center, column, container, space, stack, text};
 
 use crate::gui::{
-    self, BUTTON_ROUNDING, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons,
+    self, Chilen, ROUNDING_REGULAR, SPACING_SMALL, icons,
     main_view::{self, top_view::TopView},
 };
 
@@ -85,30 +85,6 @@ pub enum Message {
     ButtonPoppedIn(usize),
     ButtonPoppedOut(usize),
     TopView(top_view::Message),
-}
-
-fn button_style(
-    status: iced_widget::button::Status,
-    theme: &impl ColorScheme,
-) -> iced_widget::button::Style {
-    let content_color = theme.on_surface_variant();
-    iced_widget::button::Style {
-        background: Some(iced::Background::Color(match status {
-            iced_widget::button::Status::Active => Color::TRANSPARENT,
-            iced_widget::button::Status::Hovered => {
-                content_color.scale_alpha(HOVER_STATE_LAYER_OPACITY)
-            }
-            iced_widget::button::Status::Pressed => {
-                content_color.scale_alpha(PRESSED_STATE_LAYER_OPACITY)
-            }
-            iced_widget::button::Status::Disabled => {
-                unreachable!("There should be no inactive buttons in the main view")
-            }
-        })),
-        text_color: content_color,
-        border: Border::default().rounded(BUTTON_ROUNDING),
-        ..Default::default()
-    }
 }
 
 pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {

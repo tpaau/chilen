@@ -13,10 +13,13 @@ use iced_m3::{
 use iced_widget::sensor;
 
 use crate::gui::{
-    BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, Chilen, THUMBNAIL_SIZE,
+    Chilen, THUMBNAIL_SIZE,
     font::{SIZE_REGULAR, SIZE_SMALL},
     icons, playlist_view,
-    widget::cover_image::cover_image,
+    widget::{
+        cover_image::cover_image,
+        list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
+    },
 };
 
 pub fn playlist_button<'a>(
@@ -154,26 +157,7 @@ pub fn playlist_button<'a>(
             .spacing(BUTTON_SPACING),
         )
         .padding(Padding::new(BUTTON_PADDING))
-        .style(|_, status| {
-            let content_color = state.theme.on_surface();
-            iced_widget::button::Style {
-                background: Some(iced::Background::Color(match status {
-                    iced_widget::button::Status::Active => Color::TRANSPARENT,
-                    iced_widget::button::Status::Hovered => {
-                        content_color.scale_alpha(HOVER_STATE_LAYER_OPACITY)
-                    }
-                    iced_widget::button::Status::Pressed => {
-                        content_color.scale_alpha(PRESSED_STATE_LAYER_OPACITY)
-                    }
-                    iced_widget::button::Status::Disabled => {
-                        unreachable!("There should be no inactive buttons in the playlist view")
-                    }
-                })),
-                text_color: content_color,
-                border: Border::default().rounded(BUTTON_ROUNDING),
-                ..Default::default()
-            }
-        })
+        .style(|_, status| button_style(status, state.theme.on_surface()))
         .on_press_with(|| playlist_view::Message::OpenPlaylist(playlist.clone()))
         .into()
     } else {

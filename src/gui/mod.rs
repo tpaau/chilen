@@ -122,10 +122,6 @@ const ROUNDING_LARGER: f32 = 20.0;
 
 pub const THUMBNAIL_SIZE: f32 = 64.0;
 
-const BUTTON_ROUNDING: f32 = ROUNDING_LARGE;
-const BUTTON_PADDING: f32 = SPACING_SMALLER;
-const BUTTON_HEIGHT: Length = Length::Fixed(THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING);
-const BUTTON_SPACING: f32 = SPACING_SMALLER;
 
 pub fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()
