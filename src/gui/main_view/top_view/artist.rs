@@ -84,8 +84,8 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             .into()
     });
 
-    let albums_exist = !album_buttons.is_empty();
-    let albums_section = albums_exist.then_some(
+    let has_albums = !album_buttons.is_empty();
+    let albums_section = has_albums.then_some(
         column![
             spacer(&state.theme),
             text("Albums")
@@ -106,7 +106,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         albums_section,
         spacer(&state.theme),
         {
-            if albums_exist {
+            if has_albums {
                 Some(
                     text("Tracks")
                         .font(font::font_bold())

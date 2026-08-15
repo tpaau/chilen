@@ -1,3 +1,5 @@
+#[cfg(test)]
+use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
 
 #[cfg(test)]
@@ -16,6 +18,7 @@ fn unique_playlists(count: usize) -> Vec<Playlist> {
         playlists.push(Playlist {
             name: "Test".to_owned() + &i.to_string(),
             tracks: Vec::new(),
+            duration: Duration::default(),
         });
     }
     playlists
@@ -27,6 +30,7 @@ fn playlist_track_removal() {
     let mut playlist = Playlist {
         name: "Test".to_string(),
         tracks: tracks.clone(),
+        duration: Duration::default(),
     };
     playlist.remove_tracks(vec![3, 5, 8]).unwrap();
     assert_eq!(playlist.tracks[0], tracks[0]);

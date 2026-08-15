@@ -98,8 +98,8 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         })
         .collect();
 
-    let albums_exist = !album_buttons.is_empty();
-    let albums_section = albums_exist.then_some(
+    let has_albums = !album_buttons.is_empty();
+    let albums_section = has_albums.then_some(
         column![
             spacer(&state.theme),
             text("Albums")
@@ -121,8 +121,8 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         })
         .collect();
 
-    let artists_exist = !artist_buttons.is_empty();
-    let artist_section = artists_exist.then_some(
+    let has_artists = !artist_buttons.is_empty();
+    let artist_section = has_artists.then_some(
         column![
             spacer(&state.theme),
             text("Artists")
@@ -148,7 +148,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .spacing(SPACING_REGULAR),
         artist_section,
         albums_section,
-        if albums_exist || artists_exist {
+        if has_albums || has_artists {
             Some(
                 column![
                     spacer(&state.theme),

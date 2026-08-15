@@ -346,7 +346,7 @@ pub struct Album {
     pub artists: Vec<String>,
     pub tracks: Vec<Arc<Track>>,
     pub date: Option<Timestamp>,
-    pub total_duration: Duration,
+    pub duration: Duration,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -370,6 +370,7 @@ pub struct Genre {
 pub struct Playlist {
     pub name: String,
     pub tracks: Vec<Arc<Track>>,
+    pub duration: Duration,
 }
 
 impl Playlist {
@@ -382,10 +383,12 @@ impl Playlist {
                 loaded.name
             );
         }
+        let duration = result.matched.iter().map(|t| t.duration).sum();
 
         Self {
             name: loaded.name,
             tracks: result.matched,
+            duration,
         }
     }
 
@@ -529,7 +532,7 @@ impl MusicLibrary {
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
                 let date = tracks.iter().filter_map(|t| t.date).max();
-                let total_duration = tracks.iter().map(|t| t.duration).sum();
+                let duration = tracks.iter().map(|t| t.duration).sum();
 
                 Arc::new(Album {
                     title: title.to_string(),
@@ -537,7 +540,7 @@ impl MusicLibrary {
                     tracks,
                     artists: artists.into_iter().collect(),
                     date,
-                    total_duration,
+                    duration,
                 })
             })
             .collect();
@@ -809,9 +812,12 @@ impl MusicLibrary {
             Vec::new()
         };
 
+        let duration = tracks.iter().map(|t| t.duration).sum();
+
         let playlist = Arc::new(Playlist {
             name: name.to_string(),
             tracks,
+            duration,
         });
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(name.to_string(), playlist);

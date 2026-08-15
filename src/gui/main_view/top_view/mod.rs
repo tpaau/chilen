@@ -1,13 +1,14 @@
 mod album;
 mod artist;
 mod genre;
+mod playlist;
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use chilen_backend::music_lib::state::{Album, Artist, Genre, Playlist};
 use iced::{Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{Row, Rule, center, column, container, row, rule, scrollable, text};
+use iced_widget::{Row, Rule, container, row, rule, scrollable, text};
 
 use crate::gui::{Chilen, SPACING_REGULAR, font, icons};
 
@@ -24,6 +25,26 @@ pub enum Message {
     Noop,
     Navigate(TopView),
     Unwind,
+}
+
+fn format_duration(d: Duration) -> String {
+    let hours = d.as_secs() / 3600;
+    let minutes = d.as_secs() / 60 - hours * 60;
+    let seconds = d.as_secs() - minutes * 60 - hours * 3600;
+
+    if hours > 0 {
+        if minutes == 0 {
+            format!("{hours} hr")
+        } else {
+            format!("{hours} hr {minutes} min")
+        }
+    } else {
+        if seconds == 0 {
+            format!("{minutes} min")
+        } else {
+            format!("{minutes} min {seconds} sec")
+        }
+    }
 }
 
 fn unwind_button(theme: &impl ColorScheme) -> Element<'_, Message> {
@@ -103,7 +124,7 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
     // where I put the actual content in a `stack!` so that the layout is different and all
     // scrollables don't share the same state.
     let content = match view {
-        TopView::Playlist(playlist) => column![center(text(playlist.name.clone()))].into(),
+        TopView::Playlist(playlist) => playlist::view(state, playlist),
         TopView::Album(album) => album::view(state, album),
         TopView::Artist(artist) => artist::view(state, artist),
         TopView::Genre(genre) => genre::view(state, genre),

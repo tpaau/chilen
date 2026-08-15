@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use chilen_backend::music_lib::state::Album;
 use iced::{Alignment, Element, Length};
@@ -8,34 +8,14 @@ use iced_widget::{column, container, responsive, row, space, text};
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
     main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, spacer, title,
-        unwind_button,
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, format_duration, horizontal_buttons,
+        spacer, title, unwind_button,
     },
     widget::{
         self, artist_chip::artist_chip, cover_image::cover_image, list::BUTTON_SPACING,
         text_spacer::text_spacer,
     },
 };
-
-fn format_duration(d: Duration) -> String {
-    let hours = d.as_secs() / 3600;
-    let minutes = d.as_secs() / 60 - hours * 60;
-    let seconds = d.as_secs() - minutes * 60 - hours * 3600;
-
-    if hours > 0 {
-        if minutes == 0 {
-            format!("{hours} hr")
-        } else {
-            format!("{hours} hr {minutes} min")
-        }
-    } else {
-        if seconds == 0 {
-            format!("{minutes} min")
-        } else {
-            format!("{minutes} min {seconds} sec")
-        }
-    }
-}
 
 pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Message> {
     let album_cloned = album.clone();
@@ -106,7 +86,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
                 text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
-                text(format_duration(album_cloned.total_duration))
+                text(format_duration(album_cloned.duration))
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
             ]
