@@ -1,5 +1,6 @@
 mod album;
 mod artist;
+mod genre;
 
 use std::sync::Arc;
 
@@ -97,11 +98,15 @@ const MAX_COVER_SIZE: f32 = 512.0;
 const MIN_COVER_SIZE: f32 = 192.0;
 
 pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
+    // FIX: Lists should be virtualized.
+    // This is currently not viable as I would have to do the same workaround as in the `main_view`,
+    // where I put the actual content in a `stack!` so that the layout is different and all
+    // scrollables don't share the same state.
     let content = match view {
         TopView::Playlist(playlist) => column![center(text(playlist.name.clone()))].into(),
         TopView::Album(album) => album::view(state, album),
         TopView::Artist(artist) => artist::view(state, artist),
-        TopView::Genre(genre) => column![center(text(genre.name.clone()))].into(),
+        TopView::Genre(genre) => genre::view(state, genre),
     };
 
     container(
