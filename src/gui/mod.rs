@@ -3,6 +3,7 @@ mod font;
 mod icons;
 mod main_view;
 mod playlist_view;
+mod settings;
 #[cfg(test)]
 mod tests;
 mod widget;
@@ -24,6 +25,7 @@ use log::{error, trace};
 use crate::{
     APP_NAME,
     gui::{
+        dialog::Dialog,
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::{FILLED_ICONS_FONT_BYTES, OUTLINED_ICONS_FONT_BYTES},
     },
@@ -52,6 +54,7 @@ pub enum Message {
     DeletePlaylist(Arc<Playlist>),
     MainView(main_view::Message),
     PlaylistView(playlist_view::Message),
+    Settings(settings::Message),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -60,20 +63,6 @@ pub enum LoadingState {
     Loading,
     Failed(String),
     Loaded,
-}
-
-#[derive(Default)]
-enum Dialog {
-    #[default]
-    None,
-    CreatePlaylist(String),
-    ImportPlaylist(String, rfd::FileHandle),
-    Error(String),
-    RenamePlaylist {
-        playlist: String,
-        name: String,
-    },
-    DeletePlaylist(Arc<Playlist>),
 }
 
 struct Chilen {
@@ -146,22 +135,19 @@ fn window_subscription() -> Subscription<Message> {
 impl Chilen {
     fn view(state: &Chilen) -> Element<'_, Message> {
         stack![
-            container(column([row([
+            container(column![row![
                 // TODO: I should be able to resize this
                 container(playlist_view::view(state).map(Message::PlaylistView))
                     .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
                     .width(Length::Fixed(350.0))
-                    .height(Length::Fill)
-                    .into(),
+                    .height(Length::Fill),
                 main_view::view(state).map(Message::MainView),
                 // TODO: I should be able to resize this
                 container("Currently playing")
                     .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
                     .width(Length::Fixed(500.0))
-                    .height(Length::Fill)
-                    .into(),
-            ])
-            .into()]))
+                    .height(Length::Fill),
+            ]])
             .style(|_| container::background(state.theme.surface_container())),
             dialog::view(state),
         ]
@@ -272,6 +258,7 @@ impl Chilen {
             Message::PlaylistView(msg) => {
                 return playlist_view::update(state, msg).map(Message::PlaylistView);
             }
+            Message::Settings(msg) => return settings::update(state, msg).map(Message::Settings),
         }
         Task::none()
     }

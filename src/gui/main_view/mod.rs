@@ -85,6 +85,7 @@ pub enum Message {
     ButtonPoppedIn(usize),
     ButtonPoppedOut(usize),
     TopView(top_view::Message),
+    OpenSettings,
 }
 
 fn virtualize_entry<'a, E>(
@@ -161,7 +162,7 @@ pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
                 .style(iced_m3::widget::button::Style::Outlined)
                 .label_maybe(None)
                 .icon(&icons::SETTINGS)
-                .on_press(Message::Noop),
+                .on_press(Message::OpenSettings),
         ]
         .align_y(Alignment::Center)
         .spacing(SPACING_REGULAR),
@@ -245,6 +246,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
         Message::Noop => {}
+        Message::OpenSettings => state.dialog = gui::dialog::Dialog::Settings,
     }
     Task::none()
 }

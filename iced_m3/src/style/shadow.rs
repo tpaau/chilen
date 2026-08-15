@@ -27,7 +27,7 @@ impl Elevation {
     }
 
     fn offset(&self) -> Vector {
-        Vector::new(0.0, self.value * 8.0)
+        Vector::new(0.0, self.value * 6.0)
     }
 
     fn blur_radius(&self) -> f32 {

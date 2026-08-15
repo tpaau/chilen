@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use chilen_backend::music_lib::state::Playlist;
 use iced::{Element, Length, border::Radius};
 use iced_m3::{
     theme::ColorScheme,
@@ -6,10 +9,25 @@ use iced_m3::{
 use iced_widget::{container, space, text};
 
 use crate::gui::{
-    Chilen, Dialog,
+    Chilen,
     Message::{self},
-    ROUNDING_SMALL, font,
+    ROUNDING_SMALL, font, settings,
 };
+
+#[derive(Default)]
+pub enum Dialog {
+    #[default]
+    None,
+    CreatePlaylist(String),
+    ImportPlaylist(String, rfd::FileHandle),
+    Error(String),
+    RenamePlaylist {
+        playlist: String,
+        name: String,
+    },
+    DeletePlaylist(Arc<Playlist>),
+    Settings,
+}
 
 pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
     let cancel_button = match &state.dialog {
@@ -216,5 +234,6 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             .width(350)
             .into()
         }),
+        Dialog::Settings => Some(settings::view(state).map(Message::Settings)),
     }
 }
