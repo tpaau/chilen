@@ -171,7 +171,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 state.dialog = Dialog::DeletePlaylist(playlist)
             }
         }
-        Message::OpenPlaylist(pl) => state.main_view.nav_stack.navigate(TopView::Playlist(pl)),
+        Message::OpenPlaylist(pl) => state.main_view.nav_stack.set_top(TopView::Playlist(pl)),
     }
     Task::none()
 }

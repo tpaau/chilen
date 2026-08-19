@@ -64,6 +64,12 @@ impl NavStack {
         }
     }
 
+    pub fn set_top(&mut self, top_view: TopView) {
+        if self.top() != View::Top(top_view.clone()) {
+            self.stack = vec![top_view];
+        }
+    }
+
     fn switch_tab(&mut self, tab: NavTab) {
         self.stack = Vec::new();
         self.tab = tab;
