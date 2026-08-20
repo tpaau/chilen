@@ -371,6 +371,10 @@ pub struct Playlist {
     pub name: String,
     pub tracks: Vec<Arc<Track>>,
     pub duration: Duration,
+    #[cfg(not(test))]
+    unmatched: Vec<u64>,
+    #[cfg(test)]
+    pub unmatched: Vec<u64>,
 }
 
 impl Playlist {
@@ -389,6 +393,7 @@ impl Playlist {
             name: loaded.name,
             tracks: result.matched,
             duration,
+            unmatched: result.unmatched,
         }
     }
 
@@ -427,9 +432,11 @@ struct ConfPlaylist {
 
 impl From<Playlist> for ConfPlaylist {
     fn from(value: Playlist) -> Self {
+        let mut track_hashes: Vec<_> = value.tracks.iter().map(|t| t.hash_self()).collect();
+        track_hashes.extend(value.unmatched);
         Self {
             name: value.name,
-            track_hashes: value.tracks.iter().map(|t| t.hash_self()).collect(),
+            track_hashes,
         }
     }
 }
@@ -818,6 +825,7 @@ impl MusicLibrary {
             name: name.to_string(),
             tracks,
             duration,
+            unmatched: Vec::new(),
         });
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(name.to_string(), playlist);

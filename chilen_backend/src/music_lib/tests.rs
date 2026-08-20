@@ -19,6 +19,7 @@ fn unique_playlists(count: usize) -> Vec<Playlist> {
             name: "Test".to_owned() + &i.to_string(),
             tracks: Vec::new(),
             duration: Duration::default(),
+            unmatched: Vec::new(),
         });
     }
     playlists
@@ -31,6 +32,7 @@ fn playlist_track_removal() {
         name: "Test".to_string(),
         tracks: tracks.clone(),
         duration: Duration::default(),
+        unmatched: Vec::new(),
     };
     playlist.remove_tracks(vec![3, 5, 8]).unwrap();
     assert_eq!(playlist.tracks[0], tracks[0]);
