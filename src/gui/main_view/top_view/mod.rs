@@ -47,21 +47,6 @@ fn format_duration(d: Duration) -> String {
     }
 }
 
-fn unwind_button(theme: &impl ColorScheme) -> Element<'_, Message> {
-    iced_m3::widget::button(theme)
-        .size(iced_m3::widget::button::Size::Small.with_height(Length::Fill))
-        .style(iced_m3::widget::button::Style::Tonal(
-            iced_m3::theme::Accent::Tertiary,
-        ))
-        .corner_style(iced_m3::widget::button::CornerStyle::Square)
-        .label_maybe(None)
-        .icon(&icons::ARROW_BACK)
-        .icon_font(icons::filled())
-        .elevation(0.2)
-        .on_press(Message::Unwind)
-        .into()
-}
-
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
     text(content)
         .size(32.0)
@@ -70,13 +55,22 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
         .into()
 }
 
-fn horizontal_buttons<'a, Message: 'a + Clone>(
+fn horizontal_buttons<'a>(
     theme: &'a impl ColorScheme,
     message_play: Message,
     message_shuffle: Message,
     message_options: Message,
 ) -> Row<'a, Message> {
     row![
+        iced_m3::widget::button(theme)
+            .size(iced_m3::widget::button::Size::Medium)
+            .style(iced_m3::widget::button::Style::Tonal(
+                iced_m3::theme::Accent::Tertiary,
+            ))
+            .label_maybe(None)
+            .icon_font(icons::filled())
+            .icon(&icons::ARROW_BACK)
+            .on_press(Message::Unwind),
         iced_m3::widget::button(theme)
             .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
             .icon_font(icons::filled())

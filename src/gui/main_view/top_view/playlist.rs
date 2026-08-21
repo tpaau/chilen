@@ -8,8 +8,7 @@ use iced_widget::{column, container, responsive, row, text};
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font, icons,
     main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, format_duration, horizontal_buttons, spacer,
-        title, unwind_button,
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, format_duration, horizontal_buttons, spacer, title,
     },
     widget::{self, cover_image::cover_image, list::BUTTON_SPACING, text_spacer::text_spacer},
 };
@@ -95,16 +94,8 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         column(track_buttons).spacing(BUTTON_SPACING).into()
     };
 
-    column![
-        row![
-            container(unwind_button(&state.theme)).width(Length::Fixed(50.0)),
-            column![display, buttons].spacing(SPACING_REGULAR)
-        ]
-        .spacing(SPACING_REGULAR),
-        spacer(&state.theme),
-        tracks_section
-    ]
-    .width(Length::Fill)
-    .spacing(SPACING_REGULAR)
-    .into()
+    column![display, buttons, spacer(&state.theme), tracks_section]
+        .width(Length::Fill)
+        .spacing(SPACING_REGULAR)
+        .into()
 }

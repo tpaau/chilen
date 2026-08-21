@@ -3,12 +3,12 @@ use std::sync::Arc;
 use chilen_backend::music_lib::state::Genre;
 use iced::{Alignment, Element, Length};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{column, container, responsive, row, text};
+use iced_widget::{column, responsive, row, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font, icons,
     main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title, unwind_button,
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
     },
     widget::{self, cover_image::cover_image, list::BUTTON_SPACING, text_spacer::text_spacer},
 };
@@ -141,11 +141,8 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     });
 
     column![
-        row![
-            container(unwind_button(&state.theme)).width(Length::Fixed(50.0)),
-            column![display, buttons].spacing(SPACING_REGULAR)
-        ]
-        .spacing(SPACING_REGULAR),
+        display,
+        buttons,
         artist_section,
         albums_section,
         if has_albums || has_artists {
