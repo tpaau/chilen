@@ -22,14 +22,15 @@ use rodio::Decoder;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
-use crate::music_lib::indexer::covers;
+use crate::music_lib::indexer::covers::{self, CacheMode};
 use crate::{
-    COLLATOR, Error, Event,
+    COLLATOR, Error, Event, get_config,
+    music_lib::indexer::covers::get_playlist_cover,
     music_lib::{
         self, DATA_DIR,
         indexer::{
             self,
-            covers::{Cover, get_playlist_cover, get_track_cover},
+            covers::{Cover, get_track_cover},
         },
         tracks_from_m3u8,
     },
@@ -381,7 +382,7 @@ pub struct Playlist {
 }
 
 impl Playlist {
-    fn load(lib: &MusicLibrary, loaded: ConfPlaylist) -> Self {
+    fn load(lib: &MusicLibrary, loaded: ConfPlaylist, config: indexer::Config) -> Self {
         let result = lib.tracks_from_hashes(loaded.track_hashes);
         if !result.unmatched.is_empty() {
             warn!(
@@ -391,7 +392,16 @@ impl Playlist {
             );
         }
         let duration = result.matched.iter().map(|t| t.duration).sum();
-        let cover = get_playlist_cover(&loaded.name, &result.matched).unwrap_or(Cover::none());
+
+        #[cfg(not(test))]
+        let cover =
+            get_playlist_cover(&loaded.name, config, &result.matched).unwrap_or(Cover::none());
+        #[cfg(test)]
+        let cover = if config.cache_mode != CacheMode::Disabled {
+            get_playlist_cover(&loaded.name, config, &result.matched).unwrap_or(Cover::none())
+        } else {
+            Cover::none()
+        };
 
         Self {
             name: loaded.name,
@@ -700,12 +710,12 @@ impl MusicLibrary {
         }
     }
 
-    fn load(loaded: ConfMusicLibrary, tracks: Vec<Track>) -> Self {
+    fn load(loaded: ConfMusicLibrary, tracks: Vec<Track>, config: indexer::Config) -> Self {
         crate::send_event(Event::LoadProgressChanged(Progress::RestoringState));
 
         let mut lib = Self::new(tracks);
         for p in loaded.playlists {
-            let playlist = Arc::new(Playlist::load(&lib, p));
+            let playlist = Arc::new(Playlist::load(&lib, p, config));
             lib.playlists.insert(playlist.clone());
             lib.playlists_by_name
                 .insert(playlist.name.clone(), playlist);
@@ -825,7 +835,17 @@ impl MusicLibrary {
         };
 
         let duration = tracks.iter().map(|t| t.duration).sum();
-        let cover = get_playlist_cover(name, &tracks).unwrap_or(Cover::none());
+        let config = get_config();
+
+        #[cfg(not(test))]
+        let cover =
+            get_playlist_cover(name, config.library.indexer, &tracks).unwrap_or(Cover::none());
+        #[cfg(test)]
+        let cover = if config.library.indexer.cache_mode != CacheMode::Disabled {
+            get_playlist_cover(name, config.library.indexer, &tracks).unwrap_or(Cover::none())
+        } else {
+            Cover::none()
+        };
 
         let playlist = Arc::new(Playlist {
             name: name.to_string(),
@@ -1087,7 +1107,9 @@ pub(crate) fn load(config: music_lib::Config) -> Result<(), Error> {
         };
 
         let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
-            Ok(lib) => MusicLibrary::load(lib, tracks.clone().into_iter().collect()),
+            Ok(lib) => {
+                MusicLibrary::load(lib, tracks.clone().into_iter().collect(), config.indexer)
+            }
             Err(e) => {
                 error!("Could not decode the contents of the library state file: {e}");
                 trace!("Creating a new library");

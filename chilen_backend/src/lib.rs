@@ -211,6 +211,11 @@ pub(crate) static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>
 static CONFIG: RwLock<Option<Arc<Config>>> = RwLock::new(None);
 pub(crate) static COLLATOR: RwLock<Option<Arc<CollatorBorrowed<'_>>>> = RwLock::new(None);
 
+pub(crate) fn get_config() -> Arc<Config> {
+    let guard = CONFIG.read().unwrap();
+    guard.as_ref().unwrap().clone()
+}
+
 // TODO: Unused cached cover art cleanup here somewhere
 pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
     let (sender, receiver) = mpsc::channel();
