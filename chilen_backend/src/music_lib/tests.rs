@@ -3,14 +3,34 @@ use std::time::Duration;
 use std::{path::PathBuf, sync::Arc};
 
 #[cfg(test)]
+use icu::locale::Locale;
+
+#[cfg(test)]
 use crate::{
-    Error,
+    Config, Error,
     music_lib::{
-        Track,
+        Track, ValueSeparators,
         indexer::covers::Cover,
         state::{MusicLibrary, Playlist},
     },
 };
+
+#[cfg(test)]
+fn init_config() {
+    *crate::CONFIG.write().unwrap() = Some(Arc::new(Config {
+        identity: "Chilen".to_string(),
+        #[cfg(feature = "mpris")]
+        identifier: "com.tpaau.Chilen".to_string(),
+        cache_dir: PathBuf::new(),
+        music_dir: PathBuf::new(),
+        data_dir: PathBuf::new(),
+        locale: Locale::UNKNOWN,
+        library: crate::music_lib::Config {
+            value_separators: ValueSeparators::default(),
+            indexer: crate::music_lib::indexer::Config::default(),
+        },
+    }))
+}
 
 #[cfg(test)]
 fn unique_playlists(count: usize) -> Vec<Playlist> {
@@ -49,6 +69,7 @@ fn playlist_track_removal() {
 
 #[test]
 fn playlist_removal() {
+    init_config();
     let playlists = unique_playlists(10);
     let mut lib = MusicLibrary::new_testing(Vec::new());
     for p in playlists.iter() {
@@ -83,6 +104,7 @@ fn playlist_removal() {
 
 #[test]
 fn playlist_creation() {
+    init_config();
     let tracks = Track::unique_tracks(10);
     let mut lib = MusicLibrary::new_testing(tracks.clone());
 
@@ -112,6 +134,7 @@ fn playlist_creation() {
 
 #[test]
 fn playlist_deletion() {
+    init_config();
     let mut lib = MusicLibrary::new_testing(Track::unique_tracks(10));
 
     assert!(lib.find_playlist("Test1").is_none());
@@ -155,6 +178,7 @@ fn playlist_deletion() {
 
 #[test]
 fn track_append() {
+    init_config();
     let tracks = Track::unique_tracks(10);
     let mut lib = MusicLibrary::new_testing(tracks.clone());
 
@@ -176,6 +200,7 @@ fn track_append() {
 
 #[test]
 fn lib_track_removal() {
+    init_config();
     let tracks = Track::unique_tracks(10);
     let mut lib = MusicLibrary::new_testing(tracks.clone());
 
