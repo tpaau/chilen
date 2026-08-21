@@ -9,6 +9,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use icu::collator::CollatorBorrowed;
 use lofty::{
     file::{AudioFile, TaggedFile, TaggedFileExt},
     tag::{Accessor, ItemValue, items::Timestamp},
@@ -476,13 +477,7 @@ pub struct HashMatchingResult {
 }
 
 impl MusicLibrary {
-    fn new(tracks: Vec<Track>) -> Self {
-        crate::send_event(Event::LoadProgressChanged(Progress::RebuildingLibrary));
-
-        let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
-
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
+    fn sort_tracks(tracks: &mut [Arc<Track>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
         if let Some(collator) = collator {
             tracks.sort_by(|t1, t2| {
                 collator.compare(
@@ -491,6 +486,28 @@ impl MusicLibrary {
                 )
             });
         }
+    }
+
+    fn sort_albums(albums: &mut [Arc<Album>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
+        if let Some(collator) = collator {
+            albums.sort_by(|a1, a2| collator.compare(&a1.title, &a2.title));
+        }
+    }
+
+    fn sort_artists(artists: &mut [Arc<Artist>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
+        if let Some(collator) = collator {
+            artists.sort_by(|a1, a2| collator.compare(&a1.name, &a2.name));
+        }
+    }
+
+    fn new(tracks: Vec<Track>) -> Self {
+        crate::send_event(Event::LoadProgressChanged(Progress::RebuildingLibrary));
+
+        let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
+
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        Self::sort_tracks(&mut tracks, collator);
 
         let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
         let artist_names: HashSet<_> = tracks
@@ -540,11 +557,18 @@ impl MusicLibrary {
         let mut albums: Vec<_> = album_titles
             .into_iter()
             .map(|title| {
-                let tracks: Vec<_> = tracks_by_album[title].clone().into_iter().collect();
-                let artists: HashSet<String> = tracks
+                let mut tracks: Vec<_> = tracks_by_album[title].clone().into_iter().collect();
+                Self::sort_tracks(&mut tracks, collator);
+
+                let mut artists: Vec<_> = tracks
                     .iter()
                     .flat_map(|t| t.artists.clone().into_iter().flatten())
+                    .collect::<HashSet<String>>()
+                    .into_iter()
                     .collect();
+                if let Some(collator) = collator {
+                    artists.sort_by(|a1, a2| collator.compare(a1, a2));
+                }
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
                 for track in &tracks {
@@ -560,16 +584,13 @@ impl MusicLibrary {
                     title: title.to_string(),
                     cover,
                     tracks,
-                    artists: artists.into_iter().collect(),
+                    artists,
                     date,
                     duration,
                 })
             })
             .collect();
-
-        if let Some(collator) = collator {
-            albums.sort_by(|a1, a2| collator.compare(&a1.title, &a2.title));
-        }
+        Self::sort_albums(&mut albums, collator);
 
         let mut albums_by_artist: HashMap<&String, HashSet<Arc<Album>>> =
             HashMap::with_capacity(artist_names.len());
@@ -586,12 +607,16 @@ impl MusicLibrary {
         let mut artists: Vec<_> = artist_names
             .into_iter()
             .map(|name| {
-                let tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
-                let albums = if let Some(albums) = albums_by_artist.get(name) {
+                let mut tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
+                Self::sort_tracks(&mut tracks, collator);
+
+                let mut albums = if let Some(albums) = albums_by_artist.get(name) {
                     albums.iter().cloned().collect()
                 } else {
                     Vec::new()
                 };
+                Self::sort_albums(&mut albums, collator);
+
                 let cover = tracks
                     .iter()
                     .max_by_key(|t| t.date)
@@ -607,10 +632,7 @@ impl MusicLibrary {
                 })
             })
             .collect();
-
-        if let Some(collator) = collator {
-            artists.sort_by(|a1, a2| collator.compare(&a1.name, &a2.name));
-        }
+        Self::sort_artists(&mut artists, collator);
 
         let mut artists_by_album: HashMap<&String, HashSet<Arc<Artist>>> =
             HashMap::with_capacity(albums.len());
@@ -659,7 +681,8 @@ impl MusicLibrary {
         let mut genres: Vec<_> = genre_names
             .into_iter()
             .map(|name| {
-                let tracks: Vec<_> = tracks_by_genre[name].clone().into_iter().collect();
+                let mut tracks: Vec<_> = tracks_by_genre[name].clone().into_iter().collect();
+                Self::sort_tracks(&mut tracks, collator);
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
                 for track in &tracks {
@@ -668,12 +691,18 @@ impl MusicLibrary {
                 let commonest = counts.into_iter().max_by_key(|(_, c)| *c).map(|(k, _)| k);
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
+                let mut artists: Vec<_> = artists_by_genre[name].clone().into_iter().collect();
+                Self::sort_artists(&mut artists, collator);
+
+                let mut albums: Vec<_> = albums_by_genre[name].clone().into_iter().collect();
+                Self::sort_albums(&mut albums, collator);
+
                 Arc::new(Genre {
                     name: name.to_string(),
                     cover,
                     tracks,
-                    albums: albums_by_genre[name].clone().into_iter().collect(),
-                    artists: artists_by_genre[name].clone().into_iter().collect(),
+                    albums,
+                    artists,
                 })
             })
             .collect();
