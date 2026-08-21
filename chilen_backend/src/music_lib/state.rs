@@ -27,8 +27,10 @@ use crate::{
     COLLATOR, Error, Event,
     music_lib::{
         self, DATA_DIR,
-        indexer::covers::{Cover, get_track_cover},
-        indexer::{self},
+        indexer::{
+            self,
+            covers::{Cover, get_playlist_cover, get_track_cover},
+        },
         tracks_from_m3u8,
     },
 };
@@ -371,6 +373,7 @@ pub struct Playlist {
     pub name: String,
     pub tracks: Vec<Arc<Track>>,
     pub duration: Duration,
+    pub cover: Cover,
     #[cfg(not(test))]
     unmatched: Vec<u64>,
     #[cfg(test)]
@@ -388,12 +391,14 @@ impl Playlist {
             );
         }
         let duration = result.matched.iter().map(|t| t.duration).sum();
+        let cover = get_playlist_cover(&loaded.name, &result.matched).unwrap_or(Cover::none());
 
         Self {
             name: loaded.name,
             tracks: result.matched,
             duration,
             unmatched: result.unmatched,
+            cover,
         }
     }
 
@@ -820,12 +825,14 @@ impl MusicLibrary {
         };
 
         let duration = tracks.iter().map(|t| t.duration).sum();
+        let cover = get_playlist_cover(name, &tracks).unwrap_or(Cover::none());
 
         let playlist = Arc::new(Playlist {
             name: name.to_string(),
             tracks,
             duration,
             unmatched: Vec::new(),
+            cover,
         });
         self.playlists.insert(playlist.clone());
         self.playlists_by_name.insert(name.to_string(), playlist);

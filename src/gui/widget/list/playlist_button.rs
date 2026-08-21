@@ -111,7 +111,7 @@ pub fn playlist_button<'a>(
         button(
             row![
                 cover_image(
-                    None,
+                    playlist.cover.thumbnail.clone(),
                     &icons::PLAYLIST_PLAY,
                     icons::SIZE_LARGE,
                     state.theme.on_surface_variant(),

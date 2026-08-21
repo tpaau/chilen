@@ -4,7 +4,7 @@ use std::{
     hash::{DefaultHasher, Hash, Hasher},
     io::Cursor,
     path::PathBuf,
-    sync::{LazyLock, RwLock},
+    sync::{Arc, LazyLock, RwLock},
 };
 
 pub use image::ImageFormat;
@@ -13,10 +13,10 @@ use lofty::{
     picture::{Picture, PictureType},
     tag::Tag,
 };
-use log::{error, warn};
+use log::{error, trace, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{CACHE_DIR, indexer};
+use crate::music_lib::{CACHE_DIR, indexer, state::Track};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Quality {
@@ -133,15 +133,35 @@ const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::OtherIcon,
 ];
 
-pub(crate) static HIRES_COVER_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+pub(crate) static TRACK_HIRES_COVER_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
-    cache.push("covers/hires");
+    cache.push("covers");
+    cache.push("tracks");
+    cache.push("hires");
     cache
 });
 
-pub(crate) static THUMBNAIL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+pub(crate) static TRACK_THUMBNAIL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
-    cache.push("covers/thumbnails");
+    cache.push("covers");
+    cache.push("tracks");
+    cache.push("thumbnails");
+    cache
+});
+
+pub(crate) static PLAYLIST_HIRES_COVER_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
+    cache.push("covers");
+    cache.push("playlists");
+    cache.push("hires");
+    cache
+});
+
+pub(crate) static PLAYLIST_THUMBNAIL_CACHE_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
+    let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
+    cache.push("covers");
+    cache.push("playlists");
+    cache.push("thumbnails");
     cache
 });
 
@@ -166,8 +186,8 @@ pub(crate) fn get_track_cover(
     config: indexer::Config,
     covers_lookup_set: &RwLock<HashSet<PathBuf>>,
 ) -> Result<Cover, CoverError> {
-    let hires_cache = HIRES_COVER_CACHE_DIR.clone();
-    let thumbnail_cache = THUMBNAIL_CACHE_DIR.clone();
+    let hires_cache = TRACK_HIRES_COVER_CACHE_DIR.clone();
+    let thumbnail_cache = TRACK_THUMBNAIL_CACHE_DIR.clone();
 
     let image_buf = pick_front_cover_or_replacement(tag.pictures())?.data();
     let mut hasher = DefaultHasher::new();
@@ -314,4 +334,58 @@ pub(crate) fn get_track_cover(
     };
 
     Ok(Cover { hires, thumbnail })
+}
+
+fn get_4_unique_covers(tracks: &[Arc<Track>]) -> Option<[&Cover; 4]> {
+    let mut unique_tracks: HashSet<&Cover> = HashSet::new();
+    for track in tracks {
+        unique_tracks.insert(&track.cover);
+    }
+    let mut tracks = unique_tracks.into_iter();
+    Some([
+        tracks.next()?,
+        tracks.next()?,
+        tracks.next()?,
+        tracks.next()?,
+    ])
+}
+
+pub(crate) fn get_playlist_cover(name: &str, tracks: &[Arc<Track>]) -> Result<Cover, CoverError> {
+    if tracks.is_empty() {
+        Ok(Cover::none()) // No covers for empty playlists
+    } else if tracks.len() >= 4
+        && let Some(tracks) = get_4_unique_covers(tracks)
+    {
+        // And then for playlists with tracks with 4 or more unique covers, a custom cover is used
+
+        let mut hasher = DefaultHasher::new();
+        name.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let mut hires_cover_path = PLAYLIST_HIRES_COVER_CACHE_DIR.clone();
+        hires_cover_path.push(hash.to_string());
+
+        let mut thumbnail_path = PLAYLIST_THUMBNAIL_CACHE_DIR.clone();
+        thumbnail_path.push(hash.to_string());
+
+        let mut hires_cover = if hires_cover_path.is_file() {
+            Some(hires_cover_path)
+        } else {
+            None
+        };
+
+        let mut thumbnail = if thumbnail_path.is_file() {
+            Some(thumbnail_path)
+        } else {
+            None
+        };
+
+        Ok(Cover {
+            hires: hires_cover,
+            thumbnail,
+        })
+    } else {
+        // If there are less than 4 unique covers, use the cover of the first track
+        Ok(tracks[0].cover.clone())
+    }
 }

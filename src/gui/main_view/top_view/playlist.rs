@@ -27,7 +27,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         let cover_size = (size.width.min(size.height) / 3.0).clamp(MIN_COVER_SIZE, MAX_COVER_SIZE);
 
         let cover = cover_image(
-            None, // TODO: Playlist cover
+            playlist_cloned.cover.hires.clone(),
             &icons::PLAYLIST_PLAY,
             cover_size / 4.0,
             state.theme.on_surface_variant(),

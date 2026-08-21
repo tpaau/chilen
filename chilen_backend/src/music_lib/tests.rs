@@ -7,6 +7,7 @@ use crate::{
     Error,
     music_lib::{
         Track,
+        indexer::covers::Cover,
         state::{MusicLibrary, Playlist},
     },
 };
@@ -20,6 +21,7 @@ fn unique_playlists(count: usize) -> Vec<Playlist> {
             tracks: Vec::new(),
             duration: Duration::default(),
             unmatched: Vec::new(),
+            cover: Cover::none(),
         });
     }
     playlists
@@ -33,6 +35,7 @@ fn playlist_track_removal() {
         tracks: tracks.clone(),
         duration: Duration::default(),
         unmatched: Vec::new(),
+        cover: Cover::none(),
     };
     playlist.remove_tracks(vec![3, 5, 8]).unwrap();
     assert_eq!(playlist.tracks[0], tracks[0]);
