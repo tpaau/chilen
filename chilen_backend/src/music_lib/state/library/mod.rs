@@ -74,6 +74,8 @@ pub struct MusicLibrary {
     tracks_by_hash: HashMap<u64, Arc<Track>>,
     playlists_by_name: HashMap<String, Arc<Playlist>>,
     artists_by_name: HashMap<String, Arc<Artist>>,
+    albums_by_title: HashMap<String, Arc<Album>>,
+    genres_by_name: HashMap<String, Arc<Genre>>,
 }
 
 // TODO: Fallback alphabetic sorting
@@ -214,6 +216,11 @@ impl MusicLibrary {
             .collect();
         Self::sort_albums(&mut albums, collator);
 
+        let albums_by_title: HashMap<String, Arc<Album>> = albums
+            .iter()
+            .map(|a| (a.title.clone(), a.clone()))
+            .collect();
+
         let mut albums_by_artist: HashMap<&String, HashSet<Arc<Album>>> =
             HashMap::with_capacity(artist_names.len());
         for album in &albums {
@@ -329,6 +336,9 @@ impl MusicLibrary {
             })
             .collect();
 
+        let genres_by_name: HashMap<String, Arc<Genre>> =
+            genres.iter().map(|g| (g.name.clone(), g.clone())).collect();
+
         if let Some(collator) = collator {
             genres.sort_by(|g1, g2| collator.compare(&g1.name, &g2.name));
         }
@@ -358,6 +368,8 @@ impl MusicLibrary {
             tracks_by_hash: track_hash_map,
             playlists_by_name: HashMap::new(),
             artists_by_name,
+            albums_by_title,
+            genres_by_name,
         }
     }
 
@@ -396,6 +408,12 @@ impl MusicLibrary {
         Ok(())
     }
 
+    pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
+        self.tracks_by_path
+            .get(&path.to_string_lossy().to_string())
+            .cloned()
+    }
+
     pub fn find_artist(&self, name: &str) -> Option<&Arc<Artist>> {
         self.artists_by_name.get(name)
     }
@@ -404,10 +422,12 @@ impl MusicLibrary {
         self.playlists_by_name.get(name)
     }
 
-    pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
-        self.tracks_by_path
-            .get(&path.to_string_lossy().to_string())
-            .cloned()
+    pub fn find_album(&self, title: &str) -> Option<&Arc<Album>> {
+        self.albums_by_title.get(title)
+    }
+
+    pub fn find_genre(&self, name: &str) -> Option<&Arc<Genre>> {
+        self.genres_by_name.get(name)
     }
 
     /// Returns the default playlist name ("New Playlist").
