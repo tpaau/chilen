@@ -78,7 +78,7 @@ impl NavStack {
             .iter()
             .filter_map(|view| match view {
                 TopView::Playlist(playlist) => lib
-                    .find_playlist(&playlist.name)
+                    .find_playlist_by_id(playlist.id)
                     .map(|p| TopView::Playlist(p.clone())),
                 TopView::Album(album) => lib
                     .find_album(&album.title)

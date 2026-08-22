@@ -185,7 +185,7 @@ pub fn export_playlist_to_m3u8(name: &str, path: &Path) -> Result<(), Error> {
     trace!("Exporting a playlist to an M3U8 file in {path:?}");
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
-    let pl = match lib.find_playlist(name) {
+    let pl = match lib.find_playlist_by_name(name) {
         Some(pl) => pl,
         None => return Err(Error::UnknownPlaylist(name.to_string())),
     };

@@ -22,6 +22,7 @@ fn unique_playlists(count: usize) -> Vec<Playlist> {
             tracks: Vec::new(),
             duration: Duration::default(),
             unmatched: Vec::new(),
+            id: i as u64,
             cover: Cover::none(),
         });
     }
@@ -36,6 +37,7 @@ fn playlist_track_removal() {
         tracks: tracks.clone(),
         duration: Duration::default(),
         unmatched: Vec::new(),
+        id: 0,
         cover: Cover::none(),
     };
     playlist.remove_tracks(vec![3, 5, 8]).unwrap();
@@ -89,19 +91,19 @@ fn playlist_creation() {
     let tracks = Track::unique_tracks(10);
     let mut lib = MusicLibrary::new_testing(tracks.clone());
 
-    assert!(lib.find_playlist("Test1").is_none());
+    assert!(lib.find_playlist_by_name("Test1").is_none());
     assert_eq!(lib.playlists.len(), 0);
     lib.create_playlist("Test1".to_string(), &Some(vec![tracks[6].path.clone()]))
         .unwrap();
     assert_eq!(lib.playlists.len(), 1);
-    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
+    assert_eq!(lib.find_playlist_by_name("Test1").unwrap().name, "Test1");
 
     assert_eq!(
         lib.create_playlist("Test1".to_string(), &None).unwrap_err(),
         Error::PlaylistExists
     );
     assert_eq!(lib.playlists.len(), 1);
-    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
+    assert_eq!(lib.find_playlist_by_name("Test1").unwrap().name, "Test1");
 
     let path: PathBuf = "/nonexistent/path".into();
     assert_eq!(
@@ -110,7 +112,7 @@ fn playlist_creation() {
         Error::UnknownTrackPath(path)
     );
     assert_eq!(lib.playlists.len(), 1);
-    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
+    assert_eq!(lib.find_playlist_by_name("Test1").unwrap().name, "Test1");
 }
 
 #[test]
@@ -118,18 +120,18 @@ fn playlist_deletion() {
     testing_init_config();
     let mut lib = MusicLibrary::new_testing(Track::unique_tracks(10));
 
-    assert!(lib.find_playlist("Test1").is_none());
+    assert!(lib.find_playlist_by_name("Test1").is_none());
     lib.create_playlist("Test1".to_string(), &None).unwrap();
     lib.create_playlist("Test2".to_string(), &None).unwrap();
     lib.create_playlist("Test3".to_string(), &None).unwrap();
-    assert_eq!(lib.find_playlist("Test1").unwrap().name, "Test1");
-    assert_eq!(lib.find_playlist("Test2").unwrap().name, "Test2");
-    assert_eq!(lib.find_playlist("Test3").unwrap().name, "Test3");
+    assert_eq!(lib.find_playlist_by_name("Test1").unwrap().name, "Test1");
+    assert_eq!(lib.find_playlist_by_name("Test2").unwrap().name, "Test2");
+    assert_eq!(lib.find_playlist_by_name("Test3").unwrap().name, "Test3");
 
     assert_eq!(lib.playlists.len(), 3);
     lib.remove_playlists(vec!["Test1".to_string()]).unwrap();
     assert_eq!(lib.playlists.len(), 2);
-    assert!(lib.find_playlist("Test1").is_none());
+    assert!(lib.find_playlist_by_name("Test1").is_none());
 
     assert_eq!(
         lib.remove_playlists(vec![
@@ -152,9 +154,9 @@ fn playlist_deletion() {
     lib.remove_playlists(vec!["Test2".to_string(), "Test3".to_string()])
         .unwrap();
     assert_eq!(lib.playlists.len(), 0);
-    assert!(lib.find_playlist("Test1").is_none());
-    assert!(lib.find_playlist("Test2").is_none());
-    assert!(lib.find_playlist("Test3").is_none());
+    assert!(lib.find_playlist_by_name("Test1").is_none());
+    assert!(lib.find_playlist_by_name("Test2").is_none());
+    assert!(lib.find_playlist_by_name("Test3").is_none());
 }
 
 #[test]

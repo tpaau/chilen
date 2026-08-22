@@ -22,6 +22,11 @@ pub struct Playlist {
     pub tracks: Vec<Arc<Track>>,
     pub duration: Duration,
     pub cover: Cover,
+    /// Unique ID for identifying the playlist in the library.
+    ///
+    /// This ID is not dependent on the contents of the playlist or it's name, and once a playlist
+    /// with a specific ID has been created, no new playlist can reclaim it.
+    pub id: u64,
     pub(crate) unmatched: Vec<u64>,
 }
 
@@ -52,6 +57,7 @@ impl Playlist {
             tracks: result.matched,
             duration,
             unmatched: result.unmatched,
+            id: loaded.id,
             cover,
         }
     }
@@ -86,6 +92,7 @@ impl Playlist {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ConfPlaylist {
     name: String,
+    id: u64,
     track_hashes: Vec<u64>,
 }
 
@@ -95,6 +102,7 @@ impl From<Playlist> for ConfPlaylist {
         track_hashes.extend(value.unmatched);
         Self {
             name: value.name,
+            id: value.id,
             track_hashes,
         }
     }

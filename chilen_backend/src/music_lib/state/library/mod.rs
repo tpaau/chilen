@@ -70,9 +70,11 @@ pub struct MusicLibrary {
     pub albums: Vec<Arc<Album>>,
     pub artists: Vec<Arc<Artist>>,
     pub genres: Vec<Arc<Genre>>,
+    playlist_id_counter: u64,
     tracks_by_path: HashMap<String, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
     playlists_by_name: HashMap<String, Arc<Playlist>>,
+    playlists_by_id: HashMap<u64, Arc<Playlist>>,
     artists_by_name: HashMap<String, Arc<Artist>>,
     albums_by_title: HashMap<String, Arc<Album>>,
     genres_by_name: HashMap<String, Arc<Genre>>,
@@ -364,9 +366,11 @@ impl MusicLibrary {
             albums,
             artists,
             genres,
+            playlist_id_counter: 0,
             tracks_by_path: track_path_map,
             tracks_by_hash: track_hash_map,
             playlists_by_name: HashMap::new(),
+            playlists_by_id: HashMap::new(),
             artists_by_name,
             albums_by_title,
             genres_by_name,
@@ -381,12 +385,16 @@ impl MusicLibrary {
         crate::send_event(Event::LoadProgressChanged(Progress::RestoringState));
 
         let mut lib = Self::new(tracks);
+        lib.playlists_by_name = HashMap::with_capacity(loaded.playlists.len());
+        lib.playlists_by_id = HashMap::with_capacity(loaded.playlists.len());
         for p in loaded.playlists {
             let playlist = Arc::new(Playlist::load(&lib, p, config));
             lib.playlists.insert(playlist.clone());
             lib.playlists_by_name
-                .insert(playlist.name.clone(), playlist);
+                .insert(playlist.name.clone(), playlist.clone());
+            lib.playlists_by_id.insert(playlist.id, playlist);
         }
+        lib.playlist_id_counter = loaded.playlist_id_counter;
 
         lib
     }
@@ -396,12 +404,17 @@ impl MusicLibrary {
         Self::new(tracks)
     }
 
+    fn get_playlist_id(&mut self) -> u64 {
+        self.playlist_id_counter += 1;
+        self.playlist_id_counter
+    }
+
     fn check_name(&self, name: &str) -> Result<(), Error> {
         let name = name.trim();
         if name.is_empty() {
             return Err(Error::EmptyName);
         }
-        if self.find_playlist(name).is_some() {
+        if self.find_playlist_by_name(name).is_some() {
             error!("A playlist with name \"{name}\" already exists");
             return Err(Error::PlaylistExists);
         }
@@ -418,8 +431,12 @@ impl MusicLibrary {
         self.artists_by_name.get(name)
     }
 
-    pub fn find_playlist(&self, name: &str) -> Option<&Arc<Playlist>> {
+    pub fn find_playlist_by_name(&self, name: &str) -> Option<&Arc<Playlist>> {
         self.playlists_by_name.get(name)
+    }
+
+    pub fn find_playlist_by_id(&self, id: u64) -> Option<&Arc<Playlist>> {
+        self.playlists_by_id.get(&id)
     }
 
     pub fn find_album(&self, title: &str) -> Option<&Arc<Album>> {
@@ -437,7 +454,7 @@ impl MusicLibrary {
     pub fn get_default_playlist_name(&self) -> String {
         let mut i = 0;
         let mut playlist_name = DEFAULT_PLAYLIST_NAME.to_string();
-        while self.find_playlist(&playlist_name).is_some() {
+        while self.find_playlist_by_name(&playlist_name).is_some() {
             i += 1;
             playlist_name = format!("{DEFAULT_PLAYLIST_NAME} {i}");
         }
@@ -472,9 +489,10 @@ impl MusicLibrary {
         }
 
         for name in &playlists {
-            if let Some(playlist) = self.find_playlist(name).cloned() {
+            if let Some(playlist) = self.find_playlist_by_name(name).cloned() {
                 self.playlists.remove(&playlist);
                 self.playlists_by_name.remove(name);
+                self.playlists_by_id.remove(&playlist.id);
             } else {
                 return Err(Error::UnknownPlaylist(name.to_string()));
             }
@@ -527,6 +545,7 @@ impl MusicLibrary {
             tracks,
             duration,
             unmatched: Vec::new(),
+            id: self.get_playlist_id(),
             cover,
         });
         self.playlists.insert(playlist.clone());
@@ -538,22 +557,26 @@ impl MusicLibrary {
     pub fn rename_playlist(&mut self, source: &str, target: &str) -> Result<(), Error> {
         let source = source.trim();
         let target = target.trim();
-        trace!("Renaming playlist \"{source}\" to \"{target}\"!");
+        trace!("Renaming playlist \"{source}\" to \"{target}\"");
         self.check_name(target)?;
 
-        let source_playlist = if let Some(source) = self.find_playlist(source) {
+        let source_playlist = if let Some(source) = self.find_playlist_by_name(source) {
             source.clone()
         } else {
             return Err(Error::UnknownPlaylist(source.to_string()));
         };
+        let playlist_id = source_playlist.id;
         let mut playlist = source_playlist.as_ref().clone();
         playlist.name = target.to_string();
 
         self.playlists.remove(&source_playlist);
         self.playlists_by_name.remove(source);
+        self.playlists_by_id.remove(&playlist_id);
         let playlist = Arc::new(playlist);
         self.playlists.insert(playlist.clone());
-        self.playlists_by_name.insert(target.to_string(), playlist);
+        self.playlists_by_name
+            .insert(target.to_string(), playlist.clone());
+        self.playlists_by_id.insert(playlist_id, playlist);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -563,15 +586,12 @@ impl MusicLibrary {
         let name = name.trim();
         trace!("Adding tracks to playlist \"{name}\"");
 
-        let mut playlist = match self.find_playlist(name) {
+        let mut playlist = match self.find_playlist_by_name(name) {
             Some(playlist) => playlist.clone(),
             None => return Err(Error::UnknownPlaylist(name.to_string())),
         }
         .as_ref()
         .clone();
-
-        self.playlists.remove(&playlist);
-        self.playlists_by_name.remove(&playlist.name);
 
         let mut out = Vec::with_capacity(tracks.len());
         for path in tracks {
@@ -582,12 +602,17 @@ impl MusicLibrary {
             }
         }
 
+        self.playlists.remove(&playlist);
+        self.playlists_by_name.remove(&playlist.name);
+        self.playlists_by_id.remove(&playlist.id);
+
         playlist.tracks.append(&mut out);
 
         let playlist = Arc::new(playlist);
         self.playlists.insert(playlist.clone());
         self.playlists_by_name
-            .insert(playlist.name.clone(), playlist);
+            .insert(playlist.name.clone(), playlist.clone());
+        self.playlists_by_id.insert(playlist.id, playlist);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -597,7 +622,7 @@ impl MusicLibrary {
         let name = name.trim();
         trace!("Removing tracks from playlist \"{name}\"");
 
-        let mut playlist = match self.find_playlist(name) {
+        let mut playlist = match self.find_playlist_by_name(name) {
             Some(playlist) => playlist,
             None => return Err(Error::UnknownPlaylist(name.to_string())),
         }
@@ -606,12 +631,14 @@ impl MusicLibrary {
 
         self.playlists.remove(&playlist);
         self.playlists_by_name.remove(&playlist.name);
+        self.playlists_by_id.remove(&playlist.id);
 
         playlist.remove_tracks(tracks)?;
         let playlist = Arc::new(playlist);
         self.playlists.insert(playlist.clone());
         self.playlists_by_name
-            .insert(playlist.name.clone(), playlist);
+            .insert(playlist.name.clone(), playlist.clone());
+        self.playlists_by_id.insert(playlist.id, playlist);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -644,12 +671,14 @@ impl MusicLibrary {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct ConfMusicLibrary {
+    playlist_id_counter: u64,
     playlists: Vec<ConfPlaylist>,
 }
 
 impl From<MusicLibrary> for ConfMusicLibrary {
     fn from(value: MusicLibrary) -> Self {
         Self {
+            playlist_id_counter: value.playlist_id_counter,
             playlists: value
                 .playlists
                 .into_iter()

@@ -45,7 +45,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
         Dialog::CreatePlaylist(name) => Some({
             let name_trimmed = name.trim();
             let name_ok = if let Some(lib) = &state.library {
-                lib.find_playlist(name_trimmed).is_none()
+                lib.find_playlist_by_name(name_trimmed).is_none()
             } else {
                 false
             };
@@ -97,7 +97,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
                 } else {
                     name_trimmed
                 };
-                lib.find_playlist(name).is_none()
+                lib.find_playlist_by_name(name).is_none()
             } else {
                 false
             };
@@ -173,7 +173,7 @@ pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
             let name_trimmed = name.trim();
             let name_ok = !name_trimmed.is_empty()
                 && if let Some(lib) = &state.library {
-                    lib.find_playlist(name_trimmed).is_none()
+                    lib.find_playlist_by_name(name_trimmed).is_none()
                 } else {
                     true
                 };
