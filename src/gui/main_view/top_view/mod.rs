@@ -9,8 +9,9 @@ use chilen_backend::music_lib::{Album, Artist, Genre, Playlist};
 use iced::{Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{Row, Rule, container, row, rule, scrollable, text};
+use log::error;
 
-use crate::gui::{Chilen, SPACING_REGULAR, font, icons};
+use crate::gui::{Chilen, SPACING_REGULAR, font, icons, main_view::NavStack};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -25,6 +26,10 @@ pub enum Message {
     Noop,
     Navigate(TopView),
     Unwind,
+    RemoveTrackFromPlaylist {
+        playlist: Arc<Playlist>,
+        index: usize,
+    },
 }
 
 fn format_duration(d: Duration) -> String {
@@ -131,6 +136,14 @@ pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
     .into()
 }
 
+pub(crate) fn reload(state: &mut Chilen) {
+    if let Some(lib) = &state.library {
+        state.main_view.nav_stack.reload(lib);
+    } else {
+        state.main_view.nav_stack = NavStack::default();
+    }
+}
+
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
         Message::Navigate(top_view) => state.main_view.nav_stack.navigate(top_view),
@@ -139,6 +152,13 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::Noop => {
             // TODO: This is a placeholder
+        }
+        Message::RemoveTrackFromPlaylist { playlist, index } => {
+            if let Err(e) = chilen_backend::music_lib::remove_tracks(&playlist.name, vec![index]) {
+                let msg = format!("Couldn't remove track from playlist: {e}");
+                error!("{msg}");
+                state.dialog = crate::gui::dialog::Dialog::Error(msg);
+            }
         }
     }
     Task::none()

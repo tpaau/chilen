@@ -8,6 +8,7 @@ use chilen_backend::music_lib::MusicLibrary;
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container, row, sensor, space, stack, text};
+use log::trace;
 
 use crate::gui::{
     self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, icons,
@@ -68,6 +69,28 @@ impl NavStack {
         if self.top() != View::Top(top_view.clone()) {
             self.stack = vec![top_view];
         }
+    }
+
+    pub fn reload(&mut self, lib: &MusicLibrary) {
+        trace!("Reloading top view");
+        self.stack = self
+            .stack
+            .iter()
+            .filter_map(|view| match view {
+                TopView::Playlist(playlist) => lib
+                    .find_playlist(&playlist.name)
+                    .map(|p| TopView::Playlist(p.clone())),
+                TopView::Album(album) => lib
+                    .find_album(&album.title)
+                    .map(|a| TopView::Album(a.clone())),
+                TopView::Artist(artist) => lib
+                    .find_artist(&artist.name)
+                    .map(|a| TopView::Artist(a.clone())),
+                TopView::Genre(genre) => lib
+                    .find_genre(&genre.name)
+                    .map(|g| TopView::Genre(g.clone())),
+            })
+            .collect();
     }
 
     fn switch_tab(&mut self, tab: NavTab) {

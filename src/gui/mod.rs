@@ -28,6 +28,7 @@ use crate::{
         dialog::Dialog,
         font::{BYTES_BOLD, BYTES_REGULAR},
         icons::{FILLED_ICONS_FONT_BYTES, OUTLINED_ICONS_FONT_BYTES},
+        main_view::top_view,
     },
     settings::Settings,
 };
@@ -162,6 +163,7 @@ impl Chilen {
                     chilen_backend::Event::LibraryChanged(lib) => {
                         state.loading_state = LoadingState::Loaded;
                         state.library = Some(lib);
+                        top_view::reload(state);
                     }
                     chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
                     chilen_backend::Event::LibraryLoadFailed(e) => {

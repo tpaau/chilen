@@ -71,10 +71,13 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
 
     let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
 
+    let playlist_cloned = playlist.clone();
     let track_buttons: Vec<_> = playlist
         .tracks
         .iter()
-        .map(move |t| {
+        .enumerate()
+        .map(move |(i, t)| {
+            let playlist_cloned = playlist_cloned.clone();
             let playlist_options = vec![
                 vertical_menu::Entry::Separator,
                 vertical_menu::Entry::Button {
@@ -82,7 +85,12 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                     label: "Remove",
                     supporting_text: None,
                     error: true,
-                    action: vertical_menu::Action::Message(None),
+                    action: vertical_menu::Action::Message(Some(
+                        Message::RemoveTrackFromPlaylist {
+                            playlist: playlist_cloned,
+                            index: i,
+                        },
+                    )),
                 },
             ];
 
