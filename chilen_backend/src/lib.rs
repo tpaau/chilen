@@ -34,6 +34,25 @@ pub struct Config {
     pub library: music_lib::Config,
 }
 
+#[cfg(test)]
+pub(crate) fn testing_init_config() {
+    use crate::music_lib::ValueSeparators;
+
+    *crate::CONFIG.write().unwrap() = Some(Arc::new(Config {
+        identity: "Chilen".to_string(),
+        #[cfg(feature = "mpris")]
+        identifier: "com.tpaau.Chilen".to_string(),
+        cache_dir: PathBuf::new(),
+        music_dir: PathBuf::new(),
+        data_dir: PathBuf::new(),
+        locale: "en-US".parse().unwrap(),
+        library: crate::music_lib::Config {
+            value_separators: ValueSeparators::default(),
+            indexer: crate::music_lib::indexer::Config::default(),
+        },
+    }))
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
     Raise,

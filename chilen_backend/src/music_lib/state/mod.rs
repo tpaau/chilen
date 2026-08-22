@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::{
     collections::{HashMap, HashSet},
     fs::{File, read},
@@ -93,16 +96,21 @@ pub enum Lyrics {
 #[cfg_attr(test, derive(Default))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Track {
+    /// Path to the audio file.
     pub path: PathBuf,
+    /// Cover art for the track.
     pub cover: Cover,
     pub duration: Duration,
     pub title: Option<String>,
     pub artists: Option<Vec<String>>,
     pub genres: Option<Vec<String>>,
+    /// Name of the album the track belongs to.
     pub album: Option<String>,
     pub lyrics: Option<Lyrics>,
     pub comment: Option<String>,
+    /// Index of the track in the album.
     pub track: Option<u32>,
+    /// Total number of tracks in the album.
     pub track_total: Option<u32>,
     pub disc: Option<u32>,
     pub disc_total: Option<u32>,
@@ -476,6 +484,7 @@ pub struct HashMatchingResult {
     pub unmatched: Vec<u64>,
 }
 
+// TODO: Fallback alphabetic sorting
 impl MusicLibrary {
     fn sort_tracks(tracks: &mut [Arc<Track>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
         if let Some(collator) = collator {
@@ -486,6 +495,27 @@ impl MusicLibrary {
                 )
             });
         }
+    }
+
+    fn sort_tracks_in_album(
+        tracks: &mut [Arc<Track>],
+        collator: Option<&Arc<CollatorBorrowed<'_>>>,
+    ) {
+        tracks.sort_by(|a, b| match (a.track, b.track) {
+            (Some(at), Some(bt)) => at.cmp(&bt),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => {
+                if let Some(c) = collator {
+                    c.compare(
+                        a.title.as_deref().unwrap_or(""),
+                        b.title.as_deref().unwrap_or(""),
+                    )
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            }
+        });
     }
 
     fn sort_albums(albums: &mut [Arc<Album>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
@@ -558,7 +588,7 @@ impl MusicLibrary {
             .into_iter()
             .map(|title| {
                 let mut tracks: Vec<_> = tracks_by_album[title].clone().into_iter().collect();
-                Self::sort_tracks(&mut tracks, collator);
+                Self::sort_tracks_in_album(&mut tracks, collator);
 
                 let mut artists: Vec<_> = tracks
                     .iter()
