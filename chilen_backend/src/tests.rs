@@ -4,9 +4,8 @@ use rodio::Player;
 
 use crate::{
     music_lib::{
-        MUSIC_DIR,
+        MUSIC_DIR, MUSIC_LIBRARY, MusicLibrary,
         indexer::{self},
-        state::{MUSIC_LIBRARY, MusicLibrary},
     },
     playback::{
         PLAYER_HANDLE, PlayerVolume,

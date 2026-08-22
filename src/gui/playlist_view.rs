@@ -1,6 +1,6 @@
 use std::{env::home_dir, path::PathBuf, sync::Arc};
 
-use chilen_backend::music_lib::state::Playlist;
+use chilen_backend::music_lib::Playlist;
 use iced::{
     Border, Element, Length, Padding, Task, padding,
     widget::{column, container, text},

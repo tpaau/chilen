@@ -15,7 +15,7 @@ use rand::seq::SliceRandom;
 
 use crate::{
     Error, Event,
-    music_lib::{CACHE_DIR, state::Track, tracks_from_hashes},
+    music_lib::{CACHE_DIR, Track, tracks_from_hashes},
     playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
 };
 

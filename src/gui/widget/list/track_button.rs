@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::Track;
+use chilen_backend::music_lib::Track;
 use iced::Length;
 use iced_m3::{
     theme::ColorScheme,

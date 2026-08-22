@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use crate::{
-    music_lib::state::{Track, get_library},
+    music_lib::{Track, get_library},
     playback::{
         LoopState, PLAYER_HANDLE, PlaybackState, ShuffleState, set_queue,
         state::{PLAYER_STATE, PlayerState},

@@ -1,6 +1,6 @@
 pub mod indexer;
 
-pub mod state;
+mod state;
 #[cfg(test)]
 mod tests;
 
@@ -15,12 +15,9 @@ use log::{error, trace};
 use m3u8_rs::{MediaPlaylist, MediaSegment};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    Error,
-    music_lib::state::{
-        HashMatchingResult, MUSIC_LIBRARY, Track, save_library, unwrap_lib_mut, unwrap_lib_ref,
-    },
-};
+use crate::Error;
+
+pub use state::*;
 
 pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);

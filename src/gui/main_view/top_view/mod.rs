@@ -5,7 +5,7 @@ mod playlist;
 
 use std::{sync::Arc, time::Duration};
 
-use chilen_backend::music_lib::state::{Album, Artist, Genre, Playlist};
+use chilen_backend::music_lib::{Album, Artist, Genre, Playlist};
 use iced::{Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{Row, Rule, container, row, rule, scrollable, text};

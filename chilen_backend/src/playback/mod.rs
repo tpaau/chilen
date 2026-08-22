@@ -18,7 +18,7 @@ use walkdir::WalkDir;
 
 use crate::{
     Error,
-    music_lib::{state::Track, tracks_from_m3u8, tracks_from_paths},
+    music_lib::{Track, tracks_from_m3u8, tracks_from_paths},
     playback::state::{
         PLAYER_STATE, PlayerState, background_save_state, restore_state_from_cache,
         unwrap_state_mut, unwrap_state_ref,

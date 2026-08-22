@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::state::Artist;
+use chilen_backend::music_lib::Artist;
 use iced::{Alignment, Element, Length};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{column, responsive, row, text};

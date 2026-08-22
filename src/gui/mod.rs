@@ -10,7 +10,7 @@ mod widget;
 
 use std::sync::{Arc, LazyLock, RwLock};
 
-use chilen_backend::music_lib::state::{MusicLibrary, Playlist};
+use chilen_backend::music_lib::{MusicLibrary, Playlist};
 use iced::{
     self, Element, Font, Length, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},

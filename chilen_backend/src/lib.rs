@@ -12,7 +12,7 @@ use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    music_lib::{set_dirs, state::MusicLibrary},
+    music_lib::{MusicLibrary, set_dirs},
     playback::state::PlayerState,
 };
 
@@ -59,7 +59,7 @@ pub enum Event {
     Quit,
     SetFullscreen(bool),
     PlayerStateChanged(PlayerState),
-    LoadProgressChanged(music_lib::state::Progress),
+    LoadProgressChanged(music_lib::Progress),
     LibraryLoadFailed(String),
     LibraryChanged(Box<MusicLibrary>),
 }
@@ -253,16 +253,12 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
 
         if let Err(e) = set_dirs(config.data_dir, config.cache_dir, config.music_dir) {
             error!("Could not set the initial directories: {e}");
-            send_event(Event::LoadProgressChanged(
-                music_lib::state::Progress::Failed(e),
-            ));
+            send_event(Event::LoadProgressChanged(music_lib::Progress::Failed(e)));
             return;
         }
-        if let Err(e) = music_lib::state::load(config.library) {
+        if let Err(e) = music_lib::load(config.library) {
             error!("Could not load the music library: {e}");
-            send_event(Event::LoadProgressChanged(
-                music_lib::state::Progress::Failed(e),
-            ));
+            send_event(Event::LoadProgressChanged(music_lib::Progress::Failed(e)));
             return;
         }
         playback::init(
