@@ -111,7 +111,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
 
     let track_buttons = album.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(state, t.clone())
+        widget::list::track_button::track_button(state, t.clone(), None)
             .on_press(Message::Noop)
             .into()
     });

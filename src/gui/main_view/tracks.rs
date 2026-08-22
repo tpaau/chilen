@@ -16,7 +16,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
         virtualize_entry(
             state,
             move || {
-                widget::list::track_button::track_button(state, track.clone())
+                widget::list::track_button::track_button(state, track.clone(), None)
                     .on_press(main_view::Message::Noop)
             },
             BUTTON_HEIGHT,

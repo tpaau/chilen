@@ -135,7 +135,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     );
 
     let track_buttons = genre.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(state, t.clone())
+        widget::list::track_button::track_button(state, t.clone(), None)
             .on_press(Message::Noop)
             .into()
     });

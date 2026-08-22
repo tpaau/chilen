@@ -79,7 +79,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         .collect();
 
     let track_buttons = artist.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(state, t.clone())
+        widget::list::track_button::track_button(state, t.clone(), None)
             .on_press(Message::Noop)
             .into()
     });

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Playlist;
 use iced::{Alignment, Element, Length};
-use iced_m3::theme::ColorScheme;
+use iced_m3::{theme::ColorScheme, widget::vertical_menu};
 use iced_widget::{column, container, responsive, row, text};
 
 use crate::gui::{
@@ -74,8 +74,19 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
     let track_buttons: Vec<_> = playlist
         .tracks
         .iter()
-        .map(|t| {
-            widget::list::track_button::track_button(state, t.clone())
+        .map(move |t| {
+            let playlist_options = vec![
+                vertical_menu::Entry::Separator,
+                vertical_menu::Entry::Button {
+                    icon: Some(&icons::DELETE),
+                    label: "Remove",
+                    supporting_text: None,
+                    error: true,
+                    action: vertical_menu::Action::Message(None),
+                },
+            ];
+
+            widget::list::track_button::track_button(state, t.clone(), Some(playlist_options))
                 .on_press(Message::Noop)
                 .into()
         })

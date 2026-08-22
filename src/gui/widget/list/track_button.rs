@@ -19,44 +19,65 @@ use crate::gui::{
 pub fn track_button<'a, Message: 'a + Clone>(
     state: &'a Chilen,
     track: Arc<Track>,
+    additional_entries: Option<Vec<vertical_menu::Entry<'a, Message>>>,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
-    let menu = iced_m3::widget::menu(
-        vec![
-            vertical_menu::Group {
-                label: None,
-                entries: vec![
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::PLAY_ARROW),
-                        label: "Play",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(None),
-                    },
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::ADD_TO_QUEUE),
-                        label: "Add to queue",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(None),
-                    },
-                ],
-            },
-            vertical_menu::Group {
-                label: None,
-                entries: vec![vertical_menu::Entry::Button {
-                    icon: Some(&icons::UPLOAD),
-                    label: "Details",
+    let mut second_group_entries = vec![
+        vertical_menu::Entry::Button {
+            icon: Some(&icons::PLAYLIST_PLAY),
+            label: "Add to playlist",
+            supporting_text: None,
+            error: false,
+            action: vertical_menu::Action::Message(None),
+        },
+        vertical_menu::Entry::Button {
+            icon: Some(&icons::INFO),
+            label: "Details",
+            supporting_text: None,
+            error: false,
+            action: vertical_menu::Action::Message(None),
+        },
+    ];
+
+    if let Some(e) = additional_entries {
+        second_group_entries.extend(e);
+    }
+
+    let menu_groups = vec![
+        vertical_menu::Group {
+            label: None,
+            entries: vec![
+                vertical_menu::Entry::Button {
+                    icon: Some(&icons::PLAY_ARROW),
+                    label: "Play",
                     supporting_text: None,
                     error: false,
                     action: vertical_menu::Action::Message(None),
-                }],
-            },
-        ],
-        &state.theme,
-    )
-    .icon_font(icons::filled());
+                },
+                vertical_menu::Entry::Button {
+                    icon: Some(&icons::SHUFFLE),
+                    label: "Shuffle",
+                    supporting_text: None,
+                    error: false,
+                    action: vertical_menu::Action::Message(None),
+                },
+                vertical_menu::Entry::Button {
+                    icon: Some(&icons::ADD_TO_QUEUE),
+                    label: "Add to queue",
+                    supporting_text: None,
+                    error: false,
+                    action: vertical_menu::Action::Message(None),
+                },
+            ],
+        },
+        vertical_menu::Group {
+            label: None,
+            entries: second_group_entries,
+        },
+    ];
+
+    let menu = iced_m3::widget::menu(menu_groups, &state.theme).icon_font(icons::filled());
 
     button(
         row![
