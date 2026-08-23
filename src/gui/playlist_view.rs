@@ -6,13 +6,15 @@ use iced::{
     widget::{column, container, text},
 };
 use iced_m3::{theme::ColorScheme, widget::fab_menu};
-use iced_widget::{bottom_right, center, stack};
+use iced_widget::{bottom_right, center, responsive, space, stack};
 use log::{debug, error, info, trace};
 
 use crate::gui::{
     self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
-    icons, main_view::top_view::TopView, playlist_view,
-    widget::list::playlist_button::playlist_button,
+    icons,
+    main_view::top_view::TopView,
+    playlist_view,
+    widget::list::{BUTTON_HEIGHT, playlist_button::playlist_button},
 };
 
 #[derive(Debug, Clone)]
@@ -52,16 +54,25 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
                 .padding(Padding::new(SPACING_SMALLER))
         }
         LoadingState::Loaded => center(stack!(
-            column![
+            responsive(|size| column![
                 iced::widget::scrollable(
                     column({
                         let mut playlists: Vec<_> =
                             state.library.as_ref().unwrap().playlists.iter().collect();
                         playlists.sort_by_key(|pl| pl.name.clone());
-                        playlists
+
+                        let mut buttons: Vec<_> = playlists
                             .into_iter()
                             .enumerate()
                             .map(|(i, p)| playlist_button(state, p, i))
+                            .collect();
+
+                        // So that the crate/import playlist button doesn't obstruct the menu button
+                        if size.height < (buttons.len() + 1) as f32 * BUTTON_HEIGHT {
+                            buttons.push(space().height(BUTTON_HEIGHT).into());
+                        }
+
+                        buttons
                     })
                     .spacing(SPACING_SMALLER)
                 )
@@ -71,7 +82,8 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
             ]
             .spacing(SPACING_SMALL)
             .height(Length::Fill)
-            .width(Length::Fill),
+            .width(Length::Fill)
+            .into()),
             bottom_right(
                 fab_menu(
                     vec![
