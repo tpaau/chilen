@@ -58,10 +58,11 @@ fn playlist_removal() {
     for p in playlists.iter() {
         lib.create_playlist(p.name.clone(), &None).unwrap();
     }
-    lib.playlists = playlists.clone().into_iter().map(Arc::new).collect();
+    let mut playlists: Vec<_> = lib.playlists.clone().into_iter().collect();
+    playlists.sort_by(|a, b| a.name.cmp(&b.name));
 
     for playlist in &playlists {
-        eprintln!("playlist: {}", playlist.name);
+        eprintln!("original playlist: {}, id: {}", playlist.name, playlist.id);
     }
     lib.remove_playlists(vec![
         "Test1".to_string(),
@@ -69,12 +70,12 @@ fn playlist_removal() {
         "Test8".to_string(),
     ])
     .unwrap();
-    let mut modified_playlists: Vec<_> = lib
-        .playlists
-        .into_iter()
-        .map(|t| t.as_ref().clone())
-        .collect();
+    let mut modified_playlists: Vec<_> = lib.playlists.into_iter().collect();
     modified_playlists.sort_by_key(|p| p.name.clone());
+
+    for playlist in &modified_playlists {
+        eprintln!("modified playlist: {}, id: {}", playlist.name, playlist.id);
+    }
 
     assert_eq!(modified_playlists[0], playlists[0]);
     assert_eq!(modified_playlists[1], playlists[2]);
