@@ -82,7 +82,10 @@ pub struct MusicLibrary {
 
 // TODO: Fallback alphabetic sorting
 impl MusicLibrary {
-    fn sort_tracks(tracks: &mut [Arc<Track>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
+    fn sort_tracks_alphabetically(
+        tracks: &mut [Arc<Track>],
+        collator: Option<&Arc<CollatorBorrowed<'_>>>,
+    ) {
         if let Some(collator) = collator {
             tracks.sort_by(|t1, t2| {
                 collator.compare(
@@ -91,6 +94,27 @@ impl MusicLibrary {
                 )
             });
         }
+    }
+
+    fn sort_tracks_chronologically(
+        tracks: &mut [Arc<Track>],
+        collator: Option<&Arc<CollatorBorrowed<'_>>>,
+    ) {
+        tracks.sort_by(|a, b| match (a.date, b.date) {
+            (Some(ad), Some(bd)) => bd.cmp(&ad),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => {
+                if let Some(collator) = collator {
+                    collator.compare(
+                        a.title.as_deref().unwrap_or(""),
+                        b.title.as_deref().unwrap_or(""),
+                    )
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            }
+        });
     }
 
     fn sort_tracks_in_album(
@@ -114,10 +138,31 @@ impl MusicLibrary {
         });
     }
 
-    fn sort_albums(albums: &mut [Arc<Album>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
+    fn sort_albums_alphabetically(
+        albums: &mut [Arc<Album>],
+        collator: Option<&Arc<CollatorBorrowed<'_>>>,
+    ) {
         if let Some(collator) = collator {
             albums.sort_by(|a1, a2| collator.compare(&a1.title, &a2.title));
         }
+    }
+
+    fn sort_albums_chronologically(
+        albums: &mut [Arc<Album>],
+        collator: Option<&Arc<CollatorBorrowed<'_>>>,
+    ) {
+        albums.sort_by(|a, b| match (a.date, b.date) {
+            (Some(ad), Some(bd)) => bd.cmp(&ad),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => {
+                if let Some(c) = collator {
+                    c.compare(&a.title, &b.title)
+                } else {
+                    std::cmp::Ordering::Equal
+                }
+            }
+        });
     }
 
     fn sort_artists(artists: &mut [Arc<Artist>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
@@ -133,7 +178,7 @@ impl MusicLibrary {
 
         let guard = COLLATOR.read().unwrap();
         let collator = guard.as_ref();
-        Self::sort_tracks(&mut tracks, collator);
+        Self::sort_tracks_alphabetically(&mut tracks, collator);
 
         let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
         let artist_names: HashSet<_> = tracks
@@ -216,7 +261,7 @@ impl MusicLibrary {
                 })
             })
             .collect();
-        Self::sort_albums(&mut albums, collator);
+        Self::sort_albums_alphabetically(&mut albums, collator);
 
         let albums_by_title: HashMap<String, Arc<Album>> = albums
             .iter()
@@ -239,21 +284,19 @@ impl MusicLibrary {
             .into_iter()
             .map(|name| {
                 let mut tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
-                Self::sort_tracks(&mut tracks, collator);
+                Self::sort_tracks_chronologically(&mut tracks, collator);
 
                 let mut albums = if let Some(albums) = albums_by_artist.get(name) {
                     albums.iter().cloned().collect()
                 } else {
                     Vec::new()
                 };
-                Self::sort_albums(&mut albums, collator);
+                Self::sort_albums_chronologically(&mut albums, collator);
 
                 let cover = tracks
-                    .iter()
-                    .max_by_key(|t| t.date)
-                    .unwrap_or(&tracks[0])
-                    .cover
-                    .clone();
+                    .first()
+                    .map(|t| t.cover.clone())
+                    .unwrap_or(Cover::none());
 
                 Arc::new(Artist {
                     name: name.to_string(),
@@ -313,7 +356,7 @@ impl MusicLibrary {
             .into_iter()
             .map(|name| {
                 let mut tracks: Vec<_> = tracks_by_genre[name].clone().into_iter().collect();
-                Self::sort_tracks(&mut tracks, collator);
+                Self::sort_tracks_alphabetically(&mut tracks, collator);
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
                 for track in &tracks {
@@ -326,7 +369,7 @@ impl MusicLibrary {
                 Self::sort_artists(&mut artists, collator);
 
                 let mut albums: Vec<_> = albums_by_genre[name].clone().into_iter().collect();
-                Self::sort_albums(&mut albums, collator);
+                Self::sort_albums_alphabetically(&mut albums, collator);
 
                 Arc::new(Genre {
                     name: name.to_string(),

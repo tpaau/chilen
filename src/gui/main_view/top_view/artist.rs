@@ -51,11 +51,11 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 .color(state.theme.on_surface_variant()),
             title(&state.theme, artist_cloned.name.to_string()),
             row![
-                text(track_count_text)
+                text(album_count_text)
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
                 text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
-                text(album_count_text)
+                text(track_count_text)
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
             ]
