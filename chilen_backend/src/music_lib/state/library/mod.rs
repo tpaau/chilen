@@ -10,7 +10,7 @@ use std::{
 };
 
 use icu::collator::CollatorBorrowed;
-use lofty::tag::items::Timestamp;
+pub use lofty::tag::items::Timestamp;
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
 

@@ -10,7 +10,12 @@ use crate::gui::{
     main_view::top_view::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
     },
-    widget::{self, cover_image::cover_image, list::BUTTON_SPACING, text_spacer::text_spacer},
+    widget::{
+        self,
+        cover_image::cover_image,
+        list::{BUTTON_SPACING, album_button},
+        text_spacer::text_spacer,
+    },
 };
 
 pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Message> {
@@ -72,16 +77,21 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         .albums
         .iter()
         .map(|a| {
-            widget::list::album_button::album_button(&state.theme, a.clone())
+            album_button::album_button(state, a.clone(), vec![album_button::Info::Date])
                 .on_press(Message::Navigate(super::TopView::Album(a.clone())))
                 .into()
         })
         .collect();
 
     let track_buttons = artist.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(state, t.clone(), None)
-            .on_press(Message::Noop)
-            .into()
+        widget::list::track_button::track_button(
+            state,
+            t.clone(),
+            widget::list::track_button::Info::Album,
+            None,
+        )
+        .on_press(Message::Noop)
+        .into()
     });
 
     let has_albums = !album_buttons.is_empty();

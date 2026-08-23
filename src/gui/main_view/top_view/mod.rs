@@ -3,7 +3,7 @@ mod artist;
 mod genre;
 mod playlist;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use chilen_backend::music_lib::{Album, Artist, Genre, Playlist};
 use iced::{Element, Length, Task, border::Radius};
@@ -30,26 +30,6 @@ pub enum Message {
         playlist: Arc<Playlist>,
         index: usize,
     },
-}
-
-fn format_duration(d: Duration) -> String {
-    let hours = d.as_secs() / 3600;
-    let minutes = d.as_secs() / 60 - hours * 60;
-    let seconds = d.as_secs() - minutes * 60 - hours * 3600;
-
-    if hours > 0 {
-        if minutes == 0 {
-            format!("{hours} hr")
-        } else {
-            format!("{hours} hr {minutes} min")
-        }
-    } else {
-        if seconds == 0 {
-            format!("{minutes} min")
-        } else {
-            format!("{minutes} min {seconds} sec")
-        }
-    }
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {

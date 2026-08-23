@@ -9,16 +9,25 @@ use iced_m3::{
 use iced_widget::{Button, button, column, container, row, text};
 
 use crate::gui::{
-    Chilen, SPACING_SMALL, font, icons,
+    Chilen, SPACING_SMALL, font,
+    formatter::format_track_duration,
+    icons,
     widget::{
         cover_image::cover_image,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
     },
 };
 
+pub enum Info {
+    Artist,
+    Length,
+    Album,
+}
+
 pub fn track_button<'a, Message: 'a + Clone>(
     state: &'a Chilen,
     track: Arc<Track>,
+    info: Info,
     additional_entries: Option<Vec<vertical_menu::Entry<'a, Message>>>,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
@@ -79,6 +88,18 @@ pub fn track_button<'a, Message: 'a + Clone>(
 
     let menu = iced_m3::widget::menu(menu_groups, &state.theme).icon_font(icons::filled());
 
+    let info = match info {
+        Info::Artist => {
+            if let Some(artists) = &track.artists {
+                artists.join(&state.settings.value_separator)
+            } else {
+                "Unknown".to_string()
+            }
+        }
+        Info::Length => format_track_duration(track.duration),
+        Info::Album => track.album.clone().unwrap_or("Unknown".to_string()),
+    };
+
     button(
         row![
             cover_image(
@@ -100,16 +121,10 @@ pub fn track_button<'a, Message: 'a + Clone>(
                 .size(font::SIZE_REGULAR)
                 .color(state.theme.on_surface())
                 .wrapping(text::Wrapping::None),
-                text(
-                    track
-                        .artists
-                        .as_ref()
-                        .map(|a| a.join(&state.settings.value_separator))
-                        .unwrap_or("Unknown".to_string())
-                )
-                .size(font::SIZE_SMALL)
-                .color(state.theme.on_surface_variant())
-                .wrapping(text::Wrapping::None),
+                text(info)
+                    .size(font::SIZE_SMALL)
+                    .color(state.theme.on_surface_variant())
+                    .wrapping(text::Wrapping::None),
             ])
             .width(Length::Fill)
             .clip(true)

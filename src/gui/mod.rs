@@ -1,5 +1,6 @@
 mod dialog;
 mod font;
+mod formatter;
 mod icons;
 mod main_view;
 mod playlist_view;

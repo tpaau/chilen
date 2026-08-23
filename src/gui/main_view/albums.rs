@@ -9,10 +9,7 @@ use crate::gui::{
         top_view::{self, TopView},
         virtualize_entry,
     },
-    widget::{
-        self,
-        list::{BUTTON_HEIGHT, BUTTON_SPACING},
-    },
+    widget::list::{BUTTON_HEIGHT, BUTTON_SPACING, album_button},
 };
 
 pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_view::Message> {
@@ -20,13 +17,19 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
         virtualize_entry(
             state,
             move || {
-                widget::list::album_button::album_button(&state.theme, album.clone()).on_press_with(
-                    || {
-                        main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(
-                            album.clone(),
-                        )))
-                    },
+                album_button::album_button(
+                    state,
+                    album.clone(),
+                    vec![
+                        album_button::Info::TrackCount,
+                        album_button::Info::ArtistCount,
+                    ],
                 )
+                .on_press_with(|| {
+                    main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(
+                        album.clone(),
+                    )))
+                })
             },
             BUTTON_HEIGHT,
             index,

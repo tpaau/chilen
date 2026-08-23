@@ -6,10 +6,11 @@ use iced_m3::theme::ColorScheme;
 use iced_widget::{column, responsive, row, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
+    formatter::format_album_duration,
+    icons,
     main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, format_duration, horizontal_buttons,
-        spacer, title,
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, spacer, title,
     },
     widget::{
         self, artist_chip::artist_chip, cover_image::cover_image, list::BUTTON_SPACING,
@@ -86,7 +87,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
                 text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
-                text(format_duration(album_cloned.duration))
+                text(format_album_duration(album_cloned.duration))
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
             ]
@@ -111,9 +112,14 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
 
     let track_buttons = album.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(state, t.clone(), None)
-            .on_press(Message::Noop)
-            .into()
+        widget::list::track_button::track_button(
+            state,
+            t.clone(),
+            widget::list::track_button::Info::Length,
+            None,
+        )
+        .on_press(Message::Noop)
+        .into()
     });
 
     column![
