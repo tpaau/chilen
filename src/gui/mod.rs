@@ -3,6 +3,7 @@ mod font;
 mod formatter;
 mod icons;
 mod main_view;
+mod playback_view;
 mod playlist_view;
 mod settings;
 #[cfg(test)]
@@ -11,7 +12,10 @@ mod widget;
 
 use std::sync::{Arc, LazyLock, RwLock};
 
-use chilen_backend::music_lib::{MusicLibrary, Playlist};
+use chilen_backend::{
+    music_lib::{MusicLibrary, Playlist},
+    playback::state::PlayerState,
+};
 use iced::{
     self, Element, Font, Length, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
@@ -57,6 +61,7 @@ pub enum Message {
     MainView(main_view::Message),
     PlaylistView(playlist_view::Message),
     Settings(settings::Message),
+    Playback(playback_view::Message),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -69,6 +74,7 @@ pub enum LoadingState {
 
 struct Chilen {
     library: Option<Box<MusicLibrary>>,
+    player_state: Option<PlayerState>,
     dialog: Dialog,
     loading_state: LoadingState,
     theme: Theme,
@@ -82,6 +88,7 @@ impl Default for Chilen {
         let settings = Settings::load();
         Self {
             library: None,
+            player_state: None,
             dialog: Dialog::default(),
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.theme_mode()),
@@ -145,10 +152,7 @@ impl Chilen {
                     .height(Length::Fill),
                 main_view::view(state).map(Message::MainView),
                 // TODO: I should be able to resize this
-                container("Currently playing")
-                    .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
-                    .width(Length::Fixed(500.0))
-                    .height(Length::Fill),
+                playback_view::view(state).map(Message::Playback),
             ]])
             .style(|_| container::background(state.theme.surface_container())),
             dialog::view(state),
@@ -166,7 +170,9 @@ impl Chilen {
                         state.library = Some(lib);
                         top_view::reload(state);
                     }
-                    chilen_backend::Event::PlayerStateChanged(state) => todo!("Player events"),
+                    chilen_backend::Event::PlayerStateChanged(player_state) => {
+                        state.player_state = Some(player_state)
+                    }
                     chilen_backend::Event::LibraryLoadFailed(e) => {
                         state.loading_state = LoadingState::Failed(e)
                     }
@@ -262,6 +268,9 @@ impl Chilen {
                 return playlist_view::update(state, msg).map(Message::PlaylistView);
             }
             Message::Settings(msg) => return settings::update(state, msg).map(Message::Settings),
+            Message::Playback(message) => {
+                return playback_view::update(state, message).map(Message::Playback);
+            }
         }
         Task::none()
     }

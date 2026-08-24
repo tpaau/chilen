@@ -8,7 +8,7 @@ use chilen_backend::music_lib::MusicLibrary;
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container, row, sensor, space, stack, text};
-use log::trace;
+use log::{error, trace};
 
 use crate::gui::{
     self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, icons,
@@ -115,6 +115,7 @@ pub enum Message {
     ButtonPoppedOut(usize),
     TopView(top_view::Message),
     OpenSettings,
+    PlayTrack { track_index: usize },
 }
 
 fn virtualize_entry<'a, E>(
@@ -276,6 +277,12 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
         Message::Noop => {}
         Message::OpenSettings => state.dialog = gui::dialog::Dialog::Settings,
+        Message::PlayTrack { track_index } => match &state.library {
+            Some(lib) => {
+                let _ = chilen_backend::playback::play_new_queue(lib.tracks.clone(), track_index);
+            }
+            None => error!("Cannot play the track, the library is not loaded"),
+        },
     }
     Task::none()
 }

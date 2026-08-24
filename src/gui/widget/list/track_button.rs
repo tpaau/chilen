@@ -24,11 +24,21 @@ pub enum Info {
     Album,
 }
 
+pub struct Messages<Message> {
+    // TODO: None of those messages, apart from delete, should be optional
+    pub play: Option<Message>,
+    pub shuffle: Option<Message>,
+    pub add_to_queue: Option<Message>,
+    pub add_to_playlist: Option<Message>,
+    pub details: Option<Message>,
+    pub remove: Option<Message>,
+}
+
 pub fn track_button<'a, Message: 'a + Clone>(
     state: &'a Chilen,
     track: Arc<Track>,
     info: Info,
-    additional_entries: Option<Vec<vertical_menu::Entry<'a, Message>>>,
+    messages: Messages<Message>,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
@@ -38,19 +48,26 @@ pub fn track_button<'a, Message: 'a + Clone>(
             label: "Add to playlist",
             supporting_text: None,
             error: false,
-            action: vertical_menu::Action::Message(None),
+            action: vertical_menu::Action::Message(messages.add_to_playlist),
         },
         vertical_menu::Entry::Button {
             icon: Some(&icons::INFO),
             label: "Details",
             supporting_text: None,
             error: false,
-            action: vertical_menu::Action::Message(None),
+            action: vertical_menu::Action::Message(messages.details),
         },
     ];
 
-    if let Some(e) = additional_entries {
-        second_group_entries.extend(e);
+    if let Some(remove) = messages.remove {
+        second_group_entries.push(vertical_menu::Entry::Separator);
+        second_group_entries.push(vertical_menu::Entry::Button {
+            icon: Some(&icons::DELETE),
+            label: "Remove",
+            supporting_text: None,
+            error: true,
+            action: vertical_menu::Action::Message(Some(remove)),
+        });
     }
 
     let menu_groups = vec![
@@ -62,21 +79,21 @@ pub fn track_button<'a, Message: 'a + Clone>(
                     label: "Play",
                     supporting_text: None,
                     error: false,
-                    action: vertical_menu::Action::Message(None),
+                    action: vertical_menu::Action::Message(messages.play),
                 },
                 vertical_menu::Entry::Button {
                     icon: Some(&icons::SHUFFLE),
                     label: "Shuffle",
                     supporting_text: None,
                     error: false,
-                    action: vertical_menu::Action::Message(None),
+                    action: vertical_menu::Action::Message(messages.shuffle),
                 },
                 vertical_menu::Entry::Button {
                     icon: Some(&icons::ADD_TO_QUEUE),
                     label: "Add to queue",
                     supporting_text: None,
                     error: false,
-                    action: vertical_menu::Action::Message(None),
+                    action: vertical_menu::Action::Message(messages.add_to_queue),
                 },
             ],
         },

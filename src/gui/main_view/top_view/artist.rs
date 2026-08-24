@@ -11,9 +11,8 @@ use crate::gui::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
     },
     widget::{
-        self,
         cover_image::cover_image,
-        list::{BUTTON_SPACING, album_button},
+        list::{BUTTON_SPACING, album_button, track_button},
         text_spacer::text_spacer,
     },
 };
@@ -84,11 +83,18 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         .collect();
 
     let track_buttons = artist.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(
+        track_button::track_button(
             state,
             t.clone(),
-            widget::list::track_button::Info::Album,
-            None,
+            track_button::Info::Album,
+            track_button::Messages {
+                play: None,
+                shuffle: None,
+                add_to_queue: None,
+                add_to_playlist: None,
+                details: None,
+                remove: None,
+            },
         )
         .on_press(Message::Noop)
         .into()

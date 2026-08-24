@@ -13,7 +13,9 @@ use crate::gui::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, spacer, title,
     },
     widget::{
-        self, artist_chip::artist_chip, cover_image::cover_image, list::BUTTON_SPACING,
+        artist_chip::artist_chip,
+        cover_image::cover_image,
+        list::{BUTTON_SPACING, track_button},
         text_spacer::text_spacer,
     },
 };
@@ -60,8 +62,8 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             state.theme.surface_container(),
             ROUNDING_LARGE,
         )
-        .width(Length::Fixed(cover_size))
-        .height(Length::Fixed(cover_size));
+        .width(cover_size)
+        .height(cover_size);
 
         let item_data = column![
             row![
@@ -112,11 +114,18 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
 
     let track_buttons = album.tracks.iter().map(|t| {
-        widget::list::track_button::track_button(
+        track_button::track_button(
             state,
             t.clone(),
-            widget::list::track_button::Info::Length,
-            None,
+            track_button::Info::Length,
+            track_button::Messages {
+                play: None,
+                shuffle: None,
+                add_to_queue: None,
+                add_to_playlist: None,
+                details: None,
+                remove: None,
+            },
         )
         .on_press(Message::Noop)
         .into()

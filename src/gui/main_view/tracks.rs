@@ -5,10 +5,7 @@ use iced_widget::column;
 use crate::gui::{
     Chilen,
     main_view::{self, virtualize_entry},
-    widget::{
-        self,
-        list::{BUTTON_HEIGHT, BUTTON_SPACING},
-    },
+    widget::list::{BUTTON_HEIGHT, BUTTON_SPACING, track_button},
 };
 
 pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_view::Message> {
@@ -16,13 +13,20 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
         virtualize_entry(
             state,
             move || {
-                widget::list::track_button::track_button(
+                track_button::track_button(
                     state,
                     track.clone(),
-                    widget::list::track_button::Info::Artist,
-                    None,
+                    track_button::Info::Artist,
+                    track_button::Messages {
+                        play: Some(main_view::Message::PlayTrack { track_index: index }),
+                        shuffle: None,
+                        add_to_queue: None,
+                        add_to_playlist: None,
+                        details: None,
+                        remove: None,
+                    },
                 )
-                .on_press(main_view::Message::Noop)
+                .on_press(main_view::Message::PlayTrack { track_index: index })
             },
             BUTTON_HEIGHT,
             index,

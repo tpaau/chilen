@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Playlist;
 use iced::{Alignment, Element, Length};
-use iced_m3::{theme::ColorScheme, widget::vertical_menu};
+use iced_m3::theme::ColorScheme;
 use iced_widget::{column, container, responsive, row, text};
 
 use crate::gui::{
@@ -12,7 +12,11 @@ use crate::gui::{
     main_view::top_view::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
     },
-    widget::{self, cover_image::cover_image, list::BUTTON_SPACING, text_spacer::text_spacer},
+    widget::{
+        cover_image::cover_image,
+        list::{BUTTON_SPACING, track_button},
+        text_spacer::text_spacer,
+    },
 };
 
 pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a, Message> {
@@ -79,28 +83,21 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         .iter()
         .enumerate()
         .map(move |(i, t)| {
-            let playlist_cloned = playlist_cloned.clone();
-            let playlist_options = vec![
-                vertical_menu::Entry::Separator,
-                vertical_menu::Entry::Button {
-                    icon: Some(&icons::DELETE),
-                    label: "Remove",
-                    supporting_text: None,
-                    error: true,
-                    action: vertical_menu::Action::Message(Some(
-                        Message::RemoveTrackFromPlaylist {
-                            playlist: playlist_cloned,
-                            index: i,
-                        },
-                    )),
-                },
-            ];
-
-            widget::list::track_button::track_button(
+            track_button::track_button(
                 state,
                 t.clone(),
-                widget::list::track_button::Info::Artist,
-                Some(playlist_options),
+                track_button::Info::Artist,
+                track_button::Messages {
+                    play: None,
+                    shuffle: None,
+                    add_to_queue: None,
+                    add_to_playlist: None,
+                    details: None,
+                    remove: Some(Message::RemoveTrackFromPlaylist {
+                        playlist: playlist_cloned.clone(),
+                        index: i,
+                    }),
+                },
             )
             .on_press(Message::Noop)
             .into()
