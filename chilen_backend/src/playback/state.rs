@@ -135,6 +135,37 @@ impl PlayerState {
         self.on_track_changed();
     }
 
+    pub fn play_new_queue(&mut self, tracks: Vec<Arc<Track>>, index: usize) {
+        trace!("Setting a new queue and playing a track at index {index}");
+        let shuffle_on = self.shuffle_state == ShuffleState::On;
+        if shuffle_on {
+            // Setting this manually to prevent needless shuffling
+            self.shuffle_state = ShuffleState::Off;
+        }
+        self.position = index;
+        self.tracks = tracks;
+        if shuffle_on {
+            self.shuffle_state = ShuffleState::On;
+            self.shuffle();
+        }
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::{Metadata, Property};
+
+            mpris::update_properties(vec![
+                match self.current() {
+                    Some(track) => Property::Metadata(track.get_meta(self.position)),
+                    None => Property::Metadata(Metadata::new()),
+                },
+                Property::CanGoPrevious(self.can_go_previous()),
+                Property::CanGoNext(self.can_go_next()),
+                Property::CanPlay(self.can_play()),
+                Property::CanPause(self.can_pause()),
+            ]);
+        }
+    }
+
     pub fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
         self.tracks.append(tracks);
         if self.shuffle_state == ShuffleState::On {
@@ -158,7 +189,10 @@ impl PlayerState {
         }
     }
 
-    /// Shuffle the queue without changing the current track.
+    /// Shuffle the queue.
+    ///
+    /// This operation will preserve the current track, but it will be put first in the queue
+    /// (position will reset to 0).
     pub fn shuffle(&mut self) {
         if self.tracks.is_empty() {
             use log::warn;
@@ -166,14 +200,16 @@ impl PlayerState {
             warn!("Refusing to shuffle an empty queue");
             return;
         }
-        // Maybe a position check here is necessary to prevent panics?
-        let mut tracks = self.tracks.clone();
-        let prev_pos = self.position;
-        let track = tracks.swap_remove(prev_pos);
+
+        self.shuffled_tracks = self.tracks.clone();
+        let len = self.shuffled_tracks.len();
+        let pos = self.position;
+
+        self.shuffled_tracks.swap(pos, 0);
         let mut rng = rand::rng();
-        tracks.shuffle(&mut rng);
-        tracks.insert(prev_pos, track);
-        self.shuffled_tracks = tracks;
+        self.shuffled_tracks[1..len].shuffle(&mut rng);
+        self.position = 0;
+
         crate::send_event(Event::PlayerStateChanged(self.clone()));
     }
 
@@ -191,6 +227,8 @@ impl PlayerState {
                         thread::spawn(crate::playback::stop);
                     }
                 }
+            } else {
+                self.shuffle();
             }
             self.shuffle_state = shuffle_state;
             crate::send_event(Event::PlayerStateChanged(self.clone()));

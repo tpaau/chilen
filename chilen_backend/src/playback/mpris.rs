@@ -412,7 +412,6 @@ pub(crate) fn update_properties(properties: Vec<Property>) {
 }
 
 pub(crate) fn set_position(position: Duration) {
-    trace!("Setting position to {position:?}");
     thread::spawn(move || {
         let server_guard = SERVER.write().unwrap();
         let server = match server_guard.as_ref() {

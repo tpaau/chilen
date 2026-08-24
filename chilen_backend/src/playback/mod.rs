@@ -182,7 +182,7 @@ pub(crate) fn unwrap_player(maybe_player: Option<&rodio::Player>) -> Result<&rod
 }
 
 /// Play the current track or a track at a specified index in the queue.
-pub(crate) fn play(index: Option<usize>) -> Result<(), Error> {
+pub fn play(index: Option<usize>) -> Result<(), Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
     let mut state_guard = PLAYER_STATE.write().unwrap();
@@ -236,7 +236,7 @@ pub(crate) fn play(index: Option<usize>) -> Result<(), Error> {
     }
 }
 
-pub(crate) fn pause() -> Result<(), Error> {
+pub fn pause() -> Result<(), Error> {
     trace!("Pausing the current media");
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = player_guard.as_ref().unwrap();
@@ -253,7 +253,7 @@ pub(crate) fn pause() -> Result<(), Error> {
     }
 }
 
-pub(crate) fn stop() -> Result<(), Error> {
+pub fn stop() -> Result<(), Error> {
     trace!("Stopping the playback");
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = player_guard.as_ref().unwrap();
@@ -268,7 +268,7 @@ pub(crate) fn stop() -> Result<(), Error> {
     }
 }
 
-pub(crate) fn toggle_playing() -> Result<(), Error> {
+pub fn toggle_playing() -> Result<(), Error> {
     trace!("Toggling playback state");
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
@@ -294,15 +294,82 @@ pub(crate) fn toggle_playing() -> Result<(), Error> {
     }
 }
 
+#[cfg(feature = "mpris")]
 pub(crate) fn get_playback_state() -> Result<PlaybackState, Error> {
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     Ok(state.playback_state)
 }
 
+#[cfg(feature = "mpris")]
+pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    match state.current() {
+        Some(track) => Ok(Some(track.get_meta(state.position))),
+        None => Ok(None),
+    }
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn get_loop_state() -> Result<LoopState, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.loop_state)
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn get_shuffle_state() -> Result<ShuffleState, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.shuffle_state)
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn get_player_position() -> Result<Duration, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.player_position)
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn get_player_volume() -> Result<PlayerVolume, Error> {
+    let player_guard = PLAYER_HANDLE.read().unwrap();
+    let player = unwrap_player(player_guard.as_ref())?;
+    Ok(PlayerVolume::new(player.volume()))
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn can_play() -> Result<bool, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.can_play())
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn can_pause() -> Result<bool, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.playback_state == PlaybackState::Playing)
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn can_go_next() -> Result<bool, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.can_go_next())
+}
+
+#[cfg(feature = "mpris")]
+pub(crate) fn can_go_previous() -> Result<bool, Error> {
+    let state_guard = PLAYER_STATE.read().unwrap();
+    let state = unwrap_state_ref(state_guard.as_ref())?;
+    Ok(state.can_go_previous())
+}
+
 // TEST: Add tests for this
 /// Opens a URI that can either be a track, a directory with tracks, or an M3U8 playlist file.
-pub(crate) fn open_uri(uri: PathBuf) -> Result<(), Error> {
+pub fn open_uri(uri: PathBuf) -> Result<(), Error> {
     trace!("Opening URI {uri:?}");
     match uri.try_exists() {
         Ok(exists) => {
@@ -362,14 +429,41 @@ pub(crate) fn open_uri(uri: PathBuf) -> Result<(), Error> {
     }
 }
 
-pub(crate) fn set_queue(queue: Vec<Arc<Track>>) -> Result<(), Error> {
+/// Set a new queue and play a track at a specific index in that queue.
+pub fn play_new_queue(tracks: Vec<Arc<Track>>, index: usize) -> Result<(), Error> {
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    state.play_new_queue(tracks, index);
+
+    let player_guard = PLAYER_HANDLE.read().unwrap();
+    let player = unwrap_player(player_guard.as_ref())?;
+    player.stop();
+    if let Some(track) = state.current() {
+        let source = match track.open_source() {
+            Ok(source) => source,
+            Err(e) => {
+                error!("Could not open audio source: {e}");
+                return Err(Error::SourceError);
+            }
+        };
+        player.append(source);
+        player.play();
+        state.set_playback_state(PlaybackState::Playing);
+    }
+    background_save_state(state.clone());
+    Ok(())
+}
+
+/// Set the queue to a list of track.
+///
+/// Note that if shuffle is enabled, the queue will be shuffled immediately after setting it. For
+/// that reason, please use the `[play_new_queue]` function for setting the queue and then playing a
+/// track at a specific index in that queue.
+pub fn set_queue(queue: Vec<Arc<Track>>) -> Result<(), Error> {
     trace!("Setting a new queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.set_tracks(queue);
-    if state.shuffle_state == ShuffleState::On {
-        state.shuffle();
-    }
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
     player.stop();
@@ -395,16 +489,6 @@ pub fn append_to_queue(queue: &mut Vec<Arc<Track>>) -> Result<(), Error> {
     state.append_tracks(queue);
     background_save_state(state.clone());
     Ok(())
-}
-
-#[cfg(feature = "mpris")]
-pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    match state.current() {
-        Some(track) => Ok(Some(track.get_meta(state.position))),
-        None => Ok(None),
-    }
 }
 
 pub fn skip_next() -> Result<(), Error> {
@@ -478,26 +562,13 @@ pub fn set_loop_state(loop_state: LoopState) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn get_loop_state() -> Result<LoopState, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.loop_state)
-}
-
 pub fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), Error> {
     trace!("Setting shuffle state to {shuffle_state:?}");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.set_shuffle_state(shuffle_state);
-    state.shuffle();
     background_save_state(state.clone());
     Ok(())
-}
-
-pub(crate) fn get_shuffle_state() -> Result<ShuffleState, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.shuffle_state)
 }
 
 pub fn set_player_position(position: Duration) -> Result<(), Error> {
@@ -636,12 +707,6 @@ pub fn seek(delta: SignedDuration) -> Result<(), Error> {
     }
 }
 
-pub(crate) fn get_player_position() -> Result<Duration, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.player_position)
-}
-
 pub fn set_player_volume(volume: PlayerVolume) -> Result<(), Error> {
     trace!("Setting player volume to {:?}", volume);
     let player_guard = PLAYER_HANDLE.read().unwrap();
@@ -652,12 +717,6 @@ pub fn set_player_volume(volume: PlayerVolume) -> Result<(), Error> {
     state.set_player_volume(volume);
     background_save_state(state.clone());
     Ok(())
-}
-
-pub(crate) fn get_player_volume() -> Result<PlayerVolume, Error> {
-    let player_guard = PLAYER_HANDLE.read().unwrap();
-    let player = unwrap_player(player_guard.as_ref())?;
-    Ok(PlayerVolume::new(player.volume()))
 }
 
 // #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -771,32 +830,4 @@ pub(crate) fn init(
         drop(state_guard);
         drop(player_guard);
     }
-}
-
-#[cfg(feature = "mpris")]
-pub(crate) fn can_play() -> Result<bool, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.can_play())
-}
-
-#[cfg(feature = "mpris")]
-pub(crate) fn can_pause() -> Result<bool, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.playback_state == PlaybackState::Playing)
-}
-
-#[cfg(feature = "mpris")]
-pub(crate) fn can_go_next() -> Result<bool, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.can_go_next())
-}
-
-#[cfg(feature = "mpris")]
-pub(crate) fn can_go_previous() -> Result<bool, Error> {
-    let state_guard = PLAYER_STATE.read().unwrap();
-    let state = unwrap_state_ref(state_guard.as_ref())?;
-    Ok(state.can_go_previous())
 }

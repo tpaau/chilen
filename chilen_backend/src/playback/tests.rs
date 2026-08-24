@@ -25,7 +25,6 @@ fn skip_next() {
     }
     assert!(state.next_track().is_none());
     state.set_shuffle_state(ShuffleState::On);
-    state.shuffle();
     state.position = 0;
     while state.can_go_next() {
         println!("Position: {}", state.position);
@@ -45,7 +44,6 @@ fn skip_previous() {
     }
     assert!(state.previous_track().is_none());
     state.set_shuffle_state(ShuffleState::On);
-    state.shuffle();
     state.position = 0;
     while state.can_go_previous() {
         state.previous_track().unwrap();
@@ -71,7 +69,6 @@ fn track_loop() {
 
     state.position = 1;
     state.set_shuffle_state(ShuffleState::On);
-    state.shuffle();
     for _ in 0..state.tracks.len() {
         assert_eq!(state.next_track().unwrap(), track);
     }
@@ -123,7 +120,6 @@ fn shuffle_track_stays_the_same() {
     };
     state.position = rand::random_range(0..state.tracks.len() - 1);
     state.set_shuffle_state(ShuffleState::On);
-    state.shuffle();
     let loops = [LoopState::Off, LoopState::Track, LoopState::Playlist];
     for loop_state in loops {
         state.set_loop_state(loop_state);
@@ -139,7 +135,6 @@ fn shuffle_track_stays_the_same() {
                     println!("Enabling shuffle!");
                     let track = &state.tracks[state.position].clone();
                     state.set_shuffle_state(ShuffleState::On);
-                    state.shuffle();
                     assert_eq!(state.current().unwrap(), track.clone());
                 } else {
                     println!("Disabling shuffle!");
@@ -156,14 +151,11 @@ fn shuffle_track_stays_the_same() {
                 state.shuffled_tracks.len()
             );
             let track = if rand::random() && state.can_go_next() {
-                println!("Right (1)!");
+                println!("Right!");
                 state.next_track()
-            } else if state.can_go_previous() {
+            } else {
                 println!("Left!");
                 state.previous_track()
-            } else {
-                println!("Right (2)!");
-                state.next_track()
             };
             if loop_state == LoopState::Track {
                 assert_eq!(track, pre_track);
@@ -187,4 +179,28 @@ fn test_set_queue() {
     assert_eq!(state.player_position, Duration::default());
     assert_eq!(state.position, 0);
     assert_eq!(state.tracks, tracks);
+}
+
+#[test]
+fn test_play_new_queue() {
+    const TEST_ITER_COUNT: usize = 100;
+
+    let tracks: Vec<_> = Track::unique_tracks(10).into_iter().map(Arc::new).collect();
+    let mut state = PlayerState::default();
+
+    for _ in 0..TEST_ITER_COUNT {
+        state.set_shuffle_state(ShuffleState::Off);
+        let index = rand::random_range(0..tracks.len() - 1);
+        let expected = tracks.get(index).cloned();
+        state.play_new_queue(tracks.clone(), index);
+        assert_eq!(state.current(), expected);
+        assert_eq!(state.position, index);
+
+        state.set_shuffle_state(ShuffleState::On);
+        let index = rand::random_range(0..tracks.len() - 1);
+        let expected = tracks.get(index).cloned();
+        state.play_new_queue(tracks.clone(), index);
+        assert_eq!(state.current(), expected);
+        assert_eq!(state.position, 0);
+    }
 }
