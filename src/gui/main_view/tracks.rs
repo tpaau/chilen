@@ -18,15 +18,21 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                     track.clone(),
                     track_button::Info::Artist,
                     track_button::Messages {
-                        play: Some(main_view::Message::PlayTrack { track_index: index }),
-                        shuffle: None,
+                        play: Some(main_view::Message::PlayTracksNoShuffle {
+                            initial_position: index,
+                        }),
+                        shuffle: Some(main_view::Message::ShuffleTracks {
+                            initial_position: index,
+                        }),
                         add_to_queue: None,
                         add_to_playlist: None,
                         details: None,
                         remove: None,
                     },
                 )
-                .on_press(main_view::Message::PlayTrack { track_index: index })
+                .on_press(main_view::Message::PlayTracks {
+                    initial_position: index,
+                })
             },
             BUTTON_HEIGHT,
             index,

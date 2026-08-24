@@ -115,7 +115,9 @@ pub enum Message {
     ButtonPoppedOut(usize),
     TopView(top_view::Message),
     OpenSettings,
-    PlayTrack { track_index: usize },
+    PlayTracks { initial_position: usize },
+    PlayTracksNoShuffle { initial_position: usize },
+    ShuffleTracks { initial_position: usize },
 }
 
 fn virtualize_entry<'a, E>(
@@ -277,9 +279,30 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
         Message::Noop => {}
         Message::OpenSettings => state.dialog = gui::dialog::Dialog::Settings,
-        Message::PlayTrack { track_index } => match &state.library {
+        Message::PlayTracks { initial_position } => match &state.library {
             Some(lib) => {
-                let _ = chilen_backend::playback::play_new_queue(lib.tracks.clone(), track_index);
+                let _ =
+                    chilen_backend::playback::play_new_queue(lib.tracks.clone(), initial_position);
+            }
+            None => error!("Cannot play the track, the library is not loaded"),
+        },
+        Message::PlayTracksNoShuffle { initial_position } => match &state.library {
+            Some(lib) => {
+                let _ = chilen_backend::playback::set_shuffle_state(
+                    chilen_backend::playback::ShuffleState::Off,
+                );
+                let _ =
+                    chilen_backend::playback::play_new_queue(lib.tracks.clone(), initial_position);
+            }
+            None => error!("Cannot play the track, the library is not loaded"),
+        },
+        Message::ShuffleTracks { initial_position } => match &state.library {
+            Some(lib) => {
+                let _ = chilen_backend::playback::set_shuffle_state(
+                    chilen_backend::playback::ShuffleState::On,
+                );
+                let _ =
+                    chilen_backend::playback::play_new_queue(lib.tracks.clone(), initial_position);
             }
             None => error!("Cannot play the track, the library is not loaded"),
         },
