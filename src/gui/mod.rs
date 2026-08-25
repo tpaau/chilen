@@ -81,6 +81,7 @@ struct Chilen {
     settings: Settings,
     main_view: main_view::State,
     playlist_view: playlist_view::State,
+    playback_view: playback_view::State,
 }
 
 impl Default for Chilen {
@@ -97,7 +98,8 @@ impl Default for Chilen {
                 nav_stack: main_view::NavStack::default(),
                 visible: None,
             },
-            playlist_view: playlist_view::State { visible: None },
+            playlist_view: playlist_view::State::default(),
+            playback_view: playback_view::State::default(),
         }
     }
 }

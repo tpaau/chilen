@@ -17,7 +17,13 @@ pub enum Message {
     TogglePlaying,
     Next,
     ToggleLooping,
-    SetPosition(Duration),
+    SeekSliderMoved(f32),
+    SeekSliderReleased,
+}
+
+#[derive(Default)]
+pub struct State {
+    seek_slider_value: Option<f32>,
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -76,31 +82,36 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let content = column![title, artist, album];
 
     let max_value = 1000;
-    let (track_duration, value) = state
-        .player_state
-        .as_ref()
-        .map(|p| {
-            if let Some(track) = p.current() {
-                if track.duration.as_secs_f32() != 0.0 {
-                    (
-                        Some(track.duration),
+
+    let value = if let Some(held) = state.playback_view.seek_slider_value {
+        (held * max_value as f32) as u32
+    } else {
+        state
+            .player_state
+            .as_ref()
+            .map(|p| {
+                if let Some(track) = p.current() {
+                    if track.duration.as_secs_f32() != 0.0 {
                         ((p.player_position().as_secs_f32() / track.duration.as_secs_f32())
-                            * max_value as f32) as u32,
-                    )
+                            * max_value as f32) as u32
+                    } else {
+                        0
+                    }
                 } else {
-                    (None, 0)
+                    0
                 }
-            } else {
-                (None, 0)
-            }
-        })
-        .unwrap_or((None, 0));
+            })
+            .unwrap_or(0)
+    };
+
     let slider = iced_widget::slider(0..=max_value, value, move |position| {
-        let position = track_duration
-            .map(|d| Duration::from_secs_f32(position as f32 / max_value as f32 * d.as_secs_f32()))
-            .unwrap_or(Duration::default());
-        Message::SetPosition(position)
-    });
+        Message::SeekSliderMoved(if max_value != 0 {
+            position as f32 / max_value as f32
+        } else {
+            0.0
+        })
+    })
+    .on_release(Message::SeekSliderReleased);
 
     let play_button_icon = state
         .player_state
@@ -238,7 +249,20 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::ToggleLooping => {
             let _ = chilen_backend::playback::cycle_loop_state();
         }
-        Message::SetPosition(position) => {
+        Message::SeekSliderMoved(value) => state.playback_view.seek_slider_value = Some(value),
+        Message::SeekSliderReleased => {
+            let ratio = state
+                .playback_view
+                .seek_slider_value
+                .unwrap_or_default()
+                .clamp(0.0, 1.0);
+            state.playback_view.seek_slider_value = None;
+            let track_duration = state
+                .player_state
+                .as_ref()
+                .and_then(|p| p.current().map(|t| t.duration))
+                .unwrap_or_default();
+            let position = Duration::from_secs_f32(track_duration.as_secs_f32() * ratio);
             let _ = chilen_backend::playback::set_player_position(position);
         }
     }

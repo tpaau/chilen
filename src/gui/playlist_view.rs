@@ -31,6 +31,7 @@ pub enum Message {
     ConfirmPlaylistDeletion(Arc<Playlist>),
 }
 
+#[derive(Default)]
 pub struct State {
     pub visible: Option<Vec<bool>>,
 }
