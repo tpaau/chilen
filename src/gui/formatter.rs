@@ -2,9 +2,11 @@ use std::time::Duration;
 
 use chilen_backend::music_lib::Timestamp;
 
-pub fn format_track_duration(d: Duration) -> String {
-    let minutes = d.as_secs() / 60;
-    let seconds = d.as_secs() - minutes * 60;
+pub const UNKNOWN_TRACK_DURATION: &str = "--:--";
+
+pub fn format_track_duration(duration: Duration) -> String {
+    let minutes = duration.as_secs() / 60;
+    let seconds = duration.as_secs() - minutes * 60;
     format!("{minutes}:{seconds:02}")
 }
 

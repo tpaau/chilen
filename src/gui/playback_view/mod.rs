@@ -3,10 +3,12 @@ use std::time::Duration;
 use chilen_backend::playback::LoopState;
 use iced::{Alignment, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{column, container, row, text};
+use iced_widget::{column, container, row, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
+    formatter::{UNKNOWN_TRACK_DURATION, format_track_duration},
+    icons,
     widget::cover_image::cover_image,
 };
 
@@ -67,6 +69,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .unwrap_or("Unknown artist".to_string()),
             )
             .wrapping(text::Wrapping::None)
+            .size(font::SIZE_SMALL)
             .color(state.theme.on_surface_variant())
         })
     });
@@ -75,6 +78,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         playback_state.current().map(|track| {
             text(track.album.clone().unwrap_or("Unknown album".to_string()))
                 .wrapping(text::Wrapping::None)
+                .size(font::SIZE_SMALL)
                 .color(state.theme.on_surface_variant())
         })
     });
@@ -83,25 +87,31 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let max_value = 1000;
 
+    let (player_position, track_duration) = state
+        .player_state
+        .as_ref()
+        .map(|p| {
+            if let Some(track) = p.current() {
+                (p.player_position(), Some(track.duration))
+            } else {
+                (p.player_position(), None)
+            }
+        })
+        .unwrap_or((Duration::default(), None));
+
     let value = if let Some(held) = state.playback_view.seek_slider_value {
         (held * max_value as f32) as u32
     } else {
-        state
-            .player_state
-            .as_ref()
-            .map(|p| {
-                if let Some(track) = p.current() {
-                    if track.duration.as_secs_f32() != 0.0 {
-                        ((p.player_position().as_secs_f32() / track.duration.as_secs_f32())
-                            * max_value as f32) as u32
-                    } else {
-                        0
-                    }
-                } else {
-                    0
-                }
-            })
-            .unwrap_or(0)
+        if let Some(track_duration) = track_duration {
+            if track_duration.as_secs_f32() != 0.0 {
+                ((player_position.as_secs_f32() / track_duration.as_secs_f32()) * max_value as f32)
+                    as u32
+            } else {
+                0
+            }
+        } else {
+            0
+        }
     };
 
     let slider = iced_widget::slider(0..=max_value, value, move |position| {
@@ -112,6 +122,38 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         })
     })
     .on_release(Message::SeekSliderReleased);
+
+    let player_position = track_duration
+        .map(|d| {
+            let duration = state
+                .playback_view
+                .seek_slider_value
+                .map(|v| Duration::from_secs_f32(d.as_secs_f32() * v))
+                .unwrap_or(player_position);
+            format_track_duration(duration)
+        })
+        .unwrap_or(UNKNOWN_TRACK_DURATION.to_string());
+    let (player_pos_color, player_pos_font) = state
+        .playback_view
+        .seek_slider_value
+        .map(|_| (state.theme.on_surface(), font::font_bold()))
+        .unwrap_or((state.theme.on_surface_variant(), font::font()));
+    let track_duration = track_duration
+        .map(format_track_duration)
+        .unwrap_or(UNKNOWN_TRACK_DURATION.to_string());
+
+    let timestamps = row![
+        text(player_position)
+            .size(font::SIZE_SMALL)
+            .color(player_pos_color)
+            .font(player_pos_font),
+        space().width(Length::Fill),
+        text(track_duration)
+            .size(font::SIZE_SMALL)
+            .color(state.theme.on_surface_variant()),
+    ];
+
+    let slider_stuff = column![slider, timestamps].spacing(SPACING_SMALLER);
 
     let play_button_icon = state
         .player_state
@@ -226,7 +268,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .center_x(Length::Fill);
 
     let padding = SPACING_SMALL;
-    container(column![cover, content, slider, buttons].spacing(SPACING_REGULAR))
+    container(column![cover, content, slider_stuff, buttons].spacing(SPACING_REGULAR))
         .width(cover_size + 2.0 * padding)
         .padding(padding::horizontal(padding).top(padding))
         .into()
