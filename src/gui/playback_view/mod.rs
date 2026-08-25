@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use chilen_backend::playback::LoopState;
 use iced::{Alignment, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
@@ -15,6 +17,7 @@ pub enum Message {
     TogglePlaying,
     Next,
     ToggleLooping,
+    SetPosition(Duration),
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -71,6 +74,33 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     });
 
     let content = column![title, artist, album];
+
+    let max_value = 1000;
+    let (track_duration, value) = state
+        .player_state
+        .as_ref()
+        .map(|p| {
+            if let Some(track) = p.current() {
+                if track.duration.as_secs_f32() != 0.0 {
+                    (
+                        Some(track.duration),
+                        ((p.player_position().as_secs_f32() / track.duration.as_secs_f32())
+                            * max_value as f32) as u32,
+                    )
+                } else {
+                    (None, 0)
+                }
+            } else {
+                (None, 0)
+            }
+        })
+        .unwrap_or((None, 0));
+    let slider = iced_widget::slider(0..=max_value, value, move |position| {
+        let position = track_duration
+            .map(|d| Duration::from_secs_f32(position as f32 / max_value as f32 * d.as_secs_f32()))
+            .unwrap_or(Duration::default());
+        Message::SetPosition(position)
+    });
 
     let play_button_icon = state
         .player_state
@@ -185,7 +215,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .center_x(Length::Fill);
 
     let padding = SPACING_SMALL;
-    container(column![cover, content, buttons].spacing(SPACING_REGULAR))
+    container(column![cover, content, slider, buttons].spacing(SPACING_REGULAR))
         .width(cover_size + 2.0 * padding)
         .padding(padding::horizontal(padding).top(padding))
         .into()
@@ -207,6 +237,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::ToggleLooping => {
             let _ = chilen_backend::playback::cycle_loop_state();
+        }
+        Message::SetPosition(position) => {
+            let _ = chilen_backend::playback::set_player_position(position);
         }
     }
     Task::none()
