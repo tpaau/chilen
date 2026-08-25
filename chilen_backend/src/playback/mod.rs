@@ -762,27 +762,6 @@ pub fn set_player_volume(volume: PlayerVolume) -> Result<(), Error> {
     Ok(())
 }
 
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-// pub struct Config {
-//     /// A friendly name to identify the media player to users (eg: “VLC media player”).
-//     ///
-//     /// This should usually match the name found in .desktop files.
-//     #[cfg(any(feature = "mpris", doc))]
-//     pub identity: String,
-//     /// The bus name suffix to be used with MPRIS.
-//     ///
-//     /// The resulting bus name will be `org.mpris.MediaPlayer2.<bus_name_suffix>`, where
-//     /// `<bus_name_suffix>` must be a unique identifier, such as one based on a UNIX process id.
-//     /// For example, this could be:
-//     ///
-//     /// - `org.mpris.MediaPlayer2.vlc.instance7389`
-//     ///
-//     /// **Note:** According to the D-Bus specification, the unique identifier “must only contain
-//     /// the ASCII characters \[A-Z\]\[a-z\]\[0-9\]_-” and “must not begin with a digit”.
-//     #[cfg(any(feature = "mpris", doc))]
-//     pub bus_name_suffix: String,
-// }
-
 pub(crate) fn init(
     #[cfg(feature = "mpris")] identity: String,
     #[cfg(feature = "mpris")] identifier: String,
