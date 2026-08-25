@@ -177,6 +177,10 @@ impl PlayerState {
         self.loop_state
     }
 
+    pub fn player_position(&self) -> Duration {
+        self.player_position
+    }
+
     pub(crate) fn on_playback_state_changed(&self) {
         trace!("Playback state changed: {}", self.playback_state);
 
@@ -217,22 +221,8 @@ impl PlayerState {
             self.shuffle_state = ShuffleState::On;
             self.shuffle();
         }
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
-        #[cfg(feature = "mpris")]
-        {
-            use mpris_server::{Metadata, Property};
-
-            mpris::update_properties(vec![
-                match self.current() {
-                    Some(track) => Property::Metadata(track.get_meta(self.position)),
-                    None => Property::Metadata(Metadata::new()),
-                },
-                Property::CanGoPrevious(self.can_go_previous()),
-                Property::CanGoNext(self.can_go_next()),
-                Property::CanPlay(self.can_play()),
-                Property::CanPause(self.can_pause()),
-            ]);
-        }
+        self.on_track_changed();
+        self.set_player_position(Duration::default());
     }
 
     pub(crate) fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
