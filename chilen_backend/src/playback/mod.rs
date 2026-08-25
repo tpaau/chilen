@@ -634,6 +634,7 @@ pub fn set_player_position(position: Duration) -> Result<(), Error> {
     } else if let Some(track) = state.current()
         && position > track.duration
     {
+        drop(state_guard);
         skip_next()
     } else if let Err(e) = player.try_seek(position) {
         error!("Could not set player position: {e}");
