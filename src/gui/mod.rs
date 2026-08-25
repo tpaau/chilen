@@ -17,9 +17,9 @@ use chilen_backend::{
     playback::state::PlayerState,
 };
 use iced::{
-    self, Element, Font, Length, Subscription, Task,
+    self, Element, Font, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
-    padding, stream,
+    stream,
     widget::{column, container, row},
     window::{self},
 };
@@ -146,15 +146,12 @@ impl Chilen {
         stack![
             container(column![row![
                 // TODO: I should be able to resize this
-                container(playlist_view::view(state).map(Message::PlaylistView))
-                    .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
-                    .width(Length::Fixed(350.0))
-                    .height(Length::Fill),
+                playlist_view::view(state).map(Message::PlaylistView),
                 main_view::view(state).map(Message::MainView),
                 // TODO: I should be able to resize this
                 playback_view::view(state).map(Message::Playback),
             ]])
-            .style(|_| container::background(state.theme.surface_container())),
+            .style(|_| container::background(state.theme.surface_container_low())),
             dialog::view(state),
         ]
         .into()

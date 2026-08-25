@@ -1,15 +1,20 @@
-use iced::{Element, Task, padding};
+use chilen_backend::playback::LoopState;
+use iced::{Alignment, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{column, container, text};
+use iced_widget::{column, container, row, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, font, icons,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font, icons,
     widget::cover_image::cover_image,
 };
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Noop,
+    ToggleShuffle,
+    Previous,
+    TogglePlaying,
+    Next,
+    ToggleLooping,
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -52,13 +57,135 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .map(|a| a.join(&state.settings.value_separator))
                     .unwrap_or("Unknown artist".to_string()),
             )
+            .wrapping(text::Wrapping::None)
+            .color(state.theme.on_surface_variant())
         })
     });
 
-    let content = column![title, artist].spacing(SPACING_SMALL);
+    let album = state.player_state.as_ref().and_then(|playback_state| {
+        playback_state.current().map(|track| {
+            text(track.album.clone().unwrap_or("Unknown album".to_string()))
+                .wrapping(text::Wrapping::None)
+                .color(state.theme.on_surface_variant())
+        })
+    });
+
+    let content = column![title, artist, album];
+
+    let play_button_icon = state
+        .player_state
+        .as_ref()
+        .map(|p| match p.playback_state() {
+            chilen_backend::playback::PlaybackState::Playing => &icons::PAUSE,
+            chilen_backend::playback::PlaybackState::Paused => &icons::PLAY_ARROW,
+            chilen_backend::playback::PlaybackState::Stopped => &icons::STOP,
+        })
+        .unwrap_or(&icons::STOP);
+    let loop_button_icon = state
+        .player_state
+        .as_ref()
+        .map(|p| match p.loop_state() {
+            LoopState::Off | LoopState::Playlist => &icons::REPEAT,
+            LoopState::Track => &icons::REPEAT_ONE,
+        })
+        .unwrap_or(&icons::REPEAT);
+    let toggle_size = {
+        let size = iced_m3::widget::button::Size::Small;
+        size.with_width(size.height()).with_padding(0.0)
+    };
+    let skip_button_size = {
+        let size = iced_m3::widget::button::Size::Medium;
+        size.with_width(size.height()).with_padding(0.0)
+    };
+    let buttons = container(
+        row![
+            iced_m3::widget::button(&state.theme)
+                .size(toggle_size)
+                .label_maybe(None)
+                .icon_font(icons::filled())
+                .icon(&icons::SHUFFLE)
+                .style(iced_m3::widget::button::Style::Outlined)
+                .selected(
+                    state
+                        .player_state
+                        .as_ref()
+                        .map(|p| p.shuffle_enabled())
+                        .unwrap_or_default()
+                )
+                .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleShuffle)),
+            iced_m3::widget::button(&state.theme)
+                .size(skip_button_size)
+                .label_maybe(None)
+                .icon_font(icons::filled())
+                .icon(&icons::SKIP_PREVIOUS)
+                .style(iced_m3::widget::button::Style::Tonal(
+                    iced_m3::theme::Accent::Tertiary
+                ))
+                .corner_style(iced_m3::widget::button::CornerStyle::Square)
+                .on_press_maybe(
+                    state
+                        .player_state
+                        .as_ref()
+                        .and_then(|p| p.can_go_previous().then_some(Message::Previous))
+                ),
+            iced_m3::widget::button(&state.theme)
+                .size(iced_m3::widget::button::Size::Medium)
+                .label_maybe(None)
+                .icon_font(icons::filled())
+                .icon(play_button_icon)
+                .style(iced_m3::widget::button::Style::Tonal(
+                    iced_m3::theme::Accent::Primary
+                ))
+                .selected(
+                    state
+                        .player_state
+                        .as_ref()
+                        .map(|p| p.is_playing())
+                        .unwrap_or_default()
+                )
+                .on_press_maybe(
+                    state
+                        .player_state
+                        .as_ref()
+                        .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying))
+                ),
+            iced_m3::widget::button(&state.theme)
+                .size(skip_button_size)
+                .label_maybe(None)
+                .icon_font(icons::filled())
+                .icon(&icons::SKIP_NEXT)
+                .style(iced_m3::widget::button::Style::Tonal(
+                    iced_m3::theme::Accent::Tertiary
+                ))
+                .corner_style(iced_m3::widget::button::CornerStyle::Square)
+                .on_press_maybe(
+                    state
+                        .player_state
+                        .as_ref()
+                        .and_then(|p| p.can_go_next().then_some(Message::Next))
+                ),
+            iced_m3::widget::button(&state.theme)
+                .size(toggle_size)
+                .label_maybe(None)
+                .icon_font(icons::filled())
+                .icon(loop_button_icon)
+                .style(iced_m3::widget::button::Style::Outlined)
+                .selected(
+                    state
+                        .player_state
+                        .as_ref()
+                        .map(|p| p.loop_state() != LoopState::Off)
+                        .unwrap_or_default()
+                )
+                .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleLooping)),
+        ]
+        .align_y(Alignment::Center)
+        .spacing(SPACING_SMALLER),
+    )
+    .center_x(Length::Fill);
 
     let padding = SPACING_SMALL;
-    container(column![cover, content].spacing(SPACING_REGULAR))
+    container(column![cover, content, buttons].spacing(SPACING_REGULAR))
         .width(cover_size + 2.0 * padding)
         .padding(padding::horizontal(padding).top(padding))
         .into()
@@ -66,7 +193,21 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
-        Message::Noop => {}
+        Message::ToggleShuffle => {
+            let _ = chilen_backend::playback::toggle_shuffle_state();
+        }
+        Message::Previous => {
+            let _ = chilen_backend::playback::skip_previous();
+        }
+        Message::TogglePlaying => {
+            let _ = chilen_backend::playback::toggle_playing();
+        }
+        Message::Next => {
+            let _ = chilen_backend::playback::skip_next();
+        }
+        Message::ToggleLooping => {
+            let _ = chilen_backend::playback::cycle_loop_state();
+        }
     }
     Task::none()
 }

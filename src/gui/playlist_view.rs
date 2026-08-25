@@ -106,7 +106,12 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
             .padding(padding::bottom(SPACING_SMALL))
         )),
     };
-    column![heading, content].spacing(SPACING_SMALLER).into()
+
+    container(column![heading, content].spacing(SPACING_SMALLER))
+        .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
+        .width(Length::Fixed(350.0))
+        .height(Length::Fill)
+        .into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
