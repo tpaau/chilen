@@ -135,6 +135,9 @@ fn main() {
                     locale!("en-US")
                 }
             },
+            playback: chilen_backend::playback::Config {
+                skip_previous_threshold: Some(Duration::from_secs(8)),
+            },
             library: music_lib::Config {
                 value_separators: ValueSeparators::new(vec![
                     ",".to_string(),

@@ -31,6 +31,7 @@ pub struct Config {
     pub music_dir: PathBuf,
     pub data_dir: PathBuf,
     pub locale: Locale,
+    pub playback: playback::Config,
     pub library: music_lib::Config,
 }
 
@@ -46,6 +47,9 @@ pub(crate) fn testing_init_config() {
         music_dir: PathBuf::new(),
         data_dir: PathBuf::new(),
         locale: "en-US".parse().unwrap(),
+        playback: playback::Config {
+            skip_previous_threshold: None,
+        },
         library: crate::music_lib::Config {
             value_separators: ValueSeparators::default(),
             indexer: crate::music_lib::indexer::Config::default(),
