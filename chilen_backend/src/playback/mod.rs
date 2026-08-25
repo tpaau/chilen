@@ -55,12 +55,21 @@ pub enum LoopState {
     /// The playback will stop when there are no more tracks to play.
     #[default]
     Off,
-    /// The current track will start again from the beginning once it has finished playing.
-    Track,
     /// The playback will loop through the entire queue.
     Playlist,
+    /// The current track will start again from the beginning once it has finished playing.
+    Track,
 }
 
+impl LoopState {
+    pub fn next(&self) -> Self {
+        match self {
+            Self::Off => Self::Playlist,
+            Self::Playlist => Self::Track,
+            Self::Track => Self::Off,
+        }
+    }
+}
 /// Shuffle state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ShuffleState {
@@ -73,18 +82,9 @@ pub enum ShuffleState {
     On,
 }
 
-impl From<ShuffleState> for bool {
-    fn from(s: ShuffleState) -> bool {
-        match s {
-            ShuffleState::Off => false,
-            ShuffleState::On => true,
-        }
-    }
-}
-
-impl From<bool> for ShuffleState {
-    fn from(value: bool) -> Self {
-        if value { Self::On } else { Self::Off }
+impl ShuffleState {
+    pub fn enabled(&self) -> bool {
+        self == &Self::On
     }
 }
 
@@ -562,10 +562,33 @@ pub fn set_loop_state(loop_state: LoopState) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn cycle_loop_state() -> Result<(), Error> {
+    trace!("Cycling loop state");
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    state.set_loop_state(state.loop_state.next());
+    background_save_state(state.clone());
+    Ok(())
+}
+
 pub fn set_shuffle_state(shuffle_state: ShuffleState) -> Result<(), Error> {
     trace!("Setting shuffle state to {shuffle_state:?}");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
+    state.set_shuffle_state(shuffle_state);
+    background_save_state(state.clone());
+    Ok(())
+}
+
+pub fn toggle_shuffle_state() -> Result<(), Error> {
+    trace!("Toggling shuffle state");
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    let shuffle_state = match state.shuffle_state() {
+        ShuffleState::Off => ShuffleState::On,
+        ShuffleState::On => ShuffleState::Off,
+    };
+    trace!("Setting shuffle state to {shuffle_state:?}");
     state.set_shuffle_state(shuffle_state);
     background_save_state(state.clone());
     Ok(())

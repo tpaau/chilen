@@ -29,14 +29,14 @@ pub struct PlayerState {
     ///
     /// It can either point to the `tracks` variable or `shuffled_tracks` is shuffle is supported
     /// and set to [`ShuffleState::On`].
-    pub position: usize,
-    pub player_position: Duration,
-    pub player_volume: PlayerVolume,
-    pub playback_state: PlaybackState,
-    pub tracks: Vec<Arc<Track>>,
-    pub shuffled_tracks: Vec<Arc<Track>>,
-    pub shuffle_state: ShuffleState,
-    pub loop_state: LoopState,
+    pub(super) position: usize,
+    pub(super) player_position: Duration,
+    pub(super) player_volume: PlayerVolume,
+    pub(super) playback_state: PlaybackState,
+    pub(super) tracks: Vec<Arc<Track>>,
+    pub(super) shuffled_tracks: Vec<Arc<Track>>,
+    pub(super) shuffle_state: ShuffleState,
+    pub(super) loop_state: LoopState,
 }
 
 impl TryFrom<PlayerStateRaw> for PlayerState {
@@ -68,23 +68,113 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
 }
 
 impl PlayerState {
-    fn on_track_changed(&self) {
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
-
-        #[cfg(feature = "mpris")]
-        {
-            use mpris_server::{Metadata, Property};
-
-            let properties = vec![
-                match self.current() {
-                    Some(track) => Property::Metadata(track.get_meta(self.position)),
-                    None => Property::Metadata(Metadata::new()),
-                },
-                Property::CanGoPrevious(self.can_go_previous()),
-                Property::CanGoNext(self.can_go_next()),
-            ];
-            mpris::update_properties(properties);
+    pub fn is_empty(&self) -> bool {
+        match self.shuffle_state {
+            ShuffleState::Off => self.tracks.is_empty(),
+            ShuffleState::On => self.shuffled_tracks.is_empty(),
         }
+    }
+
+    pub fn current(&self) -> Option<Arc<Track>> {
+        match self.shuffle_state {
+            ShuffleState::Off => {
+                if self.position < self.tracks.len() {
+                    return Some(self.tracks[self.position].clone());
+                }
+            }
+            ShuffleState::On => {
+                if self.position < self.shuffled_tracks.len() {
+                    return Some(self.shuffled_tracks[self.position].clone());
+                }
+            }
+        }
+        None
+    }
+
+    pub fn can_seek(&self) -> bool {
+        self.playback_state != PlaybackState::Stopped
+    }
+
+    pub fn can_play(&self) -> bool {
+        match self.shuffle_state {
+            ShuffleState::Off => {
+                self.position < self.tracks.len() && self.playback_state != PlaybackState::Playing
+            }
+            ShuffleState::On => {
+                self.position < self.shuffled_tracks.len()
+                    && self.playback_state != PlaybackState::Playing
+            }
+        }
+    }
+
+    pub fn can_pause(&self) -> bool {
+        self.playback_state == PlaybackState::Playing
+    }
+
+    pub fn can_toggle_playing(&self) -> bool {
+        match self.playback_state {
+            PlaybackState::Playing => self.can_pause(),
+            PlaybackState::Paused | PlaybackState::Stopped => self.can_play(),
+        }
+    }
+
+    pub fn can_go_next(&self) -> bool {
+        match self.loop_state {
+            LoopState::Off => match self.shuffle_state {
+                ShuffleState::Off => {
+                    !self.tracks.is_empty() && self.position < self.tracks.len() - 1
+                }
+                ShuffleState::On => {
+                    !self.shuffled_tracks.is_empty()
+                        && self.position < self.shuffled_tracks.len() - 1
+                }
+            },
+            _ => match self.shuffle_state {
+                ShuffleState::Off => !self.tracks.is_empty(),
+                ShuffleState::On => !self.shuffled_tracks.is_empty(),
+            },
+        }
+    }
+
+    pub fn can_go_previous(&self) -> bool {
+        match self.loop_state {
+            LoopState::Off => match self.shuffle_state {
+                ShuffleState::Off => !self.tracks.is_empty() && self.position > 0,
+                ShuffleState::On => !self.shuffled_tracks.is_empty() && self.position > 0,
+            },
+            _ => match self.shuffle_state {
+                ShuffleState::Off => !self.tracks.is_empty(),
+                ShuffleState::On => !self.shuffled_tracks.is_empty(),
+            },
+        }
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.playback_state == PlaybackState::Playing
+    }
+
+    pub fn is_paused(&self) -> bool {
+        self.playback_state == PlaybackState::Paused
+    }
+
+    pub fn stopped(&self) -> bool {
+        self.playback_state == PlaybackState::Stopped
+    }
+
+    pub fn playback_state(&self) -> PlaybackState {
+        self.playback_state
+    }
+
+    pub fn shuffle_state(&self) -> ShuffleState {
+        self.shuffle_state
+    }
+
+    pub fn shuffle_enabled(&self) -> bool {
+        self.shuffle_state.enabled()
+    }
+
+    pub fn loop_state(&self) -> LoopState {
+        self.loop_state
     }
 
     pub(crate) fn on_playback_state_changed(&self) {
@@ -104,47 +194,26 @@ impl PlayerState {
         }
     }
 
-    #[cfg(feature = "mpris")]
-    pub(crate) fn get_mpris_properties(&self) -> Vec<mpris_server::Property> {
-        use mpris_server::{Metadata, Property};
-
-        vec![
-            Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
-            Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
-            Property::Shuffle(self.shuffle_state.into()),
-            Property::Volume(self.player_volume.get()),
-            Property::CanGoNext(self.can_go_next()),
-            Property::CanGoPrevious(self.can_go_previous()),
-            Property::CanPlay(self.can_play()),
-            Property::CanPause(self.can_pause()),
-            Property::CanSeek(self.can_seek()),
-            match self.current() {
-                Some(track) => Property::Metadata(track.get_meta(self.position)),
-                None => Property::Metadata(Metadata::new()),
-            },
-        ]
-    }
-
-    pub fn set_tracks(&mut self, tracks: Vec<Arc<Track>>) {
+    pub(crate) fn set_tracks(&mut self, tracks: Vec<Arc<Track>>) {
         self.position = 0;
         self.tracks = tracks;
         self.set_playback_state(PlaybackState::Stopped);
-        if self.shuffle_state == ShuffleState::On {
+        if self.shuffle_state.enabled() {
             self.shuffle();
         }
         self.on_track_changed();
     }
 
-    pub fn play_new_queue(&mut self, tracks: Vec<Arc<Track>>, index: usize) {
+    pub(crate) fn play_new_queue(&mut self, tracks: Vec<Arc<Track>>, index: usize) {
         trace!("Setting a new queue and playing a track at index {index}");
-        let shuffle_on = self.shuffle_state == ShuffleState::On;
-        if shuffle_on {
+        let shuffle_enabled = self.shuffle_state.enabled();
+        if shuffle_enabled {
             // Setting this manually to prevent needless shuffling
             self.shuffle_state = ShuffleState::Off;
         }
         self.position = index;
         self.tracks = tracks;
-        if shuffle_on {
+        if shuffle_enabled {
             self.shuffle_state = ShuffleState::On;
             self.shuffle();
         }
@@ -166,9 +235,9 @@ impl PlayerState {
         }
     }
 
-    pub fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
+    pub(crate) fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
         self.tracks.append(tracks);
-        if self.shuffle_state == ShuffleState::On {
+        if self.shuffle_state.enabled() {
             self.shuffle();
         }
         crate::send_event(Event::PlayerStateChanged(self.clone()));
@@ -193,7 +262,7 @@ impl PlayerState {
     ///
     /// This operation will preserve the current track, but it will be put first in the queue
     /// (position will reset to 0).
-    pub fn shuffle(&mut self) {
+    pub(crate) fn shuffle(&mut self) {
         if self.tracks.is_empty() {
             use log::warn;
 
@@ -213,9 +282,9 @@ impl PlayerState {
         crate::send_event(Event::PlayerStateChanged(self.clone()));
     }
 
-    pub fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
+    pub(crate) fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
         if self.shuffle_state != shuffle_state {
-            if shuffle_state == ShuffleState::Off
+            if !shuffle_state.enabled()
                 && let Some(track) = self.current()
             {
                 match self.tracks.iter().position(|t| *t == track) {
@@ -237,7 +306,7 @@ impl PlayerState {
                 use mpris_server::Property;
 
                 let properties = vec![
-                    Property::Shuffle(self.shuffle_state.into()),
+                    Property::Shuffle(self.shuffle_state.enabled()),
                     Property::CanGoPrevious(self.can_go_previous()),
                     Property::CanGoNext(self.can_go_next()),
                 ];
@@ -246,7 +315,7 @@ impl PlayerState {
         }
     }
 
-    pub fn increment_player_position(&mut self, duration: Duration) {
+    pub(crate) fn increment_player_position(&mut self, duration: Duration) {
         self.player_position += duration;
         crate::send_event(Event::PlayerStateChanged(self.clone()));
         #[cfg(feature = "mpris")]
@@ -262,7 +331,7 @@ impl PlayerState {
         }
     }
 
-    pub fn set_player_position(&mut self, player_position: Duration) {
+    pub(crate) fn set_player_position(&mut self, player_position: Duration) {
         if self.player_position != player_position {
             self.player_position = player_position;
             crate::send_event(Event::PlayerStateChanged(self.clone()));
@@ -280,7 +349,7 @@ impl PlayerState {
         }
     }
 
-    pub fn set_player_volume(&mut self, player_volume: PlayerVolume) {
+    pub(crate) fn set_player_volume(&mut self, player_volume: PlayerVolume) {
         if self.player_volume != player_volume {
             self.player_volume = player_volume;
             crate::send_event(Event::PlayerStateChanged(self.clone()));
@@ -294,7 +363,7 @@ impl PlayerState {
         }
     }
 
-    pub fn set_loop_state(&mut self, loop_state: LoopState) {
+    pub(crate) fn set_loop_state(&mut self, loop_state: LoopState) {
         if self.loop_state != loop_state {
             self.loop_state = loop_state;
             crate::send_event(Event::PlayerStateChanged(self.clone()));
@@ -312,7 +381,7 @@ impl PlayerState {
         }
     }
 
-    pub fn set_playback_state(&mut self, playback_state: PlaybackState) {
+    pub(crate) fn set_playback_state(&mut self, playback_state: PlaybackState) {
         if self.playback_state != playback_state {
             self.playback_state = playback_state;
             if self.playback_state == PlaybackState::Stopped {
@@ -321,31 +390,7 @@ impl PlayerState {
             self.on_playback_state_changed();
         }
     }
-
-    pub fn is_empty(&self) -> bool {
-        match self.shuffle_state {
-            ShuffleState::Off => self.tracks.is_empty(),
-            ShuffleState::On => self.shuffled_tracks.is_empty(),
-        }
-    }
-
-    pub fn current(&self) -> Option<Arc<Track>> {
-        match self.shuffle_state {
-            ShuffleState::Off => {
-                if self.position < self.tracks.len() {
-                    return Some(self.tracks[self.position].clone());
-                }
-            }
-            ShuffleState::On => {
-                if self.position < self.shuffled_tracks.len() {
-                    return Some(self.shuffled_tracks[self.position].clone());
-                }
-            }
-        }
-        None
-    }
-
-    pub fn play_track(&mut self, index: usize) -> Option<Arc<Track>> {
+    pub(crate) fn play_track(&mut self, index: usize) -> Option<Arc<Track>> {
         if index < self.tracks.len() {
             self.position = index;
             self.on_track_changed();
@@ -355,48 +400,7 @@ impl PlayerState {
         }
     }
 
-    #[cfg(feature = "mpris")]
-    pub fn can_seek(&self) -> bool {
-        self.playback_state != PlaybackState::Stopped
-    }
-
-    #[cfg(feature = "mpris")]
-    pub fn can_play(&self) -> bool {
-        match self.shuffle_state {
-            ShuffleState::Off => {
-                self.position < self.tracks.len() && self.playback_state != PlaybackState::Playing
-            }
-            ShuffleState::On => {
-                self.position < self.shuffled_tracks.len()
-                    && self.playback_state != PlaybackState::Playing
-            }
-        }
-    }
-
-    #[cfg(feature = "mpris")]
-    pub fn can_pause(&self) -> bool {
-        self.playback_state == PlaybackState::Playing
-    }
-
-    pub fn can_go_next(&self) -> bool {
-        match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
-                    !self.tracks.is_empty() && self.position < self.tracks.len() - 1
-                }
-                ShuffleState::On => {
-                    !self.shuffled_tracks.is_empty()
-                        && self.position < self.shuffled_tracks.len() - 1
-                }
-            },
-            _ => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty(),
-                ShuffleState::On => !self.shuffled_tracks.is_empty(),
-            },
-        }
-    }
-
-    pub fn next_track(&mut self) -> Option<Arc<Track>> {
+    pub(crate) fn next_track(&mut self) -> Option<Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
                 let tracks = match self.shuffle_state {
@@ -434,20 +438,7 @@ impl PlayerState {
         }
     }
 
-    pub fn can_go_previous(&self) -> bool {
-        match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty() && self.position > 0,
-                ShuffleState::On => !self.shuffled_tracks.is_empty() && self.position > 0,
-            },
-            _ => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty(),
-                ShuffleState::On => !self.shuffled_tracks.is_empty(),
-            },
-        }
-    }
-
-    pub fn previous_track(&mut self) -> Option<Arc<Track>> {
+    pub(crate) fn previous_track(&mut self) -> Option<Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
                 let tracks = match self.shuffle_state {
@@ -486,6 +477,46 @@ impl PlayerState {
                 }
             }
         }
+    }
+
+    fn on_track_changed(&self) {
+        crate::send_event(Event::PlayerStateChanged(self.clone()));
+
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::{Metadata, Property};
+
+            let properties = vec![
+                match self.current() {
+                    Some(track) => Property::Metadata(track.get_meta(self.position)),
+                    None => Property::Metadata(Metadata::new()),
+                },
+                Property::CanGoPrevious(self.can_go_previous()),
+                Property::CanGoNext(self.can_go_next()),
+            ];
+            mpris::update_properties(properties);
+        }
+    }
+
+    #[cfg(feature = "mpris")]
+    pub(crate) fn get_mpris_properties(&self) -> Vec<mpris_server::Property> {
+        use mpris_server::{Metadata, Property};
+
+        vec![
+            Property::PlaybackStatus(mpris::playback_state_2_mpris(&self.playback_state)),
+            Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
+            Property::Shuffle(self.shuffle_state.enabled()),
+            Property::Volume(self.player_volume.get()),
+            Property::CanGoNext(self.can_go_next()),
+            Property::CanGoPrevious(self.can_go_previous()),
+            Property::CanPlay(self.can_play()),
+            Property::CanPause(self.can_pause()),
+            Property::CanSeek(self.can_seek()),
+            match self.current() {
+                Some(track) => Property::Metadata(track.get_meta(self.position)),
+                None => Property::Metadata(Metadata::new()),
+            },
+        ]
     }
 }
 

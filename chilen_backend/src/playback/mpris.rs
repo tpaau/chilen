@@ -10,8 +10,8 @@ use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 use crate::{
     Event,
     playback::{
-        self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, SignedDuration,
-        open_uri,
+        self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, ShuffleState,
+        SignedDuration, open_uri,
         state::{self, PLAYER_STATE},
     },
 };
@@ -234,7 +234,7 @@ impl PlayerInterface for MprisInterface {
 
     async fn shuffle(&self) -> MprisResult<bool> {
         match playback::get_shuffle_state() {
-            Ok(state) => Ok(state.into()),
+            Ok(state) => Ok(state.enabled()),
             Err(e) => Err(MprisError::Failed(format!(
                 "Cannot get the shuffle state: {e}"
             ))),
@@ -242,7 +242,11 @@ impl PlayerInterface for MprisInterface {
     }
 
     async fn set_shuffle(&self, shuffle: bool) -> mpris_server::zbus::Result<()> {
-        match playback::set_shuffle_state(shuffle.into()) {
+        let shuffle_state = match shuffle {
+            true => ShuffleState::On,
+            false => ShuffleState::Off,
+        };
+        match playback::set_shuffle_state(shuffle_state) {
             Ok(_) => Ok(()),
             Err(e) => Err(mpris_server::zbus::Error::Failure(format!(
                 "Cannot set the shuffle state: {e}"

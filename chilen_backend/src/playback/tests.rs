@@ -131,15 +131,15 @@ fn shuffle_track_stays_the_same() {
                 None
             };
             if rand::random_range(0..5) == 1 {
-                if state.shuffle_state == ShuffleState::Off {
-                    println!("Enabling shuffle!");
-                    let track = &state.tracks[state.position].clone();
-                    state.set_shuffle_state(ShuffleState::On);
-                    assert_eq!(state.current().unwrap(), track.clone());
-                } else {
+                if state.shuffle_state.enabled() {
                     println!("Disabling shuffle!");
                     let track = &state.shuffled_tracks[state.position].clone();
                     state.set_shuffle_state(ShuffleState::Off);
+                    assert_eq!(state.current().unwrap(), track.clone());
+                } else {
+                    println!("Enabling shuffle!");
+                    let track = &state.tracks[state.position].clone();
+                    state.set_shuffle_state(ShuffleState::On);
                     assert_eq!(state.current().unwrap(), track.clone());
                 }
             }
