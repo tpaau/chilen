@@ -230,7 +230,7 @@ pub enum Size {
 }
 
 impl Size {
-    fn width(&self) -> Length {
+    pub fn width(&self) -> Length {
         match self {
             Self::Custom {
                 width,
@@ -255,7 +255,7 @@ impl Size {
         }
     }
 
-    fn height(&self) -> Length {
+    pub fn height(&self) -> Length {
         match self {
             Self::ExtraSmall => Length::Fixed(32.0),
             Self::Small => Length::Fixed(40.0),
@@ -284,7 +284,7 @@ impl Size {
         }
     }
 
-    fn spacing(&self) -> f32 {
+    pub fn spacing(&self) -> f32 {
         match self {
             Size::ExtraSmall => 4.0,
             Size::Small | Size::Medium => 8.0,
@@ -312,7 +312,7 @@ impl Size {
         }
     }
 
-    fn padding(&self) -> Padding {
+    pub fn padding(&self) -> Padding {
         match self {
             Self::ExtraSmall => padding::horizontal(12.0),
             Self::Small => padding::horizontal(16.0),
@@ -330,18 +330,18 @@ impl Size {
         }
     }
 
-    pub fn with_padding(self, padding: Padding) -> Self {
+    pub fn with_padding(self, padding: impl Into<Padding>) -> Self {
         Self::Custom {
             width: self.width(),
             height: self.height(),
             spacing: self.spacing(),
-            padding,
+            padding: padding.into(),
             icon_size: self.icon_size(),
             font_size: self.font_size(),
         }
     }
 
-    fn icon_size(&self) -> f32 {
+    pub fn icon_size(&self) -> f32 {
         match self {
             Size::ExtraSmall => 20.0,
             Size::Small => 20.0,
@@ -371,7 +371,7 @@ impl Size {
     }
 
     // TODO: Implement the typography system and get the sizes from there
-    fn font_size(&self) -> f32 {
+    pub fn font_size(&self) -> f32 {
         match self {
             Size::ExtraSmall => 14.0,
             Size::Medium | Size::Small => 16.0,
@@ -411,48 +411,56 @@ pub enum CornerStyle {
 }
 
 impl CornerStyle {
-    fn regular(&self, size: &Size) -> Radius {
-        match self {
-            CornerStyle::Round => Radius::new(f32::MAX),
-            CornerStyle::Square => match size {
-                Size::ExtraSmall | Size::Small => Radius::new(12.0),
-                Size::Medium
-                | Size::Custom {
-                    height: _,
-                    padding: _,
-                    width: _,
-                    spacing: _,
-                    icon_size: _,
-                    font_size: _,
-                } => Radius::new(16.0),
-                Size::Large | Size::ExtraLarge => Radius::new(28.0),
-            },
-            CornerStyle::Custom {
-                regular,
-                pressed: _,
-            } => *regular,
+    fn resting(&self, size: &Size, selected: bool) -> Radius {
+        if selected {
+            self.pressed(size, false)
+        } else {
+            match self {
+                CornerStyle::Round => Radius::new(f32::MAX),
+                CornerStyle::Square => match size {
+                    Size::ExtraSmall | Size::Small => Radius::new(12.0),
+                    Size::Medium
+                    | Size::Custom {
+                        height: _,
+                        padding: _,
+                        width: _,
+                        spacing: _,
+                        icon_size: _,
+                        font_size: _,
+                    } => Radius::new(16.0),
+                    Size::Large | Size::ExtraLarge => Radius::new(28.0),
+                },
+                CornerStyle::Custom {
+                    regular,
+                    pressed: _,
+                } => *regular,
+            }
         }
     }
 
-    fn pressed(&self, size: &Size) -> Radius {
-        match self {
-            CornerStyle::Round | CornerStyle::Square => match size {
-                Size::ExtraSmall | Size::Small => Radius::new(8.0),
-                Size::Medium
-                | Size::Custom {
-                    height: _,
-                    padding: _,
-                    width: _,
-                    spacing: _,
-                    icon_size: _,
-                    font_size: _,
-                } => Radius::new(12.0),
-                Size::Large | Size::ExtraLarge => Radius::new(16.0),
-            },
-            CornerStyle::Custom {
-                regular: _,
-                pressed,
-            } => *pressed,
+    fn pressed(&self, size: &Size, selected: bool) -> Radius {
+        if selected {
+            self.resting(size, false)
+        } else {
+            match self {
+                CornerStyle::Round | CornerStyle::Square => match size {
+                    Size::ExtraSmall | Size::Small => Radius::new(8.0),
+                    Size::Medium
+                    | Size::Custom {
+                        height: _,
+                        padding: _,
+                        width: _,
+                        spacing: _,
+                        icon_size: _,
+                        font_size: _,
+                    } => Radius::new(12.0),
+                    Size::Large | Size::ExtraLarge => Radius::new(16.0),
+                },
+                CornerStyle::Custom {
+                    regular: _,
+                    pressed,
+                } => *pressed,
+            }
         }
     }
 }
@@ -468,9 +476,9 @@ fn style(
 ) -> iced_widget::button::Style {
     let (surface, content, outline) = button_style.colors(status, selected, theme);
     let corner_radius = if status == iced_widget::button::Status::Pressed {
-        corner_style.pressed(&button_size)
+        corner_style.pressed(&button_size, selected.unwrap_or(false))
     } else {
-        corner_style.regular(&button_size)
+        corner_style.resting(&button_size, selected.unwrap_or(false))
     };
     let border = iced::Border {
         radius: corner_radius,
