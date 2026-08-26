@@ -815,11 +815,11 @@ pub(crate) fn init(
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = player_guard.as_ref().unwrap();
         player.append(source);
+        player.pause();
         if let Err(e) = player.try_seek(state.player_position) {
             error!("Couldn't set initial player position: {e}");
             state.set_player_position(Duration::default());
         }
-        player.pause();
         drop(player_guard);
     }
     drop(state_guard);
