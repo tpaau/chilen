@@ -1,6 +1,6 @@
 #[cfg(feature = "mpris")]
 mod mpris;
-mod state;
+pub(crate) mod state;
 #[cfg(test)]
 mod tests;
 
@@ -19,9 +19,13 @@ use walkdir::WalkDir;
 use crate::{
     Error,
     music_lib::{Track, tracks_from_m3u8, tracks_from_paths},
+    playback::state::{
+        PLAYER_STATE, background_save_state, restore_state_from_cache, unwrap_state_mut,
+        unwrap_state_ref,
+    },
 };
 
-pub use state::*;
+pub use state::{Event, PlayerState};
 
 /// Playback state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

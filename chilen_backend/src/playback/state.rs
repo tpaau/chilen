@@ -614,7 +614,7 @@ pub(crate) fn unwrap_state_mut(
     }
 }
 
-fn save_state(state: PlayerState) -> Result<(), String> {
+pub(crate) fn save_state(state: PlayerState) -> Result<(), String> {
     let state_raw: PlayerStateRaw = state.into();
     let state_file = STATE_FILE.clone();
 

@@ -8,7 +8,7 @@ use icu::{
     collator::{Collator, CollatorBorrowed, options::CollatorOptions},
     locale::Locale,
 };
-use log::{error, warn};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::music_lib::{MusicLibrary, set_dirs};
@@ -282,4 +282,20 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
     });
 
     Ok(receiver)
+}
+
+// TODO: Should also acquire read locks to all important resources (eg. library) to make sure no
+// threads are writing anything to the drive.
+// It should also use a best-effort approach and close as much as possible
+/// Shut the daemon down gracefully.
+pub fn shutdown() -> Result<(), String> {
+    info!("Cleaning up on shutdown...");
+    let guard = playback::state::PLAYER_STATE.read().unwrap();
+    let state = guard.as_ref().unwrap().clone();
+    if let Err(e) = playback::state::save_state(state) {
+        error!("Couldn't save playback state on quit: {e}");
+        return Err(e);
+    }
+    info!("Clean up completed");
+    Ok(())
 }

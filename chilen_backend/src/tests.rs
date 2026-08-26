@@ -7,7 +7,7 @@ use crate::{
         MUSIC_DIR, MUSIC_LIBRARY, MusicLibrary,
         indexer::{self},
     },
-    playback::{PLAYER_HANDLE, PLAYER_STATE, PlayerState, PlayerVolume},
+    playback::{PLAYER_HANDLE, PlayerState, PlayerVolume, state::PLAYER_STATE},
 };
 
 /// Set the player state (queue, shuffle state, repeat mode, etc.) to the default value.
