@@ -35,6 +35,7 @@ pub enum Event {
     LoopStateChanged(LoopState),
 }
 
+// TODO: Management shouldn't be done through methods so this can be safely exposed
 /// Data structure used to store playback state on the disc and in the RAM at runtime.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PlayerState {

@@ -122,16 +122,16 @@ pub enum Error {
     InvalidDuration,
     /// Overflow detected while performing a seek operation.
     DurationOverflow,
-    /// Could not complete the operation because a [playlist](music_lib::state::Playlist) with the
+    /// Could not complete the operation because a [playlist](music_lib::Playlist) with the
     /// provided name already exists.
     PlaylistExists,
-    /// Could not perform the operation because the [music library](music_lib::state::MusicLibrary)
+    /// Could not perform the operation because the [music library](music_lib::MusicLibrary)
     /// is not initialized.
     ///
     /// This can happen if a command is sent to early and the music library is not yet initialized.
     LibraryNotInitialized,
-    /// There is no [playlist](music_lib::state::Playlist) in the
-    /// [music library](music_lib::state::MusicLibrary) with the provided name.
+    /// There is no [playlist](music_lib::Playlist) in the
+    /// [music library](music_lib::MusicLibrary) with the provided name.
     UnknownPlaylist(String),
     /// The item index was out of bounds.
     IndexOutOfBounds,

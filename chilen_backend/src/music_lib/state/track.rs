@@ -14,7 +14,7 @@ use lofty::{
     tag::{Accessor, ItemValue, items::Timestamp},
 };
 use log::warn;
-use lrc_rs::SyncedLyrics;
+pub use lrc_rs::{LRCTool, LineTag, LyricsAccess, SyncedLyrics};
 #[cfg(feature = "mpris")]
 use mpris_server::TrackId;
 use rodio::Decoder;
