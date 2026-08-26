@@ -14,7 +14,7 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 use chilen_backend::{
     music_lib::{MusicLibrary, Playlist},
-    playback::state::PlayerState,
+    playback::PlayerState,
 };
 use iced::{
     self, Element, Font, Subscription, Task,
@@ -169,9 +169,6 @@ impl Chilen {
                         state.library = Some(lib);
                         top_view::reload(state);
                     }
-                    chilen_backend::Event::PlayerStateChanged(player_state) => {
-                        state.player_state = Some(player_state)
-                    }
                     chilen_backend::Event::LibraryLoadFailed(e) => {
                         state.loading_state = LoadingState::Failed(e)
                     }
@@ -192,7 +189,24 @@ impl Chilen {
                         });
                     }
                     // TODO: Display the progress
-                    chilen_backend::Event::LoadProgressChanged(progress) => {}
+                    chilen_backend::Event::LoadProgressChanged(_) => {}
+                    chilen_backend::Event::Playback(event) => {
+                        if let Some(player_state) = state.player_state.as_mut() {
+                            player_state.handle_event(event);
+                        } else {
+                            match event {
+                                chilen_backend::playback::Event::StateInitialized(player_state) => {
+                                    trace!("Initializing player state representation in the GUI");
+                                    state.player_state = Some(player_state);
+                                }
+                                _ => {
+                                    error!(
+                                        "Got a non-initializing event before the player state was initialized in the GUI!"
+                                    );
+                                }
+                            }
+                        }
+                    }
                 },
                 Event::Window { event, id } => {
                     return match event {

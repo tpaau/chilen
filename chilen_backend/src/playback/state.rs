@@ -14,13 +14,26 @@ use serde::{Deserialize, Serialize};
 use rand::seq::SliceRandom;
 
 use crate::{
-    Error, Event,
+    Error,
     music_lib::{CACHE_DIR, Track, tracks_from_hashes},
     playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
 };
 
 #[cfg(feature = "mpris")]
 use crate::playback::mpris;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Event {
+    StateInitialized(PlayerState),
+    PositionChanged(usize),
+    PlayerPositionChanged(Duration),
+    PlayerVolumeChanged(PlayerVolume),
+    PlaybackStateChanged(PlaybackState),
+    TracksChanged(Vec<Arc<Track>>),
+    ShuffledTracksChanged(Vec<Arc<Track>>),
+    ShuffleStateChanged(ShuffleState),
+    LoopStateChanged(LoopState),
+}
 
 /// Data structure used to store playback state on the disc and in the RAM at runtime.
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -181,10 +194,26 @@ impl PlayerState {
         self.player_position
     }
 
+    pub fn handle_event(&mut self, event: Event) {
+        match event {
+            Event::StateInitialized(player_state) => *self = player_state,
+            Event::PositionChanged(pos) => self.position = pos,
+            Event::PlayerPositionChanged(player_position) => self.player_position = player_position,
+            Event::PlayerVolumeChanged(player_volume) => self.player_volume = player_volume,
+            Event::PlaybackStateChanged(playback_state) => self.playback_state = playback_state,
+            Event::ShuffleStateChanged(shuffle_state) => self.shuffle_state = shuffle_state,
+            Event::LoopStateChanged(loop_state) => self.loop_state = loop_state,
+            Event::TracksChanged(tracks) => self.tracks = tracks,
+            Event::ShuffledTracksChanged(tracks) => self.shuffled_tracks = tracks,
+        }
+    }
+
     pub(crate) fn on_playback_state_changed(&self) {
         trace!("Playback state changed: {}", self.playback_state);
 
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
+        crate::send_event(crate::Event::Playback(Event::PlaybackStateChanged(
+            self.playback_state,
+        )));
 
         #[cfg(feature = "mpris")]
         {
@@ -227,10 +256,15 @@ impl PlayerState {
 
     pub(crate) fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
         self.tracks.append(tracks);
+        crate::send_event(crate::Event::Playback(Event::TracksChanged(
+            self.tracks.clone(),
+        )));
         if self.shuffle_state.enabled() {
             self.shuffle();
+            crate::send_event(crate::Event::Playback(Event::ShuffledTracksChanged(
+                self.shuffled_tracks.clone(),
+            )));
         }
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -269,7 +303,12 @@ impl PlayerState {
         self.shuffled_tracks[1..len].shuffle(&mut rng);
         self.position = 0;
 
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
+        crate::send_event(crate::Event::Playback(Event::PositionChanged(
+            self.position,
+        )));
+        crate::send_event(crate::Event::Playback(Event::ShuffledTracksChanged(
+            self.shuffled_tracks.clone(),
+        )));
     }
 
     pub(crate) fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
@@ -278,7 +317,12 @@ impl PlayerState {
                 && let Some(track) = self.current()
             {
                 match self.tracks.iter().position(|t| *t == track) {
-                    Some(pos) => self.position = pos,
+                    Some(pos) => {
+                        self.position = pos;
+                        crate::send_event(crate::Event::Playback(Event::PositionChanged(
+                            self.position,
+                        )));
+                    }
                     None => {
                         log::warn!(
                             "Could not find the previous track in the queue, this should never happen"
@@ -290,7 +334,9 @@ impl PlayerState {
                 self.shuffle();
             }
             self.shuffle_state = shuffle_state;
-            crate::send_event(Event::PlayerStateChanged(self.clone()));
+            crate::send_event(crate::Event::Playback(Event::ShuffleStateChanged(
+                self.shuffle_state,
+            )));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -307,7 +353,9 @@ impl PlayerState {
 
     pub(crate) fn increment_player_position(&mut self, duration: Duration) {
         self.player_position += duration;
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
+        crate::send_event(crate::Event::Playback(Event::PlayerPositionChanged(
+            self.player_position,
+        )));
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -324,7 +372,9 @@ impl PlayerState {
     pub(crate) fn set_player_position(&mut self, player_position: Duration) {
         if self.player_position != player_position {
             self.player_position = player_position;
-            crate::send_event(Event::PlayerStateChanged(self.clone()));
+            crate::send_event(crate::Event::Playback(Event::PlayerPositionChanged(
+                self.player_position,
+            )));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::{Metadata, Property};
@@ -342,7 +392,9 @@ impl PlayerState {
     pub(crate) fn set_player_volume(&mut self, player_volume: PlayerVolume) {
         if self.player_volume != player_volume {
             self.player_volume = player_volume;
-            crate::send_event(Event::PlayerStateChanged(self.clone()));
+            crate::send_event(crate::Event::Playback(Event::PlayerVolumeChanged(
+                self.player_volume,
+            )));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -356,7 +408,9 @@ impl PlayerState {
     pub(crate) fn set_loop_state(&mut self, loop_state: LoopState) {
         if self.loop_state != loop_state {
             self.loop_state = loop_state;
-            crate::send_event(Event::PlayerStateChanged(self.clone()));
+            crate::send_event(crate::Event::Playback(Event::LoopStateChanged(
+                self.loop_state,
+            )));
             #[cfg(feature = "mpris")]
             {
                 use mpris_server::Property;
@@ -380,6 +434,7 @@ impl PlayerState {
             self.on_playback_state_changed();
         }
     }
+
     pub(crate) fn play_track(&mut self, index: usize) -> Option<Arc<Track>> {
         if index < self.tracks.len() {
             self.position = index;
@@ -470,7 +525,9 @@ impl PlayerState {
     }
 
     fn on_track_changed(&self) {
-        crate::send_event(Event::PlayerStateChanged(self.clone()));
+        crate::send_event(crate::Event::Playback(Event::PositionChanged(
+            self.position,
+        )));
 
         #[cfg(feature = "mpris")]
         {

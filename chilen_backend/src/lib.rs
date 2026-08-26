@@ -11,10 +11,7 @@ use icu::{
 use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    music_lib::{MusicLibrary, set_dirs},
-    playback::state::PlayerState,
-};
+use crate::music_lib::{MusicLibrary, set_dirs};
 
 pub mod music_lib;
 pub mod playback;
@@ -73,7 +70,7 @@ pub enum Event {
     Raise,
     Quit,
     SetFullscreen(bool),
-    PlayerStateChanged(PlayerState),
+    Playback(playback::Event),
     LoadProgressChanged(music_lib::Progress),
     LibraryLoadFailed(String),
     LibraryChanged(Box<MusicLibrary>),
