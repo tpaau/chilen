@@ -163,7 +163,13 @@ fn main() {
     });
 
     match gui::start() {
-        Ok(_) => info!("Main window closed, exiting"),
+        Ok(_) => {
+            info!("Main window closed, shutting down");
+            if let Err(e) = chilen_backend::shutdown() {
+                error!("Backend failed to exit gracefully: {e}");
+                exit(1);
+            }
+        }
         Err(e) => {
             error!("GUI stopped unexpectedly: {e}");
             exit(1);
