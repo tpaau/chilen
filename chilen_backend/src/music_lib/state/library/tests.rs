@@ -24,7 +24,7 @@ fn album_track_sorting() {
         Collator::try_new(config.locale.clone().into(), CollatorOptions::default()).unwrap(),
     );
 
-    MusicLibrary::sort_tracks_chronologically(&mut tracks, Some(&collator));
+    MusicLibrary::sort_tracks_in_album(&mut tracks, Some(&collator));
     assert_eq!(
         &tracks,
         &[
