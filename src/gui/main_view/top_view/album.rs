@@ -111,23 +111,44 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
+    let buttons = horizontal_buttons(
+        &state.theme,
+        Message::PlayAlbumNoShuffle {
+            album: album.clone(),
+            initial_index: 0,
+        },
+        Message::ShuffleAlbum {
+            album: album.clone(),
+            initial_index: 0,
+        },
+        Message::Noop,
+    );
 
-    let track_buttons = album.tracks.iter().map(|t| {
+    let album_cloned = album.clone();
+    let track_buttons = album.tracks.iter().enumerate().map(|(i, t)| {
         track_button::track_button(
             state,
             t.clone(),
             track_button::Info::Length,
             track_button::Messages {
-                play: None,
-                shuffle: None,
+                play: Message::PlayAlbumNoShuffle {
+                    album: album_cloned.clone(),
+                    initial_index: i,
+                },
+                shuffle: Message::ShuffleAlbum {
+                    album: album_cloned.clone(),
+                    initial_index: i,
+                },
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,
                 remove: None,
             },
         )
-        .on_press(Message::Noop)
+        .on_press(Message::PlayAlbum {
+            album: album_cloned.clone(),
+            initial_index: i,
+        })
         .into()
     });
 

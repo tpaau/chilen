@@ -4,7 +4,9 @@ mod genres;
 pub mod top_view;
 mod tracks;
 
-use chilen_backend::music_lib::MusicLibrary;
+use std::sync::Arc;
+
+use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary};
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container, row, sensor, space, stack, text};
@@ -118,6 +120,12 @@ pub enum Message {
     PlayTracks { initial_position: usize },
     PlayTracksNoShuffle { initial_position: usize },
     ShuffleTracks { initial_position: usize },
+    PlayAlbum(Arc<Album>),
+    ShuffleAlbum(Arc<Album>),
+    PlayArtist(Arc<Artist>),
+    ShuffleArtist(Arc<Artist>),
+    PlayGenre(Arc<Genre>),
+    ShuffleGenre(Arc<Genre>),
 }
 
 fn virtualize_entry<'a, E>(
@@ -281,8 +289,10 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::OpenSettings => state.dialog = gui::dialog::Dialog::Settings,
         Message::PlayTracks { initial_position } => match &state.library {
             Some(lib) => {
-                let _ =
-                    chilen_backend::playback::play_new_queue(lib.tracks.clone(), initial_position);
+                let _ = chilen_backend::playback::play_new_queue(
+                    chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
+                    initial_position,
+                );
             }
             None => error!("Cannot play the track, the library is not loaded"),
         },
@@ -291,8 +301,10 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 let _ = chilen_backend::playback::set_shuffle_state(
                     chilen_backend::playback::ShuffleState::Off,
                 );
-                let _ =
-                    chilen_backend::playback::play_new_queue(lib.tracks.clone(), initial_position);
+                let _ = chilen_backend::playback::play_new_queue(
+                    chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
+                    initial_position,
+                );
             }
             None => error!("Cannot play the track, the library is not loaded"),
         },
@@ -301,11 +313,67 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 let _ = chilen_backend::playback::set_shuffle_state(
                     chilen_backend::playback::ShuffleState::On,
                 );
-                let _ =
-                    chilen_backend::playback::play_new_queue(lib.tracks.clone(), initial_position);
+                let _ = chilen_backend::playback::play_new_queue(
+                    chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
+                    initial_position,
+                );
             }
             None => error!("Cannot play the track, the library is not loaded"),
         },
+        Message::PlayAlbum(album) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Album(album),
+                0,
+            );
+        }
+        Message::ShuffleAlbum(album) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Album(album),
+                0,
+            );
+        }
+        Message::PlayArtist(artist) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Artist(artist),
+                0,
+            );
+        }
+        Message::ShuffleArtist(artist) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Artist(artist),
+                0,
+            );
+        }
+        Message::PlayGenre(genre) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Genre(genre),
+                0,
+            );
+        }
+        Message::ShuffleGenre(genre) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Genre(genre),
+                0,
+            );
+        }
     }
     Task::none()
 }

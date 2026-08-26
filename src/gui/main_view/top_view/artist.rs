@@ -70,33 +70,66 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
+    let buttons = horizontal_buttons(
+        &state.theme,
+        Message::PlayArtistNoShuffle {
+            artist: artist.clone(),
+            initial_index: 0,
+        },
+        Message::ShuffleArtist {
+            artist: artist.clone(),
+            initial_index: 0,
+        },
+        Message::Noop,
+    );
 
     let album_buttons: Vec<_> = artist
         .albums
         .iter()
         .map(|a| {
-            album_button::album_button(state, a.clone(), vec![album_button::Info::Date])
-                .on_press(Message::Navigate(super::TopView::Album(a.clone())))
-                .into()
+            album_button::album_button(
+                state,
+                a.clone(),
+                vec![album_button::Info::Date],
+                Message::PlayAlbumNoShuffle {
+                    album: a.clone(),
+                    initial_index: 0,
+                },
+                Message::ShuffleAlbum {
+                    album: a.clone(),
+                    initial_index: 0,
+                },
+            )
+            .on_press(Message::Navigate(super::TopView::Album(a.clone())))
+            .into()
         })
         .collect();
 
-    let track_buttons = artist.tracks.iter().map(|t| {
+    let artist_cloned = artist.clone();
+    let track_buttons = artist.tracks.iter().enumerate().map(|(i, t)| {
         track_button::track_button(
             state,
             t.clone(),
             track_button::Info::Album,
             track_button::Messages {
-                play: None,
-                shuffle: None,
+                play: Message::PlayArtistNoShuffle {
+                    artist: artist_cloned.clone(),
+                    initial_index: i,
+                },
+                shuffle: Message::ShuffleArtist {
+                    artist: artist_cloned.clone(),
+                    initial_index: i,
+                },
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,
                 remove: None,
             },
         )
-        .on_press(Message::Noop)
+        .on_press(Message::PlayArtist {
+            artist: artist_cloned.clone(),
+            initial_index: i,
+        })
         .into()
     });
 

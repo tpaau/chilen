@@ -29,6 +29,8 @@ pub enum Message {
     OpenPlaylistImportDialog(Option<rfd::FileHandle>),
     OpenPlaylistRenameDialog { playlist: String, name: String },
     ConfirmPlaylistDeletion(Arc<Playlist>),
+    PlayPlaylist(Arc<Playlist>),
+    ShufflePlaylist(Arc<Playlist>),
 }
 
 #[derive(Default)]
@@ -190,6 +192,24 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             }
         }
         Message::OpenPlaylist(pl) => state.main_view.nav_stack.set_top(TopView::Playlist(pl)),
+        Message::PlayPlaylist(playlist) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Playlist(playlist),
+                0,
+            );
+        }
+        Message::ShufflePlaylist(playlist) => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Playlist(playlist),
+                0,
+            );
+        }
     }
     Task::none()
 }

@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-pub use state::{Event, PlayerState};
+pub use state::{Event, PlayerState, Queue};
 
 /// Playback state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -404,6 +404,7 @@ pub fn open_uri(uri: PathBuf) -> Result<(), Error> {
         trace!("The provided URI {uri:?} is a directory, indexing it");
 
         let mut files = Vec::new();
+        let label = uri.to_string_lossy().to_string();
         for result in WalkDir::new(uri).into_iter() {
             let entry = match result {
                 Ok(entry) => entry,
@@ -429,7 +430,7 @@ pub fn open_uri(uri: PathBuf) -> Result<(), Error> {
         if tracks.is_empty() {
             Err(Error::DirectoryWithNoTracks)
         } else {
-            set_queue(tracks)
+            set_queue(Queue::Custom { label, tracks })
         }
     } else {
         trace!(
@@ -438,20 +439,27 @@ pub fn open_uri(uri: PathBuf) -> Result<(), Error> {
         if let Ok(paths) = tracks_from_m3u8(&uri) {
             trace!("Loaded M3U8 playlist {uri:?}");
             let tracks = tracks_from_paths(&paths, true)?;
-            return set_queue(tracks);
+            return set_queue(Queue::Custom {
+                label: uri.to_string_lossy().to_string(),
+                tracks,
+            });
         } else {
             trace!("The file does not appear to be an M3U8 playlist");
         }
+        let label = uri.to_string_lossy().to_string();
         let track = tracks_from_paths(&[uri], false)?;
-        set_queue(track)
+        set_queue(Queue::Custom {
+            label,
+            tracks: track,
+        })
     }
 }
 
 /// Set a new queue and play a track at a specific index in that queue.
-pub fn play_new_queue(tracks: Vec<Arc<Track>>, index: usize) -> Result<(), Error> {
+pub fn play_new_queue(queue: Queue, index: usize) -> Result<(), Error> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    state.play_new_queue(tracks, index);
+    state.play_new_queue(queue, index);
 
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
@@ -477,11 +485,11 @@ pub fn play_new_queue(tracks: Vec<Arc<Track>>, index: usize) -> Result<(), Error
 /// Note that if shuffle is enabled, the queue will be shuffled immediately after setting it. For
 /// that reason, please use the `[play_new_queue]` function for setting the queue and then playing a
 /// track at a specific index in that queue.
-pub fn set_queue(queue: Vec<Arc<Track>>) -> Result<(), Error> {
+pub fn set_queue(queue: Queue) -> Result<(), Error> {
     trace!("Setting a new queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    state.set_tracks(queue);
+    state.set_queue(queue);
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = unwrap_player(player_guard.as_ref())?;
     player.stop();
@@ -781,6 +789,7 @@ pub(crate) fn init(
             state
         }
         Err(e) => {
+            // FIX: This breaks the state in the player somehow
             error!("Could not restore player state from cache: {e}");
             let state = PlayerState::default();
             debug!("Creating a new state and attempting to save it in cache");

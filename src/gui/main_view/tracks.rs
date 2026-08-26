@@ -18,12 +18,12 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                     track.clone(),
                     track_button::Info::Artist,
                     track_button::Messages {
-                        play: Some(main_view::Message::PlayTracksNoShuffle {
+                        play: main_view::Message::PlayTracksNoShuffle {
                             initial_position: index,
-                        }),
-                        shuffle: Some(main_view::Message::ShuffleTracks {
+                        },
+                        shuffle: main_view::Message::ShuffleTracks {
                             initial_position: index,
-                        }),
+                        },
                         add_to_queue: None,
                         add_to_playlist: None,
                         details: None,

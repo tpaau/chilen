@@ -169,7 +169,11 @@ fn test_set_queue() {
     setup_test_env();
     let lib = get_library().expect("Couldn't get the music library");
     let tracks: Vec<_> = lib.tracks;
-    set_queue(tracks.clone()).expect("Couldn't set the track queue");
+    set_queue(crate::playback::Queue::Custom {
+        label: String::new(),
+        tracks: tracks.clone(),
+    })
+    .expect("Couldn't set the track queue");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = state_guard.as_mut().unwrap();
     let player_guard = PLAYER_HANDLE.read().unwrap();
@@ -192,14 +196,26 @@ fn test_play_new_queue() {
         state.set_shuffle_state(ShuffleState::Off);
         let index = rand::random_range(0..tracks.len() - 1);
         let expected = tracks.get(index).cloned();
-        state.play_new_queue(tracks.clone(), index);
+        state.play_new_queue(
+            crate::playback::Queue::Custom {
+                label: String::new(),
+                tracks: tracks.clone(),
+            },
+            index,
+        );
         assert_eq!(state.current(), expected);
         assert_eq!(state.position, index);
 
         state.set_shuffle_state(ShuffleState::On);
         let index = rand::random_range(0..tracks.len() - 1);
         let expected = tracks.get(index).cloned();
-        state.play_new_queue(tracks.clone(), index);
+        state.play_new_queue(
+            crate::playback::Queue::Custom {
+                label: String::new(),
+                tracks: tracks.clone(),
+            },
+            index,
+        );
         assert_eq!(state.current(), expected);
         assert_eq!(state.position, 0);
     }

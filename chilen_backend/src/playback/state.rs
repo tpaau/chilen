@@ -15,7 +15,7 @@ use rand::seq::SliceRandom;
 
 use crate::{
     Error,
-    music_lib::{CACHE_DIR, Track, tracks_from_hashes},
+    music_lib::{Album, Artist, CACHE_DIR, Genre, Playlist, Track, tracks_from_hashes},
     playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
 };
 
@@ -31,8 +31,45 @@ pub enum Event {
     PlaybackStateChanged(PlaybackState),
     TracksChanged(Vec<Arc<Track>>),
     ShuffledTracksChanged(Vec<Arc<Track>>),
+    QueueIdentityChanged(String),
     ShuffleStateChanged(ShuffleState),
     LoopStateChanged(LoopState),
+}
+
+pub enum Queue {
+    Playlist(Arc<Playlist>),
+    Album(Arc<Album>),
+    Artist(Arc<Artist>),
+    Genre(Arc<Genre>),
+    AllTracks(Vec<Arc<Track>>),
+    Custom {
+        label: String,
+        tracks: Vec<Arc<Track>>,
+    },
+}
+
+impl Queue {
+    pub fn identity(&self) -> &str {
+        match self {
+            Queue::Playlist(playlist) => &playlist.name,
+            Queue::Album(album) => &album.title,
+            Queue::Artist(artist) => &artist.name,
+            Queue::Genre(genre) => &genre.name,
+            Queue::AllTracks(_) => "All tracks",
+            Queue::Custom { label, tracks: _ } => label,
+        }
+    }
+
+    pub fn tracks(self) -> Vec<Arc<Track>> {
+        match self {
+            Queue::Playlist(playlist) => playlist.tracks.clone(),
+            Queue::Album(album) => album.tracks.clone(),
+            Queue::Artist(artist) => artist.tracks.clone(),
+            Queue::Genre(genre) => genre.tracks.clone(),
+            Queue::AllTracks(tracks) => tracks,
+            Queue::Custom { label: _, tracks } => tracks,
+        }
+    }
 }
 
 // TODO: Management shouldn't be done through methods so this can be safely exposed
@@ -49,6 +86,7 @@ pub struct PlayerState {
     pub playback_state: PlaybackState,
     pub tracks: Vec<Arc<Track>>,
     pub shuffled_tracks: Vec<Arc<Track>>,
+    pub queue_identity: String,
     pub shuffle_state: ShuffleState,
     pub loop_state: LoopState,
 }
@@ -85,6 +123,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
             playback_state,
             tracks,
             shuffled_tracks,
+            queue_identity: value.queue_identity,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         })
@@ -200,6 +239,7 @@ impl PlayerState {
             Event::LoopStateChanged(loop_state) => self.loop_state = loop_state,
             Event::TracksChanged(tracks) => self.tracks = tracks,
             Event::ShuffledTracksChanged(tracks) => self.shuffled_tracks = tracks,
+            Event::QueueIdentityChanged(identity) => self.queue_identity = identity,
         }
     }
 
@@ -222,17 +262,21 @@ impl PlayerState {
         }
     }
 
-    pub(crate) fn set_tracks(&mut self, tracks: Vec<Arc<Track>>) {
+    pub(crate) fn set_queue(&mut self, queue: Queue) {
         self.position = 0;
-        self.tracks = tracks;
+        self.queue_identity = queue.identity().to_string();
+        self.tracks = queue.tracks();
         self.set_playback_state(PlaybackState::Stopped);
         if self.shuffle_state.enabled() {
             self.shuffle();
         }
+        crate::send_event(crate::Event::Playback(Event::QueueIdentityChanged(
+            self.queue_identity.clone(),
+        )));
         self.on_track_changed();
     }
 
-    pub(crate) fn play_new_queue(&mut self, tracks: Vec<Arc<Track>>, index: usize) {
+    pub(crate) fn play_new_queue(&mut self, queue: Queue, index: usize) {
         trace!("Setting a new queue and playing a track at index {index}");
         let shuffle_enabled = self.shuffle_state.enabled();
         if shuffle_enabled {
@@ -240,11 +284,18 @@ impl PlayerState {
             self.shuffle_state = ShuffleState::Off;
         }
         self.position = index;
-        self.tracks = tracks;
+        self.queue_identity = queue.identity().to_string();
+        self.tracks = queue.tracks();
+        crate::send_event(crate::Event::Playback(Event::TracksChanged(
+            self.tracks.clone(),
+        )));
         if shuffle_enabled {
             self.shuffle_state = ShuffleState::On;
             self.shuffle();
         }
+        crate::send_event(crate::Event::Playback(Event::QueueIdentityChanged(
+            self.queue_identity.clone(),
+        )));
         self.on_track_changed();
         self.set_player_position(Duration::default());
     }
@@ -277,6 +328,8 @@ impl PlayerState {
         }
     }
 
+    // FIX: There should be a separate shuffle function that shuffles the entire queue, for setting
+    // the current queue as shuffled.
     /// Shuffle the queue.
     ///
     /// This operation will preserve the current track, but it will be put first in the queue
@@ -569,6 +622,7 @@ struct PlayerStateRaw {
     player_volume: PlayerVolume,
     track_hashes: Vec<u64>,
     shuffled_track_hashes: Vec<u64>,
+    queue_identity: String,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
 }
@@ -583,6 +637,7 @@ impl From<PlayerState> for PlayerStateRaw {
             player_volume: value.player_volume,
             track_hashes,
             shuffled_track_hashes,
+            queue_identity: value.queue_identity,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         }

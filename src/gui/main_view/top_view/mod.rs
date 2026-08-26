@@ -30,6 +30,54 @@ pub enum Message {
         playlist: Arc<Playlist>,
         index: usize,
     },
+    PlayPlaylist {
+        playlist: Arc<Playlist>,
+        initial_index: usize,
+    },
+    PlayPlaylistNoShuffle {
+        playlist: Arc<Playlist>,
+        initial_index: usize,
+    },
+    ShufflePlaylist {
+        playlist: Arc<Playlist>,
+        initial_index: usize,
+    },
+    PlayAlbum {
+        album: Arc<Album>,
+        initial_index: usize,
+    },
+    PlayAlbumNoShuffle {
+        album: Arc<Album>,
+        initial_index: usize,
+    },
+    ShuffleAlbum {
+        album: Arc<Album>,
+        initial_index: usize,
+    },
+    PlayArtist {
+        artist: Arc<Artist>,
+        initial_index: usize,
+    },
+    PlayArtistNoShuffle {
+        artist: Arc<Artist>,
+        initial_index: usize,
+    },
+    ShuffleArtist {
+        artist: Arc<Artist>,
+        initial_index: usize,
+    },
+    PlayGenre {
+        genre: Arc<Genre>,
+        initial_index: usize,
+    },
+    PlayGenreNoShuffle {
+        genre: Arc<Genre>,
+        initial_index: usize,
+    },
+    ShuffleGenre {
+        genre: Arc<Genre>,
+        initial_index: usize,
+    },
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -139,6 +187,138 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 error!("{msg}");
                 state.dialog = crate::gui::dialog::Dialog::Error(msg);
             }
+        }
+        Message::PlayPlaylist {
+            playlist,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Playlist(playlist),
+                initial_index,
+            );
+        }
+        Message::PlayPlaylistNoShuffle {
+            playlist,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Playlist(playlist),
+                initial_index,
+            );
+        }
+        Message::ShufflePlaylist {
+            playlist,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Playlist(playlist),
+                initial_index,
+            );
+        }
+        Message::PlayAlbum {
+            album,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Album(album),
+                initial_index,
+            );
+        }
+        Message::PlayAlbumNoShuffle {
+            album,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Album(album),
+                initial_index,
+            );
+        }
+        Message::ShuffleAlbum {
+            album,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Album(album),
+                initial_index,
+            );
+        }
+        Message::PlayArtist {
+            artist,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Artist(artist),
+                initial_index,
+            );
+        }
+        Message::PlayArtistNoShuffle {
+            artist,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Artist(artist),
+                initial_index,
+            );
+        }
+        Message::ShuffleArtist {
+            artist,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Artist(artist),
+                initial_index,
+            );
+        }
+        Message::PlayGenre {
+            genre,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Genre(genre),
+                initial_index,
+            );
+        }
+        Message::PlayGenreNoShuffle {
+            genre,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::Off,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Genre(genre),
+                initial_index,
+            );
+        }
+        Message::ShuffleGenre {
+            genre,
+            initial_index,
+        } => {
+            let _ = chilen_backend::playback::set_shuffle_state(
+                chilen_backend::playback::ShuffleState::On,
+            );
+            let _ = chilen_backend::playback::play_new_queue(
+                chilen_backend::playback::Queue::Genre(genre),
+                initial_index,
+            );
         }
     }
     Task::none()

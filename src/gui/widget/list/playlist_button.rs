@@ -42,14 +42,18 @@ pub fn playlist_button<'a>(
                             label: "Play",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(None),
+                            action: vertical_menu::Action::Message(Some(
+                                playlist_view::Message::PlayPlaylist(playlist.clone()),
+                            )),
                         },
                         vertical_menu::Entry::Button {
                             icon: Some(&icons::SHUFFLE),
                             label: "Shuffle",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(None),
+                            action: vertical_menu::Action::Message(Some(
+                                playlist_view::Message::ShufflePlaylist(playlist.clone()),
+                            )),
                         },
                         vertical_menu::Entry::Button {
                             icon: Some(&icons::ADD_TO_QUEUE),

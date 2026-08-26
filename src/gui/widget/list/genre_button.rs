@@ -23,41 +23,31 @@ use crate::{
 pub fn genre_button<'a, Message: 'a + Clone>(
     theme: &'a impl ColorScheme,
     genre: Arc<Genre>,
+    play_message: Message,
+    shuffle_message: Message,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
     let menu = iced_m3::widget::menu(
-        vec![
-            vertical_menu::Group {
-                label: None,
-                entries: vec![
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::PLAY_ARROW),
-                        label: "Play",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(None),
-                    },
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::ADD_TO_QUEUE),
-                        label: "Add to queue",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(None),
-                    },
-                ],
-            },
-            vertical_menu::Group {
-                label: None,
-                entries: vec![vertical_menu::Entry::Button {
-                    icon: Some(&icons::UPLOAD),
-                    label: "Details",
+        vec![vertical_menu::Group {
+            label: None,
+            entries: vec![
+                vertical_menu::Entry::Button {
+                    icon: Some(&icons::PLAY_ARROW),
+                    label: "Play",
                     supporting_text: None,
                     error: false,
-                    action: vertical_menu::Action::Message(None),
-                }],
-            },
-        ],
+                    action: vertical_menu::Action::Message(Some(play_message)),
+                },
+                vertical_menu::Entry::Button {
+                    icon: Some(&icons::SHUFFLE),
+                    label: "Shuffle",
+                    supporting_text: None,
+                    error: false,
+                    action: vertical_menu::Action::Message(Some(shuffle_message)),
+                },
+            ],
+        }],
         theme,
     )
     .icon_font(icons::filled());

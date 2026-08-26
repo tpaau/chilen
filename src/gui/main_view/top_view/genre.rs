@@ -91,7 +91,18 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
+    let buttons = horizontal_buttons(
+        &state.theme,
+        Message::PlayGenreNoShuffle {
+            genre: genre.clone(),
+            initial_index: 0,
+        },
+        Message::ShuffleGenre {
+            genre: genre.clone(),
+            initial_index: 0,
+        },
+        Message::Noop,
+    );
 
     let album_buttons: Vec<_> = genre
         .albums
@@ -104,6 +115,14 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     album_button::Info::TrackCount,
                     album_button::Info::ArtistCount,
                 ],
+                Message::PlayAlbumNoShuffle {
+                    album: a.clone(),
+                    initial_index: 0,
+                },
+                Message::ShuffleAlbum {
+                    album: a.clone(),
+                    initial_index: 0,
+                },
             )
             .on_press(Message::Navigate(super::TopView::Album(a.clone())))
             .into()
@@ -127,9 +146,20 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .artists
         .iter()
         .map(|a| {
-            widget::list::artist_button::artist_button(&state.theme, a.clone())
-                .on_press(Message::Navigate(super::TopView::Artist(a.clone())))
-                .into()
+            widget::list::artist_button::artist_button(
+                &state.theme,
+                a.clone(),
+                Message::PlayArtistNoShuffle {
+                    artist: a.clone(),
+                    initial_index: 0,
+                },
+                Message::ShuffleArtist {
+                    artist: a.clone(),
+                    initial_index: 0,
+                },
+            )
+            .on_press(Message::Navigate(super::TopView::Artist(a.clone())))
+            .into()
         })
         .collect();
 
@@ -146,21 +176,31 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .spacing(SPACING_REGULAR),
     );
 
-    let track_buttons = genre.tracks.iter().map(|t| {
+    let genre_cloned = genre.clone();
+    let track_buttons = genre.tracks.iter().enumerate().map(|(i, t)| {
         track_button::track_button(
             state,
             t.clone(),
             track_button::Info::Artist,
             track_button::Messages {
-                play: None,
-                shuffle: None,
+                play: Message::PlayGenreNoShuffle {
+                    genre: genre_cloned.clone(),
+                    initial_index: i,
+                },
+                shuffle: Message::ShuffleGenre {
+                    genre: genre_cloned.clone(),
+                    initial_index: i,
+                },
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,
                 remove: None,
             },
         )
-        .on_press(Message::Noop)
+        .on_press(Message::PlayGenre {
+            genre: genre_cloned.clone(),
+            initial_index: i,
+        })
         .into()
     });
 

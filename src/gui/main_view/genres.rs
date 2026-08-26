@@ -20,13 +20,17 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
         virtualize_entry(
             state,
             move || {
-                widget::list::genre_button::genre_button(&state.theme, genre.clone()).on_press_with(
-                    || {
-                        main_view::Message::TopView(top_view::Message::Navigate(TopView::Genre(
-                            genre.clone(),
-                        )))
-                    },
+                widget::list::genre_button::genre_button(
+                    &state.theme,
+                    genre.clone(),
+                    main_view::Message::PlayGenre(genre.clone()),
+                    main_view::Message::ShuffleGenre(genre.clone()),
                 )
+                .on_press_with(|| {
+                    main_view::Message::TopView(top_view::Message::Navigate(TopView::Genre(
+                        genre.clone(),
+                    )))
+                })
             },
             BUTTON_HEIGHT,
             index,

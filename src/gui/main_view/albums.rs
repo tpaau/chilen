@@ -24,6 +24,8 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                         album_button::Info::TrackCount,
                         album_button::Info::ArtistCount,
                     ],
+                    main_view::Message::PlayAlbum(album.clone()),
+                    main_view::Message::ShuffleAlbum(album.clone()),
                 )
                 .on_press_with(|| {
                     main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(

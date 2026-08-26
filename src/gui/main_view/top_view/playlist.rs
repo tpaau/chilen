@@ -75,7 +75,18 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(&state.theme, Message::Noop, Message::Noop, Message::Noop);
+    let buttons = horizontal_buttons(
+        &state.theme,
+        Message::PlayPlaylistNoShuffle {
+            playlist: playlist.clone(),
+            initial_index: 0,
+        },
+        Message::ShufflePlaylist {
+            playlist: playlist.clone(),
+            initial_index: 0,
+        },
+        Message::Noop,
+    );
 
     let playlist_cloned = playlist.clone();
     let track_buttons: Vec<_> = playlist
@@ -88,8 +99,14 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                 t.clone(),
                 track_button::Info::Artist,
                 track_button::Messages {
-                    play: None,
-                    shuffle: None,
+                    play: Message::PlayPlaylistNoShuffle {
+                        playlist: playlist_cloned.clone(),
+                        initial_index: i,
+                    },
+                    shuffle: Message::ShufflePlaylist {
+                        playlist: playlist_cloned.clone(),
+                        initial_index: i,
+                    },
                     add_to_queue: None,
                     add_to_playlist: None,
                     details: None,
@@ -99,7 +116,10 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                     }),
                 },
             )
-            .on_press(Message::Noop)
+            .on_press(Message::PlayPlaylist {
+                playlist: playlist_cloned.clone(),
+                initial_index: i,
+            })
             .into()
         })
         .collect();

@@ -20,12 +20,17 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
         virtualize_entry(
             state,
             move || {
-                widget::list::artist_button::artist_button(&state.theme, artist.clone())
-                    .on_press_with(|| {
-                        main_view::Message::TopView(top_view::Message::Navigate(TopView::Artist(
-                            artist.clone(),
-                        )))
-                    })
+                widget::list::artist_button::artist_button(
+                    &state.theme,
+                    artist.clone(),
+                    main_view::Message::PlayArtist(artist.clone()),
+                    main_view::Message::ShuffleArtist(artist.clone()),
+                )
+                .on_press_with(|| {
+                    main_view::Message::TopView(top_view::Message::Navigate(TopView::Artist(
+                        artist.clone(),
+                    )))
+                })
             },
             BUTTON_HEIGHT,
             index,
