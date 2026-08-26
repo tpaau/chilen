@@ -43,14 +43,14 @@ pub struct PlayerState {
     ///
     /// It can either point to the `tracks` variable or `shuffled_tracks` is shuffle is supported
     /// and set to [`ShuffleState::On`].
-    pub(super) position: usize,
-    pub(super) player_position: Duration,
-    pub(super) player_volume: PlayerVolume,
-    pub(super) playback_state: PlaybackState,
-    pub(super) tracks: Vec<Arc<Track>>,
-    pub(super) shuffled_tracks: Vec<Arc<Track>>,
-    pub(super) shuffle_state: ShuffleState,
-    pub(super) loop_state: LoopState,
+    pub position: usize,
+    pub player_position: Duration,
+    pub player_volume: PlayerVolume,
+    pub playback_state: PlaybackState,
+    pub tracks: Vec<Arc<Track>>,
+    pub shuffled_tracks: Vec<Arc<Track>>,
+    pub shuffle_state: ShuffleState,
+    pub loop_state: LoopState,
 }
 
 impl TryFrom<PlayerStateRaw> for PlayerState {
@@ -175,24 +175,8 @@ impl PlayerState {
         self.playback_state == PlaybackState::Stopped
     }
 
-    pub fn playback_state(&self) -> PlaybackState {
-        self.playback_state
-    }
-
-    pub fn shuffle_state(&self) -> ShuffleState {
-        self.shuffle_state
-    }
-
     pub fn shuffle_enabled(&self) -> bool {
         self.shuffle_state.enabled()
-    }
-
-    pub fn loop_state(&self) -> LoopState {
-        self.loop_state
-    }
-
-    pub fn player_position(&self) -> Duration {
-        self.player_position
     }
 
     pub fn handle_event(&mut self, event: Event) {

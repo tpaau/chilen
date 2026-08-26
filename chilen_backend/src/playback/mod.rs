@@ -60,7 +60,7 @@ pub enum LoopState {
 }
 
 impl LoopState {
-    pub fn next(&self) -> Self {
+    pub fn cycle(&self) -> Self {
         match self {
             Self::Off => Self::Playlist,
             Self::Playlist => Self::Track,
@@ -83,6 +83,13 @@ pub enum ShuffleState {
 impl ShuffleState {
     pub fn enabled(&self) -> bool {
         self == &Self::On
+    }
+
+    pub fn toggle(self) -> Self {
+        match self {
+            Self::Off => Self::On,
+            Self::On => Self::Off,
+        }
     }
 }
 
@@ -584,7 +591,7 @@ pub fn cycle_loop_state() -> Result<(), Error> {
     trace!("Cycling loop state");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    state.set_loop_state(state.loop_state.next());
+    state.set_loop_state(state.loop_state.cycle());
     background_save_state(state.clone());
     Ok(())
 }
@@ -602,10 +609,7 @@ pub fn toggle_shuffle_state() -> Result<(), Error> {
     trace!("Toggling shuffle state");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    let shuffle_state = match state.shuffle_state() {
-        ShuffleState::Off => ShuffleState::On,
-        ShuffleState::On => ShuffleState::Off,
-    };
+    let shuffle_state = state.shuffle_state.toggle();
     trace!("Setting shuffle state to {shuffle_state:?}");
     state.set_shuffle_state(shuffle_state);
     background_save_state(state.clone());
