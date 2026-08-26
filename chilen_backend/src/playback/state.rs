@@ -56,25 +56,35 @@ pub struct PlayerState {
 impl TryFrom<PlayerStateRaw> for PlayerState {
     type Error = Error;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
+        let tracks = {
+            let result = tracks_from_hashes(value.track_hashes)?;
+            if !result.unmatched.is_empty() {
+                warn!("{} missing tracks in the queue", result.unmatched.len());
+            }
+            result.matched
+        };
+        let shuffled_tracks = {
+            let result = tracks_from_hashes(value.shuffled_track_hashes)?;
+            if !result.unmatched.is_empty() {
+                warn!("{} missing tracks in the queue", result.unmatched.len());
+            }
+            result.matched
+        };
+        let playback_state = if (!tracks.is_empty() && !value.shuffle_state.enabled())
+            || (!shuffled_tracks.is_empty() && value.shuffle_state.enabled())
+        {
+            PlaybackState::Paused
+        } else {
+            PlaybackState::Stopped
+        };
         Ok(Self {
+            // TEST: Will this cause a crash if it goes out of bounds
             position: value.position,
             player_position: value.player_position,
             player_volume: value.player_volume,
-            playback_state: PlaybackState::Stopped,
-            tracks: {
-                let result = tracks_from_hashes(value.track_hashes)?;
-                if !result.unmatched.is_empty() {
-                    warn!("{} missing tracks in the queue", result.unmatched.len());
-                }
-                result.matched
-            },
-            shuffled_tracks: {
-                let result = tracks_from_hashes(value.shuffled_track_hashes)?;
-                if !result.unmatched.is_empty() {
-                    warn!("{} missing tracks in the queue", result.unmatched.len());
-                }
-                result.matched
-            },
+            playback_state,
+            tracks,
+            shuffled_tracks,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         })
@@ -672,11 +682,8 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, String> {
             }
         };
 
-        match <PlayerStateRaw as TryInto<PlayerState>>::try_into(state_raw) {
-            Ok(mut state) => {
-                state.playback_state = PlaybackState::Stopped;
-                Ok(state)
-            }
+        match PlayerState::try_from(state_raw) {
+            Ok(state) => Ok(state),
             Err(e) => {
                 error!("Could not restore player state from cache: {e}");
                 Err(e.to_string())

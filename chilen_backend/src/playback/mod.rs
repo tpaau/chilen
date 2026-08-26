@@ -810,8 +810,11 @@ pub(crate) fn init(
     {
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = player_guard.as_ref().unwrap();
-        state.player_position = Duration::default();
         player.append(source);
+        if let Err(e) = player.try_seek(state.player_position) {
+            error!("Couldn't set initial player position: {e}");
+            state.set_player_position(Duration::default());
+        }
         player.pause();
         drop(player_guard);
     }
@@ -822,7 +825,7 @@ pub(crate) fn init(
 
     trace!("Playback module initialized");
 
-    let mut initial_iter = true;
+    let mut init = true;
     let sleep_duration = Duration::from_millis(100);
     loop {
         thread::sleep(sleep_duration);
@@ -834,11 +837,13 @@ pub(crate) fn init(
             state.increment_player_position(sleep_duration);
         } else if player.empty() {
             state.set_player_position(Duration::default());
-            if !state.can_go_next() {
-                state.set_playback_state(PlaybackState::Stopped);
-                continue;
-            }
-            let track = state.next_track().unwrap();
+            let track = match state.next_track() {
+                Some(track) => track,
+                None => {
+                    state.set_playback_state(PlaybackState::Stopped);
+                    continue;
+                }
+            };
             let source = match track.open_source() {
                 Ok(source) => source,
                 Err(e) => {
@@ -847,10 +852,9 @@ pub(crate) fn init(
                 }
             };
             player.append(source);
-            if initial_iter {
+            if init {
                 player.pause();
-                initial_iter = false;
-                state.set_playback_state(PlaybackState::Stopped);
+                init = false;
             } else {
                 state.set_playback_state(PlaybackState::Playing);
             }
