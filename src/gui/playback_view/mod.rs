@@ -92,9 +92,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         .as_ref()
         .map(|p| {
             if let Some(track) = p.current() {
-                (p.player_position(), Some(track.duration))
+                (p.player_position, Some(track.duration))
             } else {
-                (p.player_position(), None)
+                (p.player_position, None)
             }
         })
         .unwrap_or((Duration::default(), None));
@@ -158,7 +158,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let play_button_icon = state
         .player_state
         .as_ref()
-        .map(|p| match p.playback_state() {
+        .map(|p| match p.playback_state {
             chilen_backend::playback::PlaybackState::Playing => &icons::PAUSE,
             chilen_backend::playback::PlaybackState::Paused => &icons::PLAY_ARROW,
             chilen_backend::playback::PlaybackState::Stopped => &icons::STOP,
@@ -167,7 +167,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let loop_button_icon = state
         .player_state
         .as_ref()
-        .map(|p| match p.loop_state() {
+        .map(|p| match p.loop_state {
             LoopState::Off | LoopState::Playlist => &icons::REPEAT,
             LoopState::Track => &icons::REPEAT_ONE,
         })
@@ -257,7 +257,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     state
                         .player_state
                         .as_ref()
-                        .map(|p| p.loop_state() != LoopState::Off)
+                        .map(|p| p.loop_state != LoopState::Off)
                         .unwrap_or_default()
                 )
                 .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleLooping)),
@@ -283,12 +283,33 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             let _ = chilen_backend::playback::skip_previous();
         }
         Message::TogglePlaying => {
+            if let Some(player_state) = state.player_state.as_mut() {
+                match player_state.playback_state {
+                    chilen_backend::playback::PlaybackState::Playing => {
+                        player_state.playback_state =
+                            chilen_backend::playback::PlaybackState::Paused
+                    }
+                    chilen_backend::playback::PlaybackState::Paused => {
+                        player_state.playback_state =
+                            chilen_backend::playback::PlaybackState::Playing
+                    }
+                    chilen_backend::playback::PlaybackState::Stopped => {
+                        if player_state.can_play() {
+                            player_state.playback_state =
+                                chilen_backend::playback::PlaybackState::Playing
+                        }
+                    }
+                }
+            }
             let _ = chilen_backend::playback::toggle_playing();
         }
         Message::Next => {
             let _ = chilen_backend::playback::skip_next();
         }
         Message::ToggleLooping => {
+            if let Some(player_state) = state.player_state.as_mut() {
+                player_state.loop_state = player_state.loop_state.cycle();
+            }
             let _ = chilen_backend::playback::cycle_loop_state();
         }
         Message::SeekSliderMoved(value) => state.playback_view.seek_slider_value = Some(value),
@@ -305,6 +326,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 .and_then(|p| p.current().map(|t| t.duration))
                 .unwrap_or_default();
             let position = Duration::from_secs_f32(track_duration.as_secs_f32() * ratio);
+            if let Some(player_state) = state.player_state.as_mut() {
+                player_state.player_position = position;
+            }
             let _ = chilen_backend::playback::set_player_position(position);
         }
     }
