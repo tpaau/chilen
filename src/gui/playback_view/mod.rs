@@ -17,6 +17,7 @@ pub enum Message {
     ToggleLooping,
     SeekSliderMoved(f32),
     SeekSliderReleased,
+    SetPlayerPosition(Duration),
     OpenLyrics,
     OpenQueue,
 }
@@ -38,7 +39,7 @@ pub struct State {
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let padding = SPACING_SMALL;
-    let width = 384.0;
+    let width = 400.0;
     container(
         column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
     )
@@ -106,6 +107,12 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::OpenLyrics => state.playback_view.tab = Tab::Lyrics,
         Message::OpenQueue => state.playback_view.tab = Tab::Queue,
+        Message::SetPlayerPosition(position) => {
+            let _ = chilen_backend::playback::set_player_position(position);
+            if let Some(player_state) = state.player_state.as_mut() {
+                player_state.player_position = position;
+            }
+        }
     }
     Task::none()
 }

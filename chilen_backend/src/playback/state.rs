@@ -184,14 +184,14 @@ impl PlayerState {
         self.tracks.is_empty()
     }
 
-    pub fn current(&self) -> Option<Arc<Track>> {
+    pub fn current(&self) -> Option<&Arc<Track>> {
         match self.shuffle_state {
             ShuffleState::Off => {
-                return self.tracks.get(self.position).cloned();
+                return self.tracks.get(self.position);
             }
             ShuffleState::On => {
                 if let Some(index) = self.shuffled_track_indices.get(self.position) {
-                    return self.tracks.get(*index).cloned();
+                    return self.tracks.get(*index);
                 }
             }
         }
@@ -421,7 +421,7 @@ impl PlayerState {
             if !shuffle_state.enabled()
                 && let Some(track) = self.current()
             {
-                match self.tracks.iter().position(|t| *t == track) {
+                match self.tracks.iter().position(|t| t == track) {
                     Some(pos) => {
                         self.position = pos;
                         crate::send_event(crate::Event::Playback(Event::PositionChanged(
@@ -540,7 +540,7 @@ impl PlayerState {
         }
     }
 
-    pub(crate) fn play_track(&mut self, index: usize) -> Option<Arc<Track>> {
+    pub(crate) fn play_track(&mut self, index: usize) -> Option<&Arc<Track>> {
         if index < self.tracks.len() {
             self.position = index;
             self.on_track_changed();
@@ -550,7 +550,7 @@ impl PlayerState {
         }
     }
 
-    pub(crate) fn next_track(&mut self) -> Option<Arc<Track>> {
+    pub(crate) fn next_track(&mut self) -> Option<&Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
                 if !self.tracks.is_empty() && self.position < self.tracks.len() - 1 {
@@ -580,7 +580,7 @@ impl PlayerState {
         }
     }
 
-    pub(crate) fn previous_track(&mut self) -> Option<Arc<Track>> {
+    pub(crate) fn previous_track(&mut self) -> Option<&Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
                 if self.position > 0 && !self.tracks.is_empty() {

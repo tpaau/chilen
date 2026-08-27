@@ -61,19 +61,19 @@ fn track_loop() {
     state.loop_state = LoopState::Track;
     let track = state.tracks[state.position].clone();
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.next_track().unwrap(), track);
+        assert_eq!(state.next_track().unwrap(), &track);
     }
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.previous_track().unwrap(), track);
+        assert_eq!(state.previous_track().unwrap(), &track);
     }
 
     state.position = 1;
     state.set_shuffle_state(ShuffleState::On);
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.next_track().unwrap(), track);
+        assert_eq!(state.next_track().unwrap(), &track);
     }
     for _ in 0..state.tracks.len() {
-        assert_eq!(state.previous_track().unwrap(), track);
+        assert_eq!(state.previous_track().unwrap(), &track);
     }
 }
 
@@ -87,11 +87,11 @@ fn playlist_loop() {
     for _ in 0..state.tracks.len() + 2 {
         state.next_track().unwrap();
     }
-    assert_eq!(state.tracks[2], state.current().unwrap());
+    assert_eq!(&state.tracks[2], state.current().unwrap());
     for _ in 0..state.tracks.len() + 2 {
         state.previous_track().unwrap();
     }
-    assert_eq!(state.tracks[0], state.current().unwrap());
+    assert_eq!(&state.tracks[0], state.current().unwrap());
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn shuffle_track_stays_the_same() {
         println!("For loop state: {loop_state}");
         for i in 0..TEST_ITER_COUNT {
             let pre_track = if loop_state == LoopState::Track {
-                Some(state.current().unwrap())
+                Some(state.current().unwrap().clone())
             } else {
                 None
             };
@@ -136,12 +136,12 @@ fn shuffle_track_stays_the_same() {
                     println!("Disabling shuffle!");
                     let track = &state.tracks[state.shuffled_track_indices[state.position]].clone();
                     state.set_shuffle_state(ShuffleState::Off);
-                    assert_eq!(state.current().unwrap(), track.clone());
+                    assert_eq!(state.current().unwrap(), &track.clone());
                 } else {
                     println!("Enabling shuffle!");
                     let track = &state.tracks[state.position].clone();
                     state.set_shuffle_state(ShuffleState::On);
-                    assert_eq!(state.current().unwrap(), track.clone());
+                    assert_eq!(state.current().unwrap(), &track.clone());
                 }
             }
             println!(
@@ -159,7 +159,7 @@ fn shuffle_track_stays_the_same() {
                 state.previous_track()
             };
             if loop_state == LoopState::Track {
-                assert_eq!(track, pre_track);
+                assert_eq!(track, pre_track.as_ref());
             }
         }
     }
@@ -205,7 +205,7 @@ fn test_play_new_queue() {
             },
             Some(index),
         );
-        assert_eq!(state.current(), expected);
+        assert_eq!(state.current(), expected.as_ref());
         assert_eq!(state.position, index);
 
         state.set_shuffle_state(ShuffleState::On);
@@ -218,7 +218,7 @@ fn test_play_new_queue() {
             },
             Some(index),
         );
-        assert_eq!(state.current(), expected);
+        assert_eq!(state.current(), expected.as_ref());
         assert_eq!(state.position, 0);
     }
 }
