@@ -31,11 +31,12 @@ pub enum Event {
     PlaybackStateChanged(PlaybackState),
     TracksChanged(Vec<Arc<Track>>),
     ShuffledTracksChanged(Vec<Arc<Track>>),
-    QueueIdentityChanged(String),
+    QueueSourceChanged(QueueSource),
     ShuffleStateChanged(ShuffleState),
     LoopStateChanged(LoopState),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Queue {
     Playlist(Arc<Playlist>),
     Album(Arc<Album>),
@@ -49,25 +50,71 @@ pub enum Queue {
 }
 
 impl Queue {
-    pub fn identity(&self) -> &str {
+    pub fn source(&self) -> QueueSource {
         match self {
-            Queue::Playlist(playlist) => &playlist.name,
-            Queue::Album(album) => &album.title,
-            Queue::Artist(artist) => &artist.name,
-            Queue::Genre(genre) => &genre.name,
-            Queue::AllTracks(_) => "All tracks",
-            Queue::Custom { label, tracks: _ } => label,
+            Self::Playlist(playlist) => QueueSource::Playlist {
+                name: playlist.name.clone(),
+            },
+            Self::Album(album) => QueueSource::Album {
+                title: album.title.clone(),
+            },
+            Self::Artist(artist) => QueueSource::Artist {
+                name: artist.name.clone(),
+            },
+            Self::Genre(genre) => QueueSource::Genre {
+                name: genre.name.clone(),
+            },
+            Self::AllTracks(_) => QueueSource::AllTracks,
+            Self::Custom { label, tracks: _ } => QueueSource::Custom {
+                label: label.clone(),
+            },
         }
     }
 
     pub fn tracks(self) -> Vec<Arc<Track>> {
         match self {
-            Queue::Playlist(playlist) => playlist.tracks.clone(),
-            Queue::Album(album) => album.tracks.clone(),
-            Queue::Artist(artist) => artist.tracks.clone(),
-            Queue::Genre(genre) => genre.tracks.clone(),
-            Queue::AllTracks(tracks) => tracks,
-            Queue::Custom { label: _, tracks } => tracks,
+            Self::Playlist(playlist) => playlist.tracks.clone(),
+            Self::Album(album) => album.tracks.clone(),
+            Self::Artist(artist) => artist.tracks.clone(),
+            Self::Genre(genre) => genre.tracks.clone(),
+            Self::AllTracks(tracks) => tracks,
+            Self::Custom { label: _, tracks } => tracks,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub enum QueueSource {
+    #[default]
+    None,
+    AllTracks,
+    Custom {
+        label: String,
+    },
+    Playlist {
+        name: String,
+    },
+    Album {
+        title: String,
+    },
+    Artist {
+        name: String,
+    },
+    Genre {
+        name: String,
+    },
+}
+
+impl QueueSource {
+    pub fn identity(&self) -> Option<&str> {
+        match self {
+            Self::None => None,
+            Self::AllTracks => Some("All tracks"),
+            Self::Custom { label } => Some(label),
+            Self::Playlist { name } => Some(name),
+            Self::Album { title } => Some(title),
+            Self::Artist { name } => Some(name),
+            Self::Genre { name } => Some(name),
         }
     }
 }
@@ -86,7 +133,7 @@ pub struct PlayerState {
     pub playback_state: PlaybackState,
     pub tracks: Vec<Arc<Track>>,
     pub shuffled_tracks: Vec<Arc<Track>>,
-    pub queue_identity: String,
+    pub queue_source: QueueSource,
     pub shuffle_state: ShuffleState,
     pub loop_state: LoopState,
 }
@@ -123,7 +170,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
             playback_state,
             tracks,
             shuffled_tracks,
-            queue_identity: value.queue_identity,
+            queue_source: value.queue_source,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         })
@@ -239,7 +286,7 @@ impl PlayerState {
             Event::LoopStateChanged(loop_state) => self.loop_state = loop_state,
             Event::TracksChanged(tracks) => self.tracks = tracks,
             Event::ShuffledTracksChanged(tracks) => self.shuffled_tracks = tracks,
-            Event::QueueIdentityChanged(identity) => self.queue_identity = identity,
+            Event::QueueSourceChanged(queue_source) => self.queue_source = queue_source,
         }
     }
 
@@ -264,14 +311,14 @@ impl PlayerState {
 
     pub(crate) fn set_queue(&mut self, queue: Queue) {
         self.position = 0;
-        self.queue_identity = queue.identity().to_string();
+        self.queue_source = queue.source();
         self.tracks = queue.tracks();
         self.set_playback_state(PlaybackState::Stopped);
         if self.shuffle_state.enabled() {
             self.shuffle();
         }
-        crate::send_event(crate::Event::Playback(Event::QueueIdentityChanged(
-            self.queue_identity.clone(),
+        crate::send_event(crate::Event::Playback(Event::QueueSourceChanged(
+            self.queue_source.clone(),
         )));
         self.on_track_changed();
     }
@@ -284,7 +331,10 @@ impl PlayerState {
             self.shuffle_state = ShuffleState::Off;
         }
         self.position = index;
-        self.queue_identity = queue.identity().to_string();
+        self.queue_source = queue.source();
+        crate::send_event(crate::Event::Playback(Event::QueueSourceChanged(
+            self.queue_source.clone(),
+        )));
         self.tracks = queue.tracks();
         crate::send_event(crate::Event::Playback(Event::TracksChanged(
             self.tracks.clone(),
@@ -293,9 +343,6 @@ impl PlayerState {
             self.shuffle_state = ShuffleState::On;
             self.shuffle();
         }
-        crate::send_event(crate::Event::Playback(Event::QueueIdentityChanged(
-            self.queue_identity.clone(),
-        )));
         self.on_track_changed();
         self.set_player_position(Duration::default());
     }
@@ -622,7 +669,7 @@ struct PlayerStateRaw {
     player_volume: PlayerVolume,
     track_hashes: Vec<u64>,
     shuffled_track_hashes: Vec<u64>,
-    queue_identity: String,
+    queue_source: QueueSource,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
 }
@@ -637,7 +684,7 @@ impl From<PlayerState> for PlayerStateRaw {
             player_volume: value.player_volume,
             track_hashes,
             shuffled_track_hashes,
-            queue_identity: value.queue_identity,
+            queue_source: value.queue_source,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
         }

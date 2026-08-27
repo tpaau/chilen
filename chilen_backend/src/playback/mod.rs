@@ -216,6 +216,7 @@ pub fn play(index: Option<usize>) -> Result<(), Error> {
         };
         let source = match track.open_source() {
             Ok(source) => source,
+            // FIX: Add better error handling here, so the display doesn't completely explode when this happens
             Err(e) => {
                 error!("Could not open audio source: {e}");
                 return Err(Error::SourceError);
