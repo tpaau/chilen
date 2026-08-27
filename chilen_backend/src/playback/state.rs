@@ -333,7 +333,7 @@ impl PlayerState {
         )));
         if shuffle_enabled {
             self.shuffle_state = ShuffleState::On;
-            self.shuffle();
+            self.full_shuffle();
         }
         self.on_track_changed();
         self.set_player_position(Duration::default());
@@ -362,6 +362,23 @@ impl PlayerState {
                 Property::CanPause(self.can_pause()),
             ]);
         }
+    }
+
+    /// Shuffles all tracks in the queue, without preserving the current playing track.
+    fn full_shuffle(&mut self) {
+        if self.tracks.is_empty() {
+            use log::warn;
+            warn!("Refusing to shuffle an empty queue");
+            return;
+        }
+
+        self.shuffled_track_indices = self.tracks.iter().enumerate().map(|(i, _)| i).collect();
+        let mut rng = rand::rng();
+        self.shuffled_track_indices.shuffle(&mut rng);
+
+        crate::send_event(crate::Event::Playback(Event::ShuffledTrackIndicesChanged(
+            self.shuffled_track_indices.clone(),
+        )));
     }
 
     // FIX: There should be a separate shuffle function that shuffles the entire queue, for setting
