@@ -31,6 +31,7 @@ pub fn album_button<'a, Message: 'a + Clone>(
     info: Vec<Info>,
     play_message: Message,
     shuffle_message: Message,
+    highlighted: bool,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
@@ -96,6 +97,18 @@ pub fn album_button<'a, Message: 'a + Clone>(
         }
     }
 
+    // TODO: There should be an animated indicator on the cover in additional to the title being bold
+    let font = if highlighted {
+        font::font_bold()
+    } else {
+        font::font()
+    };
+    let title = text(album.title.clone())
+        .size(font::SIZE_REGULAR)
+        .color(state.theme.on_surface())
+        .font(font)
+        .wrapping(text::Wrapping::None);
+
     button(
         row![
             cover_image(
@@ -109,10 +122,7 @@ pub fn album_button<'a, Message: 'a + Clone>(
             .width(Length::Fixed(THUMBNAIL_SIZE))
             .height(Length::Fixed(THUMBNAIL_SIZE)),
             container(column![
-                text(album.title.clone())
-                    .size(font::SIZE_REGULAR)
-                    .color(state.theme.on_surface())
-                    .wrapping(text::Wrapping::None),
+                title,
                 row(info_text)
                     .align_y(Alignment::Center)
                     .spacing(SPACING_SMALLER),

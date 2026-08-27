@@ -124,6 +124,15 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
         Message::Noop,
     );
 
+    let highlighted_index = state.player_state.as_ref().and_then(|p| {
+        if let chilen_backend::playback::QueueSource::Album { title: t } = &p.queue_source
+            && t == &album.title
+        {
+            p.real_track_index(p.position)
+        } else {
+            None
+        }
+    });
     let album_cloned = album.clone();
     let track_buttons = album.tracks.iter().enumerate().map(|(i, t)| {
         track_button::track_button(
@@ -144,6 +153,9 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                 details: None,
                 remove: None,
             },
+            highlighted_index
+                .map(|index| index == i)
+                .unwrap_or_default(),
         )
         .on_press(Message::PlayAlbum {
             album: album_cloned.clone(),

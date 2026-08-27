@@ -83,6 +83,13 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         Message::Noop,
     );
 
+    let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
+        if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
+            Some(title)
+        } else {
+            None
+        }
+    });
     let album_buttons: Vec<_> = artist
         .albums
         .iter()
@@ -99,12 +106,24 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                     album: a.clone(),
                     initial_index: 0,
                 },
+                highlighted_album_title
+                    .map(|t| *t == a.title)
+                    .unwrap_or_default(),
             )
             .on_press(Message::Navigate(super::TopView::Album(a.clone())))
             .into()
         })
         .collect();
 
+    let highlighted_index = state.player_state.as_ref().and_then(|p| {
+        if let chilen_backend::playback::QueueSource::Artist { name: a } = &p.queue_source
+            && a == &artist.name
+        {
+            p.real_track_index(p.position)
+        } else {
+            None
+        }
+    });
     let artist_cloned = artist.clone();
     let track_buttons = artist.tracks.iter().enumerate().map(|(i, t)| {
         track_button::track_button(
@@ -125,6 +144,9 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 details: None,
                 remove: None,
             },
+            highlighted_index
+                .map(|index| index == i)
+                .unwrap_or_default(),
         )
         .on_press(Message::PlayArtist {
             artist: artist_cloned.clone(),

@@ -88,6 +88,15 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         Message::Noop,
     );
 
+    let highlighted_index = state.player_state.as_ref().and_then(|p| {
+        if let chilen_backend::playback::QueueSource::Playlist { name: pl_name } = &p.queue_source
+            && pl_name == &playlist.name
+        {
+            p.real_track_index(p.position)
+        } else {
+            None
+        }
+    });
     let playlist_cloned = playlist.clone();
     let track_buttons: Vec<_> = playlist
         .tracks
@@ -115,6 +124,9 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                         index: i,
                     }),
                 },
+                highlighted_index
+                    .map(|index| index == i)
+                    .unwrap_or_default(),
             )
             .on_press(Message::PlayPlaylist {
                 playlist: playlist_cloned.clone(),

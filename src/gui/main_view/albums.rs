@@ -13,7 +13,17 @@ use crate::gui::{
 };
 
 pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_view::Message> {
+    let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
+        if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
+            Some(title)
+        } else {
+            None
+        }
+    });
     let content = column(lib.albums.iter().enumerate().map(|(index, album)| {
+        let highlighted = highlighted_album_title
+            .map(|t| *t == album.title)
+            .unwrap_or_default();
         virtualize_entry(
             state,
             move || {
@@ -26,6 +36,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                     ],
                     main_view::Message::PlayAlbum(album.clone()),
                     main_view::Message::ShuffleAlbum(album.clone()),
+                    highlighted,
                 )
                 .on_press_with(|| {
                     main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(

@@ -9,7 +9,14 @@ use crate::gui::{
 };
 
 pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_view::Message> {
-    let content = column(lib.tracks.iter().enumerate().map(|(index, track)| {
+    let highlighted_index = state.player_state.as_ref().and_then(|p| {
+        if p.queue_source == chilen_backend::playback::QueueSource::AllTracks {
+            p.real_track_index(p.position)
+        } else {
+            None
+        }
+    });
+    let content = column(lib.tracks.iter().enumerate().map(|(i, track)| {
         virtualize_entry(
             state,
             move || {
@@ -19,23 +26,26 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                     track_button::Info::Artist,
                     track_button::Messages {
                         play: main_view::Message::PlayTracksNoShuffle {
-                            initial_position: index,
+                            initial_position: i,
                         },
                         shuffle: main_view::Message::ShuffleTracks {
-                            initial_position: index,
+                            initial_position: i,
                         },
                         add_to_queue: None,
                         add_to_playlist: None,
                         details: None,
                         remove: None,
                     },
+                    highlighted_index
+                        .map(|index| index == i)
+                        .unwrap_or_default(),
                 )
                 .on_press(main_view::Message::PlayTracks {
-                    initial_position: index,
+                    initial_position: i,
                 })
             },
             BUTTON_HEIGHT,
-            index,
+            i,
         )
     }))
     .spacing(BUTTON_SPACING);

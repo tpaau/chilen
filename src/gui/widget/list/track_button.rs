@@ -39,6 +39,7 @@ pub fn track_button<'a, Message: 'a + Clone>(
     track: Arc<Track>,
     info: Info,
     messages: Messages<Message>,
+    highlighted: bool,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
@@ -105,6 +106,22 @@ pub fn track_button<'a, Message: 'a + Clone>(
 
     let menu = iced_m3::widget::menu(menu_groups, &state.theme).icon_font(icons::filled());
 
+    // TODO: There should be an animated indicator on the cover in additional to the title being bold
+    let font = if highlighted {
+        font::font_bold()
+    } else {
+        font::font()
+    };
+    let title = text(if let Some(title) = track.title.clone() {
+        title
+    } else {
+        "Unknown".to_string()
+    })
+    .size(font::SIZE_REGULAR)
+    .font(font)
+    .color(state.theme.on_surface())
+    .wrapping(text::Wrapping::None);
+
     let info = match info {
         Info::Artist => {
             if let Some(artists) = &track.artists {
@@ -130,14 +147,7 @@ pub fn track_button<'a, Message: 'a + Clone>(
             .width(Length::Fixed(THUMBNAIL_SIZE))
             .height(Length::Fixed(THUMBNAIL_SIZE)),
             container(column![
-                text(if let Some(title) = track.title.clone() {
-                    title
-                } else {
-                    "Unknown".to_string()
-                })
-                .size(font::SIZE_REGULAR)
-                .color(state.theme.on_surface())
-                .wrapping(text::Wrapping::None),
+                title,
                 text(info)
                     .size(font::SIZE_SMALL)
                     .color(state.theme.on_surface_variant())

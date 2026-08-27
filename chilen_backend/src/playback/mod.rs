@@ -25,7 +25,7 @@ use crate::{
     },
 };
 
-pub use state::{Event, PlayerState, Queue};
+pub use state::{Event, PlayerState, Queue, QueueSource};
 
 /// Playback state of the player.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
