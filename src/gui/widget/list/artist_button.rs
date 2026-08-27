@@ -25,6 +25,7 @@ pub fn artist_button<'a, Message: 'a + Clone>(
     artist: Arc<Artist>,
     play_message: Message,
     shuffle_message: Message,
+    highlighted: bool,
 ) -> Button<'a, Message> {
     let menu = iced_m3::widget::menu(
         vec![vertical_menu::Group {
@@ -50,6 +51,18 @@ pub fn artist_button<'a, Message: 'a + Clone>(
     )
     .icon_font(icons::filled());
 
+    // TODO: There should be an animated indicator on the cover in additional to the title being bold
+    let font = if highlighted {
+        font::font_bold()
+    } else {
+        font::font()
+    };
+    let title = text(artist.name.clone())
+        .size(font::SIZE_REGULAR)
+        .color(theme.on_surface())
+        .font(font)
+        .wrapping(text::Wrapping::None);
+
     button(
         row![
             cover_image(
@@ -63,10 +76,7 @@ pub fn artist_button<'a, Message: 'a + Clone>(
             .width(Length::Fixed(THUMBNAIL_SIZE))
             .height(Length::Fixed(THUMBNAIL_SIZE)),
             container(column![
-                text(artist.name.clone())
-                    .size(font::SIZE_REGULAR)
-                    .color(theme.on_surface())
-                    .wrapping(text::Wrapping::None),
+                title,
                 row![
                     text(match artist.albums.len() {
                         0 => "No albums".to_string(),

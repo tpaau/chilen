@@ -152,6 +152,13 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .spacing(SPACING_REGULAR),
     );
 
+    let highlighted_artist_name = state.player_state.as_ref().and_then(|p| {
+        if let chilen_backend::playback::QueueSource::Artist { name } = &p.queue_source {
+            Some(name)
+        } else {
+            None
+        }
+    });
     let artist_buttons: Vec<_> = genre
         .artists
         .iter()
@@ -167,6 +174,9 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     artist: a.clone(),
                     initial_index: 0,
                 },
+                highlighted_artist_name
+                    .map(|name| *name == a.name)
+                    .unwrap_or_default(),
             )
             .on_press(Message::Navigate(super::TopView::Artist(a.clone())))
             .into()
