@@ -105,7 +105,8 @@ fn shuffle_works() {
     for _ in 0..TEST_ITER_COUNT {
         state.shuffle();
         assert_eq!(state.tracks, tracks);
-        if state.tracks != state.shuffled_tracks {
+        let track_indices: Vec<_> = tracks.iter().enumerate().map(|(i, _)| i).collect();
+        if track_indices != state.shuffled_track_indices {
             return;
         }
     }
@@ -133,7 +134,7 @@ fn shuffle_track_stays_the_same() {
             if rand::random_range(0..5) == 1 {
                 if state.shuffle_state.enabled() {
                     println!("Disabling shuffle!");
-                    let track = &state.shuffled_tracks[state.position].clone();
+                    let track = &state.tracks[state.shuffled_track_indices[state.position]].clone();
                     state.set_shuffle_state(ShuffleState::Off);
                     assert_eq!(state.current().unwrap(), track.clone());
                 } else {
@@ -148,7 +149,7 @@ fn shuffle_track_stays_the_same() {
                 state.position,
                 state.shuffle_state,
                 state.tracks.len(),
-                state.shuffled_tracks.len()
+                state.shuffled_track_indices.len()
             );
             let track = if rand::random() && state.can_go_next() {
                 println!("Right!");

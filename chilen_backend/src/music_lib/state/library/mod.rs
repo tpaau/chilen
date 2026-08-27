@@ -80,7 +80,7 @@ pub struct MusicLibrary {
     genres_by_name: HashMap<String, Arc<Genre>>,
 }
 
-// TODO: Fallback alphabetic sorting
+// TODO: Fallback alphabetic sorting w/out the collator
 impl MusicLibrary {
     fn sort_tracks_alphabetically(
         tracks: &mut [Arc<Track>],

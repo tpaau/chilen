@@ -540,7 +540,7 @@ pub fn skip_next() -> Result<(), Error> {
         player.append(source);
         player.play();
         Ok(())
-    } else if state.is_empty() {
+    } else if state.queue_empty() {
         info!("Cannot skip to the next track, queue is empty");
         Err(Error::QueueEmpty)
     } else {
@@ -582,7 +582,7 @@ pub fn skip_previous() -> Result<(), Error> {
         player.append(source);
         player.play();
         Ok(())
-    } else if state.is_empty() {
+    } else if state.queue_empty() {
         info!("Cannot go to the previous track, queue is empty");
         Err(Error::QueueEmpty)
     } else {

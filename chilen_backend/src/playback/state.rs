@@ -30,7 +30,7 @@ pub enum Event {
     PlayerVolumeChanged(PlayerVolume),
     PlaybackStateChanged(PlaybackState),
     TracksChanged(Vec<Arc<Track>>),
-    ShuffledTracksChanged(Vec<Arc<Track>>),
+    ShuffledTrackIndicesChanged(Vec<usize>),
     QueueSourceChanged(QueueSource),
     ShuffleStateChanged(ShuffleState),
     LoopStateChanged(LoopState),
@@ -119,7 +119,6 @@ impl QueueSource {
     }
 }
 
-// TODO: Management shouldn't be done through methods so this can be safely exposed
 /// Data structure used to store playback state on the disc and in the RAM at runtime.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PlayerState {
@@ -132,7 +131,7 @@ pub struct PlayerState {
     pub player_volume: PlayerVolume,
     pub playback_state: PlaybackState,
     pub tracks: Vec<Arc<Track>>,
-    pub shuffled_tracks: Vec<Arc<Track>>,
+    pub shuffled_track_indices: Vec<usize>,
     pub queue_source: QueueSource,
     pub shuffle_state: ShuffleState,
     pub loop_state: LoopState,
@@ -141,35 +140,38 @@ pub struct PlayerState {
 impl TryFrom<PlayerStateRaw> for PlayerState {
     type Error = Error;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
-        let tracks = {
+        let (tracks, shuffled_track_indices) = {
             let result = tracks_from_hashes(value.track_hashes)?;
             if !result.unmatched.is_empty() {
                 warn!("{} missing tracks in the queue", result.unmatched.len());
+                let indices = result.matched.iter().enumerate().map(|(i, _)| i).collect();
+                (result.matched, indices)
+            } else {
+                let mut indices_deduped = value.shuffled_track_indices;
+                indices_deduped.dedup();
+                if result.matched.len() == indices_deduped.len()
+                    && indices_deduped.iter().max().unwrap_or(&0) < &result.matched.len()
+                {
+                    (result.matched, indices_deduped)
+                } else {
+                    let indices = result.matched.iter().enumerate().map(|(i, _)| i).collect();
+                    (result.matched, indices)
+                }
             }
-            result.matched
         };
-        let shuffled_tracks = {
-            let result = tracks_from_hashes(value.shuffled_track_hashes)?;
-            if !result.unmatched.is_empty() {
-                warn!("{} missing tracks in the queue", result.unmatched.len());
-            }
-            result.matched
-        };
-        let playback_state = if (!tracks.is_empty() && !value.shuffle_state.enabled())
-            || (!shuffled_tracks.is_empty() && value.shuffle_state.enabled())
-        {
-            PlaybackState::Paused
-        } else {
+        let playback_state = if !tracks.is_empty() {
             PlaybackState::Stopped
+        } else {
+            PlaybackState::Paused
         };
+        let position = value.position.min(tracks.len() - 1);
         Ok(Self {
-            // TEST: Will this cause a crash if it goes out of bounds
-            position: value.position,
+            position,
             player_position: value.player_position,
             player_volume: value.player_volume,
             playback_state,
             tracks,
-            shuffled_tracks,
+            shuffled_track_indices,
             queue_source: value.queue_source,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
@@ -178,27 +180,42 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
 }
 
 impl PlayerState {
-    pub fn is_empty(&self) -> bool {
-        match self.shuffle_state {
-            ShuffleState::Off => self.tracks.is_empty(),
-            ShuffleState::On => self.shuffled_tracks.is_empty(),
-        }
+    pub fn queue_empty(&self) -> bool {
+        self.tracks.is_empty()
     }
 
     pub fn current(&self) -> Option<Arc<Track>> {
         match self.shuffle_state {
             ShuffleState::Off => {
-                if self.position < self.tracks.len() {
-                    return Some(self.tracks[self.position].clone());
-                }
+                return self.tracks.get(self.position).cloned();
             }
             ShuffleState::On => {
-                if self.position < self.shuffled_tracks.len() {
-                    return Some(self.shuffled_tracks[self.position].clone());
+                if let Some(index) = self.shuffled_track_indices.get(self.position) {
+                    return self.tracks.get(*index).cloned();
                 }
             }
         }
         None
+    }
+
+    /// Returns the index of the current track in the *unshuffled* queue.
+    ///
+    /// If the queue is not shuffled, this will simply return the
+    /// [position](PlayerState::position) of the player. Otherwise, it will return the index
+    /// attached to the current track.
+    ///
+    /// Returns [`None`] if the index is out of bounds.
+    pub fn real_track_index(&self, index: usize) -> Option<usize> {
+        match self.shuffle_state {
+            ShuffleState::Off => {
+                if index >= self.tracks.len() {
+                    None
+                } else {
+                    Some(index)
+                }
+            }
+            ShuffleState::On => self.shuffled_track_indices.get(index).copied(),
+        }
     }
 
     pub fn can_seek(&self) -> bool {
@@ -206,15 +223,7 @@ impl PlayerState {
     }
 
     pub fn can_play(&self) -> bool {
-        match self.shuffle_state {
-            ShuffleState::Off => {
-                self.position < self.tracks.len() && self.playback_state != PlaybackState::Playing
-            }
-            ShuffleState::On => {
-                self.position < self.shuffled_tracks.len()
-                    && self.playback_state != PlaybackState::Playing
-            }
-        }
+        self.position < self.tracks.len() && !self.is_playing()
     }
 
     pub fn can_pause(&self) -> bool {
@@ -230,32 +239,15 @@ impl PlayerState {
 
     pub fn can_go_next(&self) -> bool {
         match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => {
-                    !self.tracks.is_empty() && self.position < self.tracks.len() - 1
-                }
-                ShuffleState::On => {
-                    !self.shuffled_tracks.is_empty()
-                        && self.position < self.shuffled_tracks.len() - 1
-                }
-            },
-            _ => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty(),
-                ShuffleState::On => !self.shuffled_tracks.is_empty(),
-            },
+            LoopState::Off => !self.tracks.is_empty() && self.position < self.tracks.len() - 1,
+            _ => !self.tracks.is_empty(),
         }
     }
 
     pub fn can_go_previous(&self) -> bool {
         match self.loop_state {
-            LoopState::Off => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty() && self.position > 0,
-                ShuffleState::On => !self.shuffled_tracks.is_empty() && self.position > 0,
-            },
-            _ => match self.shuffle_state {
-                ShuffleState::Off => !self.tracks.is_empty(),
-                ShuffleState::On => !self.shuffled_tracks.is_empty(),
-            },
+            LoopState::Off => !self.tracks.is_empty() && self.position > 0,
+            _ => !self.tracks.is_empty(),
         }
     }
 
@@ -285,7 +277,7 @@ impl PlayerState {
             Event::ShuffleStateChanged(shuffle_state) => self.shuffle_state = shuffle_state,
             Event::LoopStateChanged(loop_state) => self.loop_state = loop_state,
             Event::TracksChanged(tracks) => self.tracks = tracks,
-            Event::ShuffledTracksChanged(tracks) => self.shuffled_tracks = tracks,
+            Event::ShuffledTrackIndicesChanged(indices) => self.shuffled_track_indices = indices,
             Event::QueueSourceChanged(queue_source) => self.queue_source = queue_source,
         }
     }
@@ -354,9 +346,6 @@ impl PlayerState {
         )));
         if self.shuffle_state.enabled() {
             self.shuffle();
-            crate::send_event(crate::Event::Playback(Event::ShuffledTracksChanged(
-                self.shuffled_tracks.clone(),
-            )));
         }
         #[cfg(feature = "mpris")]
         {
@@ -389,20 +378,20 @@ impl PlayerState {
             return;
         }
 
-        self.shuffled_tracks = self.tracks.clone();
-        let len = self.shuffled_tracks.len();
+        self.shuffled_track_indices = self.tracks.iter().enumerate().map(|(i, _)| i).collect();
+        let len = self.shuffled_track_indices.len();
         let pos = self.position;
 
-        self.shuffled_tracks.swap(pos, 0);
+        self.shuffled_track_indices.swap(pos, 0);
         let mut rng = rand::rng();
-        self.shuffled_tracks[1..len].shuffle(&mut rng);
+        self.shuffled_track_indices[1..len].shuffle(&mut rng);
         self.position = 0;
 
         crate::send_event(crate::Event::Playback(Event::PositionChanged(
             self.position,
         )));
-        crate::send_event(crate::Event::Playback(Event::ShuffledTracksChanged(
-            self.shuffled_tracks.clone(),
+        crate::send_event(crate::Event::Playback(Event::ShuffledTrackIndicesChanged(
+            self.shuffled_track_indices.clone(),
         )));
     }
 
@@ -543,11 +532,7 @@ impl PlayerState {
     pub(crate) fn next_track(&mut self) -> Option<Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
-                let tracks = match self.shuffle_state {
-                    ShuffleState::Off => &self.tracks,
-                    ShuffleState::On => &self.shuffled_tracks,
-                };
-                if !tracks.is_empty() && self.position < tracks.len() - 1 {
+                if !self.tracks.is_empty() && self.position < self.tracks.len() - 1 {
                     self.position += 1;
                     self.on_track_changed();
                     return self.current();
@@ -559,13 +544,9 @@ impl PlayerState {
                 self.current()
             }
             LoopState::Playlist => {
-                let tracks = match self.shuffle_state {
-                    ShuffleState::Off => &self.tracks,
-                    ShuffleState::On => &self.shuffled_tracks,
-                };
-                if tracks.is_empty() {
+                if self.tracks.is_empty() {
                     None
-                } else if !tracks.is_empty() && self.position < tracks.len() - 1 {
+                } else if !self.tracks.is_empty() && self.position < self.tracks.len() - 1 {
                     self.position += 1;
                     self.on_track_changed();
                     self.current()
@@ -581,11 +562,7 @@ impl PlayerState {
     pub(crate) fn previous_track(&mut self) -> Option<Arc<Track>> {
         match self.loop_state {
             LoopState::Off => {
-                let tracks = match self.shuffle_state {
-                    ShuffleState::Off => &self.tracks,
-                    ShuffleState::On => &self.shuffled_tracks,
-                };
-                if self.position > 0 && !tracks.is_empty() {
+                if self.position > 0 && !self.tracks.is_empty() {
                     self.position -= 1;
                     self.on_track_changed();
                     self.current()
@@ -598,18 +575,14 @@ impl PlayerState {
                 self.current()
             }
             LoopState::Playlist => {
-                let tracks = match self.shuffle_state {
-                    ShuffleState::Off => &self.tracks,
-                    ShuffleState::On => &self.shuffled_tracks,
-                };
-                if tracks.is_empty() {
+                if self.tracks.is_empty() {
                     None
                 } else if self.position > 0 {
                     self.position -= 1;
                     self.on_track_changed();
                     self.current()
-                } else if !tracks.is_empty() {
-                    self.position = tracks.len() - 1;
+                } else if !self.tracks.is_empty() {
+                    self.position = self.tracks.len() - 1;
                     self.on_track_changed();
                     self.current()
                 } else {
@@ -668,7 +641,7 @@ struct PlayerStateRaw {
     player_position: Duration,
     player_volume: PlayerVolume,
     track_hashes: Vec<u64>,
-    shuffled_track_hashes: Vec<u64>,
+    shuffled_track_indices: Vec<usize>,
     queue_source: QueueSource,
     shuffle_state: ShuffleState,
     loop_state: LoopState,
@@ -677,13 +650,12 @@ struct PlayerStateRaw {
 impl From<PlayerState> for PlayerStateRaw {
     fn from(value: PlayerState) -> Self {
         let track_hashes = Track::hash_tracks(value.tracks);
-        let shuffled_track_hashes = Track::hash_tracks(value.shuffled_tracks);
         Self {
             position: value.position,
             player_position: value.player_position,
             player_volume: value.player_volume,
             track_hashes,
-            shuffled_track_hashes,
+            shuffled_track_indices: value.shuffled_track_indices,
             queue_source: value.queue_source,
             shuffle_state: value.shuffle_state,
             loop_state: value.loop_state,
