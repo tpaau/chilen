@@ -24,6 +24,9 @@ loc:
 release:
 	cargo build --release
 
-clean-dirs:
+clean-cache:
 	rm -rf ~/.cache/chilen/
+
+clean-dirs:
+	just clean-cache
 	rm -rf ~/.local/share/chilen/
