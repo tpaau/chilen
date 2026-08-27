@@ -291,7 +291,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             Some(lib) => {
                 let _ = chilen_backend::playback::play_new_queue(
                     chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
-                    initial_position,
+                    Some(initial_position),
                 );
             }
             None => error!("Cannot play the track, the library is not loaded"),
@@ -303,7 +303,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 );
                 let _ = chilen_backend::playback::play_new_queue(
                     chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
-                    initial_position,
+                    Some(initial_position),
                 );
             }
             None => error!("Cannot play the track, the library is not loaded"),
@@ -315,7 +315,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 );
                 let _ = chilen_backend::playback::play_new_queue(
                     chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
-                    initial_position,
+                    Some(initial_position),
                 );
             }
             None => error!("Cannot play the track, the library is not loaded"),
@@ -326,7 +326,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Album(album),
-                0,
+                None,
             );
         }
         Message::ShuffleAlbum(album) => {
@@ -335,7 +335,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Album(album),
-                0,
+                None,
             );
         }
         Message::PlayArtist(artist) => {
@@ -344,7 +344,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Artist(artist),
-                0,
+                None,
             );
         }
         Message::ShuffleArtist(artist) => {
@@ -353,7 +353,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Artist(artist),
-                0,
+                None,
             );
         }
         Message::PlayGenre(genre) => {
@@ -362,7 +362,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Genre(genre),
-                0,
+                None,
             );
         }
         Message::ShuffleGenre(genre) => {
@@ -371,7 +371,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Genre(genre),
-                0,
+                None,
             );
         }
     }

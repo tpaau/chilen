@@ -186,6 +186,7 @@ fn test_set_queue() {
     assert_eq!(state.tracks, tracks);
 }
 
+// TEST: Playing a queue with no specified index
 #[test]
 fn test_play_new_queue() {
     const TEST_ITER_COUNT: usize = 100;
@@ -202,7 +203,7 @@ fn test_play_new_queue() {
                 label: String::new(),
                 tracks: tracks.clone(),
             },
-            index,
+            Some(index),
         );
         assert_eq!(state.current(), expected);
         assert_eq!(state.position, index);
@@ -215,7 +216,7 @@ fn test_play_new_queue() {
                 label: String::new(),
                 tracks: tracks.clone(),
             },
-            index,
+            Some(index),
         );
         assert_eq!(state.current(), expected);
         assert_eq!(state.position, 0);

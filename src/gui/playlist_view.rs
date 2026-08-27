@@ -216,7 +216,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Playlist(playlist),
-                0,
+                None,
             );
         }
         Message::ShufflePlaylist(playlist) => {
@@ -225,7 +225,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             );
             let _ = chilen_backend::playback::play_new_queue(
                 chilen_backend::playback::Queue::Playlist(playlist),
-                0,
+                None,
             );
         }
     }

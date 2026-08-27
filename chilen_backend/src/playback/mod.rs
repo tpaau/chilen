@@ -457,7 +457,14 @@ pub fn open_uri(uri: PathBuf) -> Result<(), Error> {
 }
 
 /// Set a new queue and play a track at a specific index in that queue.
-pub fn play_new_queue(queue: Queue, index: usize) -> Result<(), Error> {
+///
+/// If the index is unspecified, then it will be reset to 0. Additionally, if shuffle is enabled,
+/// the queue will be shuffled fully, meaning that setting a new queue without specifying the index
+/// while shuffle is enabled will start the queue from a random track.
+///
+/// If the index is specified, then playback will start from the track at index in the queue, even
+/// if shuffle is enabled.
+pub fn play_new_queue(queue: Queue, index: Option<usize>) -> Result<(), Error> {
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.play_new_queue(queue, index);

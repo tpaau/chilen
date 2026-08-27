@@ -315,14 +315,14 @@ impl PlayerState {
         self.on_track_changed();
     }
 
-    pub(crate) fn play_new_queue(&mut self, queue: Queue, index: usize) {
-        trace!("Setting a new queue and playing a track at index {index}");
+    pub(crate) fn play_new_queue(&mut self, queue: Queue, index: Option<usize>) {
+        trace!("Setting a new queue");
         let shuffle_enabled = self.shuffle_state.enabled();
         if shuffle_enabled {
             // Setting this manually to prevent needless shuffling
             self.shuffle_state = ShuffleState::Off;
         }
-        self.position = index;
+        self.position = index.unwrap_or_default();
         self.queue_source = queue.source();
         crate::send_event(crate::Event::Playback(Event::QueueSourceChanged(
             self.queue_source.clone(),
@@ -333,7 +333,11 @@ impl PlayerState {
         )));
         if shuffle_enabled {
             self.shuffle_state = ShuffleState::On;
-            self.full_shuffle();
+            if index.is_some() {
+                self.shuffle();
+            } else {
+                self.full_shuffle();
+            }
         }
         self.on_track_changed();
         self.set_player_position(Duration::default());

@@ -79,11 +79,11 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         &state.theme,
         Message::PlayPlaylistNoShuffle {
             playlist: playlist.clone(),
-            initial_index: 0,
+            initial_index: None,
         },
         Message::ShufflePlaylist {
             playlist: playlist.clone(),
-            initial_index: 0,
+            initial_index: None,
         },
         Message::Noop,
     );
@@ -110,11 +110,11 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                 track_button::Messages {
                     play: Message::PlayPlaylistNoShuffle {
                         playlist: playlist_cloned.clone(),
-                        initial_index: i,
+                        initial_index: Some(i),
                     },
                     shuffle: Message::ShufflePlaylist {
                         playlist: playlist_cloned.clone(),
-                        initial_index: i,
+                        initial_index: Some(i),
                     },
                     add_to_queue: None,
                     add_to_playlist: None,
@@ -130,7 +130,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
             )
             .on_press(Message::PlayPlaylist {
                 playlist: playlist_cloned.clone(),
-                initial_index: i,
+                initial_index: Some(i),
             })
             .into()
         })

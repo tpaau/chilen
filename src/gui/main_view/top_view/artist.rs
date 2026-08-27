@@ -74,11 +74,11 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         &state.theme,
         Message::PlayArtistNoShuffle {
             artist: artist.clone(),
-            initial_index: 0,
+            initial_index: None,
         },
         Message::ShuffleArtist {
             artist: artist.clone(),
-            initial_index: 0,
+            initial_index: None,
         },
         Message::Noop,
     );
@@ -100,11 +100,11 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 vec![album_button::Info::Date],
                 Message::PlayAlbumNoShuffle {
                     album: a.clone(),
-                    initial_index: 0,
+                    initial_index: None,
                 },
                 Message::ShuffleAlbum {
                     album: a.clone(),
-                    initial_index: 0,
+                    initial_index: None,
                 },
                 highlighted_album_title
                     .map(|t| *t == a.title)
@@ -133,11 +133,11 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             track_button::Messages {
                 play: Message::PlayArtistNoShuffle {
                     artist: artist_cloned.clone(),
-                    initial_index: i,
+                    initial_index: Some(i),
                 },
                 shuffle: Message::ShuffleArtist {
                     artist: artist_cloned.clone(),
-                    initial_index: i,
+                    initial_index: Some(i),
                 },
                 add_to_queue: None,
                 add_to_playlist: None,
@@ -150,7 +150,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         )
         .on_press(Message::PlayArtist {
             artist: artist_cloned.clone(),
-            initial_index: i,
+            initial_index: Some(i),
         })
         .into()
     });

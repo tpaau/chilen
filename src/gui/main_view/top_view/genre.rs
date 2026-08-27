@@ -95,11 +95,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         &state.theme,
         Message::PlayGenreNoShuffle {
             genre: genre.clone(),
-            initial_index: 0,
+            initial_index: None,
         },
         Message::ShuffleGenre {
             genre: genre.clone(),
-            initial_index: 0,
+            initial_index: None,
         },
         Message::Noop,
     );
@@ -124,11 +124,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 ],
                 Message::PlayAlbumNoShuffle {
                     album: a.clone(),
-                    initial_index: 0,
+                    initial_index: None,
                 },
                 Message::ShuffleAlbum {
                     album: a.clone(),
-                    initial_index: 0,
+                    initial_index: None,
                 },
                 highlighted_album_title
                     .map(|t| *t == a.title)
@@ -168,11 +168,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 a.clone(),
                 Message::PlayArtistNoShuffle {
                     artist: a.clone(),
-                    initial_index: 0,
+                    initial_index: None,
                 },
                 Message::ShuffleArtist {
                     artist: a.clone(),
-                    initial_index: 0,
+                    initial_index: None,
                 },
                 highlighted_artist_name
                     .map(|name| *name == a.name)
@@ -214,11 +214,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             track_button::Messages {
                 play: Message::PlayGenreNoShuffle {
                     genre: genre_cloned.clone(),
-                    initial_index: i,
+                    initial_index: Some(i),
                 },
                 shuffle: Message::ShuffleGenre {
                     genre: genre_cloned.clone(),
-                    initial_index: i,
+                    initial_index: Some(i),
                 },
                 add_to_queue: None,
                 add_to_playlist: None,
@@ -231,7 +231,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         )
         .on_press(Message::PlayGenre {
             genre: genre_cloned.clone(),
-            initial_index: i,
+            initial_index: Some(i),
         })
         .into()
     });

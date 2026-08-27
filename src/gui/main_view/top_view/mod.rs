@@ -32,51 +32,51 @@ pub enum Message {
     },
     PlayPlaylist {
         playlist: Arc<Playlist>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayPlaylistNoShuffle {
         playlist: Arc<Playlist>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     ShufflePlaylist {
         playlist: Arc<Playlist>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayAlbum {
         album: Arc<Album>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayAlbumNoShuffle {
         album: Arc<Album>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     ShuffleAlbum {
         album: Arc<Album>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayArtist {
         artist: Arc<Artist>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayArtistNoShuffle {
         artist: Arc<Artist>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     ShuffleArtist {
         artist: Arc<Artist>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayGenre {
         genre: Arc<Genre>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     PlayGenreNoShuffle {
         genre: Arc<Genre>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
     ShuffleGenre {
         genre: Arc<Genre>,
-        initial_index: usize,
+        initial_index: Option<usize>,
     },
 }
 
