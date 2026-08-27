@@ -13,7 +13,7 @@ use iced_widget::sensor;
 
 use crate::gui::{
     Chilen, THUMBNAIL_SIZE,
-    font::{SIZE_REGULAR, SIZE_SMALL},
+    font::{self, SIZE_REGULAR, SIZE_SMALL},
     icons, playlist_view,
     widget::{
         cover_image::cover_image,
@@ -25,6 +25,7 @@ pub fn playlist_button<'a>(
     state: &'a Chilen,
     playlist: &'a Arc<Playlist>,
     index: usize,
+    highlighted: bool,
 ) -> Element<'a, playlist_view::Message> {
     let content: Element<'_, playlist_view::Message> = if let Some(visible) =
         &state.playlist_view.visible
@@ -112,6 +113,18 @@ pub fn playlist_button<'a>(
         )
         .icon_font(icons::filled());
 
+        // TODO: There should be an animated indicator on the cover in additional to the title being bold
+        let font = if highlighted {
+            font::font_bold()
+        } else {
+            font::font()
+        };
+        let title = text(playlist.name.clone())
+            .size(SIZE_REGULAR)
+            .color(state.theme.on_surface())
+            .font(font)
+            .wrapping(text::Wrapping::None);
+
         button(
             row![
                 cover_image(
@@ -125,10 +138,7 @@ pub fn playlist_button<'a>(
                 .width(Length::Fixed(THUMBNAIL_SIZE))
                 .height(Length::Fixed(THUMBNAIL_SIZE)),
                 container(column![
-                    text(playlist.name.clone())
-                        .size(SIZE_REGULAR)
-                        .color(state.theme.on_surface())
-                        .wrapping(text::Wrapping::None),
+                    title,
                     text({
                         if playlist.tracks.is_empty() {
                             "Empty".to_string()

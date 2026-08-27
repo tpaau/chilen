@@ -64,10 +64,28 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
                             state.library.as_ref().unwrap().playlists.iter().collect();
                         playlists.sort_by_key(|pl| pl.name.clone());
 
+                        let highlighted_playlist_name = state.player_state.as_ref().and_then(|p| {
+                            if let chilen_backend::playback::QueueSource::Playlist { name } =
+                                &p.queue_source
+                            {
+                                Some(name)
+                            } else {
+                                None
+                            }
+                        });
                         let mut buttons: Vec<_> = playlists
                             .into_iter()
                             .enumerate()
-                            .map(|(i, p)| playlist_button(state, p, i))
+                            .map(|(i, p)| {
+                                playlist_button(
+                                    state,
+                                    p,
+                                    i,
+                                    highlighted_playlist_name
+                                        .map(|name| *name == p.name)
+                                        .unwrap_or_default(),
+                                )
+                            })
                             .collect();
 
                         // So that the crate/import playlist button doesn't obstruct the menu button
