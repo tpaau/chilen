@@ -25,6 +25,7 @@ pub fn genre_button<'a, Message: 'a + Clone>(
     genre: Arc<Genre>,
     play_message: Message,
     shuffle_message: Message,
+    highlighted: bool,
 ) -> Button<'a, Message> {
     let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
@@ -52,6 +53,18 @@ pub fn genre_button<'a, Message: 'a + Clone>(
     )
     .icon_font(icons::filled());
 
+    // TODO: There should be an animated indicator on the cover in additional to the title being bold
+    let font = if highlighted {
+        font::font_bold()
+    } else {
+        font::font()
+    };
+    let title = text(genre.name.clone())
+        .size(font::SIZE_REGULAR)
+        .color(theme.on_surface())
+        .font(font)
+        .wrapping(text::Wrapping::None);
+
     button(
         row![
             cover_image(
@@ -65,10 +78,7 @@ pub fn genre_button<'a, Message: 'a + Clone>(
             .width(Length::Fixed(THUMBNAIL_SIZE))
             .height(Length::Fixed(THUMBNAIL_SIZE)),
             container(column![
-                text(genre.name.clone())
-                    .size(font::SIZE_REGULAR)
-                    .color(theme.on_surface())
-                    .wrapping(text::Wrapping::None),
+                title,
                 row![
                     text(match genre.artists.len() {
                         0 => "Unknown artist".to_string(),
