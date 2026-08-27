@@ -106,7 +106,6 @@ pub fn track_button<'a, Message: 'a + Clone>(
 
     let menu = iced_m3::widget::menu(menu_groups, &state.theme).icon_font(icons::filled());
 
-    // TODO: There should be an animated indicator on the cover in additional to the title being bold
     let font = if highlighted {
         font::font_bold()
     } else {
@@ -134,18 +133,33 @@ pub fn track_button<'a, Message: 'a + Clone>(
         Info::Album => track.album.clone().unwrap_or("Unknown".to_string()),
     };
 
+    // TODO: Maybe an animated indicator would look better?
+    let content_color = if highlighted {
+        state.theme.on_secondary_container()
+    } else {
+        state.theme.on_surface_variant()
+    };
+    let container_color = if highlighted {
+        state.theme.secondary_container()
+    } else {
+        state.theme.surface_container_high()
+    };
+    let cover = cover_image(
+        (!highlighted)
+            .then_some(track.cover.thumbnail.clone())
+            .flatten(),
+        &icons::MUSIC_NOTE,
+        icons::SIZE_LARGE,
+        content_color,
+        container_color,
+        thumbnail_border_radius,
+    )
+    .width(Length::Fixed(THUMBNAIL_SIZE))
+    .height(Length::Fixed(THUMBNAIL_SIZE));
+
     button(
         row![
-            cover_image(
-                track.cover.thumbnail.clone(),
-                &icons::MUSIC_NOTE,
-                icons::SIZE_LARGE,
-                state.theme.on_surface_variant(),
-                state.theme.surface_container_high(),
-                thumbnail_border_radius
-            )
-            .width(Length::Fixed(THUMBNAIL_SIZE))
-            .height(Length::Fixed(THUMBNAIL_SIZE)),
+            cover,
             container(column![
                 title,
                 text(info)
