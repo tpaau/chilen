@@ -3,7 +3,7 @@ use std::time::Duration;
 use chilen_backend::playback::LoopState;
 use iced::{Alignment, Element, Length};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{column, container, responsive, row, space, text};
+use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font,
@@ -50,25 +50,48 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let artist = state.player_state.as_ref().and_then(|playback_state| {
         playback_state.current().map(|track| {
-            text(
-                track
-                    .artists
-                    .clone()
-                    .map(|a| a.join(&state.settings.value_separator))
-                    .unwrap_or("Unknown artist".to_string()),
-            )
-            .wrapping(text::Wrapping::None)
-            .size(font::SIZE_SMALL)
-            .color(state.theme.on_surface_variant())
+            let widget = mouse_area(
+                text(
+                    track
+                        .artists
+                        .clone()
+                        .map(|a| a.join(&state.settings.value_separator))
+                        .unwrap_or("Unknown artist".to_string()),
+                )
+                .wrapping(text::Wrapping::None)
+                .size(font::SIZE_REGULAR)
+                .color(state.theme.on_surface_variant()),
+            );
+
+            // TODO: Each individual artist name should open the corresponding artist
+            if let Some(artists) = &track.artists
+                && let Some(artist) = artists.first()
+            {
+                widget
+                    .interaction(iced::mouse::Interaction::Pointer)
+                    .on_press(Message::OpenArtist(artist.clone()))
+            } else {
+                widget
+            }
         })
     });
 
     let album = state.player_state.as_ref().and_then(|playback_state| {
         playback_state.current().map(|track| {
-            text(track.album.clone().unwrap_or("Unknown album".to_string()))
-                .wrapping(text::Wrapping::None)
-                .size(font::SIZE_SMALL)
-                .color(state.theme.on_surface_variant())
+            let widget = mouse_area(
+                text(track.album.clone().unwrap_or("Unknown album".to_string()))
+                    .wrapping(text::Wrapping::None)
+                    .size(font::SIZE_REGULAR)
+                    .color(state.theme.on_surface_variant()),
+            );
+
+            if let Some(album) = track.album.clone() {
+                widget
+                    .interaction(iced::mouse::Interaction::Pointer)
+                    .on_press(Message::OpenAlbum(album))
+            } else {
+                widget
+            }
         })
     });
 

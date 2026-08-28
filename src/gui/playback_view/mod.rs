@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use iced::{Element, Padding, Task};
 use iced_widget::{column, container};
+use log::error;
 
 use crate::gui::{Chilen, SPACING_REGULAR, SPACING_SMALL};
 
@@ -20,6 +21,8 @@ pub enum Message {
     SetPlayerPosition(Duration),
     OpenLyrics,
     OpenQueue,
+    OpenAlbum(String),
+    OpenArtist(String),
 }
 
 // TODO: Save the last opened tab
@@ -111,6 +114,32 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             let _ = chilen_backend::playback::set_player_position(position);
             if let Some(player_state) = state.player_state.as_mut() {
                 player_state.player_position = position;
+            }
+        }
+        Message::OpenAlbum(album) => {
+            if let Some(lib) = &state.library {
+                match lib.find_album(&album) {
+                    Some(album) => state
+                        .main_view
+                        .nav_stack
+                        .set_top(super::main_view::top_view::TopView::Album(album.clone())),
+                    None => {
+                        error!("Couldn't find the album \"{album}\", this should never happen!");
+                    }
+                }
+            }
+        }
+        Message::OpenArtist(artist) => {
+            if let Some(lib) = &state.library {
+                match lib.find_artist(&artist) {
+                    Some(artist) => state
+                        .main_view
+                        .nav_stack
+                        .set_top(super::main_view::top_view::TopView::Artist(artist.clone())),
+                    None => {
+                        error!("Couldn't find the artist \"{artist}\", this should never happen!");
+                    }
+                }
             }
         }
     }
