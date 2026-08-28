@@ -14,8 +14,8 @@ pub(super) const OUTLINED_ICONS_FONT_BYTES: &[u8] =
 pub(super) const OUTLINED_ICONS_FONT_BYTES: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\MaterialSymbolsRounded-Regular.ttf");
 
-const FILLED_ICONS_FONT_NAME: &str = "Material Symbols Rounded Filled";
-const OUTLINED_ICONS_FONT_NAME: &str = "Material Symbols Rounded";
+pub(super) const FILLED_ICONS_FONT_NAME: &str = "Material Symbols Rounded Filled";
+pub(super) const OUTLINED_ICONS_FONT_NAME: &str = "Material Symbols Rounded";
 
 pub static MORE_HORIZ: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5d3).unwrap());
 pub static ADD: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe145).unwrap());
@@ -48,10 +48,10 @@ pub static LYRICS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xec0b).unwr
 pub static QUEUE_MUSIC: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe03d).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
-pub const SIZE_SMALL: f32 = 20.0;
+pub const _SIZE_SMALL: f32 = 20.0;
 pub const SIZE_REGULAR: f32 = 24.0;
 pub const SIZE_LARGE: f32 = 28.0;
-pub const SIZE_LARGER: f32 = 32.0;
+pub const _SIZE_LARGER: f32 = 32.0;
 
 pub fn filled() -> iced::Font {
     iced::Font {

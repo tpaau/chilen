@@ -29,12 +29,7 @@ use log::{error, trace};
 
 use crate::{
     APP_NAME,
-    gui::{
-        dialog::Dialog,
-        font::{BYTES_BOLD, BYTES_REGULAR},
-        icons::{FILLED_ICONS_FONT_BYTES, OUTLINED_ICONS_FONT_BYTES},
-        main_view::top_view,
-    },
+    gui::{dialog::Dialog, main_view::top_view},
     settings::Settings,
 };
 
@@ -113,10 +108,7 @@ static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
 const SPACING_SMALLER: f32 = 8.0;
 const SPACING_SMALL: f32 = 12.0;
 const SPACING_REGULAR: f32 = 16.0;
-const SPACING_LARGE: f32 = 20.0;
-const SPACING_LARGER: f32 = 24.0;
 
-const ROUNDING_SMALLER: f32 = 12.0;
 const ROUNDING_SMALL: f32 = 14.0;
 const ROUNDING_REGULAR: f32 = 14.0;
 const ROUNDING_LARGE: f32 = 18.0;
@@ -308,30 +300,20 @@ impl Chilen {
     }
 }
 
-fn load_fonts() -> Task<Message> {
-    trace!("Loading fonts...");
-    Task::batch([
-        iced::font::load(FILLED_ICONS_FONT_BYTES).discard(),
-        iced::font::load(OUTLINED_ICONS_FONT_BYTES).discard(),
-        iced::font::load(BYTES_REGULAR).discard(),
-        iced::font::load(BYTES_BOLD).discard(),
-    ])
-}
-
 pub fn start() -> iced::Result {
     trace!("Launching GUI");
-    iced::application(
-        || (Chilen::default(), load_fonts()),
-        Chilen::update,
-        Chilen::view,
-    )
-    .title(APP_NAME)
-    .default_font(Font::with_name("Noto Sans"))
-    .subscription(|_| {
-        Subscription::batch(vec![
-            Chilen::subscription().map(Message::Event),
-            window_subscription(),
-        ])
-    })
-    .run()
+    iced::application(Chilen::default, Chilen::update, Chilen::view)
+        .font(icons::FILLED_ICONS_FONT_BYTES)
+        .font(icons::OUTLINED_ICONS_FONT_BYTES)
+        .font(font::BYTES_REGULAR)
+        .font(font::BYTES_BOLD)
+        .title(APP_NAME)
+        .default_font(Font::with_name(font::NAME))
+        .subscription(|_| {
+            Subscription::batch(vec![
+                Chilen::subscription().map(Message::Event),
+                window_subscription(),
+            ])
+        })
+        .run()
 }
