@@ -163,8 +163,7 @@ where
     }
 }
 
-// TODO: The styling of the iced slider widget is very limited, I'd have to create a fully custom
-// widget
+// TODO: The styling of the iced slider widget is very limited, I'd have to create a fully custom one
 pub fn style(
     theme: &(impl ColorScheme + ?Sized),
     status: Status,

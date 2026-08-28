@@ -242,7 +242,6 @@ pub fn play(index: Option<usize>) -> Result<(), Error> {
                         state.set_playback_state(PlaybackState::Playing);
                     }
                     Err(e) => {
-                        // FIX: Doesn't seem to affect the frontend?
                         error!("Could not open audio source: {e}");
                         player.stop();
                         state.set_playback_state(PlaybackState::Stopped);
@@ -487,7 +486,6 @@ pub fn play_new_queue(queue: Queue, index: Option<usize>) -> Result<(), Error> {
                 state.set_playback_state(PlaybackState::Playing);
             }
             Err(e) => {
-                // TODO: For some reason this doesn't update in the UI
                 error!("Could not open audio source: {e}");
                 state.set_playback_state(PlaybackState::Stopped);
                 player.stop();
@@ -727,7 +725,6 @@ static SUPPORTED_MIME_TYPES: LazyLock<Vec<String>> = LazyLock::new(|| {
     arr.into_iter().map(|t| t.to_string()).collect()
 });
 
-// FIX: Sometimes the MPRIS track metadata remains after the track switches in a seek operation
 pub fn seek(delta: SignedDuration) -> Result<(), Error> {
     let player_guard = PLAYER_HANDLE.read().unwrap();
     let player = match player_guard.as_ref() {

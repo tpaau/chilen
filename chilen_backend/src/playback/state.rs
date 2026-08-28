@@ -385,8 +385,6 @@ impl PlayerState {
         )));
     }
 
-    // FIX: There should be a separate shuffle function that shuffles the entire queue, for setting
-    // the current queue as shuffled.
     /// Shuffle the queue.
     ///
     /// This operation will preserve the current track, but it will be put first in the queue

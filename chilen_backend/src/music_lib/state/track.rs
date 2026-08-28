@@ -98,6 +98,9 @@ impl Track {
         let lyrics = if let Some(lyrics) = lyrics {
             match SyncedLyrics::parse(lyrics) {
                 Ok(synced_lyrics) => Some(Lyrics::Synced(Box::new(synced_lyrics))),
+                // TODO: Remains of LRC tags should be stripped from this. Sometimes synced lyrics
+                // are just broken and it's not something users should have to see.
+                // This can be implemented in `lrc_rs`.
                 Err(_) => Some(Lyrics::Unsynced(lyrics.to_string())),
             }
         } else {
