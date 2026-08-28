@@ -159,7 +159,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
                 }
             }
         };
-        let playback_state = if !tracks.is_empty() {
+        let playback_state = if tracks.is_empty() {
             PlaybackState::Stopped
         } else {
             PlaybackState::Paused

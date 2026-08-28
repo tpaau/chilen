@@ -846,7 +846,6 @@ pub(crate) fn init(
 
     trace!("Playback module initialized");
 
-    let mut init = true;
     let sleep_duration = Duration::from_millis(100);
     loop {
         thread::sleep(sleep_duration);
@@ -873,12 +872,7 @@ pub(crate) fn init(
                 }
             };
             player.append(source);
-            if init {
-                player.pause();
-                init = false;
-            } else {
-                state.set_playback_state(PlaybackState::Playing);
-            }
+            state.set_playback_state(PlaybackState::Playing);
         }
         drop(state_guard);
         drop(player_guard);
