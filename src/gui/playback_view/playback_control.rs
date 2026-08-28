@@ -103,13 +103,18 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         }
     };
 
-    let slider = iced_widget::slider(0..=max_value, value, move |position| {
-        Message::SeekSliderMoved(if max_value != 0 {
-            position as f32 / max_value as f32
-        } else {
-            0.0
-        })
-    })
+    let slider = iced_m3::widget::slider(
+        0..=max_value,
+        value,
+        move |position| {
+            Message::SeekSliderMoved(if max_value != 0 {
+                position as f32 / max_value as f32
+            } else {
+                0.0
+            })
+        },
+        &state.theme,
+    )
     .on_release(Message::SeekSliderReleased);
 
     let player_position = track_duration

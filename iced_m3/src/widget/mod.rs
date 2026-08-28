@@ -3,8 +3,11 @@ pub mod dialog;
 pub mod drop_down_menu;
 pub mod fab_menu;
 pub mod navbar;
+pub mod slider;
 pub mod text_input;
 pub mod vertical_menu;
+
+use std::ops::RangeInclusive;
 
 use iced::Element;
 use iced_widget::container;
@@ -86,4 +89,20 @@ where
     I: IntoIterator<Item = fab_menu::Entry<'a, Message>>,
 {
     FABMenu::new(entries, icon, theme)
+}
+
+#[must_use]
+pub fn slider<'a, F, T, Message>(
+    range: RangeInclusive<T>,
+    value: T,
+    on_change: F,
+    theme: &'a impl ColorScheme,
+) -> slider::Slider<'a, T, Message>
+where
+    F: 'a + Fn(T) -> Message,
+    T: 'a + Copy + From<u8> + PartialOrd + num_traits::cast::FromPrimitive,
+    Message: 'a + Clone,
+    f64: std::convert::From<T>,
+{
+    slider::Slider::new(range, value, on_change, theme)
 }

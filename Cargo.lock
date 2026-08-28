@@ -1847,6 +1847,7 @@ version = "0.1.0"
 dependencies = [
  "iced",
  "iced_widget",
+ "num-traits",
  "pollster 1.0.1",
  "unicode-segmentation",
 ]
