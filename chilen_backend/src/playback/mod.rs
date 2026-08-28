@@ -214,18 +214,20 @@ pub fn play(index: Option<usize>) -> Result<(), Error> {
                 return Err(Error::NoTrackAtIndex(id));
             }
         };
-        let source = match track.open_source() {
-            Ok(source) => source,
-            // FIX: Add better error handling here, so the display doesn't completely explode when this happens
+        match track.open_source() {
+            Ok(source) => {
+                player.clear();
+                player.append(source);
+                player.play();
+                state.set_playback_state(PlaybackState::Playing);
+            }
             Err(e) => {
                 error!("Could not open audio source: {e}");
+                player.stop();
+                state.set_playback_state(PlaybackState::Stopped);
                 return Err(Error::SourceError);
             }
-        };
-        player.stop();
-        player.append(source);
-        player.play();
-        state.set_playback_state(PlaybackState::Playing);
+        }
         background_save_state(state.clone());
         Ok(())
     } else {
@@ -234,15 +236,20 @@ pub fn play(index: Option<usize>) -> Result<(), Error> {
             Err(Error::PlayerPlaying)
         } else if player.empty() {
             if let Some(track) = state.current() {
-                let source = match track.open_source() {
-                    Ok(source) => source,
+                match track.open_source() {
+                    Ok(source) => {
+                        player.append(source);
+                        state.set_playback_state(PlaybackState::Playing);
+                    }
                     Err(e) => {
+                        // FIX: Doesn't seem to affect the frontend?
                         error!("Could not open audio source: {e}");
+                        player.stop();
+                        state.set_playback_state(PlaybackState::Stopped);
                         return Err(Error::SourceError);
                     }
-                };
-                player.append(source);
-                state.set_playback_state(PlaybackState::Playing);
+                }
+                background_save_state(state.clone());
                 Ok(())
             } else {
                 Err(Error::QueueEmpty)
@@ -473,16 +480,20 @@ pub fn play_new_queue(queue: Queue, index: Option<usize>) -> Result<(), Error> {
     let player = unwrap_player(player_guard.as_ref())?;
     player.stop();
     if let Some(track) = state.current() {
-        let source = match track.open_source() {
-            Ok(source) => source,
+        match track.open_source() {
+            Ok(source) => {
+                player.append(source);
+                player.play();
+                state.set_playback_state(PlaybackState::Playing);
+            }
             Err(e) => {
+                // TODO: For some reason this doesn't update in the UI
                 error!("Could not open audio source: {e}");
+                state.set_playback_state(PlaybackState::Stopped);
+                player.stop();
                 return Err(Error::SourceError);
             }
-        };
-        player.append(source);
-        player.play();
-        state.set_playback_state(PlaybackState::Playing);
+        }
     }
     background_save_state(state.clone());
     Ok(())
@@ -502,15 +513,18 @@ pub fn set_queue(queue: Queue) -> Result<(), Error> {
     let player = unwrap_player(player_guard.as_ref())?;
     player.stop();
     if let Some(track) = state.current() {
-        let source = match track.open_source() {
-            Ok(source) => source,
+        match track.open_source() {
+            Ok(source) => {
+                player.append(source);
+                player.pause();
+            }
             Err(e) => {
                 error!("Could not open audio source: {e}");
+                player.stop();
+                state.set_playback_state(PlaybackState::Stopped);
                 return Err(Error::SourceError);
             }
-        };
-        player.append(source);
-        player.pause();
+        }
     }
     background_save_state(state.clone());
     Ok(())
@@ -529,23 +543,25 @@ pub fn skip_next() -> Result<(), Error> {
     trace!("Skipping to the next track");
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
-    if state.can_go_next() {
-        let track = state.next_track().unwrap();
-        let source = match track.open_source() {
-            Ok(source) => source,
-            Err(e) => {
-                error!("Could not open audio source: {e}");
-                return Err(Error::SourceError);
-            }
-        };
-        background_save_state(state.clone());
+    if let Some(track) = state.next_track() {
         let player_guard = PLAYER_HANDLE.read().unwrap();
         let player = unwrap_player(player_guard.as_ref())?;
-        state.set_player_position(Duration::default());
-        state.set_playback_state(PlaybackState::Playing);
-        player.clear();
-        player.append(source);
-        player.play();
+        match track.open_source() {
+            Ok(source) => {
+                state.set_player_position(Duration::default());
+                state.set_playback_state(PlaybackState::Playing);
+                player.clear();
+                player.append(source);
+                player.play();
+            }
+            Err(e) => {
+                error!("Could not open audio source: {e}");
+                state.set_playback_state(PlaybackState::Stopped);
+                player.stop();
+                return Err(Error::SourceError);
+            }
+        }
+        background_save_state(state.clone());
         Ok(())
     } else if state.queue_empty() {
         info!("Cannot skip to the next track, queue is empty");
@@ -571,23 +587,25 @@ pub fn skip_previous() -> Result<(), Error> {
         return set_player_position(Duration::default());
     }
 
-    if state.can_go_previous() {
-        let track = state.previous_track().unwrap();
-        let source = match track.open_source() {
-            Ok(source) => source,
+    if let Some(track) = state.previous_track() {
+        let player_guard = PLAYER_HANDLE.read().unwrap();
+        let player = unwrap_player(player_guard.as_ref())?;
+        match track.open_source() {
+            Ok(source) => {
+                state.set_player_position(Duration::default());
+                state.set_playback_state(PlaybackState::Playing);
+                player.clear();
+                player.append(source);
+                player.play();
+            }
             Err(e) => {
                 error!("Could not open audio source: {e}");
+                player.stop();
+                state.set_playback_state(PlaybackState::Stopped);
                 return Err(Error::SourceError);
             }
         };
         background_save_state(state.clone());
-        let player_guard = PLAYER_HANDLE.read().unwrap();
-        let player = unwrap_player(player_guard.as_ref())?;
-        state.set_player_position(Duration::default());
-        state.set_playback_state(PlaybackState::Playing);
-        player.clear();
-        player.append(source);
-        player.play();
         Ok(())
     } else if state.queue_empty() {
         info!("Cannot go to the previous track, queue is empty");
@@ -826,18 +844,24 @@ pub(crate) fn init(
 
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = state_guard.as_mut().unwrap();
-    if let Some(track) = state.current()
-        && let Ok(source) = track.open_source()
-    {
-        let player_guard = PLAYER_HANDLE.read().unwrap();
-        let player = player_guard.as_ref().unwrap();
-        player.append(source);
-        player.pause();
-        if let Err(e) = player.try_seek(state.player_position) {
-            error!("Couldn't set initial player position: {e}");
-            state.set_player_position(Duration::default());
+    if let Some(track) = state.current() {
+        match track.open_source() {
+            Ok(source) => {
+                let player_guard = PLAYER_HANDLE.read().unwrap();
+                let player = player_guard.as_ref().unwrap();
+                player.append(source);
+                player.pause();
+                if let Err(e) = player.try_seek(state.player_position) {
+                    error!("Couldn't set initial player position: {e}");
+                    state.set_player_position(Duration::default());
+                }
+                drop(player_guard);
+            }
+            Err(e) => {
+                error!("Couldn't open the current track: {e}");
+                state.set_playback_state(PlaybackState::Stopped);
+            }
         }
-        drop(player_guard);
     }
     drop(state_guard);
 
@@ -855,7 +879,7 @@ pub(crate) fn init(
         let player = player_guard.as_ref().unwrap();
         if !player.is_paused() && !player.empty() {
             state.increment_player_position(sleep_duration);
-        } else if player.empty() {
+        } else if player.empty() && state.is_playing() {
             state.set_player_position(Duration::default());
             let track = match state.next_track() {
                 Some(track) => track,
@@ -864,15 +888,18 @@ pub(crate) fn init(
                     continue;
                 }
             };
-            let source = match track.open_source() {
-                Ok(source) => source,
+            match track.open_source() {
+                Ok(source) => {
+                    player.append(source);
+                    state.set_playback_state(PlaybackState::Playing);
+                }
                 Err(e) => {
                     error!("Could not open audio source: {e}");
+                    player.stop();
+                    state.set_playback_state(PlaybackState::Stopped);
                     continue;
                 }
-            };
-            player.append(source);
-            state.set_playback_state(PlaybackState::Playing);
+            }
         }
         drop(state_guard);
         drop(player_guard);

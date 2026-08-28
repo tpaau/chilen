@@ -417,42 +417,40 @@ impl PlayerState {
     }
 
     pub(crate) fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
-        if self.shuffle_state != shuffle_state {
-            if !shuffle_state.enabled()
-                && let Some(track) = self.current()
-            {
-                match self.tracks.iter().position(|t| t == track) {
-                    Some(pos) => {
-                        self.position = pos;
-                        crate::send_event(crate::Event::Playback(Event::PositionChanged(
-                            self.position,
-                        )));
-                    }
-                    None => {
-                        log::warn!(
-                            "Could not find the previous track in the queue, this should never happen"
-                        );
-                        thread::spawn(crate::playback::stop);
-                    }
+        if !shuffle_state.enabled()
+            && let Some(track) = self.current()
+        {
+            match self.tracks.iter().position(|t| t == track) {
+                Some(pos) => {
+                    self.position = pos;
+                    crate::send_event(crate::Event::Playback(Event::PositionChanged(
+                        self.position,
+                    )));
                 }
-            } else {
-                self.shuffle();
+                None => {
+                    log::warn!(
+                        "Could not find the previous track in the queue, this should never happen"
+                    );
+                    thread::spawn(crate::playback::stop);
+                }
             }
-            self.shuffle_state = shuffle_state;
-            crate::send_event(crate::Event::Playback(Event::ShuffleStateChanged(
-                self.shuffle_state,
-            )));
-            #[cfg(feature = "mpris")]
-            {
-                use mpris_server::Property;
+        } else {
+            self.shuffle();
+        }
+        self.shuffle_state = shuffle_state;
+        crate::send_event(crate::Event::Playback(Event::ShuffleStateChanged(
+            self.shuffle_state,
+        )));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::Property;
 
-                let properties = vec![
-                    Property::Shuffle(self.shuffle_state.enabled()),
-                    Property::CanGoPrevious(self.can_go_previous()),
-                    Property::CanGoNext(self.can_go_next()),
-                ];
-                mpris::update_properties(properties);
-            }
+            let properties = vec![
+                Property::Shuffle(self.shuffle_state.enabled()),
+                Property::CanGoPrevious(self.can_go_previous()),
+                Property::CanGoNext(self.can_go_next()),
+            ];
+            mpris::update_properties(properties);
         }
     }
 
@@ -475,69 +473,61 @@ impl PlayerState {
     }
 
     pub(crate) fn set_player_position(&mut self, player_position: Duration) {
-        if self.player_position != player_position {
-            self.player_position = player_position;
-            crate::send_event(crate::Event::Playback(Event::PlayerPositionChanged(
-                self.player_position,
-            )));
-            #[cfg(feature = "mpris")]
-            {
-                use mpris_server::{Metadata, Property};
+        self.player_position = player_position;
+        crate::send_event(crate::Event::Playback(Event::PlayerPositionChanged(
+            self.player_position,
+        )));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::{Metadata, Property};
 
-                let meta = match self.current() {
-                    Some(track) => track.get_meta(self.position),
-                    None => Metadata::new(),
-                };
-                mpris::update_properties(vec![Property::Metadata(meta)]);
-                mpris::set_position(player_position);
-            }
+            let meta = match self.current() {
+                Some(track) => track.get_meta(self.position),
+                None => Metadata::new(),
+            };
+            mpris::update_properties(vec![Property::Metadata(meta)]);
+            mpris::set_position(player_position);
         }
     }
 
     pub(crate) fn set_player_volume(&mut self, player_volume: PlayerVolume) {
-        if self.player_volume != player_volume {
-            self.player_volume = player_volume;
-            crate::send_event(crate::Event::Playback(Event::PlayerVolumeChanged(
-                self.player_volume,
-            )));
-            #[cfg(feature = "mpris")]
-            {
-                use mpris_server::Property;
+        self.player_volume = player_volume;
+        crate::send_event(crate::Event::Playback(Event::PlayerVolumeChanged(
+            self.player_volume,
+        )));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::Property;
 
-                let properties = vec![Property::Volume(self.player_volume.get())];
-                mpris::update_properties(properties);
-            }
+            let properties = vec![Property::Volume(self.player_volume.get())];
+            mpris::update_properties(properties);
         }
     }
 
     pub(crate) fn set_loop_state(&mut self, loop_state: LoopState) {
-        if self.loop_state != loop_state {
-            self.loop_state = loop_state;
-            crate::send_event(crate::Event::Playback(Event::LoopStateChanged(
-                self.loop_state,
-            )));
-            #[cfg(feature = "mpris")]
-            {
-                use mpris_server::Property;
+        self.loop_state = loop_state;
+        crate::send_event(crate::Event::Playback(Event::LoopStateChanged(
+            self.loop_state,
+        )));
+        #[cfg(feature = "mpris")]
+        {
+            use mpris_server::Property;
 
-                let properties = vec![
-                    Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
-                    Property::CanGoPrevious(self.can_go_previous()),
-                    Property::CanGoNext(self.can_go_next()),
-                ];
-                mpris::update_properties(properties);
-            }
+            let properties = vec![
+                Property::LoopStatus(mpris::loop_state_2_mpris(&self.loop_state)),
+                Property::CanGoPrevious(self.can_go_previous()),
+                Property::CanGoNext(self.can_go_next()),
+            ];
+            mpris::update_properties(properties);
         }
     }
 
     pub(crate) fn set_playback_state(&mut self, playback_state: PlaybackState) {
-        if self.playback_state != playback_state {
-            self.playback_state = playback_state;
-            if self.playback_state == PlaybackState::Stopped {
-                self.set_player_position(Duration::default());
-            }
-            self.on_playback_state_changed();
+        self.playback_state = playback_state;
+        if self.playback_state == PlaybackState::Stopped {
+            self.set_player_position(Duration::default());
         }
+        self.on_playback_state_changed();
     }
 
     pub(crate) fn play_track(&mut self, index: usize) -> Option<&Arc<Track>> {
