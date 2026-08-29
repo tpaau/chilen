@@ -38,7 +38,7 @@ pub struct State {
     pub visible: Option<Vec<bool>>,
 }
 
-pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
+pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
     let heading = text!("Playlists")
         .color(state.theme.on_surface())
         .size(font::SIZE_LARGE)
@@ -130,7 +130,7 @@ pub fn view(state: &Chilen) -> Element<'_, playlist_view::Message> {
 
     container(column![heading, content].spacing(SPACING_SMALLER))
         .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
-        .width(Length::Fixed(350.0))
+        .width(width)
         .height(Length::Fill)
         .into()
 }

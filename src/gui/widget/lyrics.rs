@@ -105,7 +105,7 @@ pub fn view<'a, Message: 'a + Clone>(
                 // TODO: Add an option in app settings to disable showing errors here
                 if let chilen_backend::music_lib::LyricsError::Timestamp(e) = reason {
                     let message = format!(
-                        "Lyrics appear to be synchronized, but the timestamp order is not correct. {e}."
+                        "The timestamp order in these lyrics is incorrect. {e}. Showing lyrics without synchronization."
                     );
                     let rounding = ROUNDING_REGULAR;
                     let dialog = container(

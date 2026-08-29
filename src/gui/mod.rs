@@ -20,11 +20,11 @@ use iced::{
     self, Element, Font, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
     stream,
-    widget::{column, container, row},
+    widget::{container, row},
     window::{self},
 };
 use iced_m3::theme::{ColorScheme, Theme};
-use iced_widget::stack;
+use iced_widget::{responsive, stack};
 use log::{error, trace};
 
 use crate::{
@@ -114,6 +114,15 @@ const ROUNDING_REGULAR: f32 = 14.0;
 const ROUNDING_LARGE: f32 = 18.0;
 const ROUNDING_LARGER: f32 = 20.0;
 
+const PLAYBACK_DESIRED_WIDTH: f32 = 410.0;
+const PLAYLIST_DESIRED_WIDTH: f32 = 350.0;
+const PLAYLIST_MIN_WIDTH: f32 = 220.0;
+const MAIN_MIN_WIDTH: f32 = 480.0;
+const PLAYBACK_MIN_WIDTH: f32 = 320.0;
+const TOTAL_MIN_WIDTH: f32 = PLAYLIST_MIN_WIDTH + MAIN_MIN_WIDTH + PLAYBACK_MIN_WIDTH;
+// TODO: Should be calculated dynamically based on the window width
+const MIN_HEIGHT: f32 = 1000.0;
+
 pub fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()
 }
@@ -137,18 +146,35 @@ fn window_subscription() -> Subscription<Message> {
 
 impl Chilen {
     fn view(state: &Chilen) -> Element<'_, Message> {
-        stack![
-            container(column![row![
-                // TODO: I should be able to resize this
-                playlist_view::view(state).map(Message::PlaylistView),
+        let base_content = responsive(|size| {
+            let offset =
+                size.width - PLAYLIST_DESIRED_WIDTH - PLAYBACK_DESIRED_WIDTH - MAIN_MIN_WIDTH;
+            let ratio_base = PLAYLIST_DESIRED_WIDTH - PLAYLIST_MIN_WIDTH + PLAYBACK_DESIRED_WIDTH
+                - PLAYBACK_MIN_WIDTH;
+            let playlist_ratio = (PLAYLIST_DESIRED_WIDTH - PLAYLIST_MIN_WIDTH) / ratio_base;
+            let playback_ratio = (PLAYBACK_DESIRED_WIDTH - PLAYBACK_MIN_WIDTH) / ratio_base;
+            let playlist_width = if offset < 0.0 {
+                PLAYLIST_DESIRED_WIDTH + offset * playlist_ratio
+            } else {
+                PLAYLIST_DESIRED_WIDTH
+            };
+            let playback_width = if offset < 0.0 {
+                PLAYBACK_DESIRED_WIDTH + offset * playback_ratio
+            } else {
+                PLAYBACK_DESIRED_WIDTH
+            };
+            row![
+                playlist_view::view(state, playlist_width).map(Message::PlaylistView),
                 main_view::view(state).map(Message::MainView),
-                // TODO: I should be able to resize this
-                playback_view::view(state).map(Message::Playback),
-            ]])
-            .style(|_| container::background(state.theme.surface_container_low())),
-            dialog::view(state),
-        ]
-        .into()
+                playback_view::view(state, playback_width).map(Message::Playback),
+            ]
+            .into()
+        });
+
+        let base = container(base_content)
+            .style(|_| container::background(state.theme.surface_container_low()));
+
+        stack![base, dialog::view(state),].into()
     }
 
     fn update(state: &mut Chilen, message: Message) -> Task<Message> {
@@ -309,6 +335,13 @@ pub fn start() -> iced::Result {
         .font(font::BYTES_BOLD)
         .title(APP_NAME)
         .default_font(Font::with_name(font::NAME))
+        .window(window::Settings {
+            min_size: Some(iced::Size {
+                width: TOTAL_MIN_WIDTH,
+                height: MIN_HEIGHT,
+            }),
+            ..Default::default()
+        })
         .subscription(|_| {
             Subscription::batch(vec![
                 Chilen::subscription().map(Message::Event),

@@ -161,6 +161,7 @@ pub fn playlist_button<'a>(
                         }
                     })
                     .size(SIZE_SMALL)
+                    .wrapping(text::Wrapping::None)
                     .color(state.theme.on_surface_variant()),
                 ])
                 .width(Length::Fill)

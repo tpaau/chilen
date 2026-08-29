@@ -40,13 +40,12 @@ pub struct State {
     tab: Tab,
 }
 
-pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
+pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
     let padding = SPACING_SMALL;
-    let width = 400.0;
     container(
         column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
     )
-    .width(width + 2.0 * padding)
+    .width(width)
     .padding(Padding::from(padding))
     .into()
 }
