@@ -101,6 +101,7 @@ impl NavStack {
     }
 }
 
+// TODO: Saving the navigation state on disk and then restoring it on startup would be a nice addition
 pub struct State {
     pub nav_stack: NavStack,
     /// Holds which elements are visible and which are not.

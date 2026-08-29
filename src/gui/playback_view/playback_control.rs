@@ -48,33 +48,51 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .color(state.theme.on_surface())
     .font(font::font_bold());
 
-    let artist = state.player_state.as_ref().and_then(|playback_state| {
-        playback_state.current().map(|track| {
-            let widget = mouse_area(
-                text(
-                    track
-                        .artists
-                        .clone()
-                        .map(|a| a.join(&state.settings.value_separator))
-                        .unwrap_or("Unknown artist".to_string()),
-                )
-                .wrapping(text::Wrapping::None)
-                .size(font::SIZE_REGULAR)
-                .color(state.theme.on_surface_variant()),
-            );
+    let artist: Option<Element<'_, Message>> =
+        state.player_state.as_ref().and_then(|playback_state| {
+            playback_state.current().map(|track| {
+                if let Some(artists) = &track.artists {
+                    let artists: Vec<Element<'_, Message>> = artists
+                        .iter()
+                        .map(|a| {
+                            mouse_area(
+                                text(a)
+                                    .wrapping(text::Wrapping::None)
+                                    .size(font::SIZE_REGULAR)
+                                    .color(state.theme.on_surface_variant()),
+                            )
+                            .on_press(Message::OpenArtist(a.to_string()))
+                            .interaction(iced::mouse::Interaction::Pointer)
+                            .into()
+                        })
+                        .collect();
 
-            // TODO: Each individual artist name should open the corresponding artist
-            if let Some(artists) = &track.artists
-                && let Some(artist) = artists.first()
-            {
-                widget
-                    .interaction(iced::mouse::Interaction::Pointer)
-                    .on_press(Message::OpenArtist(artist.clone()))
-            } else {
-                widget
-            }
-        })
-    });
+                    if artists.is_empty() {
+                        todo!()
+                    } else {
+                        let mut artists_w_separators = Vec::with_capacity(artists.len() * 2 - 1);
+                        let len = artists.len();
+                        for (i, artist) in artists.into_iter().enumerate() {
+                            artists_w_separators.push(artist);
+                            if i < len - 1 {
+                                artists_w_separators.push(
+                                    text(&state.settings.value_separator)
+                                        .wrapping(text::Wrapping::None)
+                                        .size(font::SIZE_REGULAR)
+                                        .color(state.theme.on_surface_variant())
+                                        .into(),
+                                );
+                            }
+                        }
+
+                        // TODO: Should scroll left and right if there's not enough space for the list to fit on the screen.
+                        row(artists_w_separators).into()
+                    }
+                } else {
+                    text("Unknown artist").into()
+                }
+            })
+        });
 
     let album = state.player_state.as_ref().and_then(|playback_state| {
         playback_state.current().map(|track| {
