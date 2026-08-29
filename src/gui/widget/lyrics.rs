@@ -138,7 +138,7 @@ pub fn view<'a, Message: 'a + Clone>(
         }
     } else {
         center(
-            text("This track is instrumental")
+            text("This is an instrumental")
                 .color(theme.on_surface_variant())
                 .size(FONT_SIZE),
         )

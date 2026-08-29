@@ -35,7 +35,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let content = match state.playback_view.tab {
         super::Tab::Lyrics => lyrics::view(state, PANEL_PADDING / 2.0),
-        super::Tab::Queue => queue::view(state),
+        super::Tab::Queue => queue::view(state, PANEL_PADDING / 2.0),
     };
 
     container(

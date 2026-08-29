@@ -91,22 +91,20 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::SeekSliderMoved(value) => state.playback_view.seek_slider_value = Some(value),
         Message::SeekSliderReleased => {
-            let ratio = state
-                .playback_view
-                .seek_slider_value
-                .unwrap_or_default()
-                .clamp(0.0, 1.0);
-            state.playback_view.seek_slider_value = None;
-            let track_duration = state
-                .player_state
-                .as_ref()
-                .and_then(|p| p.current().map(|t| t.duration))
-                .unwrap_or_default();
-            let position = Duration::from_secs_f32(track_duration.as_secs_f32() * ratio);
-            if let Some(player_state) = state.player_state.as_mut() {
-                player_state.player_position = position;
+            if let Some(value) = state.playback_view.seek_slider_value {
+                let ratio = value.clamp(0.0, 1.0);
+                state.playback_view.seek_slider_value = None;
+                let track_duration = state
+                    .player_state
+                    .as_ref()
+                    .and_then(|p| p.current().map(|t| t.duration))
+                    .unwrap_or_default();
+                let position = Duration::from_secs_f32(track_duration.as_secs_f32() * ratio);
+                if let Some(player_state) = state.player_state.as_mut() {
+                    player_state.player_position = position;
+                }
+                let _ = chilen_backend::playback::set_player_position(position);
             }
-            let _ = chilen_backend::playback::set_player_position(position);
         }
         Message::OpenLyrics => state.playback_view.tab = Tab::Lyrics,
         Message::OpenQueue => state.playback_view.tab = Tab::Queue,
