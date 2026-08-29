@@ -142,6 +142,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
         let (tracks, shuffled_track_indices) = {
             let result = tracks_from_hashes(value.track_hashes)?;
+            // TODO: The current track changing if some things were unmatched
             if !result.unmatched.is_empty() {
                 warn!("{} missing tracks in the queue", result.unmatched.len());
                 let indices = result.matched.iter().enumerate().map(|(i, _)| i).collect();

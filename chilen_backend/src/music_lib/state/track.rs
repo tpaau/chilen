@@ -32,7 +32,10 @@ pub enum Lyrics {
     /// Synced lyrics parsed from the LRC format.
     Synced(Box<SyncedLyrics>),
     /// Unsynced lyrics as a string.
-    Unsynced(String),
+    Unsynced {
+        reason: lrc_rs::Error,
+        lyrics: String,
+    },
 }
 
 #[cfg_attr(test, derive(Default))]
@@ -98,10 +101,20 @@ impl Track {
         let lyrics = if let Some(lyrics) = lyrics {
             match SyncedLyrics::parse(lyrics) {
                 Ok(synced_lyrics) => Some(Lyrics::Synced(Box::new(synced_lyrics))),
-                // TODO: Remains of LRC tags should be stripped from this. Sometimes synced lyrics
-                // are just broken and it's not something users should have to see.
-                // This can be implemented in `lrc_rs`.
-                Err(_) => Some(Lyrics::Unsynced(lyrics.to_string())),
+                Err(e) => {
+                    let lyrics = if let Ok(sanitized) = lrc_rs::strip_tags(lyrics) {
+                        Lyrics::Unsynced {
+                            reason: e,
+                            lyrics: sanitized.to_string(),
+                        }
+                    } else {
+                        Lyrics::Unsynced {
+                            reason: e,
+                            lyrics: lyrics.to_string(),
+                        }
+                    };
+                    Some(lyrics)
+                }
             }
         } else {
             None
@@ -247,7 +260,7 @@ impl Track {
 
                     match lyrics {
                         Lyrics::Synced(synced) => synced.clone().to_unsynced(),
-                        Lyrics::Unsynced(unsynced) => unsynced.to_string(),
+                        Lyrics::Unsynced { lyrics, reason: _ } => lyrics.to_string(),
                     }
                 }
                 None => String::new(),

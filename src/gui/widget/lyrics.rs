@@ -20,7 +20,6 @@ fn synced_lyrics<'a, Message: 'a + Clone>(
     player_position: Duration,
     on_segment_pressed: &'a impl Fn(Duration) -> Message,
 ) -> Element<'a, Message> {
-    let eyeballed_spacing = 4.0;
     let current_line = lyrics.current_line(player_position);
     let enhanced_lrc = lyrics.is_enhanced_lrc();
     let lines: Vec<Element<'_, Message>> = lyrics
@@ -56,7 +55,7 @@ fn synced_lyrics<'a, Message: 'a + Clone>(
                 })
                 .collect();
 
-            row(segments).spacing(eyeballed_spacing).into()
+            row(segments).wrap().into()
         })
         .collect();
 
@@ -74,7 +73,10 @@ pub fn view<'a, Message: 'a + Clone>(
             Lyrics::Synced(lyrics) => {
                 synced_lyrics(theme, lyrics, player_position, on_segment_pressed)
             }
-            Lyrics::Unsynced(lyrics) => text(lyrics)
+            Lyrics::Unsynced { reason: _, lyrics } => text(lyrics)
+                // TODO: Display a dialog if the lyrics parsing error (why the lyrics aren't
+                // unsynced) if the parsing failed because the segment timestamp order is not
+                // correct. This is maybe something users should be aware of.
                 .line_height(LineHeight::Absolute(iced::Pixels(
                     FONT_SIZE + SPACING_REGULAR,
                 )))
