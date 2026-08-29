@@ -4,16 +4,16 @@ use chilen_backend::music_lib::{
     Lyrics::{self},
     SyncedLyrics,
 };
-use iced::Element;
+use iced::{Alignment, Element, Length};
 use iced_core::text::LineHeight;
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, mouse_area, row, scrollable, text};
+use iced_widget::{center, column, container, mouse_area, row, scrollable, stack, text};
 
-use crate::gui::{SPACING_REGULAR, font};
+use crate::gui::{ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, font, icons};
 
 const FONT_SIZE: f32 = font::SIZE_LARGER;
 
-// TODO: In case of synced lyrics, the scrollable should follow the currently playing part
+// TODO: In case of synced lyrics, the scrollable should follow the currently playing line
 fn synced_lyrics<'a, Message: 'a + Clone>(
     theme: &'a impl ColorScheme,
     lyrics: &'a SyncedLyrics,
@@ -59,7 +59,10 @@ fn synced_lyrics<'a, Message: 'a + Clone>(
         })
         .collect();
 
-    column(lines).spacing(SPACING_REGULAR).into()
+    column(lines)
+        .width(Length::Fill)
+        .spacing(SPACING_REGULAR)
+        .into()
 }
 
 pub fn view<'a, Message: 'a + Clone>(
@@ -67,26 +70,72 @@ pub fn view<'a, Message: 'a + Clone>(
     lyrics: &'a Option<chilen_backend::music_lib::Lyrics>,
     player_position: Duration,
     on_segment_pressed: &'a impl Fn(Duration) -> Message,
+    lyrics_padding: f32,
 ) -> Element<'a, Message> {
     if let Some(lyrics) = lyrics {
-        scrollable(match lyrics {
-            Lyrics::Synced(lyrics) => {
-                synced_lyrics(theme, lyrics, player_position, on_segment_pressed)
+        match lyrics {
+            Lyrics::Synced(lyrics) => container(
+                scrollable(synced_lyrics(
+                    theme,
+                    lyrics,
+                    player_position,
+                    on_segment_pressed,
+                ))
+                .style(|_, status| iced_m3::style::scrollable(status, theme)),
+            )
+            .padding(lyrics_padding)
+            .into(),
+            Lyrics::Unsynced { reason, lyrics } => {
+                let lyrics = text(lyrics)
+                    .line_height(LineHeight::Absolute(iced::Pixels(
+                        FONT_SIZE + SPACING_REGULAR,
+                    )))
+                    .color(theme.on_surface())
+                    .font(font::font_bold())
+                    .size(FONT_SIZE);
+
+                let scroll = container(
+                    scrollable(lyrics)
+                        .style(|_, status| iced_m3::style::scrollable(status, theme))
+                        .width(Length::Fill),
+                )
+                .padding(lyrics_padding)
+                .into();
+
+                // TODO: Add an option in app settings to disable showing errors here
+                if let chilen_backend::music_lib::LyricsError::Timestamp(e) = reason {
+                    let message = format!(
+                        "Lyrics appear to be synchronized, but the timestamp order is not correct. {e}."
+                    );
+                    let rounding = ROUNDING_REGULAR;
+                    let dialog = container(
+                        container(
+                            row![
+                                text(*icons::ERROR)
+                                    .font(icons::outlined())
+                                    .size(icons::SIZE_LARGER)
+                                    .color(theme.on_error()),
+                                text(message).size(font::SIZE_SMALL).color(theme.on_error()),
+                            ]
+                            .align_y(Alignment::Center)
+                            .spacing(rounding),
+                        )
+                        .padding(SPACING_SMALL)
+                        .width(Length::Fill)
+                        .style(move |_| {
+                            iced_widget::container::Style::default()
+                                .background(theme.error())
+                                .border(iced::Border::default().rounded(rounding))
+                                .shadow(iced_m3::style::shadow(theme.shadow(), 0.4))
+                        }),
+                    )
+                    .align_bottom(Length::Fill);
+                    stack![scroll, dialog].into()
+                } else {
+                    scroll
+                }
             }
-            Lyrics::Unsynced { reason: _, lyrics } => text(lyrics)
-                // TODO: Display a dialog if the lyrics parsing error (why the lyrics aren't
-                // unsynced) if the parsing failed because the segment timestamp order is not
-                // correct. This is maybe something users should be aware of.
-                .line_height(LineHeight::Absolute(iced::Pixels(
-                    FONT_SIZE + SPACING_REGULAR,
-                )))
-                .color(theme.on_surface())
-                .font(font::font_bold())
-                .size(FONT_SIZE)
-                .into(),
-        })
-        .style(|_, status| iced_m3::style::scrollable(status, theme))
-        .into()
+        }
     } else {
         center(
             text("This track is instrumental")

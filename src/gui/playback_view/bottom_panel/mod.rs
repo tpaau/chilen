@@ -11,7 +11,7 @@ const PANEL_ROUNDING: f32 = ROUNDING_LARGER;
 const PANEL_PADDING: f32 = SPACING_REGULAR;
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    let custom_navbar = iced_m3::widget::navbar::<Message, iced::Theme, iced::Renderer>(
+    let navbar = iced_m3::widget::navbar::<Message, iced::Theme, iced::Renderer>(
         vec![
             iced_m3::widget::navbar::Item {
                 icon: &icons::QUEUE_MUSIC,
@@ -34,17 +34,17 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .icon_font_inactive(icons::outlined());
 
     let content = match state.playback_view.tab {
-        super::Tab::Lyrics => lyrics::view(state),
+        super::Tab::Lyrics => lyrics::view(state, PANEL_PADDING / 2.0),
         super::Tab::Queue => queue::view(state),
     };
 
     container(
         container(
-            column![custom_navbar, content]
+            column![navbar, content]
                 .width(Length::Fill)
                 .height(Length::Fill),
         )
-        .padding(padding::horizontal(PANEL_PADDING).bottom(PANEL_PADDING)),
+        .padding(padding::horizontal(PANEL_PADDING / 2.0).bottom(PANEL_PADDING / 2.0)),
     )
     .style(|_| {
         iced_widget::container::Style::default()

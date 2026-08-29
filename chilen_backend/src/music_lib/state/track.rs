@@ -14,6 +14,7 @@ use lofty::{
     tag::{Accessor, ItemValue, items::Timestamp},
 };
 use log::warn;
+pub use lrc_rs::Error as LyricsError;
 pub use lrc_rs::{LRCTool, LineTag, LyricsAccess, SyncedLyrics};
 #[cfg(feature = "mpris")]
 use mpris_server::TrackId;
@@ -32,10 +33,7 @@ pub enum Lyrics {
     /// Synced lyrics parsed from the LRC format.
     Synced(Box<SyncedLyrics>),
     /// Unsynced lyrics as a string.
-    Unsynced {
-        reason: lrc_rs::Error,
-        lyrics: String,
-    },
+    Unsynced { reason: LyricsError, lyrics: String },
 }
 
 #[cfg_attr(test, derive(Default))]

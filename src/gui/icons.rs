@@ -46,12 +46,13 @@ pub static REPEAT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe040).unwr
 pub static REPEAT_ONE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe041).unwrap());
 pub static LYRICS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xec0b).unwrap());
 pub static QUEUE_MUSIC: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe03d).unwrap());
+pub static ERROR: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe000).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const _SIZE_SMALL: f32 = 20.0;
 pub const SIZE_REGULAR: f32 = 24.0;
 pub const SIZE_LARGE: f32 = 28.0;
-pub const _SIZE_LARGER: f32 = 32.0;
+pub const SIZE_LARGER: f32 = 32.0;
 
 pub fn filled() -> iced::Font {
     iced::Font {
