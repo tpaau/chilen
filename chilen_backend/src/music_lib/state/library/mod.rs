@@ -15,7 +15,7 @@ use log::{error, trace};
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
-use crate::music_lib::indexer::covers::CacheMode;
+use crate::music_lib::indexer::CacheMode;
 use crate::{
     COLLATOR, Error, Event, get_config,
     music_lib::{

@@ -10,7 +10,6 @@ use std::{
     },
 };
 
-use image::ImageFormat;
 use log::{error, info, trace, warn};
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
@@ -34,6 +33,23 @@ pub enum IndexingIntensity {
     Lightweight,
 }
 
+/// Track cover art caching mode used when indexing the music library.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CacheMode {
+    /// Don't attempt to obtain cover art images for indexed tracks.
+    ///
+    /// This should only be used for testing.
+    ///
+    #[cfg_attr(test, default)]
+    #[cfg(test)]
+    Disabled,
+    #[cfg_attr(not(test), default)]
+    /// Use cached cover art images when possible.
+    UseCache,
+    /// Discard cached cover art images and extract them when indexing.
+    RebuildCache,
+}
+
 impl IndexingIntensity {
     /// Returns the percentage of available CPU cores the indexer should use.
     fn multiplier(&self) -> f32 {
@@ -47,47 +63,19 @@ impl IndexingIntensity {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
-    pub format: ImageFormat,
-    pub thumbnail_resolution: u32,
-    pub cover_quality: covers::Quality,
-    pub cache_mode: covers::CacheMode,
+    pub cache_mode: CacheMode,
     pub indexing_intensity: IndexingIntensity,
+    pub covers: covers::Config,
 }
 
 #[cfg(test)]
 impl Default for Config {
     fn default() -> Self {
         Self {
-            format: ImageFormat::Png,
-            thumbnail_resolution: 40,
-            cover_quality: covers::Quality::default(),
             indexing_intensity: IndexingIntensity::default(),
-            cache_mode: covers::CacheMode::default(),
+            cache_mode: CacheMode::default(),
+            covers: covers::Config::default(),
         }
-    }
-}
-
-impl Config {
-    pub(crate) fn extension(&self) -> String {
-        match self.format {
-            ImageFormat::Png => "png",
-            ImageFormat::Jpeg => "jpg",
-            ImageFormat::Gif => "gif",
-            ImageFormat::WebP => "webp",
-            ImageFormat::Pnm => "pnm",
-            ImageFormat::Tiff => "tiff",
-            ImageFormat::Tga => "tga",
-            ImageFormat::Dds => "dds",
-            ImageFormat::Bmp => "bmp",
-            ImageFormat::Ico => "ico",
-            ImageFormat::Hdr => "hdr",
-            ImageFormat::OpenExr => "exr",
-            ImageFormat::Farbfeld => "ff",
-            ImageFormat::Avif => "avif",
-            ImageFormat::Qoi => "qoi",
-            _ => "img",
-        }
-        .to_string()
     }
 }
 

@@ -145,11 +145,14 @@ fn main() {
                     ";".to_string(),
                 ]),
                 indexer: indexer::Config {
-                    format: covers::ImageFormat::Png,
-                    thumbnail_resolution: THUMBNAIL_SIZE as u32,
-                    cover_quality: covers::Quality::Default,
                     indexing_intensity: args.indexing_intensity.into(),
-                    cache_mode: covers::CacheMode::UseCache,
+                    cache_mode: indexer::CacheMode::UseCache,
+                    covers: covers::Config {
+                        thumbnail_resolution: THUMBNAIL_SIZE as u32,
+                        quality: covers::Quality::Default,
+                        format: covers::ImageFormat::Png,
+                        filter: covers::CoverFilter::Triangle,
+                    },
                 },
             },
         };

@@ -4,7 +4,7 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
-use crate::music_lib::indexer::covers::CacheMode;
+use crate::music_lib::indexer::CacheMode;
 use crate::{
     Error,
     music_lib::{

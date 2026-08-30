@@ -103,6 +103,7 @@ pub fn view<'a, Message: 'a + Clone>(
                 .into();
 
                 // TODO: Add an option in app settings to disable showing errors here
+                // TODO: This warning obstructs the lowest part of the lyrics
                 if let chilen_backend::music_lib::LyricsError::Timestamp(e) = reason {
                     let message = format!(
                         "The timestamp order in these lyrics is incorrect. {e}. Showing lyrics without synchronization."

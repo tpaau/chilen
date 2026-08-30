@@ -21,7 +21,7 @@ use mpris_server::TrackId;
 use rodio::Decoder;
 
 #[cfg(test)]
-use crate::music_lib::indexer::covers::{self};
+use crate::music_lib::indexer::{self};
 use crate::music_lib::{
     self,
     indexer::covers::{Cover, get_track_cover},
@@ -162,7 +162,7 @@ impl Track {
                 }
             }
             #[cfg(test)]
-            if config.indexer.cache_mode != covers::CacheMode::Disabled {
+            if config.indexer.cache_mode != indexer::CacheMode::Disabled {
                 match get_track_cover(tag, config.indexer, covers_lookup_set) {
                     Ok(cover) => cover,
                     Err(e) => {

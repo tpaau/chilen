@@ -16,7 +16,13 @@ use lofty::{
 use log::{error, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{CACHE_DIR, indexer, state::Track};
+use crate::music_lib::{
+    CACHE_DIR,
+    indexer::{self, CacheMode},
+    state::Track,
+};
+
+pub use image::imageops::FilterType as CoverFilter;
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Quality {
@@ -40,23 +46,6 @@ impl Quality {
     }
 }
 
-/// Track cover art caching mode used when indexing the music library.
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum CacheMode {
-    /// Don't attempt to obtain cover art images for indexed tracks.
-    ///
-    /// This should only be used for testing.
-    ///
-    #[cfg_attr(test, default)]
-    #[cfg(test)]
-    Disabled,
-    #[cfg_attr(not(test), default)]
-    /// Use cached cover art images when possible.
-    UseCache,
-    /// Discard cached cover art images and extract them when indexing.
-    RebuildCache,
-}
-
 #[cfg_attr(test, derive(Default))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Cover {
@@ -70,6 +59,49 @@ impl Cover {
             hires: None,
             thumbnail: None,
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Config {
+    pub format: ImageFormat,
+    pub filter: CoverFilter,
+    pub thumbnail_resolution: u32,
+    pub quality: Quality,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            format: ImageFormat::Png,
+            filter: CoverFilter::Triangle,
+            thumbnail_resolution: 40,
+            quality: Quality::default(),
+        }
+    }
+}
+
+impl Config {
+    pub(crate) fn extension(&self) -> String {
+        match self.format {
+            ImageFormat::Png => "png",
+            ImageFormat::Jpeg => "jpg",
+            ImageFormat::Gif => "gif",
+            ImageFormat::WebP => "webp",
+            ImageFormat::Pnm => "pnm",
+            ImageFormat::Tiff => "tiff",
+            ImageFormat::Tga => "tga",
+            ImageFormat::Dds => "dds",
+            ImageFormat::Bmp => "bmp",
+            ImageFormat::Ico => "ico",
+            ImageFormat::Hdr => "hdr",
+            ImageFormat::OpenExr => "exr",
+            ImageFormat::Farbfeld => "ff",
+            ImageFormat::Avif => "avif",
+            ImageFormat::Qoi => "qoi",
+            _ => "img",
+        }
+        .to_string()
     }
 }
 
@@ -108,8 +140,6 @@ impl std::fmt::Display for CoverError {
         }
     }
 }
-
-const COVER_FILTER: image::imageops::FilterType = image::imageops::FilterType::Triangle;
 
 const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::CoverFront,
@@ -240,7 +270,7 @@ pub(crate) fn get_track_cover(
     image_buf.hash(&mut hasher);
     let hash = hasher.finish();
 
-    let extension = config.extension();
+    let extension = config.covers.extension();
     let mut hires_path = hires_cache.clone();
     hires_path.push(format!("{hash}.{extension}"));
     let mut thumbnail_path = thumbnail_cache.clone();
@@ -281,10 +311,10 @@ pub(crate) fn get_track_cover(
             }
         };
 
-        let cover = match config.cover_quality.resolution() {
+        let cover = match config.covers.quality.resolution() {
             Some(res) => {
                 if image.height() > res || image.height() > res {
-                    resize(image, res, res, COVER_FILTER)
+                    resize(image, res, res, config.covers.filter)
                 } else {
                     image.clone().into()
                 }
@@ -293,7 +323,7 @@ pub(crate) fn get_track_cover(
         };
 
         match File::create(&hires_path) {
-            Ok(mut file) => match cover.write_to(&mut file, config.format) {
+            Ok(mut file) => match cover.write_to(&mut file, config.covers.format) {
                 Ok(_) => {
                     covers_lookup_set
                         .write()
@@ -333,13 +363,13 @@ pub(crate) fn get_track_cover(
 
         let thumbnail = resize(
             image,
-            config.thumbnail_resolution,
-            config.thumbnail_resolution,
-            COVER_FILTER,
+            config.covers.thumbnail_resolution,
+            config.covers.thumbnail_resolution,
+            config.covers.filter,
         );
 
         match File::create(&thumbnail_path) {
-            Ok(mut file) => match thumbnail.write_to(&mut file, config.format) {
+            Ok(mut file) => match thumbnail.write_to(&mut file, config.covers.format) {
                 Ok(_) => {
                     covers_lookup_set
                         .write()
@@ -406,7 +436,7 @@ pub(crate) fn get_playlist_cover(
             name.hash(&mut hasher);
             let hash = hasher.finish();
 
-            let extension = config.extension();
+            let extension = config.covers.extension();
             let mut hires_path = PLAYLIST_HIRES_COVER_CACHE_DIR.clone()?;
             hires_path.push(format!("{hash}.{extension}"));
             let mut thumbnail_path = PLAYLIST_THUMBNAIL_CACHE_DIR.clone()?;
@@ -475,10 +505,10 @@ pub(crate) fn get_playlist_cover(
                     }
                 };
 
-                let cover = match config.cover_quality.resolution() {
+                let cover = match config.covers.quality.resolution() {
                     Some(res) => {
                         if image.height() > res && image.height() > res {
-                            resize(image, res, res, COVER_FILTER)
+                            resize(image, res, res, config.covers.filter)
                         } else {
                             image.clone()
                         }
@@ -487,7 +517,7 @@ pub(crate) fn get_playlist_cover(
                 };
 
                 match File::create(&hires_path) {
-                    Ok(mut file) => match cover.write_to(&mut file, config.format) {
+                    Ok(mut file) => match cover.write_to(&mut file, config.covers.format) {
                         Ok(_) => Some(hires_path),
                         Err(e) => {
                             warn!("Couldn't write thumbnail to {hires_path:?}: {e}");
@@ -514,13 +544,13 @@ pub(crate) fn get_playlist_cover(
 
                 let thumbnail = resize(
                     image,
-                    config.thumbnail_resolution,
-                    config.thumbnail_resolution,
-                    COVER_FILTER,
+                    config.covers.thumbnail_resolution,
+                    config.covers.thumbnail_resolution,
+                    config.covers.filter,
                 );
 
                 match File::create(&thumbnail_path) {
-                    Ok(mut file) => match thumbnail.write_to(&mut file, config.format) {
+                    Ok(mut file) => match thumbnail.write_to(&mut file, config.covers.format) {
                         Ok(_) => Some(thumbnail_path),
                         Err(e) => {
                             warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
