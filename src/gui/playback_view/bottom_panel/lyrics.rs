@@ -14,6 +14,7 @@ pub(super) fn view<'a>(state: &'a Chilen, lyrics_padding: f32) -> Element<'a, Me
             player_state.player_position,
             &|position| Message::SetPlayerPosition(position),
             lyrics_padding,
+            state.settings.show_lyrics_errors,
         )
     } else {
         text("Nothing is playing")

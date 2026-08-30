@@ -5,6 +5,8 @@ pub struct Settings {
     // TODO: Get dark mode preference from the host
     pub theme_mode: Mode,
     pub value_separator: String,
+    /// Whether Chilen should display errors when it detects lyrics are synchronized but malformed.
+    pub show_lyrics_errors: bool,
 }
 
 impl Settings {
@@ -17,6 +19,7 @@ impl Settings {
         Self {
             theme_mode: Mode::Dark,
             value_separator: ", ".to_string(),
+            show_lyrics_errors: true,
         }
     }
 

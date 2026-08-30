@@ -61,22 +61,12 @@ impl IndexingIntensity {
     }
 }
 
+#[cfg_attr(test, derive(Default))]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
     pub cache_mode: CacheMode,
     pub indexing_intensity: IndexingIntensity,
     pub covers: covers::Config,
-}
-
-#[cfg(test)]
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            indexing_intensity: IndexingIntensity::default(),
-            cache_mode: CacheMode::default(),
-            covers: covers::Config::default(),
-        }
-    }
 }
 
 fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Vec<Track> {

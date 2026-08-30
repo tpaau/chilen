@@ -4,10 +4,10 @@ use chilen_backend::music_lib::{
     Lyrics::{self},
     LyricsAccess, SyncedLyrics,
 };
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Element, Length, padding};
 use iced_core::text::LineHeight;
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, mouse_area, row, scrollable, stack, text};
+use iced_widget::{center, column, container, mouse_area, row, scrollable, text};
 
 use crate::gui::{ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, font, icons};
 
@@ -71,6 +71,7 @@ pub fn view<'a, Message: 'a + Clone>(
     player_position: Duration,
     on_segment_pressed: &'a impl Fn(Duration) -> Message,
     lyrics_padding: f32,
+    show_errors: bool,
 ) -> Element<'a, Message> {
     if let Some(lyrics) = lyrics {
         match lyrics {
@@ -97,16 +98,16 @@ pub fn view<'a, Message: 'a + Clone>(
                 let scroll = container(
                     scrollable(lyrics)
                         .style(|_, status| iced_m3::style::scrollable(status, theme))
+                        .height(Length::Fill)
                         .width(Length::Fill),
                 )
-                .padding(lyrics_padding)
+                .padding(padding::horizontal(lyrics_padding))
                 .into();
 
-                // TODO: Add an option in app settings to disable showing errors here
-                // TODO: This warning obstructs the lowest part of the lyrics
-                if let chilen_backend::music_lib::LyricsError::Timestamp(e) = reason {
+                if show_errors && let chilen_backend::music_lib::LyricsError::Timestamp(e) = reason
+                {
                     let message = format!(
-                        "The timestamp order in these lyrics is incorrect. {e}. Showing lyrics without synchronization."
+                        "These lyrics appear to be synchronized, but timestamp order is incorrect. {e}. Showing lyrics without synchronization."
                     );
                     let rounding = ROUNDING_REGULAR;
                     let dialog = container(
@@ -129,9 +130,8 @@ pub fn view<'a, Message: 'a + Clone>(
                                 .border(iced::Border::default().rounded(rounding))
                                 .shadow(iced_m3::style::shadow(theme.shadow(), 0.4))
                         }),
-                    )
-                    .align_bottom(Length::Fill);
-                    stack![scroll, dialog].into()
+                    );
+                    column![scroll, dialog].spacing(SPACING_SMALL).into()
                 } else {
                     scroll
                 }
