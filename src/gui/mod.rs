@@ -209,21 +209,7 @@ impl Chilen {
                     // TODO: Display the progress
                     chilen_backend::Event::LoadProgressChanged(_) => {}
                     chilen_backend::Event::Playback(event) => {
-                        if let Some(player_state) = state.player_state.as_mut() {
-                            player_state.handle_event(event);
-                        } else {
-                            match event {
-                                chilen_backend::playback::Event::StateInitialized(player_state) => {
-                                    trace!("Initializing player state representation in the GUI");
-                                    state.player_state = Some(player_state);
-                                }
-                                _ => {
-                                    error!(
-                                        "Got a non-initializing event before the player state was initialized in the GUI!"
-                                    );
-                                }
-                            }
-                        }
+                        playback_view::handle_event(state, event)
                     }
                 },
                 Event::Window { event, id } => {

@@ -25,12 +25,14 @@ pub enum Info {
 }
 
 pub struct Messages<Message> {
-    // TODO: None of those messages, apart from delete, should be optional
     pub play: Message,
-    pub shuffle: Message,
+    pub shuffle: Option<Message>,
     pub add_to_queue: Option<Message>,
+    // TODO: Shouldn't be optional
     pub add_to_playlist: Option<Message>,
+    // TODO: Shouldn't be optional
     pub details: Option<Message>,
+    // TODO: Shouldn't be optional
     pub remove: Option<Message>,
 }
 
@@ -87,7 +89,7 @@ pub fn track_button<'a, Message: 'a + Clone>(
                     label: "Shuffle",
                     supporting_text: None,
                     error: false,
-                    action: vertical_menu::Action::Message(Some(messages.shuffle)),
+                    action: vertical_menu::Action::Message(messages.shuffle),
                 },
                 vertical_menu::Entry::Button {
                     icon: Some(&icons::ADD_TO_QUEUE),

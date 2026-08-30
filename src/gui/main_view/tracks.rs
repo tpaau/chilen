@@ -28,9 +28,9 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                         play: main_view::Message::PlayTracksNoShuffle {
                             initial_position: i,
                         },
-                        shuffle: main_view::Message::ShuffleTracks {
+                        shuffle: Some(main_view::Message::ShuffleTracks {
                             initial_position: i,
-                        },
+                        }),
                         add_to_queue: None,
                         add_to_playlist: None,
                         details: None,

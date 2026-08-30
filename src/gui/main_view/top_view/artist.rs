@@ -135,10 +135,10 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                     artist: artist_cloned.clone(),
                     initial_index: Some(i),
                 },
-                shuffle: Message::ShuffleArtist {
+                shuffle: Some(Message::ShuffleArtist {
                     artist: artist_cloned.clone(),
                     initial_index: Some(i),
-                },
+                }),
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,

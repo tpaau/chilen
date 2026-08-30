@@ -112,10 +112,10 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                         playlist: playlist_cloned.clone(),
                         initial_index: Some(i),
                     },
-                    shuffle: Message::ShufflePlaylist {
+                    shuffle: Some(Message::ShufflePlaylist {
                         playlist: playlist_cloned.clone(),
                         initial_index: Some(i),
-                    },
+                    }),
                     add_to_queue: None,
                     add_to_playlist: None,
                     details: None,

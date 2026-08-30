@@ -3,9 +3,10 @@ mod playback_control;
 
 use std::time::Duration;
 
+use chilen_backend::playback;
 use iced::{Element, Padding, Task};
-use iced_widget::{column, container};
-use log::error;
+use iced_widget::{column, container, stack};
+use log::{error, trace, warn};
 
 use crate::gui::{Chilen, SPACING_REGULAR, SPACING_SMALL};
 
@@ -23,6 +24,10 @@ pub enum Message {
     OpenQueue,
     OpenAlbum(String),
     OpenArtist(String),
+    PlayTrack(usize),
+    // TODO: I should make a widget that makes virtualizing columns easier.
+    TrackButtonPoppedIn(usize),
+    TrackButtonPoppedOut(usize),
 }
 
 // TODO: Save the last opened tab
@@ -37,13 +42,19 @@ pub enum Tab {
 #[derive(Default)]
 pub struct State {
     seek_slider_value: Option<f32>,
+    pub visible_tracks: Vec<bool>,
     tab: Tab,
 }
 
 pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
     let padding = SPACING_SMALL;
     container(
-        column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
+        column![
+            playback_control::view(state),
+            // FIX: This is a WORKAROUND.
+            bottom_panel::view(state)
+        ]
+        .spacing(SPACING_REGULAR),
     )
     .width(width)
     .padding(Padding::from(padding))
@@ -139,6 +150,62 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 }
             }
         }
+        Message::PlayTrack(index) => {
+            let _ = chilen_backend::playback::play(Some(index));
+        }
+        Message::TrackButtonPoppedIn(index) => {
+            if index < state.playback_view.visible_tracks.len() {
+                state.playback_view.visible_tracks[index] = true;
+            } else {
+                warn!(
+                    "Track index {index} exceeds the range of the virtual list: {}",
+                    state.playback_view.visible_tracks.len()
+                );
+            }
+        }
+        Message::TrackButtonPoppedOut(index) => {
+            if index < state.playback_view.visible_tracks.len() {
+                state.playback_view.visible_tracks[index] = false;
+            } else {
+                warn!(
+                    "Track index {index} exceeds the range of the virtual list: {}",
+                    state.playback_view.visible_tracks.len()
+                );
+            }
+        }
     }
     Task::none()
+}
+
+pub fn handle_event(state: &mut Chilen, event: playback::Event) {
+    if let Some(player_state) = state.player_state.as_mut() {
+        if let playback::Event::TracksChanged(tracks) = &event {
+            state.playback_view.visible_tracks = tracks
+                .iter()
+                .enumerate()
+                .map(|(i, _)| {
+                    state
+                        .playback_view
+                        .visible_tracks
+                        .get(i)
+                        .cloned()
+                        .unwrap_or_default()
+                })
+                .collect();
+        }
+        player_state.handle_event(event);
+    } else {
+        match event {
+            chilen_backend::playback::Event::StateInitialized(player_state) => {
+                trace!("Initializing player state representation in the GUI");
+                state.playback_view.visible_tracks = vec![false; player_state.tracks.len()];
+                state.player_state = Some(player_state);
+            }
+            _ => {
+                error!(
+                    "Got a non-initializing event before the player state was initialized in the GUI!"
+                );
+            }
+        }
+    }
 }

@@ -216,10 +216,10 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     genre: genre_cloned.clone(),
                     initial_index: Some(i),
                 },
-                shuffle: Message::ShuffleGenre {
+                shuffle: Some(Message::ShuffleGenre {
                     genre: genre_cloned.clone(),
                     initial_index: Some(i),
-                },
+                }),
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,

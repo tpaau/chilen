@@ -36,6 +36,12 @@ pub enum Event {
     LoopStateChanged(LoopState),
 }
 
+impl Event {
+    fn send(self) {
+        crate::send_event(crate::Event::Playback(self));
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Queue {
     Playlist(Arc<Playlist>),
@@ -286,9 +292,7 @@ impl PlayerState {
     pub(crate) fn on_playback_state_changed(&self) {
         trace!("Playback state changed: {}", self.playback_state);
 
-        crate::send_event(crate::Event::Playback(Event::PlaybackStateChanged(
-            self.playback_state,
-        )));
+        Event::PlaybackStateChanged(self.playback_state).send();
 
         #[cfg(feature = "mpris")]
         {
@@ -310,9 +314,7 @@ impl PlayerState {
         if self.shuffle_state.enabled() {
             self.shuffle();
         }
-        crate::send_event(crate::Event::Playback(Event::QueueSourceChanged(
-            self.queue_source.clone(),
-        )));
+        Event::QueueSourceChanged(self.queue_source.clone()).send();
         self.on_track_changed();
     }
 
@@ -325,13 +327,9 @@ impl PlayerState {
         }
         self.position = index.unwrap_or_default();
         self.queue_source = queue.source();
-        crate::send_event(crate::Event::Playback(Event::QueueSourceChanged(
-            self.queue_source.clone(),
-        )));
+        Event::QueueSourceChanged(self.queue_source.clone()).send();
         self.tracks = queue.tracks();
-        crate::send_event(crate::Event::Playback(Event::TracksChanged(
-            self.tracks.clone(),
-        )));
+        Event::TracksChanged(self.tracks.clone()).send();
         if shuffle_enabled {
             self.shuffle_state = ShuffleState::On;
             if index.is_some() {
@@ -346,9 +344,7 @@ impl PlayerState {
 
     pub(crate) fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
         self.tracks.append(tracks);
-        crate::send_event(crate::Event::Playback(Event::TracksChanged(
-            self.tracks.clone(),
-        )));
+        Event::TracksChanged(self.tracks.clone()).send();
         if self.shuffle_state.enabled() {
             self.shuffle();
         }
@@ -381,9 +377,7 @@ impl PlayerState {
         let mut rng = rand::rng();
         self.shuffled_track_indices.shuffle(&mut rng);
 
-        crate::send_event(crate::Event::Playback(Event::ShuffledTrackIndicesChanged(
-            self.shuffled_track_indices.clone(),
-        )));
+        Event::ShuffledTrackIndicesChanged(self.shuffled_track_indices.clone()).send();
     }
 
     /// Shuffle the queue.
@@ -407,12 +401,8 @@ impl PlayerState {
         self.shuffled_track_indices[1..len].shuffle(&mut rng);
         self.position = 0;
 
-        crate::send_event(crate::Event::Playback(Event::PositionChanged(
-            self.position,
-        )));
-        crate::send_event(crate::Event::Playback(Event::ShuffledTrackIndicesChanged(
-            self.shuffled_track_indices.clone(),
-        )));
+        Event::PositionChanged(self.position).send();
+        Event::ShuffledTrackIndicesChanged(self.shuffled_track_indices.clone()).send();
     }
 
     pub(crate) fn set_shuffle_state(&mut self, shuffle_state: ShuffleState) {
@@ -422,9 +412,7 @@ impl PlayerState {
             match self.tracks.iter().position(|t| t == track) {
                 Some(pos) => {
                     self.position = pos;
-                    crate::send_event(crate::Event::Playback(Event::PositionChanged(
-                        self.position,
-                    )));
+                    Event::PositionChanged(self.position).send();
                 }
                 None => {
                     log::warn!(
@@ -437,9 +425,7 @@ impl PlayerState {
             self.shuffle();
         }
         self.shuffle_state = shuffle_state;
-        crate::send_event(crate::Event::Playback(Event::ShuffleStateChanged(
-            self.shuffle_state,
-        )));
+        Event::ShuffleStateChanged(self.shuffle_state).send();
         #[cfg(feature = "mpris")]
         {
             use mpris_server::Property;
@@ -455,9 +441,7 @@ impl PlayerState {
 
     pub(crate) fn increment_player_position(&mut self, duration: Duration) {
         self.player_position += duration;
-        crate::send_event(crate::Event::Playback(Event::PlayerPositionChanged(
-            self.player_position,
-        )));
+        Event::PlayerPositionChanged(self.player_position).send();
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -473,9 +457,7 @@ impl PlayerState {
 
     pub(crate) fn set_player_position(&mut self, player_position: Duration) {
         self.player_position = player_position;
-        crate::send_event(crate::Event::Playback(Event::PlayerPositionChanged(
-            self.player_position,
-        )));
+        Event::PlayerPositionChanged(self.player_position).send();
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -491,9 +473,7 @@ impl PlayerState {
 
     pub(crate) fn set_player_volume(&mut self, player_volume: PlayerVolume) {
         self.player_volume = player_volume;
-        crate::send_event(crate::Event::Playback(Event::PlayerVolumeChanged(
-            self.player_volume,
-        )));
+        Event::PlayerVolumeChanged(self.player_volume).send();
         #[cfg(feature = "mpris")]
         {
             use mpris_server::Property;
@@ -505,9 +485,7 @@ impl PlayerState {
 
     pub(crate) fn set_loop_state(&mut self, loop_state: LoopState) {
         self.loop_state = loop_state;
-        crate::send_event(crate::Event::Playback(Event::LoopStateChanged(
-            self.loop_state,
-        )));
+        Event::LoopStateChanged(self.loop_state).send();
         #[cfg(feature = "mpris")]
         {
             use mpris_server::Property;
@@ -533,6 +511,7 @@ impl PlayerState {
         if index < self.tracks.len() {
             self.position = index;
             self.on_track_changed();
+            self.set_player_position(Duration::default());
             self.current()
         } else {
             None
@@ -603,9 +582,7 @@ impl PlayerState {
     }
 
     fn on_track_changed(&self) {
-        crate::send_event(crate::Event::Playback(Event::PositionChanged(
-            self.position,
-        )));
+        Event::PositionChanged(self.position).send();
 
         #[cfg(feature = "mpris")]
         {
