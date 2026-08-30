@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use chilen_backend::music_lib::{
     Lyrics::{self},
-    SyncedLyrics,
+    LyricsAccess, SyncedLyrics,
 };
 use iced::{Alignment, Element, Length};
 use iced_core::text::LineHeight;
@@ -20,13 +20,13 @@ fn synced_lyrics<'a, Message: 'a + Clone>(
     player_position: Duration,
     on_segment_pressed: &'a impl Fn(Duration) -> Message,
 ) -> Element<'a, Message> {
-    let current_line = lyrics.current_line(player_position);
+    let current_line = lyrics.active_tag(player_position);
     let enhanced_lrc = lyrics.is_enhanced_lrc();
     let lines: Vec<Element<'_, Message>> = lyrics
         .lines
         .iter()
         .map(|l| {
-            let current_segment = l.current_segment(player_position);
+            let current_segment = l.active_tag(player_position);
             let segments: Vec<Element<'_, Message>> = l
                 .segments
                 .iter()

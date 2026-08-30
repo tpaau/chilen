@@ -2714,8 +2714,9 @@ dependencies = [
 
 [[package]]
 name = "lrc_rs"
-version = "0.1.3"
-source = "git+https://github.com/tpaau/lrc_rs#07b2944f6bc90f91a4dffcae3c0b156f5f7e4080"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d3512435113420928c3eaa83c44f03f34ae01e5589ccc4b8bc649ea17e16551"
 dependencies = [
  "nom",
 ]
