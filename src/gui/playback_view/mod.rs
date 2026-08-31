@@ -25,7 +25,6 @@ pub enum Message {
     OpenAlbum(String),
     OpenArtist(String),
     PlayTrack(usize),
-    // TODO: I should make a widget that makes virtualizing columns easier.
     TrackButtonPoppedIn(usize),
     TrackButtonPoppedOut(usize),
 }

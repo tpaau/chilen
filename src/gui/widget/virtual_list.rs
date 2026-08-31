@@ -2,8 +2,8 @@ use iced::Element;
 use iced_widget::{sensor, space};
 
 pub struct VirtualList<'a, Model, Message> {
-    pub model: Vec<&'a Model>,
-    pub delegate: Box<dyn Fn(&'a Model) -> Element<'a, Message> + 'a>,
+    pub model: Vec<Model>,
+    pub delegate: Box<dyn Fn(Model) -> Element<'a, Message> + 'a>,
     pub delegate_height: f32,
     pub visibilities: &'a [bool],
     pub list: Box<dyn Fn(Vec<Element<'a, Message>>) -> Element<'a, Message> + 'a>,
