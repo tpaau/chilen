@@ -21,12 +21,19 @@ icu = { version = "2.2.0", default-features = false }
 sys-locale = "0.3.2"
 
 [features]
+# Base features
 mpris = [ "chilen_backend/mpris" ]
-linux = [ "mpris" ]
-windows = []
-macos = []
-default = []
+# Bundles CJK fonts with the binary. Disabling this drastically reduces binary size and may reduce
+# RAM usage at the cost of occasional stutters when displaying characters from the CJK font.
+cjk_fonts = []
+# Additional command-line options for testing.
 dev-opts = []
+
+# Presets
+linux = [ "mpris", "cjk_fonts" ]
+windows = [ "cjk_fonts" ]
+macos = [ "cjk_fonts" ]
+default = [ "cjk_fonts" ]
 
 [workspace]
 members = [

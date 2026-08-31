@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use chilen_backend::playback;
 use iced::{Element, Padding, Task};
-use iced_widget::{column, container, stack};
+use iced_widget::{column, container};
 use log::{error, trace, warn};
 
 use crate::gui::{Chilen, SPACING_REGULAR, SPACING_SMALL};

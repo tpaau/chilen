@@ -1,16 +1,32 @@
-#[cfg(windows)]
+#[cfg(all(windows, feature = "cjk_fonts"))]
 pub(super) const BYTES_REGULAR: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Regular.ttc");
-#[cfg(unix)]
+#[cfg(all(unix, feature = "cjk_fonts"))]
 pub(super) const BYTES_REGULAR: &[u8] =
     include_bytes!("../../resources/fonts/NotoSansCJK-Regular.ttc");
-#[cfg(windows)]
+
+#[cfg(all(windows, feature = "cjk_fonts"))]
 pub(super) const BYTES_BOLD: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Bold.ttc");
-#[cfg(unix)]
+#[cfg(all(unix, feature = "cjk_fonts"))]
 pub(super) const BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSansCJK-Bold.ttc");
 
+#[cfg(all(unix, not(feature = "cjk_fonts")))]
+pub(super) const BYTES_REGULAR: &[u8] =
+    include_bytes!("../../resources/fonts/NotoSans-Regular.ttf");
+#[cfg(all(windows, not(feature = "cjk_fonts")))]
+pub(super) const BYTES_REGULAR: &[u8] =
+    include_bytes!("..\\..\\resources\\fonts\\NotoSans-Regular.ttf");
+
+#[cfg(all(unix, not(feature = "cjk_fonts")))]
+pub(super) const BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Bold.ttf");
+#[cfg(all(windows, not(feature = "cjk_fonts")))]
+pub(super) const BYTES_BOLD: &[u8] = include_bytes!("..\\..\\resources\\fonts\\NotoSans-Bold.ttf");
+
+#[cfg(feature = "cjk_fonts")]
 pub(super) const NAME: &str = "Noto Sans CJK";
+#[cfg(not(feature = "cjk_fonts"))]
+pub(super) const NAME: &str = "Noto Sans";
 
 pub const SIZE_SMALL: f32 = 14.0;
 pub const SIZE_REGULAR: f32 = 16.0;
