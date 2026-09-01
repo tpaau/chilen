@@ -49,7 +49,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
 
     let content = if let Some(lib) = &state.library {
         let base = responsive(move |size| {
-            column![{
+            {
                 iced::widget::scrollable({
                     let highlighted_playlist_name = state.player_state.as_ref().and_then(|p| {
                         if let chilen_backend::playback::QueueSource::Playlist { name } =
@@ -61,31 +61,26 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                         }
                     });
 
-                    // So that the fab menu doesn't obstruct the last playlist
-                    let playlists = lib.playlists.iter().map(Some).chain(
-                        (size.height < (lib.playlists.len() + 1) as f32 * BUTTON_HEIGHT)
-                            .then_some(None),
-                    );
-
                     VirtualList {
-                        model: playlists.enumerate(),
-                        delegate: Box::new(move |(index, maybe_playlist)| {
-                            if let Some(playlist) = maybe_playlist {
-                                playlist_button(
-                                    state,
-                                    playlist,
-                                    index,
-                                    highlighted_playlist_name
-                                        .map(|name| *name == playlist.name)
-                                        .unwrap_or_default(),
-                                )
-                            } else {
-                                space().height(BUTTON_HEIGHT).into()
-                            }
+                        model: lib.playlists.iter().enumerate(),
+                        delegate: Box::new(move |(index, playlist)| {
+                            playlist_button(
+                                state,
+                                playlist,
+                                index,
+                                highlighted_playlist_name
+                                    .map(|name| *name == playlist.name)
+                                    .unwrap_or_default(),
+                            )
                         }),
                         delegate_height: BUTTON_HEIGHT,
                         visibilities: state.playlist_view.visible.as_deref().unwrap_or(&[]),
-                        list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
+                        list: Box::new(move |mut content| {
+                            if size.height < (lib.playlists.len() + 1) as f32 * BUTTON_HEIGHT {
+                                content.push(space().height(BUTTON_HEIGHT).into())
+                            }
+                            column(content).spacing(BUTTON_SPACING).into()
+                        }),
                         on_show: Box::new(Message::ButtonPoppedIn),
                         on_hide: Box::new(Message::ButtonPoppedOut),
                     }
@@ -93,11 +88,8 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                 .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
                 .height(Length::Fill)
                 .width(Length::Fill)
-            }]
-            .spacing(SPACING_SMALL)
-            .height(Length::Fill)
-            .width(Length::Fill)
-            .into()
+                .into()
+            }
         });
 
         let fab = {
@@ -161,22 +153,44 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
         .into()
 }
 
-pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
-    if state.playlist_view.visible.is_none()
-        && let Some(lib) = &state.library
-    {
-        state.playlist_view.visible = Some(vec![false; lib.playlists.len()]);
+pub fn reload(state: &mut Chilen) {
+    if let Some(lib) = &state.library {
+        if let Some(visible) = &state.playlist_view.visible {
+            state.playlist_view.visible = Some(
+                lib.playlists
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| visible.get(i).copied().unwrap_or_default())
+                    .collect(),
+            );
+        } else {
+            state.playlist_view.visible = Some(vec![false; lib.playlists.len()])
+        }
+    } else {
+        state.playlist_view.visible = None;
     }
+}
+
+pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
         Message::ButtonPoppedIn(i) => {
-            let visible = state.playlist_view.visible.as_mut().unwrap();
-            if let Some(val) = visible.get_mut(i) {
+            if let Some(visible) = state.playlist_view.visible.as_mut()
+                && let Some(val) = visible.get_mut(i)
+            {
                 *val = true
             } else {
-                visible.push(true);
+                error!("Visibilities not initialized!")
             }
         }
-        Message::ButtonPoppedOut(i) => state.playlist_view.visible.as_mut().unwrap()[i] = false,
+        Message::ButtonPoppedOut(i) => {
+            if let Some(visible) = state.playlist_view.visible.as_mut()
+                && let Some(val) = visible.get_mut(i)
+            {
+                *val = false
+            } else {
+                error!("Visibilities not initialized!")
+            }
+        }
         Message::CreatePlaylist => {
             state.dialog = Dialog::CreatePlaylist(String::new());
         }

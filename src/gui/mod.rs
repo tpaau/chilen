@@ -186,6 +186,7 @@ impl Chilen {
                         state.loading_state = LoadingState::Loaded;
                         state.library = Some(lib);
                         top_view::reload(state);
+                        playlist_view::reload(state);
                     }
                     chilen_backend::Event::LibraryLoadFailed(e) => {
                         state.loading_state = LoadingState::Failed(e)
