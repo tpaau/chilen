@@ -65,7 +65,7 @@ pub struct Genre {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct MusicLibrary {
-    pub playlists: HashSet<Arc<Playlist>>,
+    pub playlists: Vec<Arc<Playlist>>,
     pub tracks: Vec<Arc<Track>>,
     pub albums: Vec<Arc<Album>>,
     pub artists: Vec<Arc<Artist>>,
@@ -168,6 +168,14 @@ impl MusicLibrary {
     fn sort_artists(artists: &mut [Arc<Artist>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
         if let Some(collator) = collator {
             artists.sort_by(|a1, a2| collator.compare(&a1.name, &a2.name));
+        }
+    }
+
+    fn sort_playlists(&mut self) {
+        let guard = COLLATOR.read().unwrap();
+        if let Some(collator) = guard.as_ref() {
+            self.playlists
+                .sort_by(|p1, p2| collator.compare(&p1.name, &p2.name));
         }
     }
 
@@ -406,7 +414,7 @@ impl MusicLibrary {
             .collect();
 
         Self {
-            playlists: HashSet::new(),
+            playlists: Vec::new(),
             tracks,
             albums,
             artists,
@@ -430,15 +438,19 @@ impl MusicLibrary {
         crate::send_event(Event::LoadProgressChanged(Progress::RestoringState));
 
         let mut lib = Self::new(tracks);
+        let mut playlists = Vec::with_capacity(loaded.playlists.len());
         lib.playlists_by_name = HashMap::with_capacity(loaded.playlists.len());
         lib.playlists_by_id = HashMap::with_capacity(loaded.playlists.len());
         for p in loaded.playlists {
             let playlist = Arc::new(Playlist::load(&lib, p, config));
-            lib.playlists.insert(playlist.clone());
+            playlists.push(playlist.clone());
             lib.playlists_by_name
                 .insert(playlist.name.clone(), playlist.clone());
             lib.playlists_by_id.insert(playlist.id, playlist);
         }
+
+        lib.playlists = playlists;
+        lib.sort_playlists();
         lib.playlist_id_counter = loaded.playlist_id_counter;
 
         lib
@@ -534,10 +546,11 @@ impl MusicLibrary {
         }
 
         for name in &playlists {
-            if let Some(playlist) = self.find_playlist_by_name(name).cloned() {
-                self.playlists.remove(&playlist);
+            if let Some(index) = self.playlists.iter().position(|p| p.name == *name) {
+                let id = self.playlists[index].id;
+                self.playlists.remove(index);
                 self.playlists_by_name.remove(name);
-                self.playlists_by_id.remove(&playlist.id);
+                self.playlists_by_id.remove(&id);
             } else {
                 return Err(Error::UnknownPlaylist(name.to_string()));
             }
@@ -593,7 +606,7 @@ impl MusicLibrary {
             id: self.get_playlist_id(),
             cover,
         });
-        self.playlists.insert(playlist.clone());
+        self.playlists.push(playlist.clone());
         self.playlists_by_name.insert(name.to_string(), playlist);
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -605,23 +618,24 @@ impl MusicLibrary {
         trace!("Renaming playlist \"{source}\" to \"{target}\"");
         self.check_name(target)?;
 
-        let source_playlist = if let Some(source) = self.find_playlist_by_name(source) {
-            source.clone()
-        } else {
-            return Err(Error::UnknownPlaylist(source.to_string()));
+        let src_playlist_index = match self.playlists.iter().position(|p| p.name == source) {
+            Some(pos) => pos,
+            None => return Err(Error::UnknownPlaylist(source.to_string())),
         };
-        let playlist_id = source_playlist.id;
-        let mut playlist = source_playlist.as_ref().clone();
+        let src_playlist = self.playlists[src_playlist_index].clone();
+        let playlist_id = src_playlist.id;
+        let mut playlist = src_playlist.as_ref().clone();
         playlist.name = target.to_string();
 
-        self.playlists.remove(&source_playlist);
+        self.playlists.remove(src_playlist_index);
         self.playlists_by_name.remove(source);
         self.playlists_by_id.remove(&playlist_id);
         let playlist = Arc::new(playlist);
-        self.playlists.insert(playlist.clone());
+        self.playlists.push(playlist.clone());
         self.playlists_by_name
             .insert(target.to_string(), playlist.clone());
         self.playlists_by_id.insert(playlist_id, playlist);
+        self.sort_playlists();
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -631,12 +645,10 @@ impl MusicLibrary {
         let name = name.trim();
         trace!("Adding tracks to playlist \"{name}\"");
 
-        let mut playlist = match self.find_playlist_by_name(name) {
-            Some(playlist) => playlist.clone(),
+        let playlist_index = match self.playlists.iter().position(|p| p.name == *name) {
+            Some(i) => i,
             None => return Err(Error::UnknownPlaylist(name.to_string())),
-        }
-        .as_ref()
-        .clone();
+        };
 
         let mut out = Vec::with_capacity(tracks.len());
         for path in tracks {
@@ -647,17 +659,19 @@ impl MusicLibrary {
             }
         }
 
-        self.playlists.remove(&playlist);
+        let mut playlist = self.playlists[playlist_index].as_ref().clone();
+        self.playlists.remove(playlist_index);
         self.playlists_by_name.remove(&playlist.name);
         self.playlists_by_id.remove(&playlist.id);
 
         playlist.tracks.append(&mut out);
 
         let playlist = Arc::new(playlist);
-        self.playlists.insert(playlist.clone());
+        self.playlists.push(playlist.clone());
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist.clone());
         self.playlists_by_id.insert(playlist.id, playlist);
+        self.sort_playlists();
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -667,23 +681,23 @@ impl MusicLibrary {
         let name = name.trim();
         trace!("Removing tracks from playlist \"{name}\"");
 
-        let mut playlist = match self.find_playlist_by_name(name) {
-            Some(playlist) => playlist,
+        let playlist_index = match self.playlists.iter().position(|p| p.name == *name) {
+            Some(i) => i,
             None => return Err(Error::UnknownPlaylist(name.to_string())),
-        }
-        .as_ref()
-        .clone();
+        };
+        let mut playlist = self.playlists[playlist_index].as_ref().clone();
 
-        self.playlists.remove(&playlist);
+        self.playlists.remove(playlist_index);
         self.playlists_by_name.remove(&playlist.name);
         self.playlists_by_id.remove(&playlist.id);
 
         playlist.remove_tracks(tracks)?;
         let playlist = Arc::new(playlist);
-        self.playlists.insert(playlist.clone());
+        self.playlists.push(playlist.clone());
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist.clone());
         self.playlists_by_id.insert(playlist.id, playlist);
+        self.sort_playlists();
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
