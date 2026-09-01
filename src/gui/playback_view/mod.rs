@@ -27,6 +27,7 @@ pub enum Message {
     PlayTrack(usize),
     TrackButtonPoppedIn(usize),
     TrackButtonPoppedOut(usize),
+    RemoveFromQueue(usize),
 }
 
 // TODO: Save the last opened tab
@@ -172,13 +173,21 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 );
             }
         }
+        Message::RemoveFromQueue(index) => {
+            let _ = chilen_backend::playback::remove_from_queue(vec![index]);
+        }
     }
     Task::none()
 }
 
 pub fn handle_event(state: &mut Chilen, event: playback::Event) {
     if let Some(player_state) = state.player_state.as_mut() {
-        if let playback::Event::TracksChanged(tracks) = &event {
+        if let playback::Event::TracksChanged {
+            position: _,
+            tracks,
+            shuffled_indices: _,
+        } = &event
+        {
             state.playback_view.visible_tracks = tracks
                 .iter()
                 .enumerate()

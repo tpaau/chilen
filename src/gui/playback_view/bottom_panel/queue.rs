@@ -50,7 +50,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                     add_to_queue: None,
                     add_to_playlist: None,
                     details: None,
-                    remove: None,
+                    remove: Some(Message::RemoveFromQueue(virtual_index)),
                 },
                 info: track_button::Info::Artist,
                 status: if virtual_index < player_state.position {

@@ -537,6 +537,38 @@ pub fn append_to_queue(queue: &mut Vec<Arc<Track>>) -> Result<(), Error> {
     Ok(())
 }
 
+pub fn remove_from_queue(indices: Vec<usize>) -> Result<(), Error> {
+    trace!("Removing {} tracks to queue", indices.len());
+    let mut state_guard = PLAYER_STATE.write().unwrap();
+    let state = unwrap_state_mut(state_guard.as_mut())?;
+    let previous = state.current().cloned();
+    state.remove_tracks(indices)?;
+    let player_guard = PLAYER_HANDLE.read().unwrap();
+    let player = unwrap_player(player_guard.as_ref())?;
+    if previous.as_ref() != state.current() {
+        if let Some(track) = state.current() {
+            match track.open_source() {
+                Ok(source) => {
+                    player.stop();
+                    player.append(source);
+                    state.set_playback_state(PlaybackState::Playing);
+                }
+                Err(e) => {
+                    error!("Could not open audio source: {e}");
+                    player.stop();
+                    state.set_playback_state(PlaybackState::Stopped);
+                    return Err(Error::SourceError);
+                }
+            }
+        } else {
+            player.stop();
+            state.set_playback_state(PlaybackState::Stopped);
+        }
+    }
+    background_save_state(state.clone());
+    Ok(())
+}
+
 pub fn skip_next() -> Result<(), Error> {
     trace!("Skipping to the next track");
     let mut state_guard = PLAYER_STATE.write().unwrap();

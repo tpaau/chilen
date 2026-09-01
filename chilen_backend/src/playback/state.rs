@@ -29,7 +29,12 @@ pub enum Event {
     PlayerPositionChanged(Duration),
     PlayerVolumeChanged(PlayerVolume),
     PlaybackStateChanged(PlaybackState),
-    TracksChanged(Vec<Arc<Track>>),
+    // Sometimes things need to arrive all at once to prevent issues.
+    TracksChanged {
+        position: usize,
+        tracks: Vec<Arc<Track>>,
+        shuffled_indices: Vec<usize>,
+    },
     ShuffledTrackIndicesChanged(Vec<usize>),
     QueueSourceChanged(QueueSource),
     ShuffleStateChanged(ShuffleState),
@@ -283,9 +288,17 @@ impl PlayerState {
             Event::PlaybackStateChanged(playback_state) => self.playback_state = playback_state,
             Event::ShuffleStateChanged(shuffle_state) => self.shuffle_state = shuffle_state,
             Event::LoopStateChanged(loop_state) => self.loop_state = loop_state,
-            Event::TracksChanged(tracks) => self.tracks = tracks,
-            Event::ShuffledTrackIndicesChanged(indices) => self.shuffled_track_indices = indices,
+            Event::TracksChanged {
+                position,
+                tracks,
+                shuffled_indices,
+            } => {
+                self.position = position;
+                self.tracks = tracks;
+                self.shuffled_track_indices = shuffled_indices;
+            }
             Event::QueueSourceChanged(queue_source) => self.queue_source = queue_source,
+            Event::ShuffledTrackIndicesChanged(indices) => self.shuffled_track_indices = indices,
         }
     }
 
@@ -329,7 +342,6 @@ impl PlayerState {
         self.queue_source = queue.source();
         Event::QueueSourceChanged(self.queue_source.clone()).send();
         self.tracks = queue.tracks();
-        Event::TracksChanged(self.tracks.clone()).send();
         if shuffle_enabled {
             self.shuffle_state = ShuffleState::On;
             if index.is_some() {
@@ -338,16 +350,27 @@ impl PlayerState {
                 self.full_shuffle();
             }
         }
+        Event::TracksChanged {
+            position: self.position,
+            tracks: self.tracks.clone(),
+            shuffled_indices: self.shuffled_track_indices.clone(),
+        }
+        .send();
         self.on_track_changed();
         self.set_player_position(Duration::default());
     }
 
     pub(crate) fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
         self.tracks.append(tracks);
-        Event::TracksChanged(self.tracks.clone()).send();
         if self.shuffle_state.enabled() {
             self.shuffle();
         }
+        Event::TracksChanged {
+            position: self.position,
+            tracks: self.tracks.clone(),
+            shuffled_indices: self.shuffled_track_indices.clone(),
+        }
+        .send();
         #[cfg(feature = "mpris")]
         {
             use mpris_server::{Metadata, Property};
@@ -363,6 +386,57 @@ impl PlayerState {
                 Property::CanPause(self.can_pause()),
             ]);
         }
+    }
+
+    pub(crate) fn remove_tracks(&mut self, mut indices: Vec<usize>) -> Result<(), Error> {
+        indices.dedup();
+        let mut to_remove = vec![false; self.tracks.len()];
+        for i in &indices {
+            if let Some(val) = to_remove.get_mut(*i) {
+                *val = true;
+            } else {
+                return Err(Error::NoTrackAtIndex(*i));
+            }
+        }
+        let position_shift = indices.iter().filter(|i| **i < self.position).count();
+        if self.shuffle_enabled() {
+            let to_remove: Vec<_> = self
+                .shuffled_track_indices
+                .iter()
+                .flat_map(|i| (indices.contains(i)).then_some(*i))
+                .collect();
+            self.shuffled_track_indices = std::mem::take(&mut self.shuffled_track_indices)
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, track_index)| {
+                    if indices.contains(&i) {
+                        return None;
+                    }
+                    let before = indices.iter().filter(|i| **i < track_index).count();
+                    i.checked_sub(before)
+                })
+                .collect();
+            self.tracks = std::mem::take(&mut self.tracks)
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, track)| (!to_remove.contains(&i)).then_some(track))
+                .collect()
+        } else {
+            self.tracks = std::mem::take(&mut self.tracks)
+                .into_iter()
+                .enumerate()
+                .filter_map(|(i, track)| (!indices.contains(&i)).then_some(track))
+                .collect();
+        }
+        self.position = self.position.saturating_sub(position_shift);
+
+        Event::TracksChanged {
+            position: self.position,
+            tracks: self.tracks.clone(),
+            shuffled_indices: self.shuffled_track_indices.clone(),
+        }
+        .send();
+        Ok(())
     }
 
     /// Shuffles all tracks in the queue, without preserving the current playing track.
