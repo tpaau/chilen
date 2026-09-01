@@ -40,7 +40,6 @@ pub struct Messages<Message> {
     pub add_to_playlist: Option<Message>,
     // TODO: Shouldn't be optional
     pub details: Option<Message>,
-    // TODO: Shouldn't be optional
     pub remove: Option<Message>,
 }
 
@@ -91,32 +90,38 @@ where
             });
         }
 
+        let mut first_group_entries = vec![vertical_menu::Entry::Button {
+            icon: Some(&icons::PLAY_ARROW),
+            label: "Play",
+            supporting_text: None,
+            error: false,
+            action: vertical_menu::Action::Message(Some(value.messages.play)),
+        }];
+
+        if let Some(message) = value.messages.shuffle {
+            first_group_entries.push(vertical_menu::Entry::Button {
+                icon: Some(&icons::SHUFFLE),
+                label: "Shuffle",
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(Some(message)),
+            });
+        }
+
+        if let Some(message) = value.messages.add_to_queue {
+            first_group_entries.push(vertical_menu::Entry::Button {
+                icon: Some(&icons::ADD_TO_QUEUE),
+                label: "Add to queue",
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(Some(message)),
+            });
+        }
+
         let menu_groups = vec![
             vertical_menu::Group {
                 label: None,
-                entries: vec![
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::PLAY_ARROW),
-                        label: "Play",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(Some(value.messages.play)),
-                    },
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::SHUFFLE),
-                        label: "Shuffle",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(value.messages.shuffle),
-                    },
-                    vertical_menu::Entry::Button {
-                        icon: Some(&icons::ADD_TO_QUEUE),
-                        label: "Add to queue",
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(value.messages.add_to_queue),
-                    },
-                ],
+                entries: first_group_entries,
             },
             vertical_menu::Group {
                 label: None,
