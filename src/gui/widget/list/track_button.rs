@@ -6,7 +6,7 @@ use iced_m3::{
     theme::ColorScheme,
     widget::{drop_down_menu, vertical_menu},
 };
-use iced_widget::{Button, button, column, container, row, text};
+use iced_widget::{button, column, container, row, text};
 
 use crate::gui::{
     Chilen, SPACING_SMALL, font,
@@ -24,8 +24,16 @@ pub enum Info {
     Album,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Status {
+    Idle,
+    Playing,
+    Dimmed,
+}
+
 pub struct Messages<Message> {
     pub play: Message,
+    pub press: Message,
     pub shuffle: Option<Message>,
     pub add_to_queue: Option<Message>,
     // TODO: Shouldn't be optional
@@ -36,159 +44,174 @@ pub struct Messages<Message> {
     pub remove: Option<Message>,
 }
 
-pub fn track_button<'a, Message: 'a + Clone>(
-    state: &'a Chilen,
-    track: Arc<Track>,
-    info: Info,
-    messages: Messages<Message>,
-    highlighted: bool,
-) -> Button<'a, Message> {
-    let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
+pub struct TrackButton<'a, Message> {
+    pub state: &'a Chilen,
+    pub track: Arc<Track>,
+    pub messages: Messages<Message>,
+    pub info: Info,
+    pub status: Status,
+}
 
-    let mut second_group_entries = vec![
-        vertical_menu::Entry::Button {
-            icon: Some(&icons::PLAYLIST_PLAY),
-            label: "Add to playlist",
-            supporting_text: None,
-            error: false,
-            action: vertical_menu::Action::Message(messages.add_to_playlist),
-        },
-        vertical_menu::Entry::Button {
-            icon: Some(&icons::INFO),
-            label: "Details",
-            supporting_text: None,
-            error: false,
-            action: vertical_menu::Action::Message(messages.details),
-        },
-    ];
+impl<'a, Message> From<TrackButton<'a, Message>> for iced::Element<'a, Message>
+where
+    Message: 'a + Clone,
+{
+    fn from(value: TrackButton<'a, Message>) -> Self {
+        let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
+        let opacity = match value.status {
+            Status::Idle | Status::Playing => 1.0,
+            Status::Dimmed => 0.5,
+        };
 
-    if let Some(remove) = messages.remove {
-        second_group_entries.push(vertical_menu::Entry::Separator);
-        second_group_entries.push(vertical_menu::Entry::Button {
-            icon: Some(&icons::DELETE),
-            label: "Remove",
-            supporting_text: None,
-            error: true,
-            action: vertical_menu::Action::Message(Some(remove)),
-        });
-    }
+        let mut second_group_entries = vec![
+            vertical_menu::Entry::Button {
+                icon: Some(&icons::PLAYLIST_PLAY),
+                label: "Add to playlist",
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(value.messages.add_to_playlist),
+            },
+            vertical_menu::Entry::Button {
+                icon: Some(&icons::INFO),
+                label: "Details",
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(value.messages.details),
+            },
+        ];
 
-    let menu_groups = vec![
-        vertical_menu::Group {
-            label: None,
-            entries: vec![
-                vertical_menu::Entry::Button {
-                    icon: Some(&icons::PLAY_ARROW),
-                    label: "Play",
-                    supporting_text: None,
-                    error: false,
-                    action: vertical_menu::Action::Message(Some(messages.play)),
-                },
-                vertical_menu::Entry::Button {
-                    icon: Some(&icons::SHUFFLE),
-                    label: "Shuffle",
-                    supporting_text: None,
-                    error: false,
-                    action: vertical_menu::Action::Message(messages.shuffle),
-                },
-                vertical_menu::Entry::Button {
-                    icon: Some(&icons::ADD_TO_QUEUE),
-                    label: "Add to queue",
-                    supporting_text: None,
-                    error: false,
-                    action: vertical_menu::Action::Message(messages.add_to_queue),
-                },
-            ],
-        },
-        vertical_menu::Group {
-            label: None,
-            entries: second_group_entries,
-        },
-    ];
-
-    let menu = iced_m3::widget::menu(menu_groups, &state.theme).icon_font(icons::filled());
-
-    let font = if highlighted {
-        font::font_bold()
-    } else {
-        font::font()
-    };
-    let title = text(if let Some(title) = track.title.clone() {
-        title
-    } else {
-        "Unknown".to_string()
-    })
-    .size(font::SIZE_REGULAR)
-    .font(font)
-    .color(state.theme.on_surface())
-    .wrapping(text::Wrapping::None);
-
-    let info = match info {
-        Info::Artist => {
-            if let Some(artists) = &track.artists {
-                artists.join(&state.settings.value_separator)
-            } else {
-                "Unknown".to_string()
-            }
+        if let Some(remove) = value.messages.remove {
+            second_group_entries.push(vertical_menu::Entry::Separator);
+            second_group_entries.push(vertical_menu::Entry::Button {
+                icon: Some(&icons::DELETE),
+                label: "Remove",
+                supporting_text: None,
+                error: true,
+                action: vertical_menu::Action::Message(Some(remove)),
+            });
         }
-        Info::Length => format_track_duration(track.duration),
-        Info::Album => track.album.clone().unwrap_or("Unknown".to_string()),
-    };
 
-    // TODO: Maybe an animated indicator would look better?
-    let content_color = if highlighted {
-        state.theme.on_secondary_container()
-    } else {
-        state.theme.on_surface_variant()
-    };
-    let container_color = if highlighted {
-        state.theme.secondary_container()
-    } else {
-        state.theme.surface_container_high()
-    };
-    let cover = cover_image(
-        (!highlighted)
-            .then_some(track.cover.thumbnail.clone())
-            .flatten(),
-        &icons::MUSIC_NOTE,
-        icons::SIZE_LARGE,
-        content_color,
-        container_color,
-        thumbnail_border_radius,
-    )
-    .width(Length::Fixed(THUMBNAIL_SIZE))
-    .height(Length::Fixed(THUMBNAIL_SIZE));
-
-    button(
-        row![
-            cover,
-            container(column![
-                title,
-                text(info)
-                    .size(font::SIZE_SMALL)
-                    .color(state.theme.on_surface_variant())
-                    .wrapping(text::Wrapping::None),
-            ])
-            .width(Length::Fill)
-            .clip(true)
-            .center_y(Length::Fill),
-            container(
-                // TODO: Should be more like a button
-                drop_down_menu(
-                    |_| {
-                        text(*icons::MORE_HORIZ)
-                            .font(icons::filled())
-                            .size(icons::SIZE_REGULAR)
-                            .into()
+        let menu_groups = vec![
+            vertical_menu::Group {
+                label: None,
+                entries: vec![
+                    vertical_menu::Entry::Button {
+                        icon: Some(&icons::PLAY_ARROW),
+                        label: "Play",
+                        supporting_text: None,
+                        error: false,
+                        action: vertical_menu::Action::Message(Some(value.messages.play)),
                     },
-                    Some(menu),
-                    iced_m3::widget::drop_down_menu::Placement::BottomRight,
-                ),
-            )
-            .center_y(Length::Fill),
-        ]
-        .spacing(SPACING_SMALL),
-    )
-    .padding(BUTTON_PADDING)
-    .style(|_, status| button_style(status, state.theme.on_surface_variant()))
+                    vertical_menu::Entry::Button {
+                        icon: Some(&icons::SHUFFLE),
+                        label: "Shuffle",
+                        supporting_text: None,
+                        error: false,
+                        action: vertical_menu::Action::Message(value.messages.shuffle),
+                    },
+                    vertical_menu::Entry::Button {
+                        icon: Some(&icons::ADD_TO_QUEUE),
+                        label: "Add to queue",
+                        supporting_text: None,
+                        error: false,
+                        action: vertical_menu::Action::Message(value.messages.add_to_queue),
+                    },
+                ],
+            },
+            vertical_menu::Group {
+                label: None,
+                entries: second_group_entries,
+            },
+        ];
+
+        let menu =
+            iced_m3::widget::menu(menu_groups, &value.state.theme).icon_font(icons::filled());
+
+        let title_font = match value.status {
+            Status::Playing => font::font_bold(),
+            Status::Idle | Status::Dimmed => font::font(),
+        };
+        let title = text(if let Some(title) = value.track.title.clone() {
+            title
+        } else {
+            "Unknown".to_string()
+        })
+        .size(font::SIZE_REGULAR)
+        .font(title_font)
+        .color(value.state.theme.on_surface().scale_alpha(opacity))
+        .wrapping(text::Wrapping::None);
+
+        let info = match value.info {
+            Info::Artist => {
+                if let Some(artists) = &value.track.artists {
+                    artists.join(&value.state.settings.value_separator)
+                } else {
+                    "Unknown".to_string()
+                }
+            }
+            Info::Length => format_track_duration(value.track.duration),
+            Info::Album => value.track.album.clone().unwrap_or("Unknown".to_string()),
+        };
+
+        // TODO: Maybe an animated indicator would look better?
+        let content_color = if value.status == Status::Playing {
+            value.state.theme.on_secondary_container()
+        } else {
+            value.state.theme.on_surface_variant()
+        };
+        let container_color = if value.status == Status::Playing {
+            value.state.theme.secondary_container()
+        } else {
+            value.state.theme.surface_container_high()
+        };
+        let cover = cover_image(
+            (value.status != Status::Playing)
+                .then_some(value.track.cover.thumbnail.clone())
+                .flatten(),
+            &icons::MUSIC_NOTE,
+            icons::SIZE_LARGE,
+            content_color,
+            container_color,
+            thumbnail_border_radius,
+            opacity,
+        )
+        .width(Length::Fixed(THUMBNAIL_SIZE))
+        .height(Length::Fixed(THUMBNAIL_SIZE));
+
+        button(
+            row![
+                cover,
+                container(column![
+                    title,
+                    text(info)
+                        .size(font::SIZE_SMALL)
+                        .color(value.state.theme.on_surface_variant().scale_alpha(opacity))
+                        .wrapping(text::Wrapping::None),
+                ])
+                .width(Length::Fill)
+                .clip(true)
+                .center_y(Length::Fill),
+                container(
+                    // TODO: Should be more like a button
+                    drop_down_menu(
+                        move |_| {
+                            text(*icons::MORE_HORIZ)
+                                .font(icons::filled())
+                                .size(icons::SIZE_REGULAR)
+                                .color(value.state.theme.on_surface())
+                                .into()
+                        },
+                        Some(menu),
+                        iced_m3::widget::drop_down_menu::Placement::BottomRight,
+                    ),
+                )
+                .center_y(Length::Fill),
+            ]
+            .spacing(SPACING_SMALL),
+        )
+        .on_press(value.messages.press)
+        .padding(BUTTON_PADDING)
+        .style(|_, status| button_style(status, value.state.theme.on_surface_variant()))
+        .into()
+    }
 }

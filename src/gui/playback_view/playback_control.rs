@@ -26,6 +26,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             state.theme.on_surface_variant(),
             state.theme.surface_container_high(),
             ROUNDING_LARGE,
+            1.0,
         )
         .width(cover_size)
         .height(cover_size)

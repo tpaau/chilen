@@ -13,7 +13,10 @@ use crate::gui::{
     widget::{
         self,
         cover_image::cover_image,
-        list::{BUTTON_SPACING, album_button, track_button},
+        list::{
+            BUTTON_SPACING, album_button,
+            track_button::{self, TrackButton},
+        },
         text_spacer::text_spacer,
     },
 };
@@ -52,6 +55,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             state.theme.on_surface_variant(),
             state.theme.surface_container(),
             ROUNDING_LARGE,
+            1.0,
         )
         .width(cover_size)
         .height(cover_size);
@@ -114,27 +118,27 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     let album_buttons: Vec<_> = genre
         .albums
         .iter()
-        .map(|a| {
+        .map(|album| {
             album_button::album_button(
                 state,
-                a.clone(),
+                album.clone(),
                 vec![
                     album_button::Info::TrackCount,
                     album_button::Info::ArtistCount,
                 ],
                 Message::PlayAlbumNoShuffle {
-                    album: a.clone(),
+                    album: album.clone(),
                     initial_index: None,
                 },
                 Message::ShuffleAlbum {
-                    album: a.clone(),
+                    album: album.clone(),
                     initial_index: None,
                 },
                 highlighted_album_title
-                    .map(|t| *t == a.title)
+                    .map(|t| *t == album.title)
                     .unwrap_or_default(),
             )
-            .on_press(Message::Navigate(super::TopView::Album(a.clone())))
+            .on_press(Message::Navigate(super::TopView::Album(album.clone())))
             .into()
         })
         .collect();
@@ -162,23 +166,23 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     let artist_buttons: Vec<_> = genre
         .artists
         .iter()
-        .map(|a| {
+        .map(|artist| {
             widget::list::artist_button::artist_button(
                 &state.theme,
-                a.clone(),
+                artist.clone(),
                 Message::PlayArtistNoShuffle {
-                    artist: a.clone(),
+                    artist: artist.clone(),
                     initial_index: None,
                 },
                 Message::ShuffleArtist {
-                    artist: a.clone(),
+                    artist: artist.clone(),
                     initial_index: None,
                 },
                 highlighted_artist_name
-                    .map(|name| *name == a.name)
+                    .map(|name| *name == artist.name)
                     .unwrap_or_default(),
             )
-            .on_press(Message::Navigate(super::TopView::Artist(a.clone())))
+            .on_press(Message::Navigate(super::TopView::Artist(artist.clone())))
             .into()
         })
         .collect();
@@ -205,34 +209,38 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             None
         }
     });
-    let genre_cloned = genre.clone();
-    let track_buttons = genre.tracks.iter().enumerate().map(|(i, t)| {
-        track_button::track_button(
+    let track_buttons = genre.tracks.iter().enumerate().map(|(index, track)| {
+        TrackButton {
             state,
-            t.clone(),
-            track_button::Info::Artist,
-            track_button::Messages {
+            track: track.clone(),
+            messages: track_button::Messages {
                 play: Message::PlayGenreNoShuffle {
-                    genre: genre_cloned.clone(),
-                    initial_index: Some(i),
+                    genre: genre.clone(),
+                    initial_index: Some(index),
+                },
+                press: Message::PlayGenre {
+                    genre: genre.clone(),
+                    initial_index: Some(index),
                 },
                 shuffle: Some(Message::ShuffleGenre {
-                    genre: genre_cloned.clone(),
-                    initial_index: Some(i),
+                    genre: genre.clone(),
+                    initial_index: Some(index),
                 }),
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,
                 remove: None,
             },
-            highlighted_index
-                .map(|index| index == i)
-                .unwrap_or_default(),
-        )
-        .on_press(Message::PlayGenre {
-            genre: genre_cloned.clone(),
-            initial_index: Some(i),
-        })
+            info: track_button::Info::Artist,
+            status: if highlighted_index
+                .map(|highlighted| highlighted == index)
+                .unwrap_or_default()
+            {
+                track_button::Status::Playing
+            } else {
+                track_button::Status::Idle
+            },
+        }
         .into()
     });
 

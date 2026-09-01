@@ -29,7 +29,7 @@ pub enum Dialog {
     Settings,
 }
 
-pub fn view(state: &Chilen) -> Option<Element<'_, Message>> {
+pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
     let cancel_button = match &state.dialog {
         Dialog::None => None,
         _ => Some(

@@ -23,7 +23,8 @@ pub fn artist_chip<'a, Message: 'a>(
                 icons::SIZE_SMALLER,
                 theme.on_surface_variant(),
                 theme.surface_container(),
-                f32::MAX
+                f32::MAX,
+                1.0
             )
             .width(thumbnail_size)
             .height(thumbnail_size),

@@ -144,6 +144,7 @@ pub fn playlist_button<'a>(
             content_color,
             container_color,
             thumbnail_border_radius,
+            1.0,
         )
         .width(Length::Fixed(THUMBNAIL_SIZE))
         .height(Length::Fixed(THUMBNAIL_SIZE));
@@ -174,6 +175,7 @@ pub fn playlist_button<'a>(
                             text(*icons::MORE_HORIZ)
                                 .font(icons::filled())
                                 .size(icons::SIZE_REGULAR)
+                                .color(state.theme.on_surface())
                                 .into()
                         },
                         Some(menu),

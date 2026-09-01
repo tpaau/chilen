@@ -12,7 +12,10 @@ use crate::gui::{
     },
     widget::{
         cover_image::cover_image,
-        list::{BUTTON_SPACING, album_button, track_button},
+        list::{
+            BUTTON_SPACING, album_button,
+            track_button::{self, TrackButton},
+        },
         text_spacer::text_spacer,
     },
 };
@@ -40,6 +43,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             state.theme.on_surface_variant(),
             state.theme.surface_container(),
             f32::MAX,
+            1.0,
         )
         .width(Length::Fixed(cover_size))
         .height(Length::Fixed(cover_size));
@@ -93,24 +97,24 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
     let album_buttons: Vec<_> = artist
         .albums
         .iter()
-        .map(|a| {
+        .map(|album| {
             album_button::album_button(
                 state,
-                a.clone(),
+                album.clone(),
                 vec![album_button::Info::Date],
                 Message::PlayAlbumNoShuffle {
-                    album: a.clone(),
+                    album: album.clone(),
                     initial_index: None,
                 },
                 Message::ShuffleAlbum {
-                    album: a.clone(),
+                    album: album.clone(),
                     initial_index: None,
                 },
                 highlighted_album_title
-                    .map(|t| *t == a.title)
+                    .map(|t| *t == album.title)
                     .unwrap_or_default(),
             )
-            .on_press(Message::Navigate(super::TopView::Album(a.clone())))
+            .on_press(Message::Navigate(super::TopView::Album(album.clone())))
             .into()
         })
         .collect();
@@ -124,34 +128,38 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             None
         }
     });
-    let artist_cloned = artist.clone();
-    let track_buttons = artist.tracks.iter().enumerate().map(|(i, t)| {
-        track_button::track_button(
+    let track_buttons = artist.tracks.iter().enumerate().map(|(index, track)| {
+        TrackButton {
             state,
-            t.clone(),
-            track_button::Info::Album,
-            track_button::Messages {
+            track: track.clone(),
+            messages: track_button::Messages {
                 play: Message::PlayArtistNoShuffle {
-                    artist: artist_cloned.clone(),
-                    initial_index: Some(i),
+                    artist: artist.clone(),
+                    initial_index: Some(index),
+                },
+                press: Message::PlayArtist {
+                    artist: artist.clone(),
+                    initial_index: Some(index),
                 },
                 shuffle: Some(Message::ShuffleArtist {
-                    artist: artist_cloned.clone(),
-                    initial_index: Some(i),
+                    artist: artist.clone(),
+                    initial_index: Some(index),
                 }),
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,
                 remove: None,
             },
-            highlighted_index
-                .map(|index| index == i)
-                .unwrap_or_default(),
-        )
-        .on_press(Message::PlayArtist {
-            artist: artist_cloned.clone(),
-            initial_index: Some(i),
-        })
+            info: track_button::Info::Album,
+            status: if highlighted_index
+                .map(|highlighted| highlighted == index)
+                .unwrap_or_default()
+            {
+                track_button::Status::Playing
+            } else {
+                track_button::Status::Idle
+            },
+        }
         .into()
     });
 

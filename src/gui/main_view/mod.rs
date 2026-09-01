@@ -129,7 +129,7 @@ pub enum Message {
     ShuffleGenre(Arc<Genre>),
 }
 
-pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {
+pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
     container(column![
         row![
             iced_m3::widget::button(&state.theme)

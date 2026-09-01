@@ -145,7 +145,7 @@ fn spacer<'a>(theme: &'a impl ColorScheme) -> Rule<'a> {
 const MAX_COVER_SIZE: f32 = 512.0;
 const MIN_COVER_SIZE: f32 = 192.0;
 
-pub fn view(state: &Chilen, view: TopView) -> Element<'_, Message> {
+pub fn view<'a>(state: &'a Chilen, view: TopView) -> Element<'a, Message> {
     // FIX: Lists should be virtualized.
     // This is currently not viable as I would have to do the same workaround as in the `main_view`,
     // where I put the actual content in a `stack!` so that the layout is different and all

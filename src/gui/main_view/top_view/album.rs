@@ -15,14 +15,16 @@ use crate::gui::{
     widget::{
         artist_chip::artist_chip,
         cover_image::cover_image,
-        list::{BUTTON_SPACING, track_button},
+        list::{
+            BUTTON_SPACING,
+            track_button::{self, TrackButton},
+        },
         text_spacer::text_spacer,
     },
 };
 
 pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Message> {
     let album_cloned = album.clone();
-
     let display = responsive(move |size| {
         let track_count_text = if album_cloned.tracks.len() == 1 {
             "1 track".to_string()
@@ -61,6 +63,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             state.theme.on_surface_variant(),
             state.theme.surface_container(),
             ROUNDING_LARGE,
+            1.0,
         )
         .width(cover_size)
         .height(cover_size);
@@ -133,34 +136,39 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             None
         }
     });
-    let album_cloned = album.clone();
-    let track_buttons = album.tracks.iter().enumerate().map(|(i, t)| {
-        track_button::track_button(
+
+    let track_buttons = album.tracks.iter().enumerate().map(|(index, track)| {
+        TrackButton {
             state,
-            t.clone(),
-            track_button::Info::Length,
-            track_button::Messages {
+            track: track.clone(),
+            messages: track_button::Messages {
                 play: Message::PlayAlbumNoShuffle {
-                    album: album_cloned.clone(),
-                    initial_index: Some(i),
+                    album: album.clone(),
+                    initial_index: Some(index),
+                },
+                press: Message::PlayAlbum {
+                    album: album.clone(),
+                    initial_index: Some(index),
                 },
                 shuffle: Some(Message::ShuffleAlbum {
-                    album: album_cloned.clone(),
-                    initial_index: Some(i),
+                    album: album.clone(),
+                    initial_index: Some(index),
                 }),
                 add_to_queue: None,
                 add_to_playlist: None,
                 details: None,
                 remove: None,
             },
-            highlighted_index
-                .map(|index| index == i)
-                .unwrap_or_default(),
-        )
-        .on_press(Message::PlayAlbum {
-            album: album_cloned.clone(),
-            initial_index: Some(i),
-        })
+            info: track_button::Info::Length,
+            status: if highlighted_index
+                .map(|highlighted| highlighted == index)
+                .unwrap_or_default()
+            {
+                track_button::Status::Playing
+            } else {
+                track_button::Status::Idle
+            },
+        }
         .into()
     });
 

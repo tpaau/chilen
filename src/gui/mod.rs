@@ -67,7 +67,7 @@ pub enum LoadingState {
     Loaded,
 }
 
-struct Chilen {
+pub struct Chilen {
     library: Option<Box<MusicLibrary>>,
     player_state: Option<PlayerState>,
     dialog: Dialog,
@@ -141,7 +141,7 @@ pub fn send_event(event: Event) {
 }
 
 fn window_subscription() -> Subscription<Message> {
-    window::events().map(|(id, event)| Message::Event(Event::Window { event, id }))
+    window::events().map(move |(id, event)| Message::Event(Event::Window { event, id }))
 }
 
 impl Chilen {

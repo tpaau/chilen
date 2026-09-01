@@ -14,7 +14,10 @@ use crate::gui::{
     },
     widget::{
         cover_image::cover_image,
-        list::{BUTTON_SPACING, track_button},
+        list::{
+            BUTTON_SPACING,
+            track_button::{self, TrackButton},
+        },
         text_spacer::text_spacer,
     },
 };
@@ -39,6 +42,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
             state.theme.on_surface_variant(),
             state.theme.surface_container(),
             ROUNDING_LARGE,
+            1.0,
         )
         .width(cover_size)
         .height(cover_size);
@@ -102,36 +106,41 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         .tracks
         .iter()
         .enumerate()
-        .map(move |(i, t)| {
-            track_button::track_button(
+        .map(move |(index, track)| {
+            TrackButton {
                 state,
-                t.clone(),
-                track_button::Info::Artist,
-                track_button::Messages {
+                track: track.clone(),
+                messages: track_button::Messages {
                     play: Message::PlayPlaylistNoShuffle {
                         playlist: playlist_cloned.clone(),
-                        initial_index: Some(i),
+                        initial_index: Some(index),
+                    },
+                    press: Message::PlayPlaylist {
+                        playlist: playlist_cloned.clone(),
+                        initial_index: Some(index),
                     },
                     shuffle: Some(Message::ShufflePlaylist {
                         playlist: playlist_cloned.clone(),
-                        initial_index: Some(i),
+                        initial_index: Some(index),
                     }),
                     add_to_queue: None,
                     add_to_playlist: None,
                     details: None,
                     remove: Some(Message::RemoveTrackFromPlaylist {
                         playlist: playlist_cloned.clone(),
-                        index: i,
+                        index,
                     }),
                 },
-                highlighted_index
-                    .map(|index| index == i)
-                    .unwrap_or_default(),
-            )
-            .on_press(Message::PlayPlaylist {
-                playlist: playlist_cloned.clone(),
-                initial_index: Some(i),
-            })
+                info: track_button::Info::Artist,
+                status: if highlighted_index
+                    .map(|highlighted| highlighted == index)
+                    .unwrap_or_default()
+                {
+                    track_button::Status::Playing
+                } else {
+                    track_button::Status::Idle
+                },
+            }
             .into()
         })
         .collect();

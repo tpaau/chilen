@@ -6,7 +6,10 @@ use crate::gui::{
     Chilen,
     main_view::{self},
     widget::{
-        list::{BUTTON_HEIGHT, BUTTON_SPACING, track_button},
+        list::{
+            BUTTON_HEIGHT, BUTTON_SPACING,
+            track_button::{self, TrackButton},
+        },
         virtual_list::VirtualList,
     },
 };
@@ -23,12 +26,14 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
     let content = VirtualList {
         model: lib.tracks.iter().enumerate(),
         delegate: Box::new(move |(index, track)| {
-            track_button::track_button(
+            TrackButton {
                 state,
-                track.clone(),
-                track_button::Info::Artist,
-                track_button::Messages {
+                track: track.clone(),
+                messages: track_button::Messages {
                     play: main_view::Message::PlayTracksNoShuffle {
+                        initial_position: index,
+                    },
+                    press: main_view::Message::PlayTracks {
                         initial_position: index,
                     },
                     shuffle: Some(main_view::Message::ShuffleTracks {
@@ -39,13 +44,16 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                     details: None,
                     remove: None,
                 },
-                highlighted_index
+                info: track_button::Info::Artist,
+                status: if highlighted_index
                     .map(|highlighted| highlighted == index)
-                    .unwrap_or_default(),
-            )
-            .on_press(main_view::Message::PlayTracks {
-                initial_position: index,
-            })
+                    .unwrap_or_default()
+                {
+                    track_button::Status::Playing
+                } else {
+                    track_button::Status::Idle
+                },
+            }
             .into()
         }),
         delegate_height: BUTTON_HEIGHT,

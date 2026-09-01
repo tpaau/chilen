@@ -7,7 +7,7 @@ use crate::gui::{
     playback_view::Message,
     widget::list::{
         BUTTON_HEIGHT,
-        track_button::{self, track_button},
+        track_button::{self, TrackButton},
     },
 };
 
@@ -30,36 +30,37 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
             .iter()
             .enumerate()
             .map(|(virtual_index, actual_index)| {
-                (virtual_index, player_state.tracks[*actual_index].clone())
+                (virtual_index, &player_state.tracks[*actual_index])
             })
             .collect()
     } else {
-        player_state
-            .tracks
-            .iter()
-            .enumerate()
-            .map(|(i, t)| (i, t.clone()))
-            .collect()
+        player_state.tracks.iter().enumerate().collect()
     };
 
     let track_buttons: Element<'_, Message> = crate::gui::widget::virtual_list::VirtualList {
         model: tracks_ordered,
         delegate: Box::new(|(virtual_index, track)| {
-            track_button(
+            TrackButton {
                 state,
-                track,
-                track_button::Info::Artist,
-                track_button::Messages {
+                track: track.clone(),
+                messages: track_button::Messages {
                     play: Message::PlayTrack(virtual_index),
+                    press: Message::PlayTrack(virtual_index),
                     shuffle: None,
                     add_to_queue: None,
                     add_to_playlist: None,
                     details: None,
                     remove: None,
                 },
-                virtual_index == player_state.position,
-            )
-            .on_press(Message::PlayTrack(virtual_index))
+                info: track_button::Info::Artist,
+                status: if virtual_index < player_state.position {
+                    track_button::Status::Dimmed
+                } else if virtual_index == player_state.position {
+                    track_button::Status::Playing
+                } else {
+                    track_button::Status::Idle
+                },
+            }
             .into()
         }),
         delegate_height: BUTTON_HEIGHT,
