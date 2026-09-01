@@ -14,7 +14,10 @@ use crate::gui::{
     icons,
     main_view::top_view::TopView,
     playlist_view,
-    widget::list::{BUTTON_HEIGHT, playlist_button::playlist_button},
+    widget::{
+        list::{BUTTON_HEIGHT, BUTTON_SPACING, playlist_button::playlist_button},
+        virtual_list::VirtualList,
+    },
 };
 
 #[derive(Debug, Clone)]
@@ -44,88 +47,111 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
         .size(font::SIZE_LARGE)
         .font(gui::font::font_bold());
 
-    let content = match &state.loading_state {
-        LoadingState::Loading => center(text("Loading...")),
-        LoadingState::Failed(e) => {
-            container(text!("Load failed: {e}").color(state.theme.on_error()))
-                .style(|_| {
-                    container::Style::default()
-                        .background(state.theme.error_container())
-                        .border(Border::default().rounded(ROUNDING_REGULAR))
-                })
-                .width(Length::Fill)
-                .padding(Padding::new(SPACING_SMALLER))
-        }
-        LoadingState::Loaded => center(stack!(
-            responsive(|size| column![
-                iced::widget::scrollable(
-                    column({
-                        let mut playlists: Vec<_> =
-                            state.library.as_ref().unwrap().playlists.iter().collect();
-                        playlists.sort_by_key(|pl| pl.name.clone());
+    let content = if let Some(lib) = &state.library {
+        let base = responsive(move |size| {
+            column![{
+                iced::widget::scrollable({
+                    let highlighted_playlist_name = state.player_state.as_ref().and_then(|p| {
+                        if let chilen_backend::playback::QueueSource::Playlist { name } =
+                            &p.queue_source
+                        {
+                            Some(name)
+                        } else {
+                            None
+                        }
+                    });
 
-                        let highlighted_playlist_name = state.player_state.as_ref().and_then(|p| {
-                            if let chilen_backend::playback::QueueSource::Playlist { name } =
-                                &p.queue_source
-                            {
-                                Some(name)
-                            } else {
-                                None
-                            }
-                        });
-                        let mut buttons: Vec<_> = playlists
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, p)| {
+                    // So that the fab menu doesn't obstruct the last playlist
+                    let playlists = lib.playlists.iter().map(Some).chain(
+                        (size.height < (lib.playlists.len() + 1) as f32 * BUTTON_HEIGHT)
+                            .then_some(None),
+                    );
+
+                    VirtualList {
+                        model: playlists.enumerate(),
+                        delegate: Box::new(move |(index, maybe_playlist)| {
+                            if let Some(playlist) = maybe_playlist {
                                 playlist_button(
                                     state,
-                                    p,
-                                    i,
+                                    playlist,
+                                    index,
                                     highlighted_playlist_name
-                                        .map(|name| *name == p.name)
+                                        .map(|name| *name == playlist.name)
                                         .unwrap_or_default(),
                                 )
-                            })
-                            .collect();
-
-                        // So that the crate/import playlist button doesn't obstruct the menu button
-                        if size.height < (buttons.len() + 1) as f32 * BUTTON_HEIGHT {
-                            buttons.push(space().height(BUTTON_HEIGHT).into());
-                        }
-
-                        buttons
-                    })
-                    .spacing(SPACING_SMALLER)
-                )
+                            } else {
+                                space().height(BUTTON_HEIGHT).into()
+                            }
+                        }),
+                        delegate_height: BUTTON_HEIGHT,
+                        visibilities: state.playlist_view.visible.as_deref().unwrap_or(&[]),
+                        list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
+                        on_show: Box::new(Message::ButtonPoppedIn),
+                        on_hide: Box::new(Message::ButtonPoppedOut),
+                    }
+                })
                 .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
                 .height(Length::Fill)
-                .width(Length::Fill),
-            ]
+                .width(Length::Fill)
+            }]
             .spacing(SPACING_SMALL)
             .height(Length::Fill)
             .width(Length::Fill)
-            .into()),
+            .into()
+        });
+
+        let fab = {
             bottom_right(
                 fab_menu(
                     vec![
                         iced_m3::widget::fab_menu::Entry {
                             message: Message::ImportPlaylist,
                             label: "Import playlist",
-                            icon: Some(&*icons::UPLOAD_FILE)
+                            icon: Some(&*icons::UPLOAD_FILE),
                         },
                         iced_m3::widget::fab_menu::Entry {
                             message: Message::CreatePlaylist,
                             label: "New playlist",
-                            icon: Some(&*icons::PLAYLIST_ADD)
-                        }
+                            icon: Some(&*icons::PLAYLIST_ADD),
+                        },
                     ],
                     &|opened| if opened { *icons::CLOSE } else { *icons::ADD },
-                    &state.theme
+                    &state.theme,
                 )
                 .icon_font(icons::filled()),
             )
             .padding(padding::bottom(SPACING_SMALL))
-        )),
+        };
+
+        center(stack!(base, fab))
+    } else {
+        match &state.loading_state {
+            LoadingState::Loading => center(text("Loading...")),
+            LoadingState::Failed(e) => {
+                container(text!("Load failed: {e}").color(state.theme.on_error()))
+                    .style(|_| {
+                        container::Style::default()
+                            .background(state.theme.error_container())
+                            .border(Border::default().rounded(ROUNDING_REGULAR))
+                    })
+                    .width(Length::Fill)
+                    .padding(Padding::new(SPACING_SMALLER))
+            }
+            LoadingState::Loaded => container(
+                text!(
+                    "The loading status is {:?}, but the library is not initialized!",
+                    state.loading_state
+                )
+                .color(state.theme.on_error()),
+            )
+            .style(|_| {
+                container::Style::default()
+                    .background(state.theme.error_container())
+                    .border(Border::default().rounded(ROUNDING_REGULAR))
+            })
+            .width(Length::Fill)
+            .padding(Padding::new(SPACING_SMALLER)),
+        }
     };
 
     container(column![heading, content].spacing(SPACING_SMALLER))

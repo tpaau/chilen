@@ -1,8 +1,11 @@
 use iced::Element;
 use iced_widget::{sensor, space};
 
-pub struct VirtualList<'a, Model, Message> {
-    pub model: Vec<Model>,
+pub struct VirtualList<'a, Model, I, Message>
+where
+    I: IntoIterator<Item = Model>,
+{
+    pub model: I,
     pub delegate: Box<dyn Fn(Model) -> Element<'a, Message> + 'a>,
     pub delegate_height: f32,
     pub visibilities: &'a [bool],
@@ -11,11 +14,12 @@ pub struct VirtualList<'a, Model, Message> {
     pub on_hide: Box<dyn Fn(usize) -> Message + 'a>,
 }
 
-impl<'a, Model, Message> From<VirtualList<'a, Model, Message>> for Element<'a, Message>
+impl<'a, Model, I, Message> From<VirtualList<'a, Model, I, Message>> for Element<'a, Message>
 where
     Message: 'a + Clone,
+    I: IntoIterator<Item = Model>,
 {
-    fn from(value: VirtualList<'a, Model, Message>) -> Self {
+    fn from(value: VirtualList<'a, Model, I, Message>) -> Self {
         let delegates: Vec<_> = value
             .model
             .into_iter()

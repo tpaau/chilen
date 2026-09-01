@@ -9,7 +9,7 @@ use std::sync::Arc;
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary};
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, row, sensor, space, stack, text};
+use iced_widget::{center, column, container, row, space, stack, text};
 use log::{error, trace};
 
 use crate::gui::{
@@ -127,29 +127,6 @@ pub enum Message {
     ShuffleArtist(Arc<Artist>),
     PlayGenre(Arc<Genre>),
     ShuffleGenre(Arc<Genre>),
-}
-
-fn virtualize_entry<'a, E>(
-    state: &'a Chilen,
-    content: impl Fn() -> E + 'a,
-    height: f32,
-    index: usize,
-) -> Element<'a, main_view::Message>
-where
-    E: Into<Element<'a, main_view::Message>>,
-{
-    let content: Element<'a, main_view::Message> = if let Some(visible) = &state.main_view.visible
-        && index < visible.len()
-        && visible[index]
-    {
-        (content)().into()
-    } else {
-        space().height(height).width(Length::Fill).into()
-    };
-    sensor(content)
-        .on_show(move |_| main_view::Message::ButtonPoppedIn(index))
-        .on_hide(main_view::Message::ButtonPoppedOut(index))
-        .into()
 }
 
 pub fn view(state: &Chilen) -> Element<'_, main_view::Message> {

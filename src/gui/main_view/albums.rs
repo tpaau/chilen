@@ -5,14 +5,16 @@ use iced_widget::column;
 use crate::gui::{
     Chilen,
     main_view::{
-        self,
+        Message,
         top_view::{self, TopView},
-        virtualize_entry,
     },
-    widget::list::{BUTTON_HEIGHT, BUTTON_SPACING, album_button},
+    widget::{
+        list::{BUTTON_HEIGHT, BUTTON_SPACING, album_button},
+        virtual_list::VirtualList,
+    },
 };
 
-pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_view::Message> {
+pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, Message> {
     let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
             Some(title)
@@ -20,35 +22,34 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
             None
         }
     });
-    let content = column(lib.albums.iter().enumerate().map(|(index, album)| {
-        let highlighted = highlighted_album_title
-            .map(|t| *t == album.title)
-            .unwrap_or_default();
-        virtualize_entry(
-            state,
-            move || {
-                album_button::album_button(
-                    state,
-                    album.clone(),
-                    vec![
-                        album_button::Info::TrackCount,
-                        album_button::Info::ArtistCount,
-                    ],
-                    main_view::Message::PlayAlbum(album.clone()),
-                    main_view::Message::ShuffleAlbum(album.clone()),
-                    highlighted,
-                )
-                .on_press_with(|| {
-                    main_view::Message::TopView(top_view::Message::Navigate(TopView::Album(
-                        album.clone(),
-                    )))
-                })
-            },
-            BUTTON_HEIGHT,
-            index,
-        )
-    }))
-    .spacing(BUTTON_SPACING);
+    let content = VirtualList {
+        model: lib.albums.iter(),
+        delegate: Box::new(move |album| {
+            let highlighted = highlighted_album_title
+                .map(|t| *t == album.title)
+                .unwrap_or_default();
+            album_button::album_button(
+                state,
+                album.clone(),
+                vec![
+                    album_button::Info::TrackCount,
+                    album_button::Info::ArtistCount,
+                ],
+                Message::PlayAlbum(album.clone()),
+                Message::ShuffleAlbum(album.clone()),
+                highlighted,
+            )
+            .on_press_with(move || {
+                Message::TopView(top_view::Message::Navigate(TopView::Album(album.clone())))
+            })
+            .into()
+        }),
+        delegate_height: BUTTON_HEIGHT,
+        visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
+        list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
+        on_show: Box::new(Message::ButtonPoppedIn),
+        on_hide: Box::new(Message::ButtonPoppedOut),
+    };
 
     iced_widget::scrollable(content)
         .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
