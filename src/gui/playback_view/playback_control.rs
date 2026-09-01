@@ -49,72 +49,92 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .color(state.theme.on_surface())
     .font(font::font_bold());
 
-    let artist: Option<Element<'_, Message>> =
-        state.player_state.as_ref().and_then(|playback_state| {
-            playback_state.current().map(|track| {
-                if let Some(artists) = &track.artists {
-                    let artists: Vec<Element<'_, Message>> = artists
-                        .iter()
-                        .map(|a| {
-                            mouse_area(
-                                text(a)
-                                    .wrapping(text::Wrapping::None)
-                                    .size(font::SIZE_REGULAR)
-                                    .color(state.theme.on_surface_variant()),
-                            )
-                            .on_press(Message::OpenArtist(a.to_string()))
-                            .interaction(iced::mouse::Interaction::Pointer)
-                            .into()
-                        })
-                        .collect();
-
-                    if artists.is_empty() {
-                        todo!()
-                    } else {
-                        let mut artists_w_separators = Vec::with_capacity(artists.len() * 2 - 1);
-                        let len = artists.len();
-                        for (i, artist) in artists.into_iter().enumerate() {
-                            artists_w_separators.push(artist);
-                            if i < len - 1 {
-                                artists_w_separators.push(
-                                    text(&state.settings.value_separator)
-                                        .wrapping(text::Wrapping::None)
-                                        .size(font::SIZE_REGULAR)
-                                        .color(state.theme.on_surface_variant())
-                                        .into(),
-                                );
-                            }
-                        }
-
-                        // TODO: Should scroll left and right if there's not enough space for the list to fit on the screen.
-                        row(artists_w_separators).into()
-                    }
-                } else {
-                    text("Unknown artist").into()
-                }
+    let artists: Element<'_, Message> = if let Some(player_state) = &state.player_state
+        && let Some(track) = player_state.current()
+        && let Some(artists) = &track.artists
+        && !artists.is_empty()
+    {
+        let artists: Vec<Element<'_, Message>> = artists
+            .iter()
+            .map(|a| {
+                mouse_area(
+                    text(a)
+                        .wrapping(text::Wrapping::None)
+                        .size(font::SIZE_REGULAR)
+                        .color(state.theme.on_surface_variant()),
+                )
+                .on_press(Message::OpenArtist(a.to_string()))
+                .interaction(iced::mouse::Interaction::Pointer)
+                .into()
             })
-        });
+            .collect();
 
-    let album = state.player_state.as_ref().and_then(|playback_state| {
-        playback_state.current().map(|track| {
-            let widget = mouse_area(
-                text(track.album.clone().unwrap_or("Unknown album".to_string()))
-                    .wrapping(text::Wrapping::None)
-                    .size(font::SIZE_REGULAR)
-                    .color(state.theme.on_surface_variant()),
-            );
-
-            if let Some(album) = track.album.clone() {
-                widget
-                    .interaction(iced::mouse::Interaction::Pointer)
-                    .on_press(Message::OpenAlbum(album))
-            } else {
-                widget
+        let mut artists_w_separators = Vec::with_capacity(artists.len() * 2 - 1);
+        let len = artists.len();
+        for (i, artist) in artists.into_iter().enumerate() {
+            artists_w_separators.push(artist);
+            if i < len - 1 {
+                artists_w_separators.push(
+                    text(&state.settings.value_separator)
+                        .wrapping(text::Wrapping::None)
+                        .size(font::SIZE_REGULAR)
+                        .color(state.theme.on_surface_variant())
+                        .into(),
+                );
             }
-        })
-    });
+        }
 
-    let content = column![title, artist, album];
+        row(artists_w_separators).into()
+    } else {
+        let text_content = if state
+            .player_state
+            .as_ref()
+            .map(|p| p.current().is_some())
+            .unwrap_or_default()
+        {
+            "Unknown artist"
+        } else {
+            "Artist"
+        };
+        text(text_content)
+            .wrapping(text::Wrapping::None)
+            .size(font::SIZE_REGULAR)
+            .color(state.theme.on_surface_variant())
+            .into()
+    };
+
+    let album: Element<'_, Message> = if let Some(player_state) = &state.player_state
+        && let Some(track) = player_state.current()
+        && let Some(album) = &track.album
+    {
+        mouse_area(
+            text(track.album.clone().unwrap_or("Unknown album".to_string()))
+                .wrapping(text::Wrapping::None)
+                .size(font::SIZE_REGULAR)
+                .color(state.theme.on_surface_variant()),
+        )
+        .interaction(iced::mouse::Interaction::Pointer)
+        .on_press(Message::OpenAlbum(album.to_string()))
+        .into()
+    } else {
+        let text_content = if state
+            .player_state
+            .as_ref()
+            .map(|p| p.current().is_some())
+            .unwrap_or_default()
+        {
+            "Unknown artist"
+        } else {
+            "Album"
+        };
+        text(text_content)
+            .wrapping(text::Wrapping::None)
+            .size(font::SIZE_REGULAR)
+            .color(state.theme.on_surface_variant())
+            .into()
+    };
+
+    let content = column![title, artists, album];
 
     let max_value = 1000;
 

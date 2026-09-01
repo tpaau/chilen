@@ -1,8 +1,8 @@
 use iced::Element;
 use iced_m3::theme::ColorScheme;
-use iced_widget::text;
+use iced_widget::{center, text};
 
-use crate::gui::{Chilen, font, playback_view::Message};
+use crate::gui::{Chilen, playback_view::Message};
 
 pub(super) fn view<'a>(state: &'a Chilen, lyrics_padding: f32) -> Element<'a, Message> {
     if let Some(player_state) = &state.player_state
@@ -17,9 +17,11 @@ pub(super) fn view<'a>(state: &'a Chilen, lyrics_padding: f32) -> Element<'a, Me
             state.settings.show_lyrics_errors,
         )
     } else {
-        text("Nothing is playing")
-            .size(font::SIZE_REGULAR)
-            .color(state.theme.on_surface())
-            .into()
+        center(
+            text("Nothing is playing")
+                .color(state.theme.on_surface_variant())
+                .size(crate::gui::widget::lyrics::FONT_SIZE),
+        )
+        .into()
     }
 }

@@ -11,7 +11,7 @@ use iced_widget::{center, column, container, mouse_area, row, scrollable, text};
 
 use crate::gui::{ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, font, icons};
 
-const FONT_SIZE: f32 = font::SIZE_LARGER;
+pub const FONT_SIZE: f32 = font::SIZE_LARGER;
 
 // TODO: In case of synced lyrics, the scrollable should follow the currently playing line
 fn synced_lyrics<'a, Message: 'a + Clone>(
