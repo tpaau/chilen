@@ -79,6 +79,7 @@ pub enum Message {
         initial_position: Option<usize>,
     },
     AddTrackToQueue(Arc<Track>),
+    AddAlbumToQueue(Arc<Album>),
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -262,6 +263,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             common_actions::shuffle_genre(genre, initial_position);
         }
         Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
+        Message::AddAlbumToQueue(album) => {
+            common_actions::append_tracks_to_queue(album.tracks.clone())
+        }
     }
     Task::none()
 }

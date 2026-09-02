@@ -14,7 +14,8 @@ use crate::gui::{
         self,
         cover_image::cover_image,
         list::{
-            BUTTON_SPACING, album_button,
+            BUTTON_SPACING,
+            album_button::{self, AlbumButton},
             track_button::{self, TrackButton},
         },
         text_spacer::text_spacer,
@@ -119,26 +120,27 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .albums
         .iter()
         .map(|album| {
-            album_button::album_button(
+            AlbumButton {
                 state,
-                album.clone(),
-                vec![
+                album: album.clone(),
+                info: vec![
                     album_button::Info::TrackCount,
                     album_button::Info::ArtistCount,
                 ],
-                Message::PlayAlbumNoShuffle {
+                play: Message::PlayAlbumNoShuffle {
                     album: album.clone(),
                     initial_position: None,
                 },
-                Message::ShuffleAlbum {
+                press: Message::Navigate(super::TopView::Album(album.clone())),
+                shuffle: Message::ShuffleAlbum {
                     album: album.clone(),
                     initial_position: None,
                 },
-                highlighted_album_title
+                add_to_queue: Message::AddAlbumToQueue(album.clone()),
+                highlighted: highlighted_album_title
                     .map(|t| *t == album.title)
                     .unwrap_or_default(),
-            )
-            .on_press(Message::Navigate(super::TopView::Album(album.clone())))
+            }
             .into()
         })
         .collect();

@@ -9,7 +9,10 @@ use crate::gui::{
         top_view::{self, TopView},
     },
     widget::{
-        list::{BUTTON_HEIGHT, BUTTON_SPACING, album_button},
+        list::{
+            BUTTON_HEIGHT, BUTTON_SPACING,
+            album_button::{self, AlbumButton},
+        },
         virtual_list::VirtualList,
     },
 };
@@ -28,20 +31,19 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, Message
             let highlighted = highlighted_album_title
                 .map(|t| *t == album.title)
                 .unwrap_or_default();
-            album_button::album_button(
+            AlbumButton {
                 state,
-                album.clone(),
-                vec![
+                album: album.clone(),
+                info: vec![
                     album_button::Info::TrackCount,
                     album_button::Info::ArtistCount,
                 ],
-                Message::PlayAlbum(album.clone()),
-                Message::ShuffleAlbum(album.clone()),
+                play: Message::PlayAlbum(album.clone()),
+                press: Message::TopView(top_view::Message::Navigate(TopView::Album(album.clone()))),
+                shuffle: Message::ShuffleAlbum(album.clone()),
+                add_to_queue: Message::AddAlbumToQueue(album.clone()),
                 highlighted,
-            )
-            .on_press_with(move || {
-                Message::TopView(top_view::Message::Navigate(TopView::Album(album.clone())))
-            })
+            }
             .into()
         }),
         delegate_height: BUTTON_HEIGHT,
