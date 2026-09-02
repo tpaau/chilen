@@ -20,7 +20,10 @@ use crate::{
     },
 };
 
-pub struct ArtistButton<'a, Message> {
+pub struct ArtistButton<'a, Message>
+where
+    Message: 'a + Clone,
+{
     pub theme: &'a dyn ColorScheme,
     pub artist: Arc<Artist>,
     pub play: Message,

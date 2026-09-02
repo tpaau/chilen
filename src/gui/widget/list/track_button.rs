@@ -43,7 +43,10 @@ pub struct Messages<Message> {
     pub remove: Option<Message>,
 }
 
-pub struct TrackButton<'a, Message> {
+pub struct TrackButton<'a, Message>
+where
+    Message: 'a + Clone,
+{
     pub state: &'a Chilen,
     pub track: Arc<Track>,
     pub messages: Messages<Message>,

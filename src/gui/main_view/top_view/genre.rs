@@ -11,7 +11,6 @@ use crate::gui::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
     },
     widget::{
-        self,
         cover_image::cover_image,
         list::{
             BUTTON_SPACING,

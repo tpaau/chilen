@@ -9,8 +9,7 @@ use crate::gui::{
         top_view::{self, TopView},
     },
     widget::{
-        self,
-        list::{BUTTON_HEIGHT, BUTTON_SPACING},
+        list::{BUTTON_HEIGHT, BUTTON_SPACING, genre_button::GenreButton},
         virtual_list::VirtualList,
     },
 };
@@ -30,16 +29,15 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, Message
             let highlighted = highlighted_genre_name
                 .map(|name| *name == genre.name)
                 .unwrap_or_default();
-            widget::list::genre_button::genre_button(
-                &state.theme,
-                genre.clone(),
-                Message::PlayGenre(genre.clone()),
-                Message::ShuffleGenre(genre.clone()),
+            GenreButton {
+                theme: &state.theme,
+                genre: genre.clone(),
+                play: Message::PlayGenre(genre.clone()),
+                press: Message::TopView(top_view::Message::Navigate(TopView::Genre(genre.clone()))),
+                shuffle: Message::ShuffleGenre(genre.clone()),
+                add_to_queue: Message::AddGenreToQueue(genre.clone()),
                 highlighted,
-            )
-            .on_press_with(|| {
-                Message::TopView(top_view::Message::Navigate(TopView::Genre(genre.clone())))
-            })
+            }
             .into()
         }),
         delegate_height: BUTTON_HEIGHT,
