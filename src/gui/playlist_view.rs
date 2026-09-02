@@ -10,8 +10,8 @@ use iced_widget::{bottom_right, center, responsive, space, stack};
 use log::{debug, error, info, trace};
 
 use crate::gui::{
-    self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
-    icons,
+    self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+    common_actions, font, icons,
     main_view::top_view::TopView,
     playlist_view,
     widget::{
@@ -34,6 +34,7 @@ pub enum Message {
     ConfirmPlaylistDeletion(Arc<Playlist>),
     PlayPlaylist(Arc<Playlist>),
     ShufflePlaylist(Arc<Playlist>),
+    AddPlaylistToQueue(Arc<Playlist>),
 }
 
 #[derive(Default)]
@@ -251,22 +252,13 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::OpenPlaylist(pl) => state.main_view.nav_stack.set_top(TopView::Playlist(pl)),
         Message::PlayPlaylist(playlist) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Playlist(playlist),
-                None,
-            );
+            common_actions::play_playlist(playlist, None);
         }
         Message::ShufflePlaylist(playlist) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Playlist(playlist),
-                None,
-            );
+            common_actions::play_playlist(playlist, None);
+        }
+        Message::AddPlaylistToQueue(playlist) => {
+            common_actions::append_tracks_to_queue(playlist.tracks.clone())
         }
     }
     Task::none()

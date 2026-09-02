@@ -99,11 +99,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         &state.theme,
         Message::PlayGenreNoShuffle {
             genre: genre.clone(),
-            initial_index: None,
+            initial_position: None,
         },
         Message::ShuffleGenre {
             genre: genre.clone(),
-            initial_index: None,
+            initial_position: None,
         },
         Message::Noop,
     );
@@ -128,11 +128,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 ],
                 Message::PlayAlbumNoShuffle {
                     album: album.clone(),
-                    initial_index: None,
+                    initial_position: None,
                 },
                 Message::ShuffleAlbum {
                     album: album.clone(),
-                    initial_index: None,
+                    initial_position: None,
                 },
                 highlighted_album_title
                     .map(|t| *t == album.title)
@@ -172,11 +172,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 artist.clone(),
                 Message::PlayArtistNoShuffle {
                     artist: artist.clone(),
-                    initial_index: None,
+                    initial_position: None,
                 },
                 Message::ShuffleArtist {
                     artist: artist.clone(),
-                    initial_index: None,
+                    initial_position: None,
                 },
                 highlighted_artist_name
                     .map(|name| *name == artist.name)
@@ -216,17 +216,17 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             messages: track_button::Messages {
                 play: Message::PlayGenreNoShuffle {
                     genre: genre.clone(),
-                    initial_index: Some(index),
+                    initial_position: Some(index),
                 },
                 press: Message::PlayGenre {
                     genre: genre.clone(),
-                    initial_index: Some(index),
+                    initial_position: Some(index),
                 },
                 shuffle: Some(Message::ShuffleGenre {
                     genre: genre.clone(),
-                    initial_index: Some(index),
+                    initial_position: Some(index),
                 }),
-                add_to_queue: None,
+                add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
                 add_to_playlist: None,
                 details: None,
                 remove: None,

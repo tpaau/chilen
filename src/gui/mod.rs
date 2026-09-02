@@ -1,3 +1,4 @@
+mod common_actions;
 mod dialog;
 mod font;
 mod formatter;

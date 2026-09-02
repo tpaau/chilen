@@ -6,14 +6,14 @@ mod tracks;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary};
+use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Track};
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container, row, space, stack, text};
-use log::{error, trace};
+use log::trace;
 
 use crate::gui::{
-    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, icons,
+    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, icons,
     main_view::{self, top_view::TopView},
 };
 
@@ -127,6 +127,10 @@ pub enum Message {
     ShuffleArtist(Arc<Artist>),
     PlayGenre(Arc<Genre>),
     ShuffleGenre(Arc<Genre>),
+    AddTrackToQueue(Arc<Track>),
+    AddAlbumToQueue(Arc<Album>),
+    AddArtistToQueue(Arc<Artist>),
+    AddGenreToQueue(Arc<Genre>),
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
@@ -265,92 +269,42 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
         Message::Noop => {}
         Message::OpenSettings => state.dialog = gui::dialog::Dialog::Settings,
-        Message::PlayTracks { initial_position } => match &state.library {
-            Some(lib) => {
-                let _ = chilen_backend::playback::play_new_queue(
-                    chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
-                    Some(initial_position),
-                );
-            }
-            None => error!("Cannot play the track, the library is not loaded"),
-        },
-        Message::PlayTracksNoShuffle { initial_position } => match &state.library {
-            Some(lib) => {
-                let _ = chilen_backend::playback::set_shuffle_state(
-                    chilen_backend::playback::ShuffleState::Off,
-                );
-                let _ = chilen_backend::playback::play_new_queue(
-                    chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
-                    Some(initial_position),
-                );
-            }
-            None => error!("Cannot play the track, the library is not loaded"),
-        },
-        Message::ShuffleTracks { initial_position } => match &state.library {
-            Some(lib) => {
-                let _ = chilen_backend::playback::set_shuffle_state(
-                    chilen_backend::playback::ShuffleState::On,
-                );
-                let _ = chilen_backend::playback::play_new_queue(
-                    chilen_backend::playback::Queue::AllTracks(lib.tracks.clone()),
-                    Some(initial_position),
-                );
-            }
-            None => error!("Cannot play the track, the library is not loaded"),
-        },
+        Message::PlayTracks { initial_position } => {
+            common_actions::play_tracks(state, initial_position)
+        }
+        Message::PlayTracksNoShuffle { initial_position } => {
+            common_actions::play_tracks_no_shuffle(state, Some(initial_position));
+        }
+        Message::ShuffleTracks { initial_position } => {
+            common_actions::shuffle_tracks(state, Some(initial_position));
+        }
         Message::PlayAlbum(album) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Album(album),
-                None,
-            );
+            common_actions::play_album_no_shuffle(album, None);
         }
         Message::ShuffleAlbum(album) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Album(album),
-                None,
-            );
+            common_actions::shuffle_album(album, None);
         }
         Message::PlayArtist(artist) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Artist(artist),
-                None,
-            );
+            common_actions::play_artist_no_shuffle(artist, None);
         }
         Message::ShuffleArtist(artist) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Artist(artist),
-                None,
-            );
+            common_actions::shuffle_artist(artist, None);
         }
         Message::PlayGenre(genre) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Genre(genre),
-                None,
-            );
+            common_actions::play_genre_no_shuffle(genre, None);
         }
         Message::ShuffleGenre(genre) => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Genre(genre),
-                None,
-            );
+            common_actions::shuffle_genre(genre, None);
+        }
+        Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
+        Message::AddAlbumToQueue(album) => {
+            common_actions::append_tracks_to_queue(album.tracks.clone())
+        }
+        Message::AddArtistToQueue(artist) => {
+            common_actions::append_tracks_to_queue(artist.tracks.clone())
+        }
+        Message::AddGenreToQueue(genre) => {
+            common_actions::append_tracks_to_queue(genre.tracks.clone())
         }
     }
     Task::none()

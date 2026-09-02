@@ -39,7 +39,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                     shuffle: Some(main_view::Message::ShuffleTracks {
                         initial_position: index,
                     }),
-                    add_to_queue: None,
+                    add_to_queue: Some(main_view::Message::AddTrackToQueue(track.clone())),
                     add_to_playlist: None,
                     details: None,
                     remove: None,

@@ -83,11 +83,11 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         &state.theme,
         Message::PlayPlaylistNoShuffle {
             playlist: playlist.clone(),
-            initial_index: None,
+            initial_position: None,
         },
         Message::ShufflePlaylist {
             playlist: playlist.clone(),
-            initial_index: None,
+            initial_position: None,
         },
         Message::Noop,
     );
@@ -113,17 +113,17 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                 messages: track_button::Messages {
                     play: Message::PlayPlaylistNoShuffle {
                         playlist: playlist_cloned.clone(),
-                        initial_index: Some(index),
+                        initial_position: Some(index),
                     },
                     press: Message::PlayPlaylist {
                         playlist: playlist_cloned.clone(),
-                        initial_index: Some(index),
+                        initial_position: Some(index),
                     },
                     shuffle: Some(Message::ShufflePlaylist {
                         playlist: playlist_cloned.clone(),
-                        initial_index: Some(index),
+                        initial_position: Some(index),
                     }),
-                    add_to_queue: None,
+                    add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
                     add_to_playlist: None,
                     details: None,
                     remove: Some(Message::RemoveTrackFromPlaylist {

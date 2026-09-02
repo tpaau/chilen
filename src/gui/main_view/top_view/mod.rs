@@ -5,13 +5,13 @@ mod playlist;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{Album, Artist, Genre, Playlist};
+use chilen_backend::music_lib::{Album, Artist, Genre, Playlist, Track};
 use iced::{Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{Row, Rule, container, row, rule, scrollable, text};
 use log::error;
 
-use crate::gui::{Chilen, SPACING_REGULAR, font, icons, main_view::NavStack};
+use crate::gui::{Chilen, SPACING_REGULAR, common_actions, font, icons, main_view::NavStack};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -32,52 +32,53 @@ pub enum Message {
     },
     PlayPlaylist {
         playlist: Arc<Playlist>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayPlaylistNoShuffle {
         playlist: Arc<Playlist>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     ShufflePlaylist {
         playlist: Arc<Playlist>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayAlbum {
         album: Arc<Album>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayAlbumNoShuffle {
         album: Arc<Album>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     ShuffleAlbum {
         album: Arc<Album>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayArtist {
         artist: Arc<Artist>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayArtistNoShuffle {
         artist: Arc<Artist>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     ShuffleArtist {
         artist: Arc<Artist>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayGenre {
         genre: Arc<Genre>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     PlayGenreNoShuffle {
         genre: Arc<Genre>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
     ShuffleGenre {
         genre: Arc<Genre>,
-        initial_index: Option<usize>,
+        initial_position: Option<usize>,
     },
+    AddTrackToQueue(Arc<Track>),
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -190,136 +191,77 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::PlayPlaylist {
             playlist,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Playlist(playlist),
-                initial_index,
-            );
+            common_actions::play_playlist(playlist, initial_position);
         }
         Message::PlayPlaylistNoShuffle {
             playlist,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Playlist(playlist),
-                initial_index,
-            );
+            common_actions::play_playlist_no_shuffle(playlist, initial_position);
         }
         Message::ShufflePlaylist {
             playlist,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Playlist(playlist),
-                initial_index,
-            );
+            common_actions::shuffle_playlist(playlist, initial_position);
         }
         Message::PlayAlbum {
             album,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Album(album),
-                initial_index,
-            );
+            common_actions::play_album(album, initial_position);
         }
         Message::PlayAlbumNoShuffle {
             album,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Album(album),
-                initial_index,
-            );
+            common_actions::play_album_no_shuffle(album, initial_position);
         }
         Message::ShuffleAlbum {
             album,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Album(album),
-                initial_index,
-            );
+            common_actions::shuffle_album(album, initial_position);
         }
         Message::PlayArtist {
             artist,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Artist(artist),
-                initial_index,
-            );
+            common_actions::play_artist(artist, initial_position);
         }
         Message::PlayArtistNoShuffle {
             artist,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Artist(artist),
-                initial_index,
-            );
+            common_actions::play_artist_no_shuffle(artist, initial_position);
         }
         Message::ShuffleArtist {
             artist,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Artist(artist),
-                initial_index,
-            );
+            common_actions::shuffle_artist(artist, initial_position);
         }
         Message::PlayGenre {
             genre,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Genre(genre),
-                initial_index,
-            );
+            common_actions::play_genre(genre, initial_position);
         }
         Message::PlayGenreNoShuffle {
             genre,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::Off,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Genre(genre),
-                initial_index,
-            );
+            common_actions::play_genre_no_shuffle(genre, initial_position);
         }
         Message::ShuffleGenre {
             genre,
-            initial_index,
+            initial_position,
         } => {
-            let _ = chilen_backend::playback::set_shuffle_state(
-                chilen_backend::playback::ShuffleState::On,
-            );
-            let _ = chilen_backend::playback::play_new_queue(
-                chilen_backend::playback::Queue::Genre(genre),
-                initial_index,
-            );
+            common_actions::shuffle_genre(genre, initial_position);
         }
+        Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
     }
     Task::none()
 }

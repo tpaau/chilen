@@ -78,11 +78,11 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         &state.theme,
         Message::PlayArtistNoShuffle {
             artist: artist.clone(),
-            initial_index: None,
+            initial_position: None,
         },
         Message::ShuffleArtist {
             artist: artist.clone(),
-            initial_index: None,
+            initial_position: None,
         },
         Message::Noop,
     );
@@ -104,11 +104,11 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 vec![album_button::Info::Date],
                 Message::PlayAlbumNoShuffle {
                     album: album.clone(),
-                    initial_index: None,
+                    initial_position: None,
                 },
                 Message::ShuffleAlbum {
                     album: album.clone(),
-                    initial_index: None,
+                    initial_position: None,
                 },
                 highlighted_album_title
                     .map(|t| *t == album.title)
@@ -135,17 +135,17 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             messages: track_button::Messages {
                 play: Message::PlayArtistNoShuffle {
                     artist: artist.clone(),
-                    initial_index: Some(index),
+                    initial_position: Some(index),
                 },
                 press: Message::PlayArtist {
                     artist: artist.clone(),
-                    initial_index: Some(index),
+                    initial_position: Some(index),
                 },
                 shuffle: Some(Message::ShuffleArtist {
                     artist: artist.clone(),
-                    initial_index: Some(index),
+                    initial_position: Some(index),
                 }),
-                add_to_queue: None,
+                add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
                 add_to_playlist: None,
                 details: None,
                 remove: None,

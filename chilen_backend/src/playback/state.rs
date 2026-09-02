@@ -361,10 +361,11 @@ impl PlayerState {
     }
 
     pub(crate) fn append_tracks(&mut self, tracks: &mut Vec<Arc<Track>>) {
+        let start = self.shuffled_track_indices.len();
+        let count = tracks.len();
         self.tracks.append(tracks);
-        if self.shuffle_state.enabled() {
-            self.shuffle();
-        }
+        self.shuffled_track_indices.extend(start..start + count);
+
         Event::TracksChanged {
             position: self.position,
             tracks: self.tracks.clone(),

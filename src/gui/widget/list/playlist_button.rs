@@ -61,7 +61,9 @@ pub fn playlist_button<'a>(
                             label: "Add to queue",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(None),
+                            action: vertical_menu::Action::Message(Some(
+                                playlist_view::Message::AddPlaylistToQueue(playlist.clone()),
+                            )),
                         },
                     ],
                 },
