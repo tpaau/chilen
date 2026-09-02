@@ -123,7 +123,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .map(|p| p.current().is_some())
             .unwrap_or_default()
         {
-            "Unknown artist"
+            "Unknown album"
         } else {
             "Album"
         };
