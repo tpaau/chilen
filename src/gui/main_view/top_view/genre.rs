@@ -16,6 +16,7 @@ use crate::gui::{
         list::{
             BUTTON_SPACING,
             album_button::{self, AlbumButton},
+            artist_button::ArtistButton,
             track_button::{self, TrackButton},
         },
         text_spacer::text_spacer,
@@ -169,22 +170,23 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .artists
         .iter()
         .map(|artist| {
-            widget::list::artist_button::artist_button(
-                &state.theme,
-                artist.clone(),
-                Message::PlayArtistNoShuffle {
+            ArtistButton {
+                theme: &state.theme,
+                artist: artist.clone(),
+                play: Message::PlayArtistNoShuffle {
                     artist: artist.clone(),
                     initial_position: None,
                 },
-                Message::ShuffleArtist {
+                press: Message::Navigate(super::TopView::Artist(artist.clone())),
+                shuffle: Message::ShuffleArtist {
                     artist: artist.clone(),
                     initial_position: None,
                 },
-                highlighted_artist_name
+                add_to_queue: Message::AddArtistToQueue(artist.clone()),
+                highlighted: highlighted_artist_name
                     .map(|name| *name == artist.name)
                     .unwrap_or_default(),
-            )
-            .on_press(Message::Navigate(super::TopView::Artist(artist.clone())))
+            }
             .into()
         })
         .collect();
