@@ -608,6 +608,7 @@ impl MusicLibrary {
         });
         self.playlists.push(playlist.clone());
         self.playlists_by_name.insert(name.to_string(), playlist);
+        self.sort_playlists();
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
     }
