@@ -85,7 +85,8 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                     .color(state.theme.on_surface_variant()))
             ]
             .spacing(SPACING_SMALLER)
-            .align_y(Alignment::Center),
+            .align_y(Alignment::Center)
+            .wrap(),
             title(&state.theme, album_cloned.title.clone()),
             row![
                 text(track_count_text)
@@ -97,7 +98,8 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                     .color(state.theme.on_surface()),
             ]
             .align_y(Alignment::Center)
-            .spacing(SPACING_SMALLER),
+            .spacing(SPACING_SMALLER)
+            .wrap(),
             space().height(Length::Fixed(SPACING_SMALL)),
             artist_chips.map(|c| row(c)
                 .align_y(Alignment::Center)
@@ -109,6 +111,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
         row![cover, item_data]
             .align_y(Alignment::Center)
             .spacing(SPACING_REGULAR)
+            .wrap()
             .into()
     })
     .height(Length::Shrink)

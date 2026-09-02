@@ -84,13 +84,15 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     .color(state.theme.on_surface())),
             ]
             .align_y(Alignment::Center)
-            .spacing(SPACING_SMALLER),
+            .spacing(SPACING_SMALLER)
+            .wrap(),
         ]
         .align_x(Alignment::Start);
 
         row![cover, item_data]
             .align_y(Alignment::Center)
             .spacing(SPACING_REGULAR)
+            .wrap()
             .into()
     })
     .height(Length::Shrink)

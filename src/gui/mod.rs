@@ -118,7 +118,7 @@ const ROUNDING_LARGER: f32 = 20.0;
 const PLAYBACK_DESIRED_WIDTH: f32 = 410.0;
 const PLAYLIST_DESIRED_WIDTH: f32 = 350.0;
 const PLAYLIST_MIN_WIDTH: f32 = 220.0;
-const MAIN_MIN_WIDTH: f32 = 480.0;
+const MAIN_MIN_WIDTH: f32 = 400.0;
 const PLAYBACK_MIN_WIDTH: f32 = 320.0;
 const TOTAL_MIN_WIDTH: f32 = PLAYLIST_MIN_WIDTH + MAIN_MIN_WIDTH + PLAYBACK_MIN_WIDTH;
 // TODO: Should be calculated dynamically based on the window width

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use chilen_backend::music_lib::{Album, Artist, Genre, Playlist, Track};
 use iced::{Element, Length, Task, border::Radius};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{Row, Rule, container, row, rule, scrollable, text};
+use iced_widget::{Rule, container, responsive, row, rule, scrollable, text};
 use log::error;
 
 use crate::gui::{Chilen, SPACING_REGULAR, common_actions, font, icons, main_view::NavStack};
@@ -96,44 +96,53 @@ fn horizontal_buttons<'a>(
     message_play: Message,
     message_shuffle: Message,
     message_options: Message,
-) -> Row<'a, Message> {
-    row![
-        iced_m3::widget::button(theme)
-            .size(iced_m3::widget::button::Size::Medium)
-            .style(iced_m3::widget::button::Style::Tonal(
-                iced_m3::theme::Accent::Tertiary,
-            ))
-            .label_maybe(None)
-            .icon_font(icons::filled())
-            .icon(&icons::ARROW_BACK)
-            .on_press(Message::Unwind),
-        iced_m3::widget::button(theme)
-            .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
-            .icon_font(icons::filled())
-            .icon(&icons::PLAY_ARROW)
-            .label("Play")
-            .style(iced_m3::widget::button::Style::Tonal(
-                iced_m3::theme::Accent::Secondary
-            ))
-            .on_press(message_play),
-        iced_m3::widget::button(theme)
-            .size(iced_m3::widget::button::Size::Medium.with_width(Length::Fill))
-            .icon_font(icons::filled())
-            .icon(&icons::SHUFFLE)
-            .label("Shuffle")
-            .style(iced_m3::widget::button::Style::Filled(
-                iced_m3::theme::Accent::Primary
-            ))
-            .on_press(message_shuffle),
-        iced_m3::widget::button(theme)
-            .size(iced_m3::widget::button::Size::Medium)
-            .icon_font(icons::filled())
-            .style(iced_m3::widget::button::Style::Outlined)
-            .icon(&icons::MORE_HORIZ)
-            .label_maybe(None)
-            .on_press(message_options),
-    ]
-    .spacing(SPACING_REGULAR)
+) -> Element<'a, Message> {
+    responsive(move |size| {
+        let button_size = if size.width < 466.0 {
+            iced_m3::widget::button::Size::Small
+        } else {
+            iced_m3::widget::button::Size::Medium
+        };
+        row![
+            iced_m3::widget::button(theme)
+                .size(button_size)
+                .style(iced_m3::widget::button::Style::Tonal(
+                    iced_m3::theme::Accent::Tertiary,
+                ))
+                .label_maybe(None)
+                .icon_font(icons::filled())
+                .icon(&icons::ARROW_BACK)
+                .on_press(Message::Unwind),
+            iced_m3::widget::button(theme)
+                .size(button_size.with_width(Length::Fill))
+                .icon_font(icons::filled())
+                .icon(&icons::PLAY_ARROW)
+                .label("Play")
+                .style(iced_m3::widget::button::Style::Tonal(
+                    iced_m3::theme::Accent::Secondary
+                ))
+                .on_press(message_play.clone()),
+            iced_m3::widget::button(theme)
+                .size(button_size.with_width(Length::Fill))
+                .icon_font(icons::filled())
+                .icon(&icons::SHUFFLE)
+                .label("Shuffle")
+                .style(iced_m3::widget::button::Style::Filled(
+                    iced_m3::theme::Accent::Primary
+                ))
+                .on_press(message_shuffle.clone()),
+            iced_m3::widget::button(theme)
+                .size(button_size)
+                .icon_font(icons::filled())
+                .style(iced_m3::widget::button::Style::Outlined)
+                .icon(&icons::MORE_HORIZ)
+                .label_maybe(None)
+                .on_press(message_options.clone()),
+        ]
+        .spacing(SPACING_REGULAR)
+        .into()
+    })
+    .into()
 }
 
 fn spacer<'a>(theme: &'a impl ColorScheme) -> Rule<'a> {
