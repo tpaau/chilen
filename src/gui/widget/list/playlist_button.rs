@@ -33,6 +33,7 @@ pub fn playlist_button<'a>(
         && *val
     {
         let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
+        // TODO: I shouldn't be able to play empty playlists
         let menu = iced_m3::widget::menu(
             vec![
                 vertical_menu::Group {

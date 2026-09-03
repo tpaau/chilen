@@ -389,8 +389,14 @@ impl PlayerState {
         }
     }
 
+    // FIX: Weird things happen if I:
+    //  - Set a new queue (eg. play a playlist)
+    //  - Append a track to the queue
+    //  - Remove that track from the queue
+    //  - Tracks in the queue seem to be sorted as they appear in the queue
     pub(crate) fn remove_tracks(&mut self, mut indices: Vec<usize>) -> Result<(), Error> {
         indices.dedup();
+        let position_shift = indices.iter().filter(|i| **i < self.position).count();
         let mut to_remove = vec![false; self.tracks.len()];
         for i in &indices {
             if let Some(val) = to_remove.get_mut(*i) {
@@ -399,7 +405,6 @@ impl PlayerState {
                 return Err(Error::NoTrackAtIndex(*i));
             }
         }
-        let position_shift = indices.iter().filter(|i| **i < self.position).count();
         if self.shuffle_enabled() {
             let to_remove: Vec<_> = self
                 .shuffled_track_indices

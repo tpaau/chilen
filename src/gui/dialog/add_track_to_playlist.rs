@@ -11,7 +11,7 @@ use iced_widget::{button, column, container, row, scrollable, text};
 use crate::{
     THUMBNAIL_SIZE,
     gui::{
-        Chilen, Message, ROUNDING_LARGE,
+        Chilen, Message, ROUNDING_LARGE, SPACING_SMALL,
         font::{self, font_bold},
         icons,
         widget::{
@@ -60,22 +60,22 @@ fn playlist_choice<'a>(
 
 pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Message> {
     let choices: Element<'_, Message> = match &state.library {
-        Some(lib) => {
-            let mut content = Vec::with_capacity(lib.playlists.len() + 1);
-            content.push(spacer(&state.theme));
-            content.extend(
-                lib.playlists
-                    .iter()
-                    .map(|p| playlist_choice(&state.theme, track.clone(), p)),
-            );
-            column(content).spacing(BUTTON_SPACING).into()
-        }
+        Some(lib) => column(
+            lib.playlists
+                .iter()
+                .map(|p| playlist_choice(&state.theme, track.clone(), p)),
+        )
+        .into(),
         None => text("no library!!").into(),
     };
-    let content = container(
-        scrollable(choices).style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
-    )
-    .max_height(400.0);
+    let content = column![
+        spacer(&state.theme),
+        container(
+            scrollable(choices).style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
+        )
+        .max_height(400.0)
+    ]
+    .spacing(SPACING_SMALL);
 
     let buttons = vec![iced_m3::widget::dialog::Button {
         on_press: Some(Message::CloseDialog),
