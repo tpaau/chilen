@@ -4,11 +4,8 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::{Playlist, Track};
 use iced::{Element, Length, border::Radius};
-use iced_m3::{
-    theme::ColorScheme,
-    widget::{button, button::Style, dialog},
-};
-use iced_widget::{container, space, text};
+use iced_m3::{theme::ColorScheme, widget::dialog};
+use iced_widget::{container, text};
 
 use crate::gui::{
     Chilen,
@@ -37,12 +34,23 @@ pub fn add_track_to_playlist(state: &mut Chilen, track: Arc<Track>) {
     state.dialog = Dialog::AddTrackToPlaylist(track)
 }
 
-fn cancel_button<'a>(theme: &'a impl ColorScheme) -> Element<'a, Message> {
-    button(theme)
-        .on_press(Message::CloseDialog)
-        .label("Cancel")
-        .style(Style::Outlined)
-        .into()
+fn cancel_button() -> iced_m3::widget::dialog::Button<Message> {
+    iced_m3::widget::dialog::Button {
+        on_press: Some(Message::CloseDialog),
+        label: String::from("Cancel"),
+        style: iced_m3::widget::button::Style::Outlined,
+    }
+}
+
+fn action_button(
+    on_press: Option<Message>,
+    label: String,
+) -> iced_m3::widget::dialog::Button<Message> {
+    iced_m3::widget::dialog::Button {
+        on_press,
+        label,
+        style: iced_m3::widget::button::Style::Filled(iced_m3::theme::Accent::Primary),
+    }
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
@@ -63,8 +71,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             };
 
             dialog(
-                true,
-                space().width(Length::Fill).height(Length::Fill),
+                &state.theme,
                 iced_m3::widget::text_input::<_, Message>(
                     &state.library.as_ref().unwrap().get_default_playlist_name(),
                     name,
@@ -74,19 +81,14 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                 .with_label_text("Playlist name", state.theme.surface_container_high())
                 .on_input(Message::PlaylistNameEdited)
                 .on_submit_maybe(maybe_message.clone()),
-                &state.theme,
+                vec![
+                    cancel_button(),
+                    action_button(maybe_message, "Create".to_string()),
+                ],
             )
-            .title("New playlist")
-            .font(font::font_bold())
-            .push_button(space().width(Length::Fill))
-            .push_button(cancel_button(&state.theme))
-            .push_button(
-                button(&state.theme)
-                    .label("Create")
-                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
-                    .on_press_maybe(maybe_message),
-            )
-            .width(350)
+            .title_font(font::font_bold())
+            .title("Create playlist")
+            .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
         Dialog::ImportPlaylist(name, handle) => Some({
@@ -122,32 +124,25 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             };
 
             dialog(
-                true,
-                space().width(Length::Fill).height(Length::Fill),
+                &state.theme,
                 iced_m3::widget::text_input::<_, Message>(default_name, name, &state.theme)
                     .error(!name_ok)
                     .with_label_text("Playlist name", state.theme.surface_container_high())
                     .on_input(Message::PlaylistNameEdited)
                     .on_submit_maybe(maybe_message.clone()),
-                &state.theme,
+                vec![
+                    cancel_button(),
+                    action_button(maybe_message, "Import".to_string()),
+                ],
             )
+            .title_font(font::font_bold())
             .title("Import playlist")
-            .font(font::font_bold())
-            .push_button(space().width(Length::Fill))
-            .push_button(cancel_button(&state.theme))
-            .push_button(
-                button(&state.theme)
-                    .label("Import")
-                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
-                    .on_press_maybe(maybe_message),
-            )
-            .width(350)
+            .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
         Dialog::Error(message) => Some({
             dialog(
-                true,
-                space().width(Length::Fill).height(Length::Fill),
+                &state.theme,
                 container(text(message))
                     .style(|_| container::Style {
                         text_color: Some(state.theme.on_error_container()),
@@ -161,18 +156,14 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     })
                     .width(Length::Fill)
                     .padding(8.0),
-                &state.theme,
+                vec![action_button(
+                    Some(Message::CloseDialog),
+                    "Dismiss".to_string(),
+                )],
             )
+            .title_font(font::font_bold())
             .title("Error")
-            .font(font::font_bold())
-            .push_button(space().width(Length::Fill))
-            .push_button(
-                button(&state.theme)
-                    .label("Dismiss")
-                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
-                    .on_press(Message::CloseDialog),
-            )
-            .width(350)
+            .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
         Dialog::RenamePlaylist { playlist, name } => Some({
@@ -194,50 +185,41 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             };
 
             dialog(
-                true,
-                space().width(Length::Fill).height(Length::Fill),
+                &state.theme,
                 iced_m3::widget::text_input::<_, Message>("Playlist name", name, &state.theme)
                     .error(!name_ok)
                     .with_label_text("Playlist name", state.theme.surface_container_high())
                     .on_input(Message::PlaylistNameEdited)
                     .on_submit_maybe(maybe_message.clone()),
-                &state.theme,
+                vec![
+                    cancel_button(),
+                    action_button(maybe_message, "Rename".to_string()),
+                ],
             )
+            .title_font(font::font_bold())
             .title("Rename playlist")
-            .font(font::font_bold())
-            .push_button(space().width(Length::Fill))
-            .push_button(cancel_button(&state.theme))
-            .push_button(
-                button(&state.theme)
-                    .label("Rename")
-                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
-                    .on_press_maybe(maybe_message),
-            )
-            .width(350)
+            .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
         Dialog::DeletePlaylist(playlist) => Some({
             dialog(
-                true,
-                space().width(Length::Fill).height(Length::Fill),
+                &state.theme,
                 text(format!(
                     "Delete playlist \"{}\" with {} tracks?\n\nThis cannot be undone.",
                     playlist.name,
                     playlist.tracks.len()
                 )),
-                &state.theme,
+                vec![
+                    cancel_button(),
+                    action_button(
+                        Some(Message::DeletePlaylist(playlist.clone())),
+                        "Delete".to_string(),
+                    ),
+                ],
             )
+            .title_font(font::font_bold())
             .title("Delete playlist")
-            .font(font::font_bold())
-            .push_button(space().width(Length::Fill))
-            .push_button(cancel_button(&state.theme))
-            .push_button(
-                button(&state.theme)
-                    .label("Delete")
-                    .style(Style::Filled(iced_m3::theme::Accent::Primary))
-                    .on_press(Message::DeletePlaylist(playlist.clone())),
-            )
-            .width(350)
+            .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
         Dialog::Settings => Some(settings::view(state).map(Message::Settings)),

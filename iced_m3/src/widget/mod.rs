@@ -1,6 +1,5 @@
 pub mod button;
 pub mod dialog;
-pub mod dialog_new;
 pub mod drop_down_menu;
 pub mod fab_menu;
 pub mod navbar;
@@ -11,7 +10,7 @@ pub mod vertical_menu;
 use std::ops::RangeInclusive;
 
 use iced::{Element, border::Radius};
-use iced_widget::{container, rule};
+use iced_widget::rule;
 
 use crate::{
     theme::ColorScheme,
@@ -24,22 +23,6 @@ use crate::{
         text_input::TextInput,
     },
 };
-
-#[must_use]
-pub fn dialog<'a, Message, Theme, Renderer>(
-    is_open: bool,
-    base: impl Into<Element<'a, Message, Theme, Renderer>>,
-    content: impl Into<Element<'a, Message, Theme, Renderer>>,
-    theme: &'a impl ColorScheme,
-) -> Dialog<'a, Message, Theme, Renderer>
-where
-    Renderer: 'a + iced_widget::core::Renderer + iced_widget::core::text::Renderer,
-    Theme: 'a + dialog::Catalog,
-    Message: 'a + Clone,
-    <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
-{
-    Dialog::new(is_open, base, content, theme)
-}
 
 #[must_use]
 pub fn drop_down_menu<'a, Message, Theme, Renderer>(
@@ -120,4 +103,13 @@ where
             snap: true,
         })
         .into()
+}
+
+#[must_use]
+pub fn dialog<'a, Message>(
+    theme: &'a impl ColorScheme,
+    body: impl Into<Element<'a, Message>>,
+    buttons: Vec<dialog::Button<Message>>,
+) -> Dialog<'a, Message> {
+    Dialog::new(theme, body, buttons)
 }

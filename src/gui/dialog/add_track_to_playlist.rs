@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::{Playlist, Track};
 use iced::{Alignment, Element, Length};
-use iced_m3::{theme::ColorScheme, widget::spacer};
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{dialog, spacer},
+};
 use iced_widget::{button, column, container, row, scrollable, text};
 
 use crate::{
@@ -74,12 +77,12 @@ pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Mess
     )
     .max_height(400.0);
 
-    let buttons = vec![iced_m3::widget::dialog_new::Button {
+    let buttons = vec![iced_m3::widget::dialog::Button {
         on_press: Some(Message::CloseDialog),
         label: "Cancel".to_string(),
         style: iced_m3::widget::button::Style::Outlined,
     }];
-    iced_m3::widget::dialog_new::Dialog::new(&state.theme, content, buttons)
+    dialog(&state.theme, content, buttons)
         .title_font(font::font_bold())
         .title("Add to playlist")
         .icon_font(icons::filled())
