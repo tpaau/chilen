@@ -14,7 +14,7 @@ use crate::gui::{
     },
     widget::{
         artist_chip::artist_chip,
-        cover_image::cover_image,
+        cover_image::CoverImage,
         list::{
             BUTTON_SPACING,
             track_button::{self, TrackButton},
@@ -56,17 +56,17 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             artist_chips
         });
 
-        let cover = cover_image(
-            album_cloned.cover.hires.clone(),
-            &icons::ALBUM,
-            cover_size / 4.0,
-            state.theme.on_surface_variant(),
-            state.theme.surface_container(),
-            ROUNDING_LARGE,
-            1.0,
-        )
-        .width(cover_size)
-        .height(cover_size);
+        let cover = CoverImage {
+            image_path: album_cloned.cover.hires.clone(),
+            icon: *icons::ALBUM,
+            icon_size: cover_size / 4.0,
+            icon_color: state.theme.on_surface_variant(),
+            container_color: state.theme.surface_container(),
+            radius: ROUNDING_LARGE.into(),
+            opacity: 1.0,
+            width: cover_size.into(),
+            height: cover_size.into(),
+        };
 
         let item_data = column![
             row![

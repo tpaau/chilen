@@ -16,7 +16,7 @@ use crate::gui::{
     font::{self, SIZE_REGULAR, SIZE_SMALL},
     icons, playlist_view,
     widget::{
-        cover_image::cover_image,
+        cover_image::CoverImage,
         list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
     },
 };
@@ -127,7 +127,7 @@ pub fn playlist_button<'a>(
             .wrapping(text::Wrapping::None);
 
         // TODO: Maybe an animated indicator would look better?
-        let content_color = if highlighted {
+        let icon_color = if highlighted {
             state.theme.on_secondary_container()
         } else {
             state.theme.on_surface_variant()
@@ -137,19 +137,21 @@ pub fn playlist_button<'a>(
         } else {
             state.theme.surface_container_high()
         };
-        let cover = cover_image(
-            (!highlighted)
-                .then_some(playlist.cover.thumbnail.clone())
-                .flatten(),
-            &icons::PLAYLIST_PLAY,
-            icons::SIZE_LARGE,
-            content_color,
+        let image_path = (!highlighted)
+            .then_some(playlist.cover.thumbnail.clone())
+            .flatten();
+
+        let cover = CoverImage {
+            image_path,
+            icon: *icons::PLAYLIST_PLAY,
+            icon_size: icons::SIZE_LARGE,
+            icon_color,
             container_color,
-            thumbnail_border_radius,
-            1.0,
-        )
-        .width(Length::Fixed(THUMBNAIL_SIZE))
-        .height(Length::Fixed(THUMBNAIL_SIZE));
+            radius: thumbnail_border_radius.into(),
+            opacity: 1.0,
+            width: THUMBNAIL_SIZE.into(),
+            height: THUMBNAIL_SIZE.into(),
+        };
 
         button(
             row![

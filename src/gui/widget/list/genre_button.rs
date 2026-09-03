@@ -13,7 +13,7 @@ use crate::{
     gui::{
         SPACING_SMALL, SPACING_SMALLER, font, icons,
         widget::{
-            cover_image::cover_image,
+            cover_image::CoverImage,
             list::{BUTTON_PADDING, BUTTON_ROUNDING, button_style},
             text_spacer::text_spacer,
         },
@@ -83,7 +83,7 @@ where
             .wrapping(text::Wrapping::None);
 
         // TODO: Maybe an animated indicator would look better?
-        let content_color = if value.highlighted {
+        let icon_color = if value.highlighted {
             value.theme.on_secondary_container()
         } else {
             value.theme.on_surface_variant()
@@ -93,19 +93,20 @@ where
         } else {
             value.theme.surface_container_high()
         };
-        let cover = cover_image(
-            (!value.highlighted)
-                .then_some(value.genre.cover.thumbnail.clone())
-                .flatten(),
-            &icons::GENRES,
-            icons::SIZE_LARGE,
-            content_color,
+        let image_path = (!value.highlighted)
+            .then_some(value.genre.cover.thumbnail.clone())
+            .flatten();
+        let cover = CoverImage {
+            image_path,
+            icon: *icons::GENRES,
+            icon_size: icons::SIZE_LARGE,
+            icon_color,
             container_color,
-            thumbnail_border_radius,
-            1.0,
-        )
-        .width(Length::Fixed(THUMBNAIL_SIZE))
-        .height(Length::Fixed(THUMBNAIL_SIZE));
+            radius: thumbnail_border_radius.into(),
+            opacity: 1.0,
+            width: THUMBNAIL_SIZE.into(),
+            height: THUMBNAIL_SIZE.into(),
+        };
 
         button(
             row![

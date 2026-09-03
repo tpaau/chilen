@@ -10,26 +10,28 @@ use crate::gui::{
     formatter::{UNKNOWN_TRACK_DURATION, format_track_duration},
     icons,
     playback_view::Message,
-    widget::cover_image::cover_image,
+    widget::cover_image::CoverImage,
 };
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let cover = container(responsive(|size| {
         let cover_size = size.width;
-        cover_image(
-            state
-                .player_state
-                .as_ref()
-                .and_then(|s| s.current().and_then(|track| track.cover.hires.clone())),
-            &icons::MUSIC_NOTE,
-            cover_size / 4.0,
-            state.theme.on_surface_variant(),
-            state.theme.surface_container_high(),
-            ROUNDING_LARGE,
-            1.0,
-        )
-        .width(cover_size)
-        .height(cover_size)
+        let image_path = state
+            .player_state
+            .as_ref()
+            .and_then(|s| s.current().and_then(|track| track.cover.hires.clone()));
+
+        CoverImage {
+            image_path,
+            icon: *icons::MUSIC_NOTE,
+            icon_size: cover_size / 4.0,
+            icon_color: state.theme.on_surface_variant(),
+            container_color: state.theme.surface_container(),
+            radius: ROUNDING_LARGE.into(),
+            opacity: 1.0,
+            width: cover_size.into(),
+            height: cover_size.into(),
+        }
         .into()
     }))
     .height(Length::Shrink);

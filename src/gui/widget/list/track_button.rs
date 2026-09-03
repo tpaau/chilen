@@ -13,7 +13,7 @@ use crate::gui::{
     formatter::format_track_duration,
     icons,
     widget::{
-        cover_image::cover_image,
+        cover_image::CoverImage,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
     },
 };
@@ -162,7 +162,7 @@ where
         };
 
         // TODO: Maybe an animated indicator would look better?
-        let content_color = if value.status == Status::Playing {
+        let icon_color = if value.status == Status::Playing {
             value.state.theme.on_secondary_container()
         } else {
             value.state.theme.on_surface_variant()
@@ -172,19 +172,20 @@ where
         } else {
             value.state.theme.surface_container_high()
         };
-        let cover = cover_image(
-            (value.status != Status::Playing)
-                .then_some(value.track.cover.thumbnail.clone())
-                .flatten(),
-            &icons::MUSIC_NOTE,
-            icons::SIZE_LARGE,
-            content_color,
+        let image_path = (value.status != Status::Playing)
+            .then_some(value.track.cover.thumbnail.clone())
+            .flatten();
+        let cover = CoverImage {
+            image_path,
+            icon: *icons::MUSIC_NOTE,
+            icon_size: icons::SIZE_LARGE,
+            icon_color,
             container_color,
-            thumbnail_border_radius,
+            radius: thumbnail_border_radius.into(),
             opacity,
-        )
-        .width(Length::Fixed(THUMBNAIL_SIZE))
-        .height(Length::Fixed(THUMBNAIL_SIZE));
+            width: THUMBNAIL_SIZE.into(),
+            height: THUMBNAIL_SIZE.into(),
+        };
 
         button(
             row![

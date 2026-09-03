@@ -8,7 +8,7 @@ use iced_m3::{
 };
 use iced_widget::{Button, button, row, text};
 
-use crate::gui::{SPACING_SMALLER, font, icons, widget::cover_image::cover_image};
+use crate::gui::{SPACING_SMALLER, font, icons, widget::cover_image::CoverImage};
 
 pub fn artist_chip<'a, Message: 'a>(
     theme: &'a impl ColorScheme,
@@ -17,17 +17,17 @@ pub fn artist_chip<'a, Message: 'a>(
     let thumbnail_size = Length::Fixed(32.0);
     button(
         row![
-            cover_image(
-                artist.cover.thumbnail.clone(),
-                &icons::ARTIST,
-                icons::SIZE_SMALLER,
-                theme.on_surface_variant(),
-                theme.surface_container(),
-                f32::MAX,
-                1.0
-            )
-            .width(thumbnail_size)
-            .height(thumbnail_size),
+            CoverImage {
+                image_path: artist.cover.thumbnail.clone(),
+                icon: *icons::ARTIST,
+                icon_size: icons::SIZE_SMALLER,
+                icon_color: theme.on_surface_variant(),
+                container_color: theme.surface_container(),
+                radius: f32::MAX.into(),
+                opacity: 1.0,
+                width: thumbnail_size,
+                height: thumbnail_size,
+            },
             text(artist.name.clone())
                 .size(font::SIZE_REGULAR)
                 .font(font::font_bold())

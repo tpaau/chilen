@@ -11,7 +11,7 @@ use crate::gui::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
     },
     widget::{
-        cover_image::cover_image,
+        cover_image::CoverImage,
         list::{
             BUTTON_SPACING,
             album_button::{self, AlbumButton},
@@ -49,17 +49,17 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             Some(format!("{} albums", genre_cloned.albums.len()))
         };
 
-        let cover = cover_image(
-            genre_cloned.cover.hires.clone(),
-            &icons::ALBUM,
-            cover_size / 4.0,
-            state.theme.on_surface_variant(),
-            state.theme.surface_container(),
-            ROUNDING_LARGE,
-            1.0,
-        )
-        .width(cover_size)
-        .height(cover_size);
+        let cover = CoverImage {
+            image_path: genre_cloned.cover.hires.clone(),
+            icon: *icons::GENRES,
+            icon_size: cover_size / 4.0,
+            icon_color: state.theme.on_surface_variant(),
+            container_color: state.theme.surface_container(),
+            radius: ROUNDING_LARGE.into(),
+            opacity: 1.0,
+            width: cover_size.into(),
+            height: cover_size.into(),
+        };
 
         let item_data = column![
             text("Genre")
