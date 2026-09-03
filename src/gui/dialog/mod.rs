@@ -1,6 +1,8 @@
+mod add_track_to_playlist;
+
 use std::sync::Arc;
 
-use chilen_backend::music_lib::Playlist;
+use chilen_backend::music_lib::{Playlist, Track};
 use iced::{Element, Length, border::Radius};
 use iced_m3::{
     theme::ColorScheme,
@@ -27,19 +29,23 @@ pub enum Dialog {
     },
     DeletePlaylist(Arc<Playlist>),
     Settings,
+    AddTrackToPlaylist(Arc<Track>),
+}
+
+/// Appends a single track to the queue.
+pub fn add_track_to_playlist(state: &mut Chilen, track: Arc<Track>) {
+    state.dialog = Dialog::AddTrackToPlaylist(track)
+}
+
+fn cancel_button<'a>(theme: &'a impl ColorScheme) -> Element<'a, Message> {
+    button(theme)
+        .on_press(Message::CloseDialog)
+        .label("Cancel")
+        .style(Style::Outlined)
+        .into()
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
-    let cancel_button = match &state.dialog {
-        Dialog::None => None,
-        _ => Some(
-            button(&state.theme)
-                .on_press(Message::CloseDialog)
-                .label("Cancel")
-                .style(Style::Outlined),
-        ),
-    };
-
     match &state.dialog {
         Dialog::None => None,
         Dialog::CreatePlaylist(name) => Some({
@@ -68,12 +74,12 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                 .with_label_text("Playlist name", state.theme.surface_container_high())
                 .on_input(Message::PlaylistNameEdited)
                 .on_submit_maybe(maybe_message.clone()),
-                state.theme.current(),
+                &state.theme,
             )
             .title("New playlist")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
-            .push_button(cancel_button)
+            .push_button(cancel_button(&state.theme))
             .push_button(
                 button(&state.theme)
                     .label("Create")
@@ -123,12 +129,12 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     .with_label_text("Playlist name", state.theme.surface_container_high())
                     .on_input(Message::PlaylistNameEdited)
                     .on_submit_maybe(maybe_message.clone()),
-                state.theme.current(),
+                &state.theme,
             )
             .title("Import playlist")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
-            .push_button(cancel_button)
+            .push_button(cancel_button(&state.theme))
             .push_button(
                 button(&state.theme)
                     .label("Import")
@@ -155,7 +161,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     })
                     .width(Length::Fill)
                     .padding(8.0),
-                state.theme.current(),
+                &state.theme,
             )
             .title("Error")
             .font(font::font_bold())
@@ -195,12 +201,12 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     .with_label_text("Playlist name", state.theme.surface_container_high())
                     .on_input(Message::PlaylistNameEdited)
                     .on_submit_maybe(maybe_message.clone()),
-                state.theme.current(),
+                &state.theme,
             )
             .title("Rename playlist")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
-            .push_button(cancel_button)
+            .push_button(cancel_button(&state.theme))
             .push_button(
                 button(&state.theme)
                     .label("Rename")
@@ -219,12 +225,12 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     playlist.name,
                     playlist.tracks.len()
                 )),
-                state.theme.current(),
+                &state.theme,
             )
             .title("Delete playlist")
             .font(font::font_bold())
             .push_button(space().width(Length::Fill))
-            .push_button(cancel_button)
+            .push_button(cancel_button(&state.theme))
             .push_button(
                 button(&state.theme)
                     .label("Delete")
@@ -235,5 +241,8 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             .into()
         }),
         Dialog::Settings => Some(settings::view(state).map(Message::Settings)),
+        Dialog::AddTrackToPlaylist(track) => {
+            Some(add_track_to_playlist::view(state, track.clone()))
+        }
     }
 }

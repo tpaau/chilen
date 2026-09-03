@@ -125,8 +125,3 @@ pub fn shuffle_genre(genre: Arc<Genre>, initial_position: Option<usize>) {
 pub fn append_tracks_to_queue(mut tracks: Vec<Arc<Track>>) {
     let _ = chilen_backend::playback::append_to_queue(&mut tracks);
 }
-
-/// Appends a single track to the queue.
-pub fn append_track_to_playlist_dialog(state: &mut Chilen, playlist_name: &str, track: Arc<Track>) {
-    todo!()
-}

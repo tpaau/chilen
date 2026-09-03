@@ -13,7 +13,7 @@ use iced_widget::{center, column, container, row, space, stack, text};
 use log::trace;
 
 use crate::gui::{
-    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, icons,
+    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, dialog, icons,
     main_view::{self, top_view::TopView},
 };
 
@@ -131,6 +131,7 @@ pub enum Message {
     AddAlbumToQueue(Arc<Album>),
     AddArtistToQueue(Arc<Artist>),
     AddGenreToQueue(Arc<Genre>),
+    AddTrackToPlaylist(Arc<Track>),
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
@@ -306,6 +307,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::AddGenreToQueue(genre) => {
             common_actions::append_tracks_to_queue(genre.tracks.clone())
         }
+        Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
     }
     Task::none()
 }

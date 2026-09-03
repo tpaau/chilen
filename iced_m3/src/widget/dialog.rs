@@ -10,10 +10,7 @@ use iced_widget::{
 
 use iced_widget::core::{self, Color, Element, Length, Padding, Pixels, alignment};
 
-use crate::{
-    style::shadow,
-    theme::{ColorScheme, Palette},
-};
+use crate::{style::shadow, theme::ColorScheme};
 
 /// A message dialog.
 ///
@@ -52,7 +49,7 @@ where
     padding_inner: Padding,
     padding_outer: Padding,
     button_alignment: alignment::Vertical,
-    palette: &'a Palette,
+    theme: &'a dyn ColorScheme,
     class: <Theme as Catalog>::Class<'a>,
 }
 
@@ -67,9 +64,9 @@ where
         is_open: bool,
         base: impl Into<Element<'a, Message, Theme, Renderer>>,
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
-        palette: &'a Palette,
+        theme: &'a impl ColorScheme,
     ) -> Self {
-        Self::with_buttons(is_open, base, content, Vec::new(), palette)
+        Self::with_buttons(is_open, base, content, Vec::new(), theme)
     }
 
     /// Creates a new [`Dialog`] with the given base, dialog content and buttons.
@@ -78,7 +75,7 @@ where
         base: impl Into<Element<'a, Message, Theme, Renderer>>,
         content: impl Into<Element<'a, Message, Theme, Renderer>>,
         buttons: Vec<Element<'a, Message, Theme, Renderer>>,
-        palette: &'a Palette,
+        theme: &'a impl ColorScheme,
     ) -> Self {
         let content = content.into();
 
@@ -100,7 +97,7 @@ where
             padding_inner: 24.into(),
             padding_outer: Padding::ZERO,
             button_alignment: alignment::Vertical::Top,
-            palette,
+            theme,
             class: <Theme as Catalog>::default(),
         }
     }
@@ -350,12 +347,12 @@ where
             .height(self.height)
             .max_height(max_height)
             .style(|_| container::Style {
-                background: Some(Background::Color(self.palette.surface_container_high)),
+                background: Some(Background::Color(self.theme.surface_container_high())),
                 border: core::Border {
                     radius: Radius::from(24),
                     ..Default::default()
                 },
-                shadow: shadow(self.palette.shadow(), 1.0),
+                shadow: shadow(self.theme.shadow(), 1.0),
                 ..Default::default()
             })
             .clip(true);

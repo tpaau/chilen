@@ -13,7 +13,7 @@ use iced::Element;
 use iced_widget::container;
 
 use crate::{
-    theme::{ColorScheme, Palette},
+    theme::ColorScheme,
     widget::{
         button::Button,
         dialog::Dialog,
@@ -29,7 +29,7 @@ pub fn dialog<'a, Message, Theme, Renderer>(
     is_open: bool,
     base: impl Into<Element<'a, Message, Theme, Renderer>>,
     content: impl Into<Element<'a, Message, Theme, Renderer>>,
-    palette: &'a Palette,
+    theme: &'a impl ColorScheme,
 ) -> Dialog<'a, Message, Theme, Renderer>
 where
     Renderer: 'a + iced_widget::core::Renderer + iced_widget::core::text::Renderer,
@@ -37,7 +37,7 @@ where
     Message: 'a + Clone,
     <Theme as container::Catalog>::Class<'a>: From<container::StyleFn<'a, Theme>>,
 {
-    Dialog::new(is_open, base, content, palette)
+    Dialog::new(is_open, base, content, theme)
 }
 
 #[must_use]

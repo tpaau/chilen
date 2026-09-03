@@ -14,7 +14,7 @@ mod widget;
 use std::sync::{Arc, LazyLock, RwLock};
 
 use chilen_backend::{
-    music_lib::{MusicLibrary, Playlist},
+    music_lib::{MusicLibrary, Playlist, Track},
     playback::PlayerState,
 };
 use iced::{
@@ -58,6 +58,7 @@ pub enum Message {
     PlaylistView(playlist_view::Message),
     Settings(settings::Message),
     Playback(playback_view::Message),
+    AddTrackToPlaylist { track: Arc<Track>, playlist: String },
 }
 
 #[derive(Default, Debug, Clone)]
@@ -289,6 +290,17 @@ impl Chilen {
             Message::Settings(msg) => return settings::update(state, msg).map(Message::Settings),
             Message::Playback(message) => {
                 return playback_view::update(state, message).map(Message::Playback);
+            }
+            Message::AddTrackToPlaylist { track, playlist } => {
+                if let Err(e) =
+                    chilen_backend::music_lib::add_tracks(&playlist, vec![track.path.clone()])
+                {
+                    state.dialog = Dialog::Error(format!(
+                        "Couldn't add the track to playlist {playlist}: {e}"
+                    ));
+                } else {
+                    state.dialog = Dialog::None;
+                }
             }
         }
         Task::none()
