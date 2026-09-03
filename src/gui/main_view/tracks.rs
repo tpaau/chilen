@@ -40,7 +40,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                         initial_position: index,
                     }),
                     add_to_queue: Some(main_view::Message::AddTrackToQueue(track.clone())),
-                    add_to_playlist: Some(main_view::Message::AddTrackToPlaylist(track.clone())),
+                    add_to_playlist: main_view::Message::AddTrackToPlaylist(track.clone()),
                     details: None,
                     remove: None,
                 },

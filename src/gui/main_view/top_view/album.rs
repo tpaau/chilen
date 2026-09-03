@@ -158,7 +158,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                     initial_position: Some(index),
                 }),
                 add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
-                add_to_playlist: None,
+                add_to_playlist: Message::AddTrackToPlaylist(track.clone()),
                 details: None,
                 remove: None,
             },

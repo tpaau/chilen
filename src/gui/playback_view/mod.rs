@@ -1,14 +1,14 @@
 mod bottom_panel;
 mod playback_control;
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
-use chilen_backend::playback;
+use chilen_backend::{music_lib::Track, playback};
 use iced::{Element, Padding, Task};
 use iced_widget::{column, container};
 use log::{error, trace, warn};
 
-use crate::gui::{Chilen, SPACING_REGULAR, SPACING_SMALL};
+use crate::gui::{Chilen, SPACING_REGULAR, SPACING_SMALL, dialog};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -28,6 +28,7 @@ pub enum Message {
     TrackButtonPoppedIn(usize),
     TrackButtonPoppedOut(usize),
     RemoveFromQueue(usize),
+    AddTrackToPlaylist(Arc<Track>),
 }
 
 // TODO: Save the last opened tab
@@ -176,6 +177,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::RemoveFromQueue(index) => {
             let _ = chilen_backend::playback::remove_from_queue(vec![index]);
         }
+        Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
     }
     Task::none()
 }

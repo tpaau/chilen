@@ -41,7 +41,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                         press: Message::PlayTrack(virtual_index),
                         shuffle: None,
                         add_to_queue: None,
-                        add_to_playlist: None,
+                        add_to_playlist: Message::AddTrackToPlaylist(track.clone()),
                         details: None,
                         remove: Some(Message::RemoveFromQueue(virtual_index)),
                     },

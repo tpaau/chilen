@@ -11,7 +11,9 @@ use iced_m3::theme::ColorScheme;
 use iced_widget::{Rule, container, responsive, row, rule, scrollable, text};
 use log::error;
 
-use crate::gui::{Chilen, SPACING_REGULAR, common_actions, font, icons, main_view::NavStack};
+use crate::gui::{
+    Chilen, SPACING_REGULAR, common_actions, dialog, font, icons, main_view::NavStack,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -81,6 +83,7 @@ pub enum Message {
     AddTrackToQueue(Arc<Track>),
     AddAlbumToQueue(Arc<Album>),
     AddArtistToQueue(Arc<Artist>),
+    AddTrackToPlaylist(Arc<Track>),
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -279,6 +282,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::AddArtistToQueue(artist) => {
             common_actions::append_tracks_to_queue(artist.tracks.clone())
         }
+        Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
     }
     Task::none()
 }

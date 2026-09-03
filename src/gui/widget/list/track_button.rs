@@ -36,8 +36,7 @@ pub struct Messages<Message> {
     pub press: Message,
     pub shuffle: Option<Message>,
     pub add_to_queue: Option<Message>,
-    // TODO: Shouldn't be optional
-    pub add_to_playlist: Option<Message>,
+    pub add_to_playlist: Message,
     // TODO: Shouldn't be optional
     pub details: Option<Message>,
     pub remove: Option<Message>,
@@ -71,7 +70,7 @@ where
                 label: "Add to playlist",
                 supporting_text: None,
                 error: false,
-                action: vertical_menu::Action::Message(value.messages.add_to_playlist),
+                action: vertical_menu::Action::Message(Some(value.messages.add_to_playlist)),
             },
             vertical_menu::Entry::Button {
                 icon: Some(&icons::INFO),
