@@ -1,4 +1,4 @@
-use iced::{Alignment, Border, Element, Length};
+use iced::{Alignment, Border, Element, Font, Length};
 use iced_widget::{center, column, space, text};
 
 use crate::{
@@ -47,22 +47,16 @@ pub struct Entry<'a, Message> {
     pub icon: Option<&'a char>,
 }
 
-pub struct FABMenu<'a, Message, Renderer = iced::Renderer>
-where
-    Renderer: 'a + iced_widget::core::text::Renderer,
-{
-    label_font: Option<Renderer::Font>,
-    icon_font: Option<Renderer::Font>,
+pub struct FABMenu<'a, Message> {
+    label_font: Option<Font>,
+    icon_font: Option<Font>,
     accent: Accent,
     entries: Vec<Entry<'a, Message>>,
     icon: &'a dyn Fn(bool) -> char,
     theme: &'a dyn ColorScheme,
 }
 
-impl<'a, Message, Renderer> FABMenu<'a, Message, Renderer>
-where
-    Renderer: iced::advanced::text::Renderer,
-{
+impl<'a, Message> FABMenu<'a, Message> {
     pub fn new<I>(entries: I, icon: &'a dyn Fn(bool) -> char, theme: &'a dyn ColorScheme) -> Self
     where
         I: IntoIterator<Item = Entry<'a, Message>>,
@@ -78,25 +72,25 @@ where
     }
 
     #[must_use]
-    pub fn label_font(mut self, font: Renderer::Font) -> Self {
+    pub fn label_font(mut self, font: Font) -> Self {
         self.label_font = Some(font);
         self
     }
 
     #[must_use]
-    pub fn label_font_maybe(mut self, maybe_font: Option<Renderer::Font>) -> Self {
+    pub fn label_font_maybe(mut self, maybe_font: Option<Font>) -> Self {
         self.label_font = maybe_font;
         self
     }
 
     #[must_use]
-    pub fn icon_font(mut self, font: Renderer::Font) -> Self {
+    pub fn icon_font(mut self, font: Font) -> Self {
         self.icon_font = Some(font);
         self
     }
 
     #[must_use]
-    pub fn icon_font_maybe(mut self, maybe_font: Option<Renderer::Font>) -> Self {
+    pub fn icon_font_maybe(mut self, maybe_font: Option<Font>) -> Self {
         self.icon_font = maybe_font;
         self
     }

@@ -1,5 +1,6 @@
 pub mod button;
 pub mod dialog;
+pub mod dialog_new;
 pub mod drop_down_menu;
 pub mod fab_menu;
 pub mod navbar;
@@ -9,8 +10,8 @@ pub mod vertical_menu;
 
 use std::ops::RangeInclusive;
 
-use iced::Element;
-use iced_widget::container;
+use iced::{Element, border::Radius};
+use iced_widget::{container, rule};
 
 use crate::{
     theme::ColorScheme,
@@ -105,4 +106,18 @@ where
     f64: std::convert::From<T>,
 {
     slider::Slider::new(range, value, on_change, theme)
+}
+
+pub fn spacer<'a, Message>(theme: &'a impl ColorScheme) -> Element<'a, Message>
+where
+    Message: 'a,
+{
+    rule::horizontal(1.0)
+        .style(|_| rule::Style {
+            color: theme.outline_variant(),
+            radius: Radius::default(),
+            fill_mode: rule::FillMode::Full,
+            snap: true,
+        })
+        .into()
 }

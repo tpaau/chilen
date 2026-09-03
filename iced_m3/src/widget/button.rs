@@ -1,5 +1,7 @@
+use std::borrow::Cow;
+
 use iced::{Alignment, Color, Element, Length, Padding, border::Radius, padding};
-use iced_widget::{center, row, text};
+use iced_widget::{center, row, text, text::IntoFragment};
 
 use crate::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
@@ -507,7 +509,7 @@ where
     on_press: Option<OnPress<'a, Message>>,
     clip: bool,
     theme: &'a dyn ColorScheme,
-    label: Option<&'a str>,
+    label: Option<Cow<'a, str>>,
     label_font: Option<Renderer::Font>,
     icon: Option<&'a char>,
     icon_font: Option<Renderer::Font>,
@@ -528,7 +530,7 @@ where
             on_press: None,
             clip: false,
             theme,
-            label: Some("label"),
+            label: Some(Cow::Borrowed("label")),
             label_font: None,
             icon: None,
             icon_font: None,
@@ -541,14 +543,14 @@ where
     }
 
     #[must_use]
-    pub fn label(mut self, label: &'a str) -> Self {
-        self.label = Some(label);
+    pub fn label(mut self, label: impl IntoFragment<'a>) -> Self {
+        self.label = Some(label.into_fragment());
         self
     }
 
     #[must_use]
-    pub fn label_maybe(mut self, maybe_label: Option<&'a str>) -> Self {
-        self.label = maybe_label;
+    pub fn label_maybe(mut self, maybe_label: Option<String>) -> Self {
+        self.label = maybe_label.map(|l| l.into_fragment());
         self
     }
 

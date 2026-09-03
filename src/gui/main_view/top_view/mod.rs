@@ -6,9 +6,9 @@ mod playlist;
 use std::sync::Arc;
 
 use chilen_backend::music_lib::{Album, Artist, Genre, Playlist, Track};
-use iced::{Element, Length, Task, border::Radius};
+use iced::{Element, Length, Task};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{Rule, container, responsive, row, rule, scrollable, text};
+use iced_widget::{container, responsive, row, scrollable, text};
 use log::error;
 
 use crate::gui::{
@@ -146,15 +146,6 @@ fn horizontal_buttons<'a>(
         .into()
     })
     .into()
-}
-
-fn spacer<'a>(theme: &'a impl ColorScheme) -> Rule<'a> {
-    rule::horizontal(1.0).style(|_| rule::Style {
-        color: theme.outline_variant(),
-        radius: Radius::default(),
-        fill_mode: rule::FillMode::Full,
-        snap: true,
-    })
 }
 
 const MAX_COVER_SIZE: f32 = 512.0;

@@ -2,16 +2,14 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Playlist;
 use iced::{Alignment, Element, Length};
-use iced_m3::theme::ColorScheme;
+use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, container, responsive, row, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font,
     formatter::format_album_duration,
     icons,
-    main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, spacer, title,
-    },
+    main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, title},
     widget::{
         cover_image::CoverImage,
         list::{

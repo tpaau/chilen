@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Album;
 use iced::{Alignment, Element, Length};
-use iced_m3::theme::ColorScheme;
+use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, responsive, row, space, text};
 
 use crate::gui::{
@@ -10,7 +10,7 @@ use crate::gui::{
     formatter::format_album_duration,
     icons,
     main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, spacer, title,
+        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, title,
     },
     widget::{
         artist_chip::artist_chip,
