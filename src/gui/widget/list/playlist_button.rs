@@ -33,7 +33,6 @@ pub fn playlist_button<'a>(
         && *val
     {
         let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
-        // TODO: I shouldn't be able to play empty playlists
         let menu = iced_m3::widget::menu(
             vec![
                 vertical_menu::Group {
@@ -44,27 +43,33 @@ pub fn playlist_button<'a>(
                             label: "Play",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(Some(
-                                playlist_view::Message::PlayPlaylist(playlist.clone()),
-                            )),
+                            action: vertical_menu::Action::Message(
+                                (!playlist.tracks.is_empty()).then_some(
+                                    playlist_view::Message::PlayPlaylist(playlist.clone()),
+                                ),
+                            ),
                         },
                         vertical_menu::Entry::Button {
                             icon: Some(&icons::SHUFFLE),
                             label: "Shuffle",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(Some(
-                                playlist_view::Message::ShufflePlaylist(playlist.clone()),
-                            )),
+                            action: vertical_menu::Action::Message(
+                                (!playlist.tracks.is_empty()).then_some(
+                                    playlist_view::Message::ShufflePlaylist(playlist.clone()),
+                                ),
+                            ),
                         },
                         vertical_menu::Entry::Button {
                             icon: Some(&icons::ADD_TO_QUEUE),
                             label: "Add to queue",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(Some(
-                                playlist_view::Message::AddPlaylistToQueue(playlist.clone()),
-                            )),
+                            action: vertical_menu::Action::Message(
+                                (!playlist.tracks.is_empty()).then_some(
+                                    playlist_view::Message::AddPlaylistToQueue(playlist.clone()),
+                                ),
+                            ),
                         },
                     ],
                 },

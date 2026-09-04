@@ -98,14 +98,14 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
 
     let buttons = horizontal_buttons(
         &state.theme,
-        Message::PlayGenreNoShuffle {
+        Some(Message::PlayGenreNoShuffle {
             genre: genre.clone(),
             initial_position: None,
-        },
-        Message::ShuffleGenre {
+        }),
+        Some(Message::ShuffleGenre {
             genre: genre.clone(),
             initial_position: None,
-        },
+        }),
         Message::Noop,
     );
 

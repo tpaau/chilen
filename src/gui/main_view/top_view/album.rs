@@ -119,14 +119,14 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
 
     let buttons = horizontal_buttons(
         &state.theme,
-        Message::PlayAlbumNoShuffle {
+        Some(Message::PlayAlbumNoShuffle {
             album: album.clone(),
             initial_position: None,
-        },
-        Message::ShuffleAlbum {
+        }),
+        Some(Message::ShuffleAlbum {
             album: album.clone(),
             initial_position: None,
-        },
+        }),
         Message::Noop,
     );
 

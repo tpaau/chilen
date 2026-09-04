@@ -79,17 +79,16 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    // TODO: I shouldn't be able to play empty playlists
     let buttons = horizontal_buttons(
         &state.theme,
-        Message::PlayPlaylistNoShuffle {
+        (!playlist.tracks.is_empty()).then_some(Message::PlayPlaylistNoShuffle {
             playlist: playlist.clone(),
             initial_position: None,
-        },
-        Message::ShufflePlaylist {
+        }),
+        (!playlist.tracks.is_empty()).then_some(Message::ShufflePlaylist {
             playlist: playlist.clone(),
             initial_position: None,
-        },
+        }),
         Message::Noop,
     );
 

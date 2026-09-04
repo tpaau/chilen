@@ -96,8 +96,8 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
 
 fn horizontal_buttons<'a>(
     theme: &'a impl ColorScheme,
-    message_play: Message,
-    message_shuffle: Message,
+    message_play: Option<Message>,
+    message_shuffle: Option<Message>,
     message_options: Message,
 ) -> Element<'a, Message> {
     responsive(move |size| {
@@ -124,7 +124,7 @@ fn horizontal_buttons<'a>(
                 .style(iced_m3::widget::button::Style::Tonal(
                     iced_m3::theme::Accent::Secondary
                 ))
-                .on_press(message_play.clone()),
+                .on_press_maybe(message_play.clone()),
             iced_m3::widget::button(theme)
                 .size(button_size.with_width(Length::Fill))
                 .icon_font(icons::filled())
@@ -133,7 +133,7 @@ fn horizontal_buttons<'a>(
                 .style(iced_m3::widget::button::Style::Filled(
                     iced_m3::theme::Accent::Primary
                 ))
-                .on_press(message_shuffle.clone()),
+                .on_press_maybe(message_shuffle.clone()),
             iced_m3::widget::button(theme)
                 .size(button_size)
                 .icon_font(icons::filled())
