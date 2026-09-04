@@ -3,6 +3,7 @@ pub mod dialog;
 pub mod drop_down_menu;
 pub mod fab_menu;
 pub mod navbar;
+pub mod progress_bar;
 pub mod slider;
 pub mod text_input;
 pub mod vertical_menu;

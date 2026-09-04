@@ -70,12 +70,17 @@ pub struct Config {
 }
 
 fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Vec<Track> {
+    let total = files.len();
     let mut tracks = Mutex::new(Vec::with_capacity(files.len()));
-    let i = AtomicUsize::new(0);
+    let next_index = AtomicUsize::new(0);
+    let completed = AtomicUsize::new(0);
+    let last_sent = AtomicUsize::new(0);
+
+    let report_every = (total / 100).max(1);
     let covers_lookup_set: RwLock<HashSet<PathBuf>> = RwLock::new(HashSet::new());
 
     crate::send_event(crate::Event::LoadProgressChanged(
-        music_lib::state::Progress::Indexing,
+        music_lib::state::Progress::Indexing { progress: 0.0 },
     ));
 
     std::thread::scope(|s| {
@@ -89,7 +94,7 @@ fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Vec<Track> {
 
         for _ in 0..available_threads {
             s.spawn(|| {
-                while let Some(file) = files.get(i.fetch_add(1, Ordering::Relaxed)) {
+                while let Some(file) = files.get(next_index.fetch_add(1, Ordering::Relaxed)) {
                     let tagged_file = match lofty::read_from_path(file) {
                         Ok(tagged_file) => tagged_file,
                         Err(e) => {
@@ -113,6 +118,25 @@ fn index_files(files: Vec<PathBuf>, config: music_lib::Config) -> Vec<Track> {
                                 continue;
                             }
                         };
+
+                    let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
+                    let should_send = last_sent
+                        .try_update(Ordering::Relaxed, Ordering::Relaxed, |last| {
+                            if done >= last + report_every {
+                                Some(done)
+                            } else {
+                                None
+                            }
+                        })
+                        .is_ok();
+
+                    if should_send {
+                        let progress = done as f32 / total as f32;
+
+                        crate::send_event(crate::Event::LoadProgressChanged(
+                            music_lib::state::Progress::Indexing { progress },
+                        ));
+                    }
 
                     tracks.lock().unwrap().push(track);
                 }

@@ -41,7 +41,8 @@ members = [
   "iced_m3",
   "iced_m3/demos/fonts",
   "iced_m3/demos/buttons",
-  "iced_m3/demos/fab_menu"
+  "iced_m3/demos/fab_menu",
+  "iced_m3/demos/progress_indicators"
 ]
 
 [package.metadata.docs.rs]

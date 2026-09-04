@@ -4,7 +4,6 @@ mod track;
 
 use std::{
     fs::{File, read},
-    hash::Hash,
     io::Write,
     path::PathBuf,
     sync::{LazyLock, RwLock},
@@ -27,7 +26,7 @@ pub use library::*;
 pub use playlist::*;
 pub use track::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Progress {
     /// First step of the loading process.
     ///
@@ -46,7 +45,7 @@ pub enum Progress {
     /// start), and how many tracks are in the library.
     ///
     /// Eg. for my 908-track music library, cold start takes about 4.24s, and warm start just 0.26s.
-    Indexing,
+    Indexing { progress: f32 },
 
     /// Third step of the loading process.
     ///
