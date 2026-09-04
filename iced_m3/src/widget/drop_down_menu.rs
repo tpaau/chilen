@@ -374,6 +374,7 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> Widget<Message, Theme, 
                         transparent: &self.menu_transparent,
                         placement: self.placement,
                         trigger_bounds: self.trigger_bounds.unwrap(),
+                        menu_transparent: self.menu_transparent,
                     }))
                 }),
             ]
@@ -406,6 +407,7 @@ struct Overlay<'a, 'b, Message, Theme, Renderer> {
     just_closed: Rc<Cell<bool>>,
     transparent: &'b bool,
     trigger_bounds: Rectangle,
+    menu_transparent: bool,
 }
 
 // FIX: Parent overlay acting all weird while a child `DropDownMenu` overlay is opened:
@@ -566,7 +568,11 @@ impl<Message, Theme, Renderer: iced::advanced::Renderer> overlay::Overlay<Messag
         );
 
         if interaction == Interaction::None && cursor.is_over(layout.bounds()) {
-            Interaction::None
+            if self.menu_transparent {
+                Interaction::None
+            } else {
+                Interaction::Idle
+            }
         } else {
             interaction
         }

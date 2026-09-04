@@ -148,7 +148,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
     let tracks_section: Element<'_, Message> = if track_buttons.is_empty() {
         container(
             text("No tracks yet!")
-                .size(font::SIZE_REGULAR)
+                .size(font::SIZE_LARGE)
                 .color(state.theme.on_surface_variant()),
         )
         .width(Length::Fill)
