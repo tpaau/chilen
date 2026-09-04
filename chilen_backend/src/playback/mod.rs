@@ -538,7 +538,7 @@ pub fn append_to_queue(queue: &mut Vec<Arc<Track>>) -> Result<(), Error> {
 }
 
 pub fn remove_from_queue(indices: Vec<usize>) -> Result<(), Error> {
-    trace!("Removing {} tracks to queue", indices.len());
+    trace!("Removing {} tracks from queue", indices.len());
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     let previous = state.current().cloned();

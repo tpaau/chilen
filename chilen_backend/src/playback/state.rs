@@ -153,7 +153,6 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
         let (tracks, shuffled_track_indices) = {
             let result = tracks_from_hashes(value.track_hashes)?;
-            // TODO: The current track changing if some things were unmatched
             if !result.unmatched.is_empty() {
                 warn!("{} missing tracks in the queue", result.unmatched.len());
                 let indices = result.matched.iter().enumerate().map(|(i, _)| i).collect();
@@ -389,11 +388,6 @@ impl PlayerState {
         }
     }
 
-    // FIX: Weird things happen if I:
-    //  - Set a new queue (eg. play a playlist)
-    //  - Append a track to the queue
-    //  - Remove that track from the queue
-    //  - Tracks in the queue seem to be sorted as they appear in the queue
     pub(crate) fn remove_tracks(&mut self, mut indices: Vec<usize>) -> Result<(), Error> {
         indices.dedup();
         let position_shift = indices.iter().filter(|i| **i < self.position).count();
@@ -402,39 +396,52 @@ impl PlayerState {
             if let Some(val) = to_remove.get_mut(*i) {
                 *val = true;
             } else {
+                error!("Cannot remove tracks from the queue: Track index {i} is out of bounds");
                 return Err(Error::NoTrackAtIndex(*i));
             }
         }
+        let prev_track = self.current().cloned();
         if self.shuffle_enabled() {
-            let to_remove: Vec<_> = self
-                .shuffled_track_indices
-                .iter()
-                .flat_map(|i| (indices.contains(i)).then_some(*i))
-                .collect();
+            let mut remove_real = vec![false; self.tracks.len()];
+            for &queue_index in &indices {
+                let real_index = self.shuffled_track_indices[queue_index];
+                remove_real[real_index] = true;
+            }
+
+            let mut remap = vec![0; self.tracks.len()];
+            let mut new_index = 0;
+            for old_index in 0..self.tracks.len() {
+                if !remove_real[old_index] {
+                    remap[old_index] = new_index;
+                    new_index += 1;
+                }
+            }
+
             self.shuffled_track_indices = std::mem::take(&mut self.shuffled_track_indices)
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, track_index)| {
-                    if indices.contains(&i) {
-                        return None;
-                    }
-                    let before = indices.iter().filter(|i| **i < track_index).count();
-                    i.checked_sub(before)
+                .filter_map(|(queue_index, old_real_index)| {
+                    (!to_remove[queue_index]).then_some(remap[old_real_index])
                 })
                 .collect();
+
             self.tracks = std::mem::take(&mut self.tracks)
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, track)| (!to_remove.contains(&i)).then_some(track))
-                .collect()
+                .filter_map(|(real_index, track)| (!remove_real[real_index]).then_some(track))
+                .collect();
         } else {
             self.tracks = std::mem::take(&mut self.tracks)
                 .into_iter()
                 .enumerate()
-                .filter_map(|(i, track)| (!indices.contains(&i)).then_some(track))
+                .filter_map(|(i, track)| (!to_remove[i]).then_some(track))
                 .collect();
         }
         self.position = self.position.saturating_sub(position_shift);
+        if prev_track != self.current().cloned() {
+            self.set_player_position(Duration::default());
+            self.on_track_changed();
+        }
 
         Event::TracksChanged {
             position: self.position,
@@ -677,6 +684,7 @@ impl PlayerState {
                 Property::CanGoNext(self.can_go_next()),
             ];
             mpris::update_properties(properties);
+            mpris::set_position(self.player_position);
         }
     }
 
