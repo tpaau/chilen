@@ -291,10 +291,14 @@ pub fn init(config: Config) -> Result<mpsc::Receiver<Event>, Error> {
 pub fn shutdown() -> Result<(), String> {
     info!("Cleaning up on shutdown...");
     let guard = playback::state::PLAYER_STATE.read().unwrap();
-    let state = guard.as_ref().unwrap().clone();
-    if let Err(e) = playback::state::save_state(state) {
-        error!("Couldn't save playback state on quit: {e}");
-        return Err(e);
+    match guard.as_ref().cloned() {
+        Some(state) => {
+            if let Err(e) = playback::state::save_state(state) {
+                error!("Couldn't save playback state on quit: {e}");
+                return Err(e);
+            }
+        }
+        None => warn!("Player state is not initialized, maybe the daemon was closed too soon?"),
     }
     info!("Clean up completed");
     Ok(())
