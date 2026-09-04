@@ -49,6 +49,7 @@ pub static REPEAT_ONE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe041).
 pub static LYRICS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xec0b).unwrap());
 pub static QUEUE_MUSIC: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe03d).unwrap());
 pub static ERROR: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe000).unwrap());
+pub static REFRESH: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5d5).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const _SIZE_SMALL: f32 = 20.0;

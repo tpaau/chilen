@@ -87,7 +87,7 @@ impl Default for Chilen {
         Self {
             library: None,
             player_state: None,
-            dialog: Dialog::default(),
+            dialog: Dialog::Loading(None),
             loading_state: LoadingState::default(),
             theme: Theme::default(settings.theme_mode()),
             settings: Settings::load(),
@@ -210,7 +210,18 @@ impl Chilen {
                         });
                     }
                     // TODO: Display the progress
-                    chilen_backend::Event::LoadProgressChanged(_) => {}
+                    chilen_backend::Event::LoadProgressChanged(progress) => match progress {
+                        chilen_backend::music_lib::Progress::Done => {
+                            if let Dialog::Loading(_) = state.dialog {
+                                state.dialog = Dialog::None;
+                            }
+                        }
+                        chilen_backend::music_lib::Progress::Failed(error) => {
+                            state.dialog =
+                                Dialog::Error(format!("Couldn't load the music library: {error}"))
+                        }
+                        _ => state.dialog = Dialog::Loading(Some(progress)),
+                    },
                     chilen_backend::Event::Playback(event) => {
                         playback_view::handle_event(state, event)
                     }

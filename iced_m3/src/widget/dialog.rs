@@ -158,6 +158,7 @@ where
             space().height(TITLE_BODY_SPACING)
         ];
 
+        let buttons_present = !value.buttons.is_empty();
         let buttons = row({
             let mut content = Vec::with_capacity(value.buttons.len() + 1);
             content.push(space().width(Length::Fill).into());
@@ -185,7 +186,7 @@ where
             icon,
             title,
             value.body,
-            space().height(BODY_BUTTONS_SPACING),
+            buttons_present.then_some(space().height(BODY_BUTTONS_SPACING)),
             buttons
         ]
         .align_x(alignment);

@@ -1,8 +1,9 @@
 mod add_track_to_playlist;
+mod loading;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{Playlist, Track};
+use chilen_backend::music_lib::{Playlist, Progress, Track};
 use iced::{Element, Length, border::Radius};
 use iced_m3::{theme::ColorScheme, widget::dialog};
 use iced_widget::{container, text};
@@ -13,20 +14,16 @@ use crate::gui::{
     ROUNDING_SMALL, font, settings,
 };
 
-#[derive(Default)]
 pub enum Dialog {
-    #[default]
     None,
     CreatePlaylist(String),
     ImportPlaylist(String, rfd::FileHandle),
     Error(String),
-    RenamePlaylist {
-        playlist: String,
-        name: String,
-    },
+    RenamePlaylist { playlist: String, name: String },
     DeletePlaylist(Arc<Playlist>),
     Settings,
     AddTrackToPlaylist(Arc<Track>),
+    Loading(Option<Progress>),
 }
 
 /// Appends a single track to the queue.
@@ -226,5 +223,6 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
         Dialog::AddTrackToPlaylist(track) => {
             Some(add_track_to_playlist::view(state, track.clone()))
         }
+        Dialog::Loading(progress) => Some(loading::view(&state.theme, progress.clone())),
     }
 }
