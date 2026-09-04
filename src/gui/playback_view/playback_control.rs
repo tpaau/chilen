@@ -6,7 +6,8 @@ use iced_m3::theme::ColorScheme;
 use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
+    font::{self, bold_text},
     formatter::{UNKNOWN_TRACK_DURATION, format_track_duration},
     icons,
     playback_view::Message,
@@ -37,7 +38,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .height(Length::Shrink);
 
     // TODO: Should move left and right if it can't fit on screen
-    let title = text(if let Some(state) = &state.player_state {
+    let title = bold_text(if let Some(state) = &state.player_state {
         if let Some(track) = state.current() {
             track.title.clone().unwrap_or("Untitled".to_string())
         } else {
@@ -48,8 +49,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     })
     .size(32.0)
     .wrapping(text::Wrapping::None)
-    .color(state.theme.on_surface())
-    .font(font::font_bold());
+    .color(state.theme.on_surface());
 
     let artists: Element<'_, Message> = if let Some(player_state) = &state.player_state
         && let Some(track) = player_state.current()
@@ -194,8 +194,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let (player_pos_color, player_pos_font) = state
         .playback_view
         .seek_slider_value
-        .map(|_| (state.theme.on_surface(), font::font_bold()))
-        .unwrap_or((state.theme.on_surface_variant(), font::font()));
+        .map(|_| (state.theme.on_surface(), font::bold()))
+        .unwrap_or((state.theme.on_surface_variant(), font::regular()));
     let track_duration = track_duration
         .map(format_track_duration)
         .unwrap_or(UNKNOWN_TRACK_DURATION.to_string());

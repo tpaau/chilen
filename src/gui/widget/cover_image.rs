@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use iced::{Border, Color, Element, Length, border::Radius};
-use iced_widget::{center, container, image, stack, text};
+use iced_widget::{center, container, image, stack};
 
-use crate::gui::icons;
+use crate::gui::icons::icon_filled;
 
 pub struct CoverImage {
     pub image_path: Option<PathBuf>,
@@ -37,8 +37,7 @@ where
         if value.opacity == 1.0 || path_is_none {
             container(stack![
                 center(
-                    text(value.icon)
-                        .font(icons::filled())
+                    icon_filled(value.icon)
                         .size(value.icon_size)
                         .color(value.icon_color)
                 ),

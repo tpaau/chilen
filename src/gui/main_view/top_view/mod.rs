@@ -8,11 +8,11 @@ use std::sync::Arc;
 use chilen_backend::music_lib::{Album, Artist, Genre, Playlist, Track};
 use iced::{Element, Length, Task};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{container, responsive, row, scrollable, text};
+use iced_widget::{container, responsive, row, scrollable};
 use log::error;
 
 use crate::gui::{
-    Chilen, SPACING_REGULAR, common_actions, dialog, font, icons, main_view::NavStack,
+    Chilen, SPACING_REGULAR, common_actions, dialog, font::bold_text, icons, main_view::NavStack,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,9 +87,8 @@ pub enum Message {
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
-    text(content)
+    bold_text(content)
         .size(32.0)
-        .font(font::font_bold())
         .color(theme.on_surface())
         .into()
 }

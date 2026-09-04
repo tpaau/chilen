@@ -10,8 +10,9 @@ use iced_widget::{bottom_right, center, responsive, space, stack};
 use log::{debug, error, info, trace};
 
 use crate::gui::{
-    self, Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-    common_actions, font, icons,
+    Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, common_actions,
+    font::{self, bold_text},
+    icons,
     main_view::top_view::TopView,
     playlist_view,
     widget::{
@@ -43,10 +44,9 @@ pub struct State {
 }
 
 pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
-    let heading = text!("Playlists")
+    let heading = bold_text("Playlists")
         .color(state.theme.on_surface())
-        .size(font::SIZE_LARGE)
-        .font(gui::font::font_bold());
+        .size(font::SIZE_LARGE);
 
     let content = if let Some(lib) = &state.library {
         let base = responsive(move |size| {

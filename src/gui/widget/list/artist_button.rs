@@ -11,7 +11,8 @@ use iced_widget::{button, column, container, row, text};
 use crate::{
     THUMBNAIL_SIZE,
     gui::{
-        SPACING_SMALL, SPACING_SMALLER, font, icons,
+        SPACING_SMALL, SPACING_SMALLER, font,
+        icons::{self, icon_filled},
         widget::{
             cover_image::CoverImage,
             list::{BUTTON_PADDING, button_style},
@@ -70,9 +71,9 @@ where
         .icon_font(icons::filled());
 
         let font = if value.highlighted {
-            font::font_bold()
+            font::bold()
         } else {
-            font::font()
+            font::regular()
         };
         let title = text(value.artist.name.clone())
             .size(font::SIZE_REGULAR)
@@ -81,15 +82,15 @@ where
             .wrapping(text::Wrapping::None);
 
         // TODO: Maybe an animated indicator would look better?
-        let icon_color = if value.highlighted {
-            value.theme.on_secondary_container()
-        } else {
-            value.theme.on_surface_variant()
-        };
-        let container_color = if value.highlighted {
-            value.theme.secondary_container()
-        } else {
-            value.theme.surface_container_high()
+        let (icon_color, container_color) = match value.highlighted {
+            true => (
+                value.theme.on_secondary_container(),
+                value.theme.secondary_container(),
+            ),
+            false => (
+                value.theme.on_surface_variant(),
+                value.theme.surface_container_high(),
+            ),
         };
         let image_path = (!value.highlighted)
             .then_some(value.artist.cover.thumbnail.clone())
@@ -140,8 +141,7 @@ where
                     // TODO: Should be more like a button
                     drop_down_menu(
                         |_| {
-                            text(*icons::MORE_HORIZ)
-                                .font(icons::filled())
+                            icon_filled(*icons::MORE_HORIZ)
                                 .size(icons::SIZE_REGULAR)
                                 .color(value.theme.on_surface())
                                 .into()

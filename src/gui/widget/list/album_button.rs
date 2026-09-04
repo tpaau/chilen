@@ -11,7 +11,7 @@ use iced_widget::{button, column, container, row, text};
 use crate::gui::{
     Chilen, SPACING_SMALL, SPACING_SMALLER, font,
     formatter::format_date,
-    icons,
+    icons::{self, icon_filled},
     widget::{
         cover_image::CoverImage,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
@@ -114,9 +114,9 @@ where
         }
 
         let font = if value.highlighted {
-            font::font_bold()
+            font::bold()
         } else {
-            font::font()
+            font::regular()
         };
         let title = text(value.album.title.clone())
             .size(font::SIZE_REGULAR)
@@ -125,15 +125,15 @@ where
             .wrapping(text::Wrapping::None);
 
         // TODO: Maybe an animated indicator would look better?
-        let icon_color = if value.highlighted {
-            value.state.theme.on_secondary_container()
-        } else {
-            value.state.theme.on_surface_variant()
-        };
-        let container_color = if value.highlighted {
-            value.state.theme.secondary_container()
-        } else {
-            value.state.theme.surface_container_high()
+        let (icon_color, container_color) = match value.highlighted {
+            true => (
+                value.state.theme.on_secondary_container(),
+                value.state.theme.secondary_container(),
+            ),
+            false => (
+                value.state.theme.on_surface_variant(),
+                value.state.theme.surface_container_high(),
+            ),
         };
         let image_path = (!value.highlighted)
             .then_some(value.album.cover.thumbnail.clone())
@@ -167,8 +167,7 @@ where
                     // TODO: Should be more like a button
                     drop_down_menu(
                         |_| {
-                            text(*icons::MORE_HORIZ)
-                                .font(icons::filled())
+                            icon_filled(*icons::MORE_HORIZ)
                                 .size(icons::SIZE_REGULAR)
                                 .color(value.state.theme.on_surface())
                                 .into()

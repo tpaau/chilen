@@ -1,5 +1,7 @@
 use std::sync::LazyLock;
 
+use iced_widget::{Text, text};
+
 #[cfg(unix)]
 pub(super) const FILLED_ICONS_FONT_BYTES: &[u8] =
     include_bytes!("../../resources/fonts/MaterialSymbolsRounded_Filled-Regular.ttf");
@@ -70,4 +72,12 @@ pub fn outlined() -> iced::Font {
         stretch: iced::font::Stretch::Normal,
         style: iced::font::Style::Normal,
     }
+}
+
+pub fn icon_filled<'a>(icon: char) -> Text<'a> {
+    text(icon).font(filled())
+}
+
+pub fn icon_outlined<'a>(icon: char) -> Text<'a> {
+    text(icon).font(filled())
 }

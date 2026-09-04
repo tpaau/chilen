@@ -6,7 +6,9 @@ use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, responsive, row, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font, icons,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
+    font::{self, bold_text},
+    icons,
     main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, title},
     widget::{
         cover_image::CoverImage,
@@ -149,8 +151,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     let albums_section = has_albums.then_some(
         column![
             spacer(&state.theme),
-            text("Albums")
-                .font(font::font_bold())
+            bold_text("Albums")
                 .color(state.theme.on_surface())
                 .size(font::SIZE_LARGE),
             column(album_buttons).spacing(BUTTON_SPACING),
@@ -194,8 +195,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     let artist_section = has_artists.then_some(
         column![
             spacer(&state.theme),
-            text("Artists")
-                .font(font::font_bold())
+            bold_text("Artists")
                 .color(state.theme.on_surface())
                 .size(font::SIZE_LARGE),
             column(artist_buttons).spacing(BUTTON_SPACING)
@@ -256,8 +256,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             Some(
                 column![
                     spacer(&state.theme),
-                    text("Tracks")
-                        .font(font::font_bold())
+                    bold_text("Tracks")
                         .color(state.theme.on_surface())
                         .size(font::SIZE_LARGE),
                 ]

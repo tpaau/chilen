@@ -14,7 +14,8 @@ use iced_widget::sensor;
 use crate::gui::{
     Chilen, THUMBNAIL_SIZE,
     font::{self, SIZE_REGULAR, SIZE_SMALL},
-    icons, playlist_view,
+    icons::{self, icon_filled},
+    playlist_view,
     widget::{
         cover_image::CoverImage,
         list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
@@ -122,9 +123,9 @@ pub fn playlist_button<'a>(
         .icon_font(icons::filled());
 
         let font = if highlighted {
-            font::font_bold()
+            font::bold()
         } else {
-            font::font()
+            font::regular()
         };
         let title = text(playlist.name.clone())
             .size(SIZE_REGULAR)
@@ -133,15 +134,15 @@ pub fn playlist_button<'a>(
             .wrapping(text::Wrapping::None);
 
         // TODO: Maybe an animated indicator would look better?
-        let icon_color = if highlighted {
-            state.theme.on_secondary_container()
-        } else {
-            state.theme.on_surface_variant()
-        };
-        let container_color = if highlighted {
-            state.theme.secondary_container()
-        } else {
-            state.theme.surface_container_high()
+        let (icon_color, container_color) = match highlighted {
+            true => (
+                state.theme.on_secondary_container(),
+                state.theme.secondary_container(),
+            ),
+            false => (
+                state.theme.on_surface_variant(),
+                state.theme.surface_container_high(),
+            ),
         };
         let image_path = (!highlighted)
             .then_some(playlist.cover.thumbnail.clone())
@@ -182,8 +183,7 @@ pub fn playlist_button<'a>(
                     // TODO: Should be more like a button
                     drop_down_menu(
                         |_| {
-                            text(*icons::MORE_HORIZ)
-                                .font(icons::filled())
+                            icon_filled(*icons::MORE_HORIZ)
                                 .size(icons::SIZE_REGULAR)
                                 .color(state.theme.on_surface())
                                 .into()

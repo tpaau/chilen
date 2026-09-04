@@ -11,7 +11,7 @@ use iced_widget::{button, column, container, row, text};
 use crate::gui::{
     Chilen, SPACING_SMALL, font,
     formatter::format_track_duration,
-    icons,
+    icons::{self, icon_filled},
     widget::{
         cover_image::CoverImage,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
@@ -135,8 +135,8 @@ where
             iced_m3::widget::menu(menu_groups, &value.state.theme).icon_font(icons::filled());
 
         let title_font = match value.status {
-            Status::Playing => font::font_bold(),
-            Status::Idle | Status::Dimmed => font::font(),
+            Status::Playing => font::bold(),
+            Status::Idle | Status::Dimmed => font::regular(),
         };
         let title = text(if let Some(title) = value.track.title.clone() {
             title
@@ -203,8 +203,7 @@ where
                     // TODO: Should be more like a button
                     drop_down_menu(
                         move |_| {
-                            text(*icons::MORE_HORIZ)
-                                .font(icons::filled())
+                            icon_filled(*icons::MORE_HORIZ)
                                 .size(icons::SIZE_REGULAR)
                                 .color(value.state.theme.on_surface())
                                 .into()

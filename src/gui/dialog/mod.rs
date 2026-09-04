@@ -86,7 +86,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     action_button(maybe_message, "Create".to_string()),
                 ],
             )
-            .title_font(font::font_bold())
+            .title_font(font::bold())
             .title("Create playlist")
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
@@ -135,7 +135,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     action_button(maybe_message, "Import".to_string()),
                 ],
             )
-            .title_font(font::font_bold())
+            .title_font(font::bold())
             .title("Import playlist")
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
@@ -161,7 +161,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     "Dismiss".to_string(),
                 )],
             )
-            .title_font(font::font_bold())
+            .title_font(font::bold())
             .title("Error")
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
@@ -196,7 +196,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     action_button(maybe_message, "Rename".to_string()),
                 ],
             )
-            .title_font(font::font_bold())
+            .title_font(font::bold())
             .title("Rename playlist")
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
@@ -217,7 +217,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     ),
                 ],
             )
-            .title_font(font::font_bold())
+            .title_font(font::bold())
             .title("Delete playlist")
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()

@@ -1,3 +1,6 @@
+use iced_core::text::IntoFragment;
+use iced_widget::{Text, text};
+
 #[cfg(all(windows, feature = "cjk_fonts"))]
 pub(super) const BYTES_REGULAR: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Regular.ttc");
@@ -33,7 +36,7 @@ pub const SIZE_REGULAR: f32 = 16.0;
 pub const SIZE_LARGE: f32 = 18.0;
 pub const SIZE_LARGER: f32 = 20.0;
 
-pub fn font() -> iced::Font {
+pub fn regular() -> iced::Font {
     iced::Font {
         weight: iced::font::Weight::Normal,
         family: iced::font::Family::Name(NAME),
@@ -42,9 +45,13 @@ pub fn font() -> iced::Font {
     }
 }
 
-pub fn font_bold() -> iced::Font {
+pub fn bold() -> iced::Font {
     iced::Font {
         weight: iced::font::Weight::Bold,
-        ..font()
+        ..regular()
     }
+}
+
+pub fn bold_text<'a>(content: impl IntoFragment<'a>) -> Text<'a> {
+    text(content).font(bold())
 }

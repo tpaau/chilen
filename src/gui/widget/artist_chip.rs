@@ -6,9 +6,14 @@ use iced_m3::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
     theme::ColorScheme,
 };
-use iced_widget::{Button, button, row, text};
+use iced_widget::{Button, button, row};
 
-use crate::gui::{SPACING_SMALLER, font, icons, widget::cover_image::CoverImage};
+use crate::gui::{
+    SPACING_SMALLER,
+    font::{self, bold_text},
+    icons,
+    widget::cover_image::CoverImage,
+};
 
 pub fn artist_chip<'a, Message: 'a>(
     theme: &'a impl ColorScheme,
@@ -28,9 +33,7 @@ pub fn artist_chip<'a, Message: 'a>(
                 width: thumbnail_size,
                 height: thumbnail_size,
             },
-            text(artist.name.clone())
-                .size(font::SIZE_REGULAR)
-                .font(font::font_bold())
+            bold_text(artist.name.clone()).size(font::SIZE_REGULAR)
         ]
         .spacing(SPACING_SMALLER)
         .align_y(Alignment::Center),

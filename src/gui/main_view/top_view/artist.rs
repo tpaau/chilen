@@ -6,7 +6,9 @@ use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, responsive, row, text};
 
 use crate::gui::{
-    Chilen, SPACING_REGULAR, SPACING_SMALLER, font, icons,
+    Chilen, SPACING_REGULAR, SPACING_SMALLER,
+    font::{self, bold_text},
+    icons,
     main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, title},
     widget::{
         cover_image::CoverImage,
@@ -169,8 +171,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
     let albums_section = has_albums.then_some(
         column![
             spacer(&state.theme),
-            text("Albums")
-                .font(font::font_bold())
+            bold_text("Albums")
                 .color(state.theme.on_surface())
                 .size(font::SIZE_LARGE),
             column(album_buttons).spacing(BUTTON_SPACING),
@@ -186,8 +187,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         {
             if has_albums {
                 Some(
-                    text("Tracks")
-                        .font(font::font_bold())
+                    bold_text("Tracks")
                         .color(state.theme.on_surface())
                         .size(font::SIZE_LARGE),
                 )

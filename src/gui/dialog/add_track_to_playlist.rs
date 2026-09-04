@@ -12,7 +12,7 @@ use crate::{
     THUMBNAIL_SIZE,
     gui::{
         Chilen, Message, ROUNDING_LARGE, SPACING_SMALL,
-        font::{self, font_bold},
+        font::{self, bold_text},
         icons,
         widget::{
             cover_image::CoverImage,
@@ -39,9 +39,8 @@ fn playlist_choice<'a>(
                 width: THUMBNAIL_SIZE.into(),
                 height: THUMBNAIL_SIZE.into()
             },
-            text(&playlist.name)
+            bold_text(&playlist.name)
                 .color(theme.on_surface())
-                .font(font_bold())
                 .wrapping(text::Wrapping::None)
                 .size(font::SIZE_LARGE)
         ]
@@ -83,7 +82,7 @@ pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Mess
         style: iced_m3::widget::button::Style::Outlined,
     }];
     dialog(&state.theme, content, buttons)
-        .title_font(font::font_bold())
+        .title_font(font::bold())
         .title("Add to playlist")
         .icon_font(icons::filled())
         .icon(*icons::PLAYLIST_ADD)

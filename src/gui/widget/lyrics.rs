@@ -9,7 +9,11 @@ use iced_core::text::LineHeight;
 use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, container, mouse_area, row, scrollable, text};
 
-use crate::gui::{ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, font, icons};
+use crate::gui::{
+    ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL,
+    font::{self, bold_text},
+    icons::{self, icon_outlined},
+};
 
 pub const FONT_SIZE: f32 = font::SIZE_LARGER;
 
@@ -43,15 +47,10 @@ fn synced_lyrics<'a, Message: 'a + Clone>(
                     } else {
                         theme.on_surface_variant().scale_alpha(0.6)
                     };
-                    mouse_area(
-                        text(&s.content)
-                            .size(FONT_SIZE)
-                            .color(color)
-                            .font(font::font_bold()),
-                    )
-                    .interaction(iced::mouse::Interaction::Pointer)
-                    .on_press(on_segment_pressed(s.timestamp))
-                    .into()
+                    mouse_area(bold_text(&s.content).size(FONT_SIZE).color(color))
+                        .interaction(iced::mouse::Interaction::Pointer)
+                        .on_press(on_segment_pressed(s.timestamp))
+                        .into()
                 })
                 .collect();
 
@@ -87,12 +86,11 @@ pub fn view<'a, Message: 'a + Clone>(
             .padding(lyrics_padding)
             .into(),
             Lyrics::Unsynced { reason, lyrics } => {
-                let lyrics = text(lyrics)
+                let lyrics = bold_text(lyrics)
                     .line_height(LineHeight::Absolute(iced::Pixels(
                         FONT_SIZE + SPACING_REGULAR,
                     )))
                     .color(theme.on_surface())
-                    .font(font::font_bold())
                     .size(FONT_SIZE);
 
                 let scroll = container(
@@ -113,8 +111,7 @@ pub fn view<'a, Message: 'a + Clone>(
                     let dialog = container(
                         container(
                             row![
-                                text(*icons::ERROR)
-                                    .font(icons::outlined())
+                                icon_outlined(*icons::ERROR)
                                     .size(icons::SIZE_LARGER)
                                     .color(theme.on_error()),
                                 text(message).size(font::SIZE_SMALL).color(theme.on_error()),
