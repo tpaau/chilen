@@ -82,9 +82,11 @@ pub fn playlist_button<'a>(
                             label: "Export",
                             supporting_text: None,
                             error: false,
-                            action: vertical_menu::Action::Message(Some(
-                                playlist_view::Message::ExportPlaylist(playlist.name.clone()),
-                            )),
+                            action: vertical_menu::Action::Message(
+                                (!playlist.tracks.is_empty()).then_some(
+                                    playlist_view::Message::ExportPlaylist(playlist.name.clone()),
+                                ),
+                            ),
                         },
                         vertical_menu::Entry::Button {
                             icon: Some(&icons::IMAGE),

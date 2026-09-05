@@ -180,6 +180,7 @@ pub(crate) fn tracks_from_m3u8(path: &PathBuf) -> Result<Vec<PathBuf>, Error> {
     }
 }
 
+// TODO: Reject empty playlists
 // TEST: Check if export work correctly
 pub fn export_playlist_to_m3u8(name: &str, path: &Path) -> Result<(), Error> {
     trace!("Exporting a playlist to an M3U8 file in {path:?}");
