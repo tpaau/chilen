@@ -175,7 +175,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
         } else {
             PlaybackState::Paused
         };
-        let position = value.position.min(tracks.len() - 1);
+        let position = value.position.min(tracks.len().saturating_sub(1));
         Ok(Self {
             position,
             player_position: value.player_position,

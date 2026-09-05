@@ -118,6 +118,6 @@ pub fn dialog<'a, Message>(
 }
 
 #[must_use]
-pub fn progress_bar<'a>(progress: f32, theme: &'a impl ColorScheme) -> ProgressBar<'a> {
-    ProgressBar::new(progress, theme)
+pub fn progress_bar<'a>(theme: &'a impl ColorScheme) -> ProgressBar<'a> {
+    ProgressBar::new(theme)
 }

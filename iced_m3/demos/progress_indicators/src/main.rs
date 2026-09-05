@@ -27,29 +27,22 @@ impl Default for State {
     }
 }
 
-pub fn oscillating_value(elapsed: Duration, motion: Duration, pause: Duration) -> f32 {
-    let motion_secs = motion.as_secs_f32();
-    let pause_secs = pause.as_secs_f32();
+pub fn anim(elapsed: Duration) -> f32 {
+    const RAMP: f32 = 1.2;
+    const HOLD: f32 = 0.75;
+    const RESET: f32 = 0.05;
+    const WAIT: f32 = 0.15;
 
-    if motion_secs <= 0.0 {
-        return 0.0;
-    }
-
-    let cycle = 2.0 * (motion_secs + pause_secs);
+    let cycle = RAMP + HOLD + RESET + WAIT;
     let t = elapsed.as_secs_f32() % cycle;
 
-    let pi = std::f32::consts::PI;
-
-    if t < pause_secs {
-        0.0
-    } else if t < pause_secs + motion_secs {
-        let x = (t - pause_secs) / motion_secs;
-        0.5 - 0.5 * (pi * x).cos()
-    } else if t < pause_secs + motion_secs + pause_secs {
+    if t < RAMP {
+        let progress = t / RAMP;
+        1.0 - (1.0 - progress).powi(2)
+    } else if t < RAMP + HOLD {
         1.0
     } else {
-        let x = (t - pause_secs - motion_secs - pause_secs) / motion_secs;
-        0.5 + 0.5 * (pi * x).cos()
+        0.0
     }
 }
 
@@ -57,11 +50,7 @@ impl State {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Tick => {
-                self.progress = oscillating_value(
-                    self.start.elapsed(),
-                    Duration::from_secs_f32(1.5),
-                    Duration::from_secs_f32(0.6),
-                );
+                self.progress = anim(self.start.elapsed());
             }
         }
         Task::none()
@@ -74,12 +63,22 @@ impl State {
                     .font(fonts::text_bold())
                     .size(24.0)
                     .color(self.theme.on_surface()),
-                progress_bar(0.0, &self.theme),
-                progress_bar(0.25, &self.theme),
-                progress_bar(0.5, &self.theme),
-                progress_bar(0.75, &self.theme),
-                progress_bar(1.0, &self.theme),
-                progress_bar(self.progress, &self.theme),
+                text("Determinate indicators").color(self.theme.on_surface()),
+                progress_bar(&self.theme).progress(0.0),
+                progress_bar(&self.theme).progress(0.25),
+                progress_bar(&self.theme).progress(0.5),
+                progress_bar(&self.theme).progress(0.75),
+                progress_bar(&self.theme).progress(1.0),
+                text("You can change height (thick)").color(self.theme.on_surface()),
+                progress_bar(&self.theme).progress(0.5).height(16.0),
+                text("In action!").color(self.theme.on_surface()),
+                progress_bar(&self.theme).progress(self.progress),
+                progress_bar(&self.theme)
+                    .progress(self.progress)
+                    .height(16.0),
+                text("Indeterminate!").color(self.theme.on_surface()),
+                progress_bar(&self.theme),
+                progress_bar(&self.theme).height(16.0),
             ]
             .width(500.0)
             .spacing(20.0),
