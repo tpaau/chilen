@@ -11,6 +11,13 @@ use iced_widget::core::renderer;
 
 use crate::theme::ColorScheme;
 
+const HANDLE_WIDTH_IDLE: f32 = 4.0;
+const HANDLE_WIDTH_DRAGGED: f32 = 2.0;
+const HANDLE_GAP: f32 = 6.0;
+const INNER_CORNER_RADIUS: f32 = 2.0;
+const STOP_INDICATOR_SIZE: f32 = 4.0;
+const STOP_INDICATOR_TRAILING_SPACE: f32 = 4.0;
+
 #[derive(Default, Clone, Copy, PartialEq, PartialOrd)]
 pub enum Size {
     #[default]
@@ -414,11 +421,6 @@ where
         let bounds = layout.bounds();
         let status = self.status.unwrap();
 
-        const HANDLE_WIDTH_IDLE: f32 = 4.0;
-        const HANDLE_WIDTH_DRAGGED: f32 = 2.0;
-        const HANDLE_GAP: f32 = 6.0;
-        const INNER_CORNER_RADIUS: f32 = 2.0;
-
         let value = self.value.into() as f32;
         let (range_start, range_end) = {
             let (start, end) = self.range.clone().into_inner();
@@ -433,25 +435,6 @@ where
 
         let rail_y = bounds.y + bounds.height / 2.0;
         let rail_height = self.size.rail_height();
-
-        renderer.fill_quad(
-            renderer::Quad {
-                bounds: Rectangle {
-                    x: bounds.x,
-                    y: rail_y - rail_height / 2.0,
-                    width: offset - HANDLE_GAP - HANDLE_WIDTH_IDLE / 2.0,
-                    height: rail_height,
-                },
-                border: Border::default().rounded(Radius {
-                    top_left: self.size.corner_radius(),
-                    top_right: INNER_CORNER_RADIUS,
-                    bottom_right: INNER_CORNER_RADIUS,
-                    bottom_left: self.size.corner_radius(),
-                }),
-                ..renderer::Quad::default()
-            },
-            self.theme.primary(),
-        );
 
         renderer.fill_quad(
             renderer::Quad {
@@ -472,14 +455,57 @@ where
             self.theme.secondary_container(),
         );
 
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds: Rectangle {
+                    x: bounds.x,
+                    y: rail_y - rail_height / 2.0,
+                    width: offset - HANDLE_GAP - HANDLE_WIDTH_IDLE / 2.0,
+                    height: rail_height,
+                },
+                border: Border::default().rounded(Radius {
+                    top_left: self.size.corner_radius(),
+                    top_right: INNER_CORNER_RADIUS,
+                    bottom_right: INNER_CORNER_RADIUS,
+                    bottom_left: self.size.corner_radius(),
+                }),
+                ..renderer::Quad::default()
+            },
+            self.theme.primary(),
+        );
+
         let handle_width = match status {
             Status::Active | Status::Hovered => HANDLE_WIDTH_IDLE,
             Status::Dragged => HANDLE_WIDTH_DRAGGED,
         };
+        let handle_x = bounds.x + offset - handle_width / 2.0;
+        let stop_indicator_width = (bounds.x + bounds.width
+            - STOP_INDICATOR_TRAILING_SPACE
+            - STOP_INDICATOR_SIZE
+            - handle_x
+            - HANDLE_GAP
+            + 1.0)
+            .clamp(0.0, STOP_INDICATOR_SIZE);
         renderer.fill_quad(
             renderer::Quad {
                 bounds: Rectangle {
-                    x: bounds.x + offset - handle_width / 2.0,
+                    x: bounds.x + bounds.width
+                        - STOP_INDICATOR_TRAILING_SPACE
+                        - stop_indicator_width,
+                    y: rail_y - STOP_INDICATOR_SIZE / 2.0,
+                    width: stop_indicator_width,
+                    height: STOP_INDICATOR_SIZE,
+                },
+                border: Border::default().rounded(f32::MAX),
+                ..renderer::Quad::default()
+            },
+            self.theme.primary(),
+        );
+
+        renderer.fill_quad(
+            renderer::Quad {
+                bounds: Rectangle {
+                    x: handle_x,
                     y: rail_y - self.size.handle_height() / 2.0,
                     width: handle_width,
                     height: self.size.handle_height(),
