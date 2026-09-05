@@ -21,6 +21,7 @@ use crate::{
         drop_down_menu::{DropDownMenu, Placement},
         fab_menu::FABMenu,
         navbar::Navbar,
+        progress_bar::ProgressBar,
         text_input::TextInput,
     },
 };
@@ -92,6 +93,7 @@ where
     slider::Slider::new(range, value, on_change, theme)
 }
 
+#[must_use]
 pub fn spacer<'a, Message>(theme: &'a impl ColorScheme) -> Element<'a, Message>
 where
     Message: 'a,
@@ -113,4 +115,9 @@ pub fn dialog<'a, Message>(
     buttons: Vec<dialog::Button<Message>>,
 ) -> Dialog<'a, Message> {
     Dialog::new(theme, body, buttons)
+}
+
+#[must_use]
+pub fn progress_bar<'a>(progress: f32, theme: &'a impl ColorScheme) -> ProgressBar<'a> {
+    ProgressBar::new(progress, theme)
 }

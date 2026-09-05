@@ -19,6 +19,7 @@ pub struct ProgressBar<'a> {
 }
 
 impl<'a> ProgressBar<'a> {
+    #[must_use]
     pub fn new(progress: f32, theme: &'a impl ColorScheme) -> Self {
         Self {
             progress,
@@ -65,10 +66,10 @@ impl<'a, Message> Widget<Message, iced::Theme, iced::Renderer> for ProgressBar<'
                 bounds: iced::Rectangle {
                     x: bounds.x + bounds.width - (bar_width - BAR_GAP * progress),
                     y: bounds.y + (BAR_HEIGHT - bar_height) * 0.5,
-                    width: bar_width - BAR_GAP * progress,
+                    width: bar_width,
                     height: bar_height,
                 },
-                border: Border::default().rounded(BAR_HEIGHT / 2.0),
+                border: Border::default().rounded(bar_height / 2.0),
                 shadow: Shadow::default(),
                 snap: true,
             },
