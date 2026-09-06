@@ -9,7 +9,7 @@ use std::sync::Arc;
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Track};
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, row, space, stack, text};
+use iced_widget::{center, column, container, row, space, stack};
 use log::trace;
 
 use crate::gui::{
@@ -190,7 +190,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
         .align_y(Alignment::Center)
         .spacing(SPACING_REGULAR),
         {
-            if let Some(lib) = &state.library {
+            let content: Element<'_, Message> = if let Some(lib) = &state.library {
                 let content = match state.main_view.nav_stack.top() {
                     View::Top(top) => top_view::view(state, top).map(Message::TopView),
                     // FIX: This is a WORKAROUND.
@@ -214,10 +214,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                         .into(),
                     },
                 };
-                center(content)
+                center(content).into()
             } else {
-                center(text("Loading..."))
-            }
+                space().into()
+            };
+            content
         }
     ])
     .style(|_| {

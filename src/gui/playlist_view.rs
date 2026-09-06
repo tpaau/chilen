@@ -48,7 +48,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
         .color(state.theme.on_surface())
         .size(font::SIZE_LARGE);
 
-    let content = if let Some(lib) = &state.library {
+    let content: Element<'_, Message> = if let Some(lib) = &state.library {
         let base = responsive(move |size| {
             {
                 iced::widget::scrollable({
@@ -116,10 +116,10 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
             .padding(padding::bottom(SPACING_SMALL))
         };
 
-        center(stack!(base, fab))
+        center(stack!(base, fab)).into()
     } else {
         match &state.loading_state {
-            LoadingState::Loading => center(text("Loading...")),
+            LoadingState::Loading => space().into(),
             LoadingState::Failed(e) => {
                 container(text!("Load failed: {e}").color(state.theme.on_error()))
                     .style(|_| {
@@ -129,6 +129,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                     })
                     .width(Length::Fill)
                     .padding(Padding::new(SPACING_SMALLER))
+                    .into()
             }
             LoadingState::Loaded => container(
                 text!(
@@ -143,7 +144,8 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                     .border(Border::default().rounded(ROUNDING_REGULAR))
             })
             .width(Length::Fill)
-            .padding(Padding::new(SPACING_SMALLER)),
+            .padding(Padding::new(SPACING_SMALLER))
+            .into(),
         }
     };
 
