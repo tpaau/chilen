@@ -32,7 +32,6 @@ pub enum Message {
 }
 
 // TODO: Save the last opened tab
-// TODO: Add a setting to remove lyrics from the panel
 #[derive(Default, PartialEq, Eq)]
 pub enum Tab {
     Lyrics,
