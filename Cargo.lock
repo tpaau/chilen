@@ -2716,7 +2716,7 @@ dependencies = [
 [[package]]
 name = "lrc_rs"
 version = "1.0.0"
-source = "git+https://github.com/tpaau/lrc_rs#90c1538fb828cdb6e62c235fa3f0768ee21485bc"
+source = "git+https://github.com/tpaau/lrc_rs#959c28a39482fc5984ddbf567a651510aa27b804"
 dependencies = [
  "nom",
 ]
