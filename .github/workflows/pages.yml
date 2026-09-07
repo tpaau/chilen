@@ -48,7 +48,7 @@ jobs:
 
       - name: Generate rustdoc documentation
         run: |
-          cargo doc --no-deps -p chilen_backend -p iced_m3 --all-features
+          cargo doc --no-deps -p chilen_backend --all-features
           mkdir -p publish/
           cp -r ./site/* ./publish/
           cp -r ./target/doc/* ./publish/

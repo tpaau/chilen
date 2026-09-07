@@ -11,8 +11,6 @@ The project has three main workspace members:
 - The root is a binary crate with that is a shell built around the Chilen backend
     - [`chilen_backend`](https://tpaau.github.io/chilen/chilen_backend/) - Library crate that
         manages the music library, audio playback, etc. Formerly `chilen_daemon`.
-    - [`iced_m3`](https://tpaau.github.io/chilen/iced_m3/) - Material Design 3 widget library for
-        [iced](https://iced.rs/)
 
 
 ## Architecture
