@@ -1,11 +1,11 @@
 doc-no-all-features:
-	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3
+	cargo doc --no-deps -p chilen -p chilen_backend
 
 doc:
-	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3 --all-features
+	cargo doc --no-deps -p chilen -p chilen_backend --all-features
 
 open-doc:
-	cargo doc --no-deps -p chilen -p chilen_backend -p iced_m3 --all-features --open
+	cargo doc --no-deps -p chilen -p chilen_backend --all-features --open
 
 test:
 	cargo test --workspace
@@ -19,10 +19,7 @@ check:
 	cargo deny check
 
 loc:
-	cloc src/ chilen_backend/src/ iced_m3/src/
-
-release:
-	cargo build --release
+	cloc src/ chilen_backend/src/
 
 clean-cache:
 	rm -rf ~/.cache/chilen/
