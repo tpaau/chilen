@@ -2,10 +2,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Artist;
 use iced::{Alignment, Element, Length};
-use iced_m3::{
-    theme::ColorScheme,
-    widget::{drop_down_menu, vertical_menu},
-};
+use iced_m3::{theme::ColorScheme, widget::vertical_menu};
 use iced_widget::{button, column, container, row, text};
 
 use crate::{
@@ -139,7 +136,7 @@ where
                 .center_y(Length::Fill),
                 container(
                     // TODO: Should be more like a button
-                    drop_down_menu(
+                    iced_m3::widget::advanced::drop_down_menu(
                         |_| {
                             icon_filled(*icons::MORE_HORIZ)
                                 .size(icons::SIZE_REGULAR)
@@ -147,7 +144,7 @@ where
                                 .into()
                         },
                         Some(menu),
-                        iced_m3::widget::drop_down_menu::Placement::BottomRight,
+                        iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
                     ),
                 )
                 .center_y(Length::Fill),

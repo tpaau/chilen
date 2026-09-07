@@ -1819,7 +1819,7 @@ dependencies = [
 [[package]]
 name = "iced_m3"
 version = "0.1.0"
-source = "git+https://github.com/tpaau/iced_m3#2bf02e1268cfacf076bc1d4e490d220cecbf1562"
+source = "git+https://github.com/tpaau/iced_m3#5a2de7dddbb0e07e9ead49bea7eb1610953a3ac1"
 dependencies = [
  "iced",
  "iced_widget",
@@ -2690,8 +2690,9 @@ dependencies = [
 
 [[package]]
 name = "lrc_rs"
-version = "1.0.0"
-source = "git+https://github.com/tpaau/lrc_rs#959c28a39482fc5984ddbf567a651510aa27b804"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85656c0468dbe971326b50d29370d714fb7dbfe29f008fcb70e332a4491d2eab"
 dependencies = [
  "nom",
 ]
