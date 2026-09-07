@@ -1,11 +1,11 @@
 doc-no-all-features:
-	cargo doc --no-deps -p chilen -p chilen_backend
+	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend
 
 doc:
-	cargo doc --no-deps -p chilen -p chilen_backend --all-features
+	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend --all-features
 
 open-doc:
-	cargo doc --no-deps -p chilen -p chilen_backend --all-features --open
+	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend --all-features --open
 
 test:
 	cargo test --workspace
