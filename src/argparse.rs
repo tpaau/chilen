@@ -1,6 +1,9 @@
+#[cfg(feature = "dev-opts")]
+use clap::ValueHint;
+#[cfg(feature = "dev-opts")]
 use std::path::PathBuf;
 
-use clap::{Parser, ValueHint};
+use clap::Parser;
 use env_logger::Builder;
 use log::{LevelFilter, trace};
 

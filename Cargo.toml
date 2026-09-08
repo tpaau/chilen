@@ -30,10 +30,10 @@ cjk_fonts = []
 dev-opts = []
 
 # Presets
+default = [ "cjk_fonts" ]
 linux = [ "mpris", "cjk_fonts" ]
 windows = [ "cjk_fonts" ]
 macos = [ "cjk_fonts" ]
-default = [ "cjk_fonts" ]
 
 [workspace]
 members = [

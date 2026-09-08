@@ -339,12 +339,16 @@ impl Chilen {
 
 pub fn start() -> iced::Result {
     trace!("Launching GUI");
-    iced::application(Chilen::default, Chilen::update, Chilen::view)
+    let app = iced::application(Chilen::default, Chilen::update, Chilen::view)
         .font(icons::FILLED_ICONS_FONT_BYTES)
         .font(icons::OUTLINED_ICONS_FONT_BYTES)
         .font(font::BYTES_REGULAR)
-        .font(font::BYTES_BOLD)
-        .title(APP_NAME)
+        .font(font::BYTES_BOLD);
+
+    #[cfg(feature = "cjk_fonts")]
+    let app = app.font(font::BYTES_REGULAR_CJK).font(font::BYTES_BOLD_CJK);
+
+    app.title(APP_NAME)
         .default_font(Font::with_name(font::NAME))
         .window(window::Settings {
             min_size: Some(iced::Size {

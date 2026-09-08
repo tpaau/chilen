@@ -2,33 +2,31 @@ use iced_core::text::IntoFragment;
 use iced_widget::{Text, text};
 
 #[cfg(all(windows, feature = "cjk_fonts"))]
-pub(super) const BYTES_REGULAR: &[u8] =
+pub(super) const BYTES_REGULAR_CJK: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Regular.ttc");
 #[cfg(all(unix, feature = "cjk_fonts"))]
-pub(super) const BYTES_REGULAR: &[u8] =
+pub(super) const BYTES_REGULAR_CJK: &[u8] =
     include_bytes!("../../resources/fonts/NotoSansCJK-Regular.ttc");
 
 #[cfg(all(windows, feature = "cjk_fonts"))]
-pub(super) const BYTES_BOLD: &[u8] =
+pub(super) const BYTES_BOLD_CJK: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Bold.ttc");
 #[cfg(all(unix, feature = "cjk_fonts"))]
-pub(super) const BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSansCJK-Bold.ttc");
+pub(super) const BYTES_BOLD_CJK: &[u8] =
+    include_bytes!("../../resources/fonts/NotoSansCJK-Bold.ttc");
 
-#[cfg(all(unix, not(feature = "cjk_fonts")))]
+#[cfg(unix)]
 pub(super) const BYTES_REGULAR: &[u8] =
     include_bytes!("../../resources/fonts/NotoSans-Regular.ttf");
-#[cfg(all(windows, not(feature = "cjk_fonts")))]
+#[cfg(windows)]
 pub(super) const BYTES_REGULAR: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSans-Regular.ttf");
 
-#[cfg(all(unix, not(feature = "cjk_fonts")))]
+#[cfg(unix)]
 pub(super) const BYTES_BOLD: &[u8] = include_bytes!("../../resources/fonts/NotoSans-Bold.ttf");
-#[cfg(all(windows, not(feature = "cjk_fonts")))]
+#[cfg(windows)]
 pub(super) const BYTES_BOLD: &[u8] = include_bytes!("..\\..\\resources\\fonts\\NotoSans-Bold.ttf");
 
-#[cfg(feature = "cjk_fonts")]
-pub(super) const NAME: &str = "Noto Sans CJK";
-#[cfg(not(feature = "cjk_fonts"))]
 pub(super) const NAME: &str = "Noto Sans";
 
 pub const SIZE_SMALL: f32 = 14.0;
