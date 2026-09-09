@@ -7,29 +7,29 @@
 
 ## Table of contents
 - [Installation](#installation)
-- [Documentation](#documentation)
 - [Features](#features)
+- [Documentation](#documentation)
 - [Inspiration](#inspiration)
 - [Contributing](#contributing)
 
 <a name="installation"></a>
 ## Installation
 You can either build Chilen from source or use one of the official installation methods. If you wish
-to create a community build for a different distro, you can contact me and I can list it here in a
-separate section!
+to create a community build, you can contact me and I will happily list it here in a separate
+section!
 
 > [!CAUTION]
 > Only git builds are available at this time. Those builds are meant primarily for development
 > purposes and testing. I do not recommend you actually daily drive Chilen as your music player
 > until a tagged release is published. It won't do anything destructive, but do expect issues!
 
-## Fedora-based distros
+## Fedora
 Enable the [`tpaau/chilen`](https://copr.fedorainfracloud.org/coprs/tpaau/chilen/) Copr repo:
 ```bash
 dnf copr enable tpaau/chilen
 ```
 
-Then install `chilen-git` on regular fedora:
+Then install `chilen-git` on regular Fedora:
 ```bash
 dnf install chilen-git
 ```
@@ -55,6 +55,14 @@ Please refer to the
 [build guide](https://github.com/tpaau/chilen/blob/main/CONTRIBUTING.md#building).
 
 
+<a name="features"></a>
+## Features
+- Fully offline and blazingly fast 🚀🦀
+- Proper desktop integration
+- Support for a wide range of audio codecs
+- Modular design
+
+
 <a name="documentation"></a>
 ## Documentation
 
@@ -66,14 +74,6 @@ Other projects related to Chilen:
 - [`m3u8_rs`](https://github.com/tpaau/m3u8_rs) - Crate for working with M3U8 playlist files
 
 Also see the [homepage](https://tpaau.github.io/chilen/).
-
-
-<a name="features"></a>
-## Features
-- Fully offline and blazingly fast 🚀🦀
-- Proper desktop integration
-- Support for a wide range of audio codecs
-- Modular design
 
 
 <a name="inspiration"></a>
