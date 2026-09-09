@@ -13,55 +13,6 @@ The project has three main workspace members:
         manages the music library, audio playback, etc. Formerly `chilen_daemon`.
 
 
-## Architecture
-
-> [!NOTE]
-> This file tree is not regularly updated and may be out of date.
-
-```
-src/
-├── argparse.rs                # Command-line Argument parsing
-├── gui                        # Graphical user interface made with `iced`
-│   ├── font.rs                # Font related stuff
-│   ├── icons.rs               # Material symbols stuff
-│   ├── mod.rs
-│   ├── playlist_view.rs
-│   ├── tests.rs
-│   ├── styles                 # Styling functions and utilities for widgets
-│   │   ├── button.rs
-│   │   ├── mod.rs
-│   │   └── scrollable.rs
-│   └── widgets                # Reusable widgets not to be included in `iced_m3`
-│       ├── mod.rs
-│       └── playlist_button.rs
-├── main.rs
-└── settings.rs                # User-configurable app settings
-
-chilen_backend/src/
-├── lib.rs                     # Backend initialization
-├── music_lib                  # Music library management
-│   ├── covers.rs              # Cover art management
-│   ├── indexer.rs             # Library indexing
-│   ├── mod.rs
-│   ├── state.rs               # State management (eg. playlists)
-│   └── tests.rs
-├── playback                   # Audio playback
-│   ├── mod.rs
-│   ├── mpris.rs               # MPRIS integration
-│   ├── state.rs               # State management (eg. queue, shuffle state)
-│   └── tests.rs
-└── tests.rs
-
-iced_m3/src/
-├── lib.rs
-├── theme                      # Theme and palette stuff
-│   ├── mod.rs
-│   └── tests.rs
-└── widget                     # Caterial widgets
-    ├── drop_down_menu.rs      # Drop-down menu widget
-    └── mod.rs
-```
-
 ### Building
 You will need to have Rust *nightly* installed on your system to compile this program.
 
