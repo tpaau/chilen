@@ -1,7 +1,7 @@
 <h1 align="center">Chilen</h1>
 
-<div align="center">Fully offline, blazingly fast music player for your library. Built from the
-ground-up in Rust with native support for Linux, macOS and Windows.[^1]</div>
+Fully offline, blazingly fast music player for your library. Built from the
+ground-up in Rust with native support for Linux, macOS and Windows.[^1]
 
 ![A screenshot of Chilen](https://github.com/tpaau/chilen/blob/main/showcase/chilen-screenshot.jpg)
 
