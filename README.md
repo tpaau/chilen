@@ -1,6 +1,7 @@
 <h1 align="center">Chilen</h1>
 
-<div align="center">Fully offline, blazingly fast music player for your library</div>
+<div align="center">Fully offline, blazingly fast music player for your library. Built from the
+ground-up in Rust with native support for Linux, macOS and Windows.[^1]</div>
 
 ![A screenshot of Chilen](https://github.com/tpaau/chilen/blob/main/showcase/chilen-screenshot.jpg)
 
@@ -57,7 +58,9 @@ Please refer to the
 
 <a name="features"></a>
 ## Features
-- Fully offline and blazingly fast 🚀🦀
+- Fully offline
+- Blazingly fast 🚀🦀
+- Beautiful and user-friendly interface
 - Proper desktop integration
 - Support for a wide range of audio codecs
 - Modular design
@@ -85,3 +88,7 @@ Also see the [homepage](https://tpaau.github.io/chilen/).
 <a name="contributing"></a>
 ## Contributing
 See [CONTRIBUTING](https://github.com/tpaau/chilen/blob/main/CONTRIBUTING.md).
+
+---
+
+[^1]: Chilen has only been tested on Linux so far. It may or may not work properly on other systems. I plan on expanding platform support in the near future, so stay tuned.

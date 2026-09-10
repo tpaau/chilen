@@ -33,9 +33,9 @@ Start the app:
 cargo run
 ```
 
-You might also want to pass the `-v trace` flag for more debug info:
+You might also want to pass the `-l trace` flag for more debug info:
 ```bash
-cargo run -- -v trace
+cargo run -- -l trace
 ```
 
 > [!TIP]
