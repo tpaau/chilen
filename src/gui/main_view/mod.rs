@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Track};
 use iced::{Alignment, Border, Element, Length, Task, padding};
-use iced_m3::theme::ColorScheme;
+use iced_m3::{theme::ColorScheme, widget::button::Content};
 use iced_widget::{center, column, container, row, space, stack};
 use log::trace;
 
@@ -137,12 +137,10 @@ pub enum Message {
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
     container(column![
         row![
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SEARCH))
                 .style(iced_m3::widget::button::Style::Filled(
                     iced_m3::theme::Accent::Primary
                 ))
-                .label_maybe(None)
-                .icon(&icons::SEARCH)
                 .on_press(Message::Noop),
             // TODO: Custom ordering
             {
@@ -181,10 +179,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                 .icon_font_active(icons::filled())
                 .icon_font_inactive(icons::outlined())
             },
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SETTINGS))
                 .style(iced_m3::widget::button::Style::Outlined)
-                .label_maybe(None)
-                .icon(&icons::SETTINGS)
                 .on_press(Message::OpenSettings),
         ]
         .align_y(Alignment::Center)

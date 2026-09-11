@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use chilen_backend::playback::LoopState;
 use iced::{Alignment, Element, Length};
-use iced_m3::theme::ColorScheme;
+use iced_m3::{theme::ColorScheme, widget::button::Content};
 use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
 use crate::gui::{
@@ -217,19 +217,19 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         .player_state
         .as_ref()
         .map(|p| match p.playback_state {
-            chilen_backend::playback::PlaybackState::Playing => &icons::PAUSE,
-            chilen_backend::playback::PlaybackState::Paused => &icons::PLAY_ARROW,
-            chilen_backend::playback::PlaybackState::Stopped => &icons::STOP,
+            chilen_backend::playback::PlaybackState::Playing => *icons::PAUSE,
+            chilen_backend::playback::PlaybackState::Paused => *icons::PLAY_ARROW,
+            chilen_backend::playback::PlaybackState::Stopped => *icons::STOP,
         })
-        .unwrap_or(&icons::STOP);
+        .unwrap_or(*icons::STOP);
     let loop_button_icon = state
         .player_state
         .as_ref()
         .map(|p| match p.loop_state {
-            LoopState::Off | LoopState::Playlist => &icons::REPEAT,
-            LoopState::Track => &icons::REPEAT_ONE,
+            LoopState::Off | LoopState::Playlist => *icons::REPEAT,
+            LoopState::Track => *icons::REPEAT_ONE,
         })
-        .unwrap_or(&icons::REPEAT);
+        .unwrap_or(*icons::REPEAT);
     let toggle_size = {
         let size = iced_m3::widget::button::Size::Small;
         size.with_width(size.height()).with_padding(0.0)
@@ -240,11 +240,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     };
     let buttons = container(
         row![
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SHUFFLE))
                 .size(toggle_size)
-                .label_maybe(None)
                 .icon_font(icons::filled())
-                .icon(&icons::SHUFFLE)
                 .style(iced_m3::widget::button::Style::Outlined)
                 .selected(
                     state
@@ -254,11 +252,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         .unwrap_or_default()
                 )
                 .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleShuffle)),
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SKIP_PREVIOUS))
                 .size(skip_button_size)
-                .label_maybe(None)
                 .icon_font(icons::filled())
-                .icon(&icons::SKIP_PREVIOUS)
                 .style(iced_m3::widget::button::Style::Tonal(
                     iced_m3::theme::Accent::Tertiary
                 ))
@@ -269,11 +265,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         .as_ref()
                         .and_then(|p| p.can_go_previous().then_some(Message::Previous))
                 ),
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(play_button_icon))
                 .size(iced_m3::widget::button::Size::Medium)
-                .label_maybe(None)
                 .icon_font(icons::filled())
-                .icon(play_button_icon)
                 .style(iced_m3::widget::button::Style::Tonal(
                     iced_m3::theme::Accent::Primary
                 ))
@@ -290,11 +284,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         .as_ref()
                         .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying))
                 ),
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SKIP_NEXT))
                 .size(skip_button_size)
-                .label_maybe(None)
                 .icon_font(icons::filled())
-                .icon(&icons::SKIP_NEXT)
                 .style(iced_m3::widget::button::Style::Tonal(
                     iced_m3::theme::Accent::Tertiary
                 ))
@@ -305,11 +297,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         .as_ref()
                         .and_then(|p| p.can_go_next().then_some(Message::Next))
                 ),
-            iced_m3::widget::button(&state.theme)
+            iced_m3::widget::button(&state.theme, Content::Icon(loop_button_icon))
                 .size(toggle_size)
-                .label_maybe(None)
                 .icon_font(icons::filled())
-                .icon(loop_button_icon)
                 .style(iced_m3::widget::button::Style::Outlined)
                 .selected(
                     state

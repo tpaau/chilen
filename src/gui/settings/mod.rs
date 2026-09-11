@@ -1,5 +1,5 @@
 use iced::{Border, Element, Length, Task, color};
-use iced_m3::{style::shadow, theme::ColorScheme};
+use iced_m3::{style::shadow, theme::ColorScheme, widget::button::Content};
 use iced_widget::{center, container, opaque};
 
 use crate::gui::{Chilen, ROUNDING_REGULAR, SPACING_SMALLER};
@@ -17,8 +17,7 @@ pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
 }
 
 pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    let content = iced_m3::widget::button(&state.theme)
-        .label("close")
+    let content = iced_m3::widget::button(&state.theme, Content::Label("Close".into()))
         .on_press(Message::Close);
 
     opaque(
