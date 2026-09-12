@@ -6,7 +6,7 @@ use chilen_backend::music_lib::{
 };
 use iced::{Alignment, Element, Length, padding};
 use iced_core::text::LineHeight;
-use iced_m3::theme::ColorScheme;
+use iced_m3::{style::Elevation, theme::ColorScheme};
 use iced_widget::{center, column, container, mouse_area, row, scrollable, text};
 
 use crate::gui::{
@@ -125,7 +125,7 @@ pub fn view<'a, Message: 'a + Clone>(
                             iced_widget::container::Style::default()
                                 .background(theme.error())
                                 .border(iced::Border::default().rounded(rounding))
-                                .shadow(iced_m3::style::shadow(theme.shadow(), 0.4))
+                                .shadow(iced_m3::style::shadow(theme.shadow(), Elevation::Level2))
                         }),
                     );
                     column![scroll, dialog].spacing(SPACING_SMALL).into()

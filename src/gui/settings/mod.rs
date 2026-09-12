@@ -1,5 +1,9 @@
 use iced::{Border, Element, Length, Task, color};
-use iced_m3::{style::shadow, theme::ColorScheme, widget::button::Content};
+use iced_m3::{
+    style::{Elevation, shadow},
+    theme::ColorScheme,
+    widget::button::Content,
+};
 use iced_widget::{center, container, opaque};
 
 use crate::gui::{Chilen, ROUNDING_REGULAR, SPACING_SMALLER};
@@ -30,7 +34,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     container::Style::default()
                         .background(state.theme.surface())
                         .border(Border::default().rounded(ROUNDING_REGULAR))
-                        .shadow(shadow(state.theme.shadow(), 0.7))
+                        .shadow(shadow(state.theme.shadow(), Elevation::Level3))
                 }),
         )
         .style(|_| container::Style::default().background(color!(0x000000).scale_alpha(0.3)))
