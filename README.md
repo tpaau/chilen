@@ -1,5 +1,11 @@
 <h1 align="center">Chilen</h1>
 
+<div align="center">
+  
+  ![](https://img.shields.io/github/last-commit/tpaau/chilen?&style=for-the-badge&color=FFFFFF&logo=git&logoColor=C9C9C9&labelColor=252525)
+  ![](https://img.shields.io/github/repo-size/tpaau/chilen?&style=for-the-badge&color=FFFFFF&logo=git&logoColor=C9C9C9&labelColor=252525)
+</div>
+
 Fully offline, blazingly fast music player for your library. Built from the
 ground-up in Rust with native support for Linux, macOS and Windows.[^1]
 
