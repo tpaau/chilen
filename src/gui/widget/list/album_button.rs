@@ -164,8 +164,7 @@ where
                     // TODO: Should be more like a button
                     iced_m3::widget::advanced::drop_down_menu(
                         |_| {
-                            icon_filled(*icons::MORE_HORIZ)
-                                .size(icons::SIZE_REGULAR)
+                            icon_filled(*icons::MORE_HORIZ, icons::SIZE_REGULAR)
                                 .color(value.state.theme.on_surface())
                                 .into()
                         },

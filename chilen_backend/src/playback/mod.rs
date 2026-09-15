@@ -857,6 +857,7 @@ pub(crate) fn init(
     )));
     trace!("Player state ready!");
 
+    // TODO: This doesn't seem to default to the sample rate of the audio device?
     // TODO: Allow setting custom sinks
     let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
         Ok(sink) => sink,

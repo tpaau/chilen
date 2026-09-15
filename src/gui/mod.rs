@@ -89,6 +89,7 @@ impl Default for Chilen {
             player_state: None,
             dialog: Dialog::Loading(None),
             loading_state: LoadingState::default(),
+            // TODO: Replace the default material color scheme with a custom one.
             theme: Theme::default(settings.theme_mode()),
             settings: Settings::load(),
             main_view: main_view::State {

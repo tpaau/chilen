@@ -36,11 +36,7 @@ where
         // Not ideal since it won't display an icon for non-opaque covers if the image exists but can't be loaded
         if value.opacity == 1.0 || path_is_none {
             container(stack![
-                center(
-                    icon_filled(value.icon)
-                        .size(value.icon_size)
-                        .color(value.icon_color)
-                ),
+                center(icon_filled(value.icon, value.icon_size).color(value.icon_color)),
                 cover
             ])
             .style(move |_| {

@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
-use iced_widget::{Text, text};
+use iced::Pixels;
+use iced_widget::Text;
 
 #[cfg(unix)]
 pub(super) const FILLED_ICONS_FONT_BYTES: &[u8] =
@@ -75,10 +76,16 @@ pub fn outlined() -> iced::Font {
     }
 }
 
-pub fn icon_filled<'a>(icon: char) -> Text<'a> {
-    text(icon).font(filled())
+pub fn icon_filled<'a, P>(icon: char, size: P) -> Text<'a>
+where
+    P: Into<Pixels> + Copy,
+{
+    iced_m3::widget::icon(icon, size).font(filled())
 }
 
-pub fn icon_outlined<'a>(icon: char) -> Text<'a> {
-    text(icon).font(filled())
+pub fn icon_outlined<'a, P>(icon: char, size: P) -> Text<'a>
+where
+    P: Into<Pixels> + Copy,
+{
+    iced_m3::widget::icon(icon, size).font(outlined())
 }

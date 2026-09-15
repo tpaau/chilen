@@ -40,6 +40,7 @@ fn synced_lyrics<'a, Message: 'a + Clone>(
                         && current_segment
                             .map(|current| current == s)
                             .unwrap_or_default();
+                    // TODO: Maybe it should be user-configurable how lyrics are highlighted here?
                     let color = if current && enhanced_lrc {
                         theme.primary()
                     } else if active {
@@ -111,8 +112,7 @@ pub fn view<'a, Message: 'a + Clone>(
                     let dialog = container(
                         container(
                             row![
-                                icon_outlined(*icons::ERROR)
-                                    .size(icons::SIZE_LARGER)
+                                icon_outlined(*icons::ERROR, icons::SIZE_LARGER)
                                     .color(theme.on_error()),
                                 text(message).size(font::SIZE_SMALL).color(theme.on_error()),
                             ]
