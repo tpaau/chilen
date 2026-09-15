@@ -27,7 +27,7 @@ section!
 
 > [!CAUTION]
 > Only git builds are available at this time. Those builds are meant primarily for development
-> purposes and testing. I do not recommend you actually daily drive Chilen as your music player
+> and testing purposes. I do not recommend you actually daily drive Chilen as your music player
 > until a tagged release is published. It won't do anything destructive, but do expect issues!
 
 ## Fedora
@@ -54,7 +54,7 @@ rpm-stree install chilen-git
 ```bash
 git clone https://github.com/tpaau/chilen-git-src-pkgbuild
 cd chilen-git-src-pkgbuild
-sudo makepkg -si
+makepkg -si
 ```
 
 ## Building from source
