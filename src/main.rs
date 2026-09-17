@@ -2,7 +2,12 @@ mod argparse;
 mod gui;
 pub mod settings;
 use std::{
-    env::home_dir, path::PathBuf, process::exit, sync::mpsc::Receiver, thread, time::Duration,
+    env::home_dir,
+    path::PathBuf,
+    process::exit,
+    sync::{Arc, LazyLock, RwLock, mpsc::Receiver},
+    thread,
+    time::Duration,
 };
 
 use chilen_backend::music_lib::{
@@ -19,6 +24,9 @@ use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
 const APP_NAME: &str = "Chilen";
 #[cfg(feature = "mpris")]
 const APP_ID: &str = "dev.tpaau.Chilen";
+
+static DATA_DIR: LazyLock<Arc<RwLock<Option<PathBuf>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 fn handle_events(receiver: Receiver<chilen_backend::Event>) {
     while !gui::event_sender_initialized() {
@@ -90,6 +98,7 @@ fn main() {
         };
         #[cfg(not(feature = "dev-opts"))]
         let data_dir = data_dir();
+        *DATA_DIR.write().unwrap() = Some(data_dir.clone());
 
         #[cfg(feature = "dev-opts")]
         let cache_dir = match args.cache_dir_override {

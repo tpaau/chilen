@@ -1,42 +1,157 @@
-use iced::{Border, Element, Length, Task, color};
+use iced::{Alignment, Border, Element, Length, Pixels, Task, color};
+use iced_core::text::{IntoFragment, LineHeight::Absolute};
 use iced_m3::{
     style::{Elevation, shadow},
     theme::ColorScheme,
-    widget::button::Content,
+    widget::{
+        OnPress,
+        navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
+    },
 };
-use iced_widget::{center, container, opaque};
+use iced_widget::{center, container, opaque, row, stack, text};
 
-use crate::gui::{Chilen, ROUNDING_REGULAR, SPACING_SMALLER};
+use crate::gui::{
+    Chilen, ROUNDING_REGULAR, SPACING_REGULAR,
+    font::bold_text,
+    icons::{self, CLOSE, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
+};
+
+const MAX_WIDTH: f32 = 1000.0;
+
+#[repr(usize)]
+#[derive(Debug, Default, Clone, Copy)]
+pub enum Screen {
+    #[default]
+    LookAndFeel,
+    Library,
+    Playback,
+    About,
+}
+
+impl Screen {
+    fn label<'a>(&self) -> text::Fragment<'a> {
+        match self {
+            Screen::LookAndFeel => "Look and feel",
+            Screen::Library => "Library",
+            Screen::Playback => "Playback",
+            Screen::About => "About",
+        }
+        .into_fragment()
+    }
+
+    fn icon(&self) -> char {
+        match self {
+            Screen::LookAndFeel => *PALETTE,
+            Screen::Library => *LIBRARY_MUSIC,
+            Screen::Playback => *PLAY_ARROW,
+            Screen::About => *INFO,
+        }
+    }
+
+    fn index(self) -> usize {
+        self as usize
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Close,
+    SwitchScreen(Screen),
+}
+
+#[derive(Default)]
+pub struct State {
+    screen: Screen,
 }
 
 pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
         Message::Close => state.dialog = super::dialog::Dialog::None,
+        Message::SwitchScreen(screen) => state.settings_state.screen = screen,
     }
     Task::none()
 }
 
 pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    let content = iced_m3::widget::button(&state.theme, Content::Label("Close".into()))
-        .on_press(Message::Close);
+    let rounding = ROUNDING_REGULAR;
+
+    let close_button = iced_m3::widget::fab(
+        &state.theme,
+        iced_m3::widget::fab::Content::Extended {
+            icon: CLOSE.into_fragment(),
+            label: "Close".into(),
+        },
+        OnPress::Direct(Message::Close),
+    );
+
+    let items = [
+        Screen::LookAndFeel,
+        Screen::Library,
+        Screen::Playback,
+        Screen::About,
+    ]
+    .into_iter()
+    .map(|screen| Item {
+        icon: iced_m3::widget::Icon {
+            icon: screen.icon().into_fragment(),
+            badge: None,
+        },
+        label: screen.label(),
+        on_press: OnPress::Direct(Message::SwitchScreen(screen)),
+    })
+    .collect();
+
+    let active_index = state.settings_state.screen.index();
+    let navrail = iced_m3::widget::navrail(&state.theme, items)
+        .status(navrail::Status::Expanded {
+            width: Pixels(CONTAINER_EXPANDED_MIN_WIDTH),
+        })
+        .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
+        .icon_font_active(icons::filled())
+        .icon_font_inactive(icons::outlined())
+        .active(active_index);
+
+    let title = bold_text(state.settings_state.screen.label())
+        .size(32.0)
+        .line_height(Absolute(Pixels(32.0)));
+    let content_padding = SPACING_REGULAR;
+    let content = row![
+        container(navrail).style(move |_| container::Style::default()
+            .background(state.theme.surface_container())
+            .border(Border::default().rounded(rounding))),
+        container(
+            stack![
+                title,
+                container(close_button)
+                    .padding(iced_m3::widget::fab::EDGE_SPACING - content_padding)
+                    .align_right(Length::Fill)
+                    .align_bottom(Length::Fill)
+            ]
+            .width(Length::Fill)
+            .height(Length::Fill)
+        )
+        .style(move |_| {
+            container::Style::default()
+                .background(state.theme.surface())
+                .border(Border::default().rounded(rounding))
+        })
+        .padding(content_padding)
+    ];
 
     opaque(
         container(
-            container(center(content))
+            center(content)
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .padding(SPACING_SMALLER)
-                .style(|_| {
+                .max_width(MAX_WIDTH)
+                .style(move |_| {
                     container::Style::default()
-                        .background(state.theme.surface())
-                        .border(Border::default().rounded(ROUNDING_REGULAR))
+                        .background(state.theme.surface_container())
+                        .border(Border::default().rounded(rounding))
                         .shadow(shadow(state.theme.shadow(), Elevation::Level3))
                 }),
         )
+        .align_x(Alignment::Center)
         .style(|_| container::Style::default().background(color!(0x000000).scale_alpha(0.3)))
         .padding(64),
     )

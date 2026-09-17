@@ -79,6 +79,7 @@ pub struct Chilen {
     main_view: main_view::State,
     playlist_view: playlist_view::State,
     playback_view: playback_view::State,
+    settings_state: settings::State,
 }
 
 impl Default for Chilen {
@@ -90,7 +91,7 @@ impl Default for Chilen {
             dialog: Dialog::Loading(None),
             loading_state: LoadingState::default(),
             // TODO: Replace the default material color scheme with a custom one.
-            theme: Theme::default(settings.theme_mode()),
+            theme: Theme::default(settings.theme_mode),
             settings: Settings::load(),
             main_view: main_view::State {
                 nav_stack: main_view::NavStack::default(),
@@ -98,6 +99,7 @@ impl Default for Chilen {
             },
             playlist_view: playlist_view::State::default(),
             playback_view: playback_view::State::default(),
+            settings_state: settings::State::default(),
         }
     }
 }

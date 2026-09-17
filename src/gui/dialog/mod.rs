@@ -219,6 +219,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
+        // TODO: Settings should be displayed under the dialog
         Dialog::Settings => Some(settings::view(state).map(Message::Settings)),
         Dialog::AddTrackToPlaylist(track) => {
             Some(add_track_to_playlist::view(state, track.clone()))
