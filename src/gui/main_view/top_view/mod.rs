@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::{Album, Artist, Genre, Playlist, Track};
 use iced::{Element, Length, Task};
+use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::button::Content};
 use iced_widget::{container, responsive, row, scrollable};
 use log::error;
@@ -106,7 +107,7 @@ fn horizontal_buttons<'a>(
             iced_m3::widget::button::Size::Medium
         };
         row![
-            iced_m3::widget::button(theme, Content::Icon(*icons::ARROW_BACK))
+            iced_m3::widget::button(theme, Content::Icon(icons::ARROW_BACK.into_fragment()))
                 .size(button_size)
                 .style(iced_m3::widget::button::Style::Tonal(
                     iced_m3::theme::Accent::Tertiary,
@@ -116,7 +117,7 @@ fn horizontal_buttons<'a>(
             iced_m3::widget::button(
                 theme,
                 Content::Full {
-                    icon: *icons::PLAY_ARROW,
+                    icon: icons::PLAY_ARROW.into_fragment(),
                     label: "Play".into()
                 }
             )
@@ -129,7 +130,7 @@ fn horizontal_buttons<'a>(
             iced_m3::widget::button(
                 theme,
                 Content::Full {
-                    icon: *icons::SHUFFLE,
+                    icon: icons::SHUFFLE.into_fragment(),
                     label: "Shuffle".into()
                 }
             )
@@ -139,7 +140,7 @@ fn horizontal_buttons<'a>(
                 iced_m3::theme::Accent::Primary
             ))
             .on_press_maybe(message_shuffle.clone()),
-            iced_m3::widget::button(theme, Content::Icon(*icons::MORE_HORIZ))
+            iced_m3::widget::button(theme, Content::Icon(icons::MORE_HORIZ.into_fragment()))
                 .size(button_size)
                 .icon_font(icons::filled())
                 .style(iced_m3::widget::button::Style::Outlined)

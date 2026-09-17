@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use chilen_backend::playback::LoopState;
 use iced::{Alignment, Element, Length};
+use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::button::Content};
 use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
@@ -240,7 +241,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     };
     let buttons = container(
         row![
-            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SHUFFLE))
+            iced_m3::widget::button(&state.theme, Content::Icon(icons::SHUFFLE.into_fragment()))
                 .size(toggle_size)
                 .icon_font(icons::filled())
                 .style(iced_m3::widget::button::Style::Outlined)
@@ -252,63 +253,75 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         .unwrap_or_default()
                 )
                 .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleShuffle)),
-            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SKIP_PREVIOUS))
-                .size(skip_button_size)
-                .icon_font(icons::filled())
-                .style(iced_m3::widget::button::Style::Tonal(
-                    iced_m3::theme::Accent::Tertiary
-                ))
-                .corner_style(iced_m3::widget::button::CornerStyle::Square)
-                .on_press_maybe(
-                    state
-                        .player_state
-                        .as_ref()
-                        .and_then(|p| p.can_go_previous().then_some(Message::Previous))
-                ),
-            iced_m3::widget::button(&state.theme, Content::Icon(play_button_icon))
-                .size(iced_m3::widget::button::Size::Medium)
-                .icon_font(icons::filled())
-                .style(iced_m3::widget::button::Style::Tonal(
-                    iced_m3::theme::Accent::Primary
-                ))
-                .selected(
-                    state
-                        .player_state
-                        .as_ref()
-                        .map(|p| p.is_playing())
-                        .unwrap_or_default()
-                )
-                .on_press_maybe(
-                    state
-                        .player_state
-                        .as_ref()
-                        .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying))
-                ),
-            iced_m3::widget::button(&state.theme, Content::Icon(*icons::SKIP_NEXT))
-                .size(skip_button_size)
-                .icon_font(icons::filled())
-                .style(iced_m3::widget::button::Style::Tonal(
-                    iced_m3::theme::Accent::Tertiary
-                ))
-                .corner_style(iced_m3::widget::button::CornerStyle::Square)
-                .on_press_maybe(
-                    state
-                        .player_state
-                        .as_ref()
-                        .and_then(|p| p.can_go_next().then_some(Message::Next))
-                ),
-            iced_m3::widget::button(&state.theme, Content::Icon(loop_button_icon))
-                .size(toggle_size)
-                .icon_font(icons::filled())
-                .style(iced_m3::widget::button::Style::Outlined)
-                .selected(
-                    state
-                        .player_state
-                        .as_ref()
-                        .map(|p| p.loop_state != LoopState::Off)
-                        .unwrap_or_default()
-                )
-                .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleLooping)),
+            iced_m3::widget::button(
+                &state.theme,
+                Content::Icon(icons::SKIP_PREVIOUS.into_fragment())
+            )
+            .size(skip_button_size)
+            .icon_font(icons::filled())
+            .style(iced_m3::widget::button::Style::Tonal(
+                iced_m3::theme::Accent::Tertiary
+            ))
+            .corner_style(iced_m3::widget::button::CornerStyle::Square)
+            .on_press_maybe(
+                state
+                    .player_state
+                    .as_ref()
+                    .and_then(|p| p.can_go_previous().then_some(Message::Previous))
+            ),
+            iced_m3::widget::button(
+                &state.theme,
+                Content::Icon(play_button_icon.into_fragment())
+            )
+            .size(iced_m3::widget::button::Size::Medium)
+            .icon_font(icons::filled())
+            .style(iced_m3::widget::button::Style::Tonal(
+                iced_m3::theme::Accent::Primary
+            ))
+            .selected(
+                state
+                    .player_state
+                    .as_ref()
+                    .map(|p| p.is_playing())
+                    .unwrap_or_default()
+            )
+            .on_press_maybe(
+                state
+                    .player_state
+                    .as_ref()
+                    .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying))
+            ),
+            iced_m3::widget::button(
+                &state.theme,
+                Content::Icon(icons::SKIP_NEXT.into_fragment())
+            )
+            .size(skip_button_size)
+            .icon_font(icons::filled())
+            .style(iced_m3::widget::button::Style::Tonal(
+                iced_m3::theme::Accent::Tertiary
+            ))
+            .corner_style(iced_m3::widget::button::CornerStyle::Square)
+            .on_press_maybe(
+                state
+                    .player_state
+                    .as_ref()
+                    .and_then(|p| p.can_go_next().then_some(Message::Next))
+            ),
+            iced_m3::widget::button(
+                &state.theme,
+                Content::Icon(loop_button_icon.into_fragment())
+            )
+            .size(toggle_size)
+            .icon_font(icons::filled())
+            .style(iced_m3::widget::button::Style::Outlined)
+            .selected(
+                state
+                    .player_state
+                    .as_ref()
+                    .map(|p| p.loop_state != LoopState::Off)
+                    .unwrap_or_default()
+            )
+            .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleLooping)),
         ]
         .align_y(Alignment::Center)
         .spacing(SPACING_SMALLER),
