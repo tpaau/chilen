@@ -6,7 +6,7 @@ use iced::{
     widget::{button, column, container, row, space, text},
 };
 use iced_m3::{theme::ColorScheme, widget::vertical_menu};
-use iced_widget::sensor;
+use iced_widget::{hover, sensor};
 
 use crate::gui::{
     Chilen, THUMBNAIL_SIZE,
@@ -14,6 +14,7 @@ use crate::gui::{
     icons::{self, icon_filled},
     playlist_view,
     widget::{
+        self,
         cover_image::CoverImage,
         list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
     },
@@ -159,45 +160,48 @@ pub fn playlist_button<'a>(
             height: THUMBNAIL_SIZE.into(),
         };
 
-        button(
-            row![
-                cover,
-                container(column![
-                    title,
-                    text({
-                        if playlist.tracks.is_empty() {
-                            "Empty".to_string()
-                        } else {
-                            format!("{} tracks", playlist.tracks.len())
-                        }
-                    })
-                    .size(SIZE_SMALL)
-                    .wrapping(text::Wrapping::None)
-                    .color(state.theme.on_surface_variant()),
-                ])
-                .width(Length::Fill)
-                .clip(true)
-                .center_y(Length::Fill),
-                container(
-                    // TODO: Should be more like a button
-                    iced_m3::widget::advanced::drop_down_menu(
-                        |_| {
-                            icon_filled(*icons::MORE_HORIZ, icons::SIZE_REGULAR)
-                                .color(state.theme.on_surface())
-                                .into()
-                        },
-                        Some(menu),
-                        iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
-                    ),
-                )
-                .center_y(Length::Fill),
-            ]
-            .spacing(BUTTON_SPACING),
-        )
-        .padding(Padding::new(BUTTON_PADDING))
-        .style(|_, status| button_style(status, state.theme.on_surface()))
-        .on_press_with(|| playlist_view::Message::OpenPlaylist(playlist.clone()))
-        .into()
+        let content = row![
+            cover,
+            container(column![
+                title,
+                text({
+                    if playlist.tracks.is_empty() {
+                        "Empty".to_string()
+                    } else {
+                        format!("{} tracks", playlist.tracks.len())
+                    }
+                })
+                .size(SIZE_SMALL)
+                .wrapping(text::Wrapping::None)
+                .color(state.theme.on_surface_variant()),
+            ])
+            .width(Length::Fill)
+            .clip(true)
+            .center_y(Length::Fill),
+            space().width(widget::list::ICON_SIZE),
+        ]
+        .spacing(BUTTON_SPACING);
+
+        let button = button(content)
+            .padding(Padding::new(BUTTON_PADDING))
+            .style(|_, status| button_style(status, state.theme.on_surface()))
+            .on_press_with(|| playlist_view::Message::OpenPlaylist(playlist.clone()));
+
+        // TODO: Should be more like a button
+        let menu = container(iced_m3::widget::advanced::drop_down_menu(
+            |_| {
+                icon_filled(*icons::MORE_HORIZ, widget::list::ICON_SIZE)
+                    .color(state.theme.on_surface())
+                    .into()
+            },
+            Some(menu),
+            iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
+        ))
+        .center_y(Length::Fill)
+        .align_right(Length::Fill)
+        .padding(BUTTON_PADDING);
+
+        hover(button, menu)
     } else {
         space().width(Length::Fill).height(BUTTON_HEIGHT).into()
     };

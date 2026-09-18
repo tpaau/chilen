@@ -9,13 +9,14 @@ use iced_m3::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
 };
 
-use crate::gui::{ROUNDING_LARGE, SPACING_SMALLER};
+use crate::gui::{ROUNDING_LARGE, SPACING_SMALLER, icons};
 
 pub const THUMBNAIL_SIZE: f32 = 64.0;
 pub const BUTTON_ROUNDING: f32 = ROUNDING_LARGE;
 pub const BUTTON_PADDING: f32 = SPACING_SMALLER;
 pub const BUTTON_HEIGHT: f32 = THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING;
 pub const BUTTON_SPACING: f32 = SPACING_SMALLER;
+pub const ICON_SIZE: f32 = icons::SIZE_REGULAR;
 
 pub fn button_style(
     status: iced_widget::button::Status,

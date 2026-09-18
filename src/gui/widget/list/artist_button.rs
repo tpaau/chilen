@@ -3,7 +3,7 @@ use std::sync::Arc;
 use chilen_backend::music_lib::Artist;
 use iced::{Alignment, Element, Length};
 use iced_m3::{theme::ColorScheme, widget::vertical_menu};
-use iced_widget::{button, column, container, row, text};
+use iced_widget::{button, column, container, hover, row, space, text};
 
 use crate::{
     THUMBNAIL_SIZE,
@@ -11,6 +11,7 @@ use crate::{
         SPACING_SMALL, SPACING_SMALLER, font,
         icons::{self, icon_filled},
         widget::{
+            self,
             cover_image::CoverImage,
             list::{BUTTON_PADDING, button_style},
             text_spacer::text_spacer,
@@ -105,54 +106,57 @@ where
             height: THUMBNAIL_SIZE.into(),
         };
 
-        button(
-            row![
-                cover,
-                container(column![
-                    title,
-                    row![
-                        text(match value.artist.albums.len() {
-                            0 => "No albums".to_string(),
-                            1 => "1 album".to_string(),
-                            _ => format!("{} albums", value.artist.albums.len()),
-                        })
-                        .size(font::SIZE_SMALL)
-                        .color(value.theme.on_surface_variant())
-                        .wrapping(text::Wrapping::None),
-                        text_spacer(value.theme.on_surface_variant(), font::SIZE_SMALL),
-                        text(match value.artist.tracks.len() {
-                            1 => "1 track".to_string(),
-                            _ => format!("{} tracks", value.artist.tracks.len()),
-                        })
-                        .size(font::SIZE_SMALL)
-                        .color(value.theme.on_surface_variant())
-                        .wrapping(text::Wrapping::None),
-                    ]
-                    .align_y(Alignment::Center)
-                    .spacing(SPACING_SMALLER),
-                ])
-                .width(Length::Fill)
-                .clip(true)
-                .center_y(Length::Fill),
-                container(
-                    // TODO: Should be more like a button
-                    iced_m3::widget::advanced::drop_down_menu(
-                        |_| {
-                            icon_filled(*icons::MORE_HORIZ, icons::SIZE_REGULAR)
-                                .color(value.theme.on_surface())
-                                .into()
-                        },
-                        Some(menu),
-                        iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
-                    ),
-                )
-                .center_y(Length::Fill),
-            ]
-            .spacing(SPACING_SMALL),
-        )
-        .padding(BUTTON_PADDING)
-        .style(|_, status| button_style(status, value.theme.on_surface_variant()))
-        .on_press(value.press)
-        .into()
+        let content = row![
+            cover,
+            container(column![
+                title,
+                row![
+                    text(match value.artist.albums.len() {
+                        0 => "No albums".to_string(),
+                        1 => "1 album".to_string(),
+                        _ => format!("{} albums", value.artist.albums.len()),
+                    })
+                    .size(font::SIZE_SMALL)
+                    .color(value.theme.on_surface_variant())
+                    .wrapping(text::Wrapping::None),
+                    text_spacer(value.theme.on_surface_variant(), font::SIZE_SMALL),
+                    text(match value.artist.tracks.len() {
+                        1 => "1 track".to_string(),
+                        _ => format!("{} tracks", value.artist.tracks.len()),
+                    })
+                    .size(font::SIZE_SMALL)
+                    .color(value.theme.on_surface_variant())
+                    .wrapping(text::Wrapping::None),
+                ]
+                .align_y(Alignment::Center)
+                .spacing(SPACING_SMALLER),
+            ])
+            .width(Length::Fill)
+            .clip(true)
+            .center_y(Length::Fill),
+            space().width(widget::list::ICON_SIZE),
+        ]
+        .spacing(SPACING_SMALL);
+
+        let button = button(content)
+            .padding(BUTTON_PADDING)
+            .style(|_, status| button_style(status, value.theme.on_surface_variant()))
+            .on_press(value.press);
+
+        // TODO: Should be more like a button
+        let menu = container(iced_m3::widget::advanced::drop_down_menu(
+            |_| {
+                icon_filled(*icons::MORE_HORIZ, widget::list::ICON_SIZE)
+                    .color(value.theme.on_surface())
+                    .into()
+            },
+            Some(menu),
+            iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
+        ))
+        .center_y(Length::Fill)
+        .align_right(Length::Fill)
+        .padding(BUTTON_PADDING);
+
+        hover(button, menu)
     }
 }

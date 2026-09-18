@@ -3,13 +3,14 @@ use std::sync::Arc;
 use chilen_backend::music_lib::Track;
 use iced::Length;
 use iced_m3::{theme::ColorScheme, widget::vertical_menu};
-use iced_widget::{button, column, container, row, text};
+use iced_widget::{button, column, container, hover, row, space, text};
 
 use crate::gui::{
     Chilen, SPACING_SMALL, font,
     formatter::format_track_duration,
     icons::{self, icon_filled},
     widget::{
+        self,
         cover_image::CoverImage,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
     },
@@ -183,38 +184,41 @@ where
             height: THUMBNAIL_SIZE.into(),
         };
 
-        button(
-            row![
-                cover,
-                container(column![
-                    title,
-                    text(info)
-                        .size(font::SIZE_SMALL)
-                        .color(value.state.theme.on_surface_variant().scale_alpha(opacity))
-                        .wrapping(text::Wrapping::None),
-                ])
-                .width(Length::Fill)
-                .clip(true)
-                .center_y(Length::Fill),
-                container(
-                    // TODO: Should be more like a button
-                    iced_m3::widget::advanced::drop_down_menu(
-                        move |_| {
-                            icon_filled(*icons::MORE_HORIZ, icons::SIZE_REGULAR)
-                                .color(value.state.theme.on_surface())
-                                .into()
-                        },
-                        Some(menu),
-                        iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
-                    ),
-                )
-                .center_y(Length::Fill),
-            ]
-            .spacing(SPACING_SMALL),
-        )
-        .on_press(value.messages.press)
-        .padding(BUTTON_PADDING)
-        .style(|_, status| button_style(status, value.state.theme.on_surface_variant()))
-        .into()
+        let content = row![
+            cover,
+            container(column![
+                title,
+                text(info)
+                    .size(font::SIZE_SMALL)
+                    .color(value.state.theme.on_surface_variant().scale_alpha(opacity))
+                    .wrapping(text::Wrapping::None),
+            ])
+            .width(Length::Fill)
+            .clip(true)
+            .center_y(Length::Fill),
+            space().width(widget::list::ICON_SIZE),
+        ]
+        .spacing(SPACING_SMALL);
+
+        let button = button(content)
+            .on_press(value.messages.press)
+            .padding(BUTTON_PADDING)
+            .style(|_, status| button_style(status, value.state.theme.on_surface_variant()));
+
+        // TODO: Should be more like a button
+        let menu = container(iced_m3::widget::advanced::drop_down_menu(
+            move |_| {
+                icon_filled(*icons::MORE_HORIZ, widget::list::ICON_SIZE)
+                    .color(value.state.theme.on_surface())
+                    .into()
+            },
+            Some(menu),
+            iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
+        ))
+        .center_y(Length::Fill)
+        .align_right(Length::Fill)
+        .padding(BUTTON_PADDING);
+
+        hover(button, menu)
     }
 }
