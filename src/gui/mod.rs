@@ -1,5 +1,5 @@
 mod common_actions;
-mod dialog;
+pub mod dialog;
 mod font;
 mod formatter;
 mod icons;
@@ -9,6 +9,7 @@ mod playlist_view;
 mod settings;
 #[cfg(test)]
 mod tests;
+pub mod themes;
 mod widget;
 
 use std::sync::{Arc, LazyLock, RwLock};
@@ -72,10 +73,10 @@ pub enum LoadingState {
 pub struct Chilen {
     library: Option<Box<MusicLibrary>>,
     player_state: Option<PlayerState>,
-    dialog: Dialog,
+    pub dialog: Dialog,
     loading_state: LoadingState,
     theme: Theme,
-    settings: Settings,
+    pub settings: Settings,
     main_view: main_view::State,
     playlist_view: playlist_view::State,
     playback_view: playback_view::State,

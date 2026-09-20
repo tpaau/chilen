@@ -3,7 +3,7 @@ use std::sync::Arc;
 use chilen_backend::music_lib::Artist;
 use iced::{Alignment, Border, Color, Length, Padding};
 use iced_m3::{
-    DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
+    style::{DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY},
     theme::ColorScheme,
 };
 use iced_widget::{Button, button, row};

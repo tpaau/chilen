@@ -5,7 +5,7 @@ pub mod playlist_button;
 pub mod track_button;
 
 use iced::{Border, Color};
-use iced_m3::{
+use iced_m3::style::{
     DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
 };
 

@@ -14,7 +14,8 @@ dirs = "6.0.0"
 iced = { version = "0.14.0", features = [ "advanced", "image" ] }
 iced_widget = { version = "0.14.2" }
 chilen_backend = { path = "chilen_backend" }
-iced_m3 = { git = "https://github.com/tpaau/iced_m3", features = [ "advanced", "pub-internal-const" ] }
+chilen_widget = { path = "chilen_widget" }
+iced_m3 = { path = "../iced_m3", features = [ "advanced", "pub-internal-const" ] }
 rfd = "0.17.2"
 iced_core = "0.14.0"
 icu = { version = "2.2.0", default-features = false }
@@ -38,5 +39,5 @@ macos = [ "cjk_fonts" ]
 
 [workspace]
 members = [
-  "chilen_backend",
+  "chilen_backend", "chilen_widget",
 ]

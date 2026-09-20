@@ -1,7 +1,10 @@
 use std::{fs::File, io::Write, path::PathBuf, sync::LazyLock};
 
 use iced_m3::theme::Mode;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
+
+use crate::gui::{Chilen, dialog::Dialog, themes::THEMES};
 
 static SETTINGS_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut data_dir = crate::DATA_DIR
@@ -17,6 +20,7 @@ static SETTINGS_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 
 #[derive(Serialize, Deserialize)]
 struct StoredSettings {
+    theme_name: String,
     theme_dark_mode: bool,
     value_separator: String,
     show_lyrics_errors: bool,
@@ -29,6 +33,7 @@ impl From<Settings> for StoredSettings {
             Mode::Dark => true,
         };
         Self {
+            theme_name: value.theme_name,
             theme_dark_mode,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
@@ -36,13 +41,25 @@ impl From<Settings> for StoredSettings {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Settings {
+    pub theme_name: String,
     // TODO: Get dark mode preference from the host
     pub theme_mode: Mode,
     pub value_separator: String,
     /// Whether Chilen should display errors when it detects lyrics are synchronized but malformed.
     pub show_lyrics_errors: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            theme_name: THEMES[0].name.to_string(),
+            theme_mode: Mode::default(),
+            value_separator: ", ".to_string(),
+            show_lyrics_errors: true,
+        }
+    }
 }
 
 impl From<StoredSettings> for Settings {
@@ -52,6 +69,7 @@ impl From<StoredSettings> for Settings {
             false => Mode::Light,
         };
         Self {
+            theme_name: value.theme_name,
             theme_mode,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
@@ -60,7 +78,7 @@ impl From<StoredSettings> for Settings {
 }
 
 impl Settings {
-    pub fn save(self) -> Result<(), String> {
+    fn save(self) -> Result<(), String> {
         let settings: StoredSettings = self.into();
         let data = match serde_json::to_string_pretty(&settings) {
             Ok(data) => data,
@@ -81,14 +99,19 @@ impl Settings {
 
     pub fn load() -> Self {
         // TODO: Actually load the settings from here
-        Self {
-            theme_mode: Mode::Dark,
-            value_separator: ", ".to_string(),
-            show_lyrics_errors: true,
-        }
+        Self::default()
     }
 
     pub fn set_theme_mode(&mut self, mode: Mode) {
         self.theme_mode = mode;
+    }
+}
+
+pub fn save(state: &mut Chilen) {
+    info!("Saving settings state to disk");
+    if let Err(e) = state.settings.clone().save() {
+        let msg = format!("Failed to save settings to disk: {e}");
+        error!("{}", msg.clone());
+        state.dialog = Dialog::Error(msg)
     }
 }

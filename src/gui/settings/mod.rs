@@ -1,3 +1,8 @@
+mod about;
+mod library;
+mod look_and_feel;
+mod playback;
+
 use iced::{Alignment, Border, Element, Length, Pixels, Task, color};
 use iced_core::text::{IntoFragment, LineHeight::Absolute};
 use iced_m3::{
@@ -8,7 +13,7 @@ use iced_m3::{
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
     },
 };
-use iced_widget::{center, container, opaque, row, stack, text};
+use iced_widget::{center, column, container, opaque, row, stack, text};
 
 use crate::gui::{
     Chilen, ROUNDING_REGULAR, SPACING_REGULAR,
@@ -51,12 +56,22 @@ impl Screen {
     fn index(self) -> usize {
         self as usize
     }
+
+    fn view<'a>(&self, state: &'a Chilen) -> Element<'a, Message> {
+        match self {
+            Screen::LookAndFeel => look_and_feel::view(state).map(Message::LookAndFeel),
+            Screen::Library => library::view(state),
+            Screen::Playback => playback::view(state),
+            Screen::About => about::view(state),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Message {
     Close,
     SwitchScreen(Screen),
+    LookAndFeel(look_and_feel::Message),
 }
 
 #[derive(Default)]
@@ -68,6 +83,9 @@ pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
         Message::Close => state.dialog = super::dialog::Dialog::None,
         Message::SwitchScreen(screen) => state.settings_state.screen = screen,
+        Message::LookAndFeel(message) => {
+            return look_and_feel::update(state, message).map(Message::LookAndFeel);
+        }
     }
     Task::none()
 }
@@ -92,7 +110,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     ]
     .into_iter()
     .map(|screen| Item {
-        icon: iced_m3::widget::Icon {
+        icon: iced_m3::widget::BadgeIcon {
             icon: screen.icon().into_fragment(),
             badge: None,
         },
@@ -115,13 +133,15 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         .size(32.0)
         .line_height(Absolute(Pixels(32.0)));
     let content_padding = SPACING_REGULAR;
+    let settings_page =
+        column![title, state.settings_state.screen.view(state)].spacing(SPACING_REGULAR);
     let content = row![
         container(navrail).style(move |_| container::Style::default()
             .background(state.theme.surface_container())
             .border(Border::default().rounded(rounding))),
         container(
             stack![
-                title,
+                settings_page,
                 container(close_button)
                     .padding(iced_m3::widget::fab::EDGE_SPACING - content_padding)
                     .align_right(Length::Fill)
