@@ -1,11 +1,11 @@
 doc-no-all-features:
-	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend
+	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend -p chilen_widget
 
 doc:
-	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend --all-features
+	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend -p chilen_widget --all-features
 
 open-doc:
-	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend --all-features --open
+	RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --no-deps -p chilen -p chilen_backend -p chilen_widget --all-features --open
 
 test:
 	cargo test --workspace
@@ -19,7 +19,7 @@ check:
 	cargo deny check
 
 loc:
-	cloc src/ chilen_backend/src/
+	cloc src/ chilen_backend/src/ chilen_widget/src/
 
 clean-cache:
 	rm -rf ~/.cache/chilen/
