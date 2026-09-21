@@ -114,6 +114,7 @@ static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>>> =
 const SPACING_SMALLER: f32 = 8.0;
 const SPACING_SMALL: f32 = 12.0;
 const SPACING_REGULAR: f32 = 16.0;
+const _SPACING_LARGE: f32 = 20.0;
 
 const ROUNDING_SMALL: f32 = 14.0;
 const ROUNDING_REGULAR: f32 = 14.0;

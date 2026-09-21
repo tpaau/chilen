@@ -1,8 +1,11 @@
 use chilen_widget::theme_preview::ThemePreview;
 use iced::{Element, Length, Task};
 use iced_m3::{
-    theme::{ColorScheme, Mode},
-    widget::card,
+    theme::{
+        ColorScheme,
+        Mode::{self},
+    },
+    widget::card::{self, MAX_CARD_BETWEEN_PADDING},
 };
 use iced_widget::{column, mouse_area, row};
 
@@ -11,6 +14,7 @@ use crate::{
         Chilen, SPACING_REGULAR, SPACING_SMALL,
         font::{self, bold_text},
         themes::THEMES,
+        widget::theme_mode_preview::ThemeModePreview,
     },
     settings,
 };
@@ -28,13 +32,13 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             iced_m3::theme::Mode::Dark => ThemePreview {
                 color_top: t.dark.primary,
                 color_left: t.dark.primary_container,
-                color_right: t.dark.surface_container,
+                color_right: t.dark.surface,
                 size: preview_size,
             },
             iced_m3::theme::Mode::Light => ThemePreview {
                 color_top: t.light.primary,
                 color_left: t.light.primary_container,
-                color_right: t.light.surface_container,
+                color_right: t.light.surface,
                 size: preview_size,
             },
         };
@@ -45,7 +49,23 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .into()
     });
 
-    let themes = card(
+    let modes = row![
+        ThemeModePreview {
+            theme: &state.theme.dark,
+            label: "Dark",
+            icon: state.theme.mode == Mode::Dark,
+            on_press: iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Dark))
+        },
+        ThemeModePreview {
+            theme: &state.theme.light,
+            label: "Light",
+            icon: state.theme.mode == Mode::Light,
+            on_press: iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Light))
+        }
+    ]
+    .spacing(MAX_CARD_BETWEEN_PADDING);
+
+    let themes = iced_m3::widget::card(
         card::Style::elevated(&state.theme),
         column![
             bold_text("Palette")
@@ -57,7 +77,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     )
     .width(Length::Fill);
 
-    column![themes].spacing(SPACING_REGULAR).into()
+    column![themes, modes].spacing(SPACING_REGULAR).into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
