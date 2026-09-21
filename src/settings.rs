@@ -22,6 +22,8 @@ static SETTINGS_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
 struct StoredSettings {
     theme_name: String,
     theme_dark_mode: bool,
+    theme_auto_mode: bool,
+    pure_black_theme: bool,
     value_separator: String,
     show_lyrics_errors: bool,
 }
@@ -30,11 +32,13 @@ impl From<Settings> for StoredSettings {
     fn from(value: Settings) -> Self {
         let theme_dark_mode = match value.theme_mode {
             Mode::Light => false,
-            Mode::Dark => true,
+            Mode::Dark | Mode::Black => true,
         };
         Self {
             theme_name: value.theme_name,
             theme_dark_mode,
+            theme_auto_mode: value.theme_auto_mode,
+            pure_black_theme: value.pure_black_theme,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }
@@ -44,8 +48,9 @@ impl From<Settings> for StoredSettings {
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub theme_name: String,
-    // TODO: Get dark mode preference from the host
     pub theme_mode: Mode,
+    pub theme_auto_mode: bool,
+    pub pure_black_theme: bool,
     pub value_separator: String,
     /// Whether Chilen should display errors when it detects lyrics are synchronized but malformed.
     pub show_lyrics_errors: bool,
@@ -55,7 +60,10 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme_name: THEMES[0].name.to_string(),
+            // TODO: Get dark mode preference from the host
             theme_mode: Mode::default(),
+            theme_auto_mode: true,
+            pure_black_theme: false,
             value_separator: ", ".to_string(),
             show_lyrics_errors: true,
         }
@@ -71,6 +79,8 @@ impl From<StoredSettings> for Settings {
         Self {
             theme_name: value.theme_name,
             theme_mode,
+            theme_auto_mode: value.theme_auto_mode,
+            pure_black_theme: value.pure_black_theme,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }

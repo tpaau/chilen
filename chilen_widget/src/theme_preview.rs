@@ -39,60 +39,57 @@ where
         _style: &iced::advanced::renderer::Style,
         layout: iced::advanced::Layout<'_>,
         _cursor: iced::advanced::mouse::Cursor,
-        _viewport: &iced::Rectangle,
+        viewport: &iced::Rectangle,
     ) {
         let bounds = layout.bounds();
 
-        let clip = Rectangle {
-            x: bounds.x,
-            y: bounds.y,
-            width: bounds.width,
-            height: bounds.height / 2.0,
+        let draw_part = |renderer: &mut Renderer, clip: iced::Rectangle, color: Color| {
+            if let Some(clip) = clip.intersection(viewport) {
+                renderer.with_layer(clip, |renderer| {
+                    renderer.fill_quad(
+                        Quad {
+                            bounds,
+                            border: Border::default().rounded(f32::MAX),
+                            ..Default::default()
+                        },
+                        color,
+                    );
+                });
+            }
         };
-        renderer.with_layer(clip, |renderer| {
-            renderer.fill_quad(
-                Quad {
-                    bounds,
-                    border: Border::default().rounded(f32::MAX),
-                    ..Default::default()
-                },
-                self.color_top,
-            );
-        });
 
-        let clip = Rectangle {
-            x: bounds.x,
-            y: bounds.y + bounds.height / 2.0,
-            width: bounds.width / 2.0,
-            height: bounds.height / 2.0,
-        };
-        renderer.with_layer(clip, |renderer| {
-            renderer.fill_quad(
-                Quad {
-                    bounds,
-                    border: Border::default().rounded(f32::MAX),
-                    ..Default::default()
-                },
-                self.color_left,
-            );
-        });
+        draw_part(
+            renderer,
+            Rectangle {
+                x: bounds.x,
+                y: bounds.y,
+                width: bounds.width,
+                height: bounds.height / 2.0,
+            },
+            self.color_top,
+        );
 
-        let clip = Rectangle {
-            x: bounds.x + bounds.width / 2.0,
-            y: bounds.y + bounds.height / 2.0,
-            width: bounds.width / 2.0,
-            height: bounds.height / 2.0,
-        };
-        renderer.with_layer(clip, |renderer| {
-            renderer.fill_quad(
-                Quad {
-                    bounds,
-                    border: Border::default().rounded(f32::MAX),
-                    ..Default::default()
-                },
-                self.color_right,
-            );
-        });
+        draw_part(
+            renderer,
+            Rectangle {
+                x: bounds.x,
+                y: bounds.y + bounds.height / 2.0,
+                width: bounds.width / 2.0,
+                height: bounds.height / 2.0,
+            },
+            self.color_left,
+        );
+
+        draw_part(
+            renderer,
+            Rectangle {
+                x: bounds.x + bounds.width / 2.0,
+                y: bounds.y + bounds.height / 2.0,
+                width: bounds.width / 2.0,
+                height: bounds.height / 2.0,
+            },
+            self.color_right,
+        );
     }
 }
 

@@ -1,13 +1,20 @@
 use chilen_widget::theme_preview::ThemePreview;
-use iced::{Element, Length, Task};
+use iced::{Alignment, Element, Length, Task};
 use iced_m3::{
     theme::{
         ColorScheme,
         Mode::{self},
     },
-    widget::card::{self, MAX_CARD_BETWEEN_PADDING},
+    widget::{
+        card::{self, MAX_CARD_BETWEEN_PADDING},
+        switch,
+    },
 };
-use iced_widget::{column, mouse_area, row};
+use iced_widget::{
+    column, mouse_area, row,
+    scrollable::{Direction, Scrollbar},
+    space, text,
+};
 
 use crate::{
     gui::{
@@ -23,6 +30,7 @@ use crate::{
 pub enum Message {
     SetTheme(usize),
     SetDarkMode(Mode),
+    ToggleAutoTheme,
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -41,6 +49,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 color_right: t.light.surface,
                 size: preview_size,
             },
+            iced_m3::theme::Mode::Black => ThemePreview {
+                color_top: t.dark.primary,
+                color_left: t.dark.primary_container,
+                color_right: t.dark.surface,
+                size: preview_size,
+            },
         };
 
         mouse_area(preview)
@@ -53,31 +67,71 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         ThemeModePreview {
             theme: &state.theme.dark,
             label: "Dark",
-            icon: state.theme.mode == Mode::Dark,
-            on_press: iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Dark))
+            selected: state.theme.mode == Mode::Dark,
+            on_press: (!state.settings.theme_auto_mode).then_some(
+                iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Dark))
+            )
         },
         ThemeModePreview {
             theme: &state.theme.light,
             label: "Light",
-            icon: state.theme.mode == Mode::Light,
-            on_press: iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Light))
+            selected: state.theme.mode == Mode::Light,
+            on_press: (!state.settings.theme_auto_mode).then_some(
+                iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Light))
+            )
+        },
+        ThemeModePreview {
+            theme: &state.theme.black,
+            label: "Black",
+            selected: state.theme.mode == Mode::Black,
+            on_press: (!state.settings.theme_auto_mode).then_some(
+                iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Black))
+            )
         }
     ]
     .spacing(MAX_CARD_BETWEEN_PADDING);
 
+    let auto_switch = mouse_area(
+        row![
+            column![
+                text("Automatic theme")
+                    .size(font::SIZE_LARGE)
+                    .color(state.theme.on_surface()),
+                text("Follows your system's light or dark mode preference.")
+                    .size(font::SIZE_REGULAR)
+                    .color(state.theme.on_surface_variant())
+            ],
+            space().width(Length::Fill),
+            switch(&state.theme, state.settings.theme_auto_mode)
+                .on_toggle(Message::ToggleAutoTheme)
+        ]
+        .align_y(Alignment::Center),
+    )
+    .interaction(iced::mouse::Interaction::Pointer)
+    .on_press(Message::ToggleAutoTheme);
+
     let themes = iced_m3::widget::card(
         card::Style::elevated(&state.theme),
         column![
-            bold_text("Palette")
-                .size(font::SIZE_LARGER)
-                .color(state.theme.on_surface()),
-            row(themes).spacing(SPACING_REGULAR),
+            column![
+                bold_text("Palette")
+                    .size(font::SIZE_LARGER)
+                    .color(state.theme.on_surface()),
+                text("Make Chilen yours!")
+                    .size(font::SIZE_REGULAR)
+                    .color(state.theme.on_surface_variant()),
+            ],
+            iced_widget::scrollable(row(themes).spacing(SPACING_REGULAR))
+                .direction(Direction::Horizontal(Scrollbar::default()))
+                .style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
         ]
         .spacing(SPACING_SMALL),
     )
     .width(Length::Fill);
 
-    column![themes, modes].spacing(SPACING_REGULAR).into()
+    column![themes, auto_switch, modes]
+        .spacing(SPACING_REGULAR)
+        .into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
@@ -87,10 +141,15 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.settings.theme_name = theme.name.to_string();
             state.theme.dark = theme.dark;
             state.theme.light = theme.light;
+            state.theme.black = theme.dark.black();
         }
         Message::SetDarkMode(mode) => {
             state.settings.theme_mode = mode;
             state.theme.mode = mode;
+            state.settings.pure_black_theme = mode == Mode::Black;
+        }
+        Message::ToggleAutoTheme => {
+            state.settings.theme_auto_mode = !state.settings.theme_auto_mode
         }
     }
     settings::save(state);

@@ -1,6 +1,9 @@
 use chilen_backend::music_lib::Progress;
 use iced::Element;
-use iced_m3::{theme::ColorScheme, widget::dialog};
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{dialog, progress_bar},
+};
 use iced_widget::{column, text};
 
 use crate::gui::{
@@ -29,9 +32,11 @@ pub fn view<'a>(theme: &'a impl ColorScheme, progress: Option<Progress>) -> Elem
         .unwrap_or("Starting...");
     let tooltip = "The initial indexing might take up to a minute depending on your library size and hardware. After that, Chilen will boot up almost instantly!";
 
-    let mut content =
-        column![iced_m3::widget::progress_bar::ProgressBar::new(theme).progress_maybe(percentage)]
-            .spacing(SPACING_REGULAR);
+    let mut content = column![
+        iced_m3::widget::progress_bar::ProgressBar::new(progress_bar::Style::new(theme))
+            .progress_maybe(percentage)
+    ]
+    .spacing(SPACING_REGULAR);
 
     #[cfg(debug_assertions)]
     {
