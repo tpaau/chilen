@@ -28,13 +28,13 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             iced_m3::theme::Mode::Dark => ThemePreview {
                 color_top: t.dark.primary,
                 color_left: t.dark.primary_container,
-                color_right: t.dark.surface_container_high,
+                color_right: t.dark.surface_container,
                 size: preview_size,
             },
             iced_m3::theme::Mode::Light => ThemePreview {
                 color_top: t.light.primary,
                 color_left: t.light.primary_container,
-                color_right: t.light.surface_container_high,
+                color_right: t.light.surface_container,
                 size: preview_size,
             },
         };

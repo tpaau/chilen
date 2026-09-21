@@ -131,7 +131,8 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let title = bold_text(state.settings_state.screen.label())
         .size(32.0)
-        .line_height(Absolute(Pixels(32.0)));
+        .line_height(Absolute(Pixels(32.0)))
+        .color(state.theme.on_surface());
     let content_padding = SPACING_REGULAR;
     let settings_page =
         column![title, state.settings_state.screen.view(state)].spacing(SPACING_REGULAR);
