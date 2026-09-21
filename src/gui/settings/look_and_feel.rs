@@ -139,14 +139,11 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::SetTheme(i) => {
             let theme = &THEMES[i];
             state.settings.theme_name = theme.name.to_string();
-            state.theme.dark = theme.dark;
-            state.theme.light = theme.light;
-            state.theme.black = theme.dark.black();
+            state.theme = theme.clone().into_theme(state.theme.mode);
         }
         Message::SetDarkMode(mode) => {
             state.settings.theme_mode = mode;
             state.theme.mode = mode;
-            state.settings.pure_black_theme = mode == Mode::Black;
         }
         Message::ToggleAutoTheme => {
             state.settings.theme_auto_mode = !state.settings.theme_auto_mode

@@ -1,4 +1,9 @@
-use std::{fs::File, io::Write, path::PathBuf, sync::LazyLock};
+use std::{
+    fs::{File, read_to_string},
+    io::Write,
+    path::PathBuf,
+    sync::LazyLock,
+};
 
 use iced_m3::theme::Mode;
 use log::{error, info};
@@ -30,15 +35,11 @@ struct StoredSettings {
 
 impl From<Settings> for StoredSettings {
     fn from(value: Settings) -> Self {
-        let theme_dark_mode = match value.theme_mode {
-            Mode::Light => false,
-            Mode::Dark | Mode::Black => true,
-        };
         Self {
             theme_name: value.theme_name,
-            theme_dark_mode,
+            theme_dark_mode: value.theme_mode == Mode::Dark,
             theme_auto_mode: value.theme_auto_mode,
-            pure_black_theme: value.pure_black_theme,
+            pure_black_theme: value.theme_mode == Mode::Black,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }
@@ -50,7 +51,6 @@ pub struct Settings {
     pub theme_name: String,
     pub theme_mode: Mode,
     pub theme_auto_mode: bool,
-    pub pure_black_theme: bool,
     pub value_separator: String,
     /// Whether Chilen should display errors when it detects lyrics are synchronized but malformed.
     pub show_lyrics_errors: bool,
@@ -63,7 +63,6 @@ impl Default for Settings {
             // TODO: Get dark mode preference from the host
             theme_mode: Mode::default(),
             theme_auto_mode: true,
-            pure_black_theme: false,
             value_separator: ", ".to_string(),
             show_lyrics_errors: true,
         }
@@ -74,13 +73,16 @@ impl From<StoredSettings> for Settings {
     fn from(value: StoredSettings) -> Self {
         let theme_mode = match value.theme_dark_mode {
             true => Mode::Dark,
-            false => Mode::Light,
+            false => match value.pure_black_theme {
+                true => Mode::Black,
+                false => Mode::Dark,
+            },
         };
+
         Self {
             theme_name: value.theme_name,
             theme_mode,
             theme_auto_mode: value.theme_auto_mode,
-            pure_black_theme: value.pure_black_theme,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }
@@ -107,9 +109,28 @@ impl Settings {
         Ok(())
     }
 
-    pub fn load() -> Self {
-        // TODO: Actually load the settings from here
-        Self::default()
+    pub fn load() -> Result<Self, String> {
+        let data = match read_to_string(SETTINGS_FILE.clone()) {
+            Ok(data) => data,
+            Err(e) => {
+                let msg = format!("Failed to load settings: {e}");
+                error!("{}", msg.clone());
+                msg
+            }
+        };
+
+        let stored_settings: StoredSettings = match serde_json::from_str(&data) {
+            Ok(settings) => settings,
+            Err(e) => {
+                let msg = format!("Failed to load settings: {e}");
+                error!("{}", msg.clone());
+                return Err(msg);
+            }
+        };
+
+        info!("Settings loaded");
+
+        Ok(stored_settings.into())
     }
 
     pub fn set_theme_mode(&mut self, mode: Mode) {
@@ -118,7 +139,7 @@ impl Settings {
 }
 
 pub fn save(state: &mut Chilen) {
-    info!("Saving settings state to disk");
+    info!("Saving settings to disk");
     if let Err(e) = state.settings.clone().save() {
         let msg = format!("Failed to save settings to disk: {e}");
         error!("{}", msg.clone());

@@ -31,7 +31,7 @@ use log::{error, trace};
 
 use crate::{
     APP_NAME,
-    gui::{dialog::Dialog, main_view::top_view},
+    gui::{dialog::Dialog, main_view::top_view, themes::THEMES},
     settings::Settings,
 };
 
@@ -85,15 +85,21 @@ pub struct Chilen {
 
 impl Default for Chilen {
     fn default() -> Self {
-        let settings = Settings::load();
+        let settings = Settings::load().unwrap_or_default();
+        let theme = THEMES
+            .iter()
+            .find(|t| t.name == settings.theme_name)
+            .cloned()
+            .unwrap_or(THEMES[0].clone())
+            .into_theme(settings.theme_mode);
+
         Self {
             library: None,
             player_state: None,
             dialog: Dialog::Loading(None),
             loading_state: LoadingState::default(),
-            // TODO: Replace the default material color scheme with a custom one.
-            theme: Theme::default(settings.theme_mode),
-            settings: Settings::load(),
+            theme,
+            settings,
             main_view: main_view::State {
                 nav_stack: main_view::NavStack::default(),
                 visible: None,
