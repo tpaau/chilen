@@ -5,7 +5,10 @@ use iced::{Alignment, Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
-    widget::button::{self, Content},
+    widget::{
+        button::{self, Content},
+        slider,
+    },
 };
 use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
@@ -181,7 +184,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 0.0
             })
         },
-        &state.theme,
+        slider::Style::new(&state.theme),
     )
     .on_release(Message::SeekSliderReleased);
 
