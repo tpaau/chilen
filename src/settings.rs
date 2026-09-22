@@ -72,11 +72,11 @@ impl Default for Settings {
 impl From<StoredSettings> for Settings {
     fn from(value: StoredSettings) -> Self {
         let theme_mode = match value.theme_dark_mode {
-            true => Mode::Dark,
-            false => match value.pure_black_theme {
+            true => match value.pure_black_theme {
                 true => Mode::Black,
                 false => Mode::Dark,
             },
+            false => Mode::Light,
         };
 
         Self {

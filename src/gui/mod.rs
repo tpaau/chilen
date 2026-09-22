@@ -61,6 +61,7 @@ pub enum Message {
     Playback(playback_view::Message),
     AddTrackToPlaylist { track: Arc<Track>, playlist: String },
     ResetSettings,
+    SystemThemeChanged(iced::theme::Mode),
 }
 
 #[derive(Default, Debug, Clone)]
@@ -82,6 +83,7 @@ pub struct Chilen {
     playlist_view: playlist_view::State,
     playback_view: playback_view::State,
     settings_state: settings::State,
+    host_theme_preference: Mode,
 }
 
 impl Default for Chilen {
@@ -100,6 +102,7 @@ impl Default for Chilen {
             playlist_view: playlist_view::State::default(),
             playback_view: playback_view::State::default(),
             settings_state: settings::State::default(),
+            host_theme_preference: Mode::default(),
         };
 
         let settings = Settings::load().unwrap_or_default();
@@ -348,6 +351,12 @@ impl Chilen {
                 state.apply_settings(state.settings.clone());
                 crate::settings::save(state);
             }
+            Message::SystemThemeChanged(mode) => {
+                state.host_theme_preference = mode.into();
+                if state.settings.theme_auto_mode {
+                    state.theme.mode = mode.into();
+                }
+            }
         }
         Task::none()
     }
@@ -369,6 +378,10 @@ impl Chilen {
 
     fn subscription() -> Subscription<Event> {
         Subscription::run(Self::worker)
+    }
+
+    fn theme_changes() -> iced::Subscription<Message> {
+        iced::system::theme_changes().map(Message::SystemThemeChanged)
     }
 }
 
@@ -396,6 +409,7 @@ pub fn start() -> iced::Result {
             Subscription::batch(vec![
                 Chilen::subscription().map(Message::Event),
                 window_subscription(),
+                Chilen::theme_changes(),
             ])
         })
         .run()

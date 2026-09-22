@@ -67,7 +67,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         ThemeModePreview {
             theme: &state.theme.dark,
             label: "Dark",
-            selected: state.theme.mode == Mode::Dark,
+            selected: state.settings.theme_mode == Mode::Dark,
             on_press: (!state.settings.theme_auto_mode).then_some(
                 iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Dark))
             )
@@ -75,7 +75,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         ThemeModePreview {
             theme: &state.theme.light,
             label: "Light",
-            selected: state.theme.mode == Mode::Light,
+            selected: state.settings.theme_mode == Mode::Light,
             on_press: (!state.settings.theme_auto_mode).then_some(
                 iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Light))
             )
@@ -83,7 +83,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         ThemeModePreview {
             theme: &state.theme.black,
             label: "Black",
-            selected: state.theme.mode == Mode::Black,
+            selected: state.settings.theme_mode == Mode::Black,
             on_press: (!state.settings.theme_auto_mode).then_some(
                 iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Black))
             )
@@ -146,7 +146,12 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.theme.mode = mode;
         }
         Message::ToggleAutoTheme => {
-            state.settings.theme_auto_mode = !state.settings.theme_auto_mode
+            state.settings.theme_auto_mode = !state.settings.theme_auto_mode;
+            if state.settings.theme_auto_mode {
+                state.theme.mode = state.host_theme_preference;
+            } else {
+                state.theme.mode = state.settings.theme_mode;
+            }
         }
     }
     settings::save(state);
