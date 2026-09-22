@@ -7,9 +7,10 @@ use iced::{Alignment, Border, Element, Length, Pixels, Task, color};
 use iced_core::text::{IntoFragment, LineHeight::Absolute};
 use iced_m3::{
     style::{Elevation, shadow},
-    theme::ColorScheme,
+    theme::{Accent, ColorScheme},
     widget::{
         OnPress,
+        fab::{self},
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
     },
 };
@@ -94,7 +95,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let rounding = ROUNDING_REGULAR;
 
     let close_button = iced_m3::widget::fab(
-        &state.theme,
+        fab::Style::fab_tonal(&state.theme, Accent::Primary),
         iced_m3::widget::fab::Content::Extended {
             icon: CLOSE.into_fragment(),
             label: "Close".into(),

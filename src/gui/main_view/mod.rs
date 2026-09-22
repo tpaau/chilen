@@ -9,7 +9,10 @@ use std::sync::Arc;
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Track};
 use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_core::text::IntoFragment;
-use iced_m3::{theme::ColorScheme, widget::button::Content};
+use iced_m3::{
+    theme::{Accent, ColorScheme},
+    widget::button::{self, Content},
+};
 use iced_widget::{center, column, container, row, space, stack};
 use log::trace;
 
@@ -138,11 +141,11 @@ pub enum Message {
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
     container(column![
         row![
-            iced_m3::widget::button(&state.theme, Content::Icon(icons::SEARCH.into_fragment()))
-                .style(iced_m3::widget::button::Style::Filled(
-                    iced_m3::theme::Accent::Primary
-                ))
-                .on_press(Message::Noop),
+            iced_m3::widget::button(
+                button::Style::filled(&state.theme, Accent::default()),
+                Content::Icon(icons::SEARCH.into_fragment())
+            )
+            .on_press(Message::Noop),
             // TODO: Custom ordering
             {
                 let index = match state.main_view.nav_stack.tab {
@@ -180,9 +183,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                 .icon_font_active(icons::filled())
                 .icon_font_inactive(icons::outlined())
             },
-            iced_m3::widget::button(&state.theme, Content::Icon(icons::SETTINGS.into_fragment()))
-                .style(iced_m3::widget::button::Style::Outlined)
-                .on_press(Message::OpenSettings),
+            iced_m3::widget::button(
+                button::Style::outlined(&state.theme),
+                Content::Icon(icons::SETTINGS.into_fragment())
+            )
+            .on_press(Message::OpenSettings),
         ]
         .align_y(Alignment::Center)
         .spacing(SPACING_REGULAR),

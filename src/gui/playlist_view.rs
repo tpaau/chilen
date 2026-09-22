@@ -5,7 +5,11 @@ use iced::{
     Border, Element, Length, Padding, Task, padding,
     widget::{column, container, text},
 };
-use iced_m3::{theme::ColorScheme, widget::fab_menu};
+use iced_core::text::IntoFragment;
+use iced_m3::{
+    theme::{Accent, ColorScheme},
+    widget::fab_menu,
+};
 use iced_widget::{bottom_right, center, responsive, space, stack};
 use log::{debug, error, info, trace};
 
@@ -108,8 +112,15 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                             icon: Some(&*icons::PLAYLIST_ADD),
                         },
                     ],
-                    &|opened| if opened { *icons::CLOSE } else { *icons::ADD },
+                    &|opened| {
+                        if opened {
+                            icons::CLOSE.into_fragment()
+                        } else {
+                            icons::ADD.into_fragment()
+                        }
+                    },
                     &state.theme,
+                    Accent::Primary,
                 )
                 .icon_font(icons::filled()),
             )

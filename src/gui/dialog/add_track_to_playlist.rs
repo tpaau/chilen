@@ -79,7 +79,7 @@ pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Mess
     let buttons = vec![iced_m3::widget::dialog::Button {
         on_press: Some(Message::CloseDialog),
         label: "Cancel".to_string(),
-        style: iced_m3::widget::button::Style::Outlined,
+        style: iced_m3::widget::button::Style::outlined(&state.theme),
     }];
     dialog(&state.theme, content, buttons)
         .title_font(font::bold())

@@ -31,22 +31,23 @@ pub fn add_track_to_playlist(state: &mut Chilen, track: Arc<Track>) {
     state.dialog = Dialog::AddTrackToPlaylist(track)
 }
 
-fn cancel_button() -> iced_m3::widget::dialog::Button<Message> {
+fn cancel_button(theme: &(impl ColorScheme + ?Sized)) -> iced_m3::widget::dialog::Button<Message> {
     iced_m3::widget::dialog::Button {
         on_press: Some(Message::CloseDialog),
         label: String::from("Cancel"),
-        style: iced_m3::widget::button::Style::Outlined,
+        style: iced_m3::widget::button::Style::outlined(theme),
     }
 }
 
 fn action_button(
+    theme: &(impl ColorScheme + ?Sized),
     on_press: Option<Message>,
     label: String,
 ) -> iced_m3::widget::dialog::Button<Message> {
     iced_m3::widget::dialog::Button {
         on_press,
         label,
-        style: iced_m3::widget::button::Style::Filled(iced_m3::theme::Accent::Primary),
+        style: iced_m3::widget::button::Style::filled(theme, iced_m3::theme::Accent::Primary),
     }
 }
 
@@ -79,8 +80,8 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                 .on_input(Message::PlaylistNameEdited)
                 .on_submit_maybe(maybe_message.clone()),
                 vec![
-                    cancel_button(),
-                    action_button(maybe_message, "Create".to_string()),
+                    cancel_button(&state.theme),
+                    action_button(&state.theme, maybe_message, "Create".to_string()),
                 ],
             )
             .title_font(font::bold())
@@ -128,8 +129,8 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     .on_input(Message::PlaylistNameEdited)
                     .on_submit_maybe(maybe_message.clone()),
                 vec![
-                    cancel_button(),
-                    action_button(maybe_message, "Import".to_string()),
+                    cancel_button(&state.theme),
+                    action_button(&state.theme, maybe_message, "Import".to_string()),
                 ],
             )
             .title_font(font::bold())
@@ -154,6 +155,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     .width(Length::Fill)
                     .padding(8.0),
                 vec![action_button(
+                    &state.theme,
                     Some(Message::CloseDialog),
                     "Dismiss".to_string(),
                 )],
@@ -189,8 +191,8 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     .on_input(Message::PlaylistNameEdited)
                     .on_submit_maybe(maybe_message.clone()),
                 vec![
-                    cancel_button(),
-                    action_button(maybe_message, "Rename".to_string()),
+                    cancel_button(&state.theme),
+                    action_button(&state.theme, maybe_message, "Rename".to_string()),
                 ],
             )
             .title_font(font::bold())
@@ -207,8 +209,9 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                     playlist.tracks.len()
                 )),
                 vec![
-                    cancel_button(),
+                    cancel_button(&state.theme),
                     action_button(
+                        &state.theme,
                         Some(Message::DeletePlaylist(playlist.clone())),
                         "Delete".to_string(),
                     ),
