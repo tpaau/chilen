@@ -3,11 +3,28 @@ use iced::{
     advanced::{Widget, layout::atomic, renderer::Quad},
 };
 
+pub struct ActiveIndicator {
+    pub color: Color,
+    pub width: f32,
+    pub padding: f32,
+}
+
+impl Default for ActiveIndicator {
+    fn default() -> Self {
+        Self {
+            color: Color::TRANSPARENT,
+            width: 2.0,
+            padding: 2.0,
+        }
+    }
+}
+
 /// AOSP theme preview widget. Displays a circle with three color sections.
 pub struct ThemePreview {
     pub color_top: Color,
     pub color_left: Color,
     pub color_right: Color,
+    pub active_indicator: ActiveIndicator,
     pub size: f32,
 }
 
@@ -41,7 +58,9 @@ where
         _cursor: iced::advanced::mouse::Cursor,
         viewport: &iced::Rectangle,
     ) {
-        let bounds = layout.bounds();
+        let full_bounds = layout.bounds();
+        let padding = self.active_indicator.width + self.active_indicator.padding;
+        let bounds = full_bounds.shrink(padding);
 
         let draw_part = |renderer: &mut Renderer, clip: iced::Rectangle, color: Color| {
             if let Some(clip) = clip.intersection(viewport) {
@@ -89,6 +108,18 @@ where
                 height: bounds.height / 2.0,
             },
             self.color_right,
+        );
+
+        renderer.fill_quad(
+            Quad {
+                bounds: full_bounds,
+                border: Border::default()
+                    .rounded(f32::MAX)
+                    .width(self.active_indicator.width)
+                    .color(self.active_indicator.color),
+                ..Default::default()
+            },
+            Color::TRANSPARENT,
         );
     }
 }
