@@ -49,12 +49,6 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 color_right: t.light.surface,
                 size: preview_size,
             },
-            iced_m3::theme::Mode::Black => ThemePreview {
-                color_top: t.dark.primary,
-                color_left: t.dark.primary_container,
-                color_right: t.dark.surface,
-                size: preview_size,
-            },
         };
 
         mouse_area(preview)
@@ -80,14 +74,6 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Light))
             )
         },
-        ThemeModePreview {
-            theme: &state.theme.black,
-            label: "Black",
-            selected: state.settings.theme_mode == Mode::Black,
-            on_press: (!state.settings.theme_auto_mode).then_some(
-                iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Black))
-            )
-        }
     ]
     .spacing(MAX_CARD_BETWEEN_PADDING);
 

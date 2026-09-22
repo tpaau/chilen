@@ -17,7 +17,6 @@ impl<'a> Template<'a> {
         Theme {
             dark: self.dark,
             light: self.light,
-            black: self.dark.black(),
             mode,
         }
     }

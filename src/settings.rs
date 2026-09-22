@@ -28,7 +28,6 @@ struct StoredSettings {
     theme_name: String,
     theme_dark_mode: bool,
     theme_auto_mode: bool,
-    pure_black_theme: bool,
     value_separator: String,
     show_lyrics_errors: bool,
 }
@@ -39,7 +38,6 @@ impl From<Settings> for StoredSettings {
             theme_name: value.theme_name,
             theme_dark_mode: value.theme_mode == Mode::Dark,
             theme_auto_mode: value.theme_auto_mode,
-            pure_black_theme: value.theme_mode == Mode::Black,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }
@@ -72,10 +70,7 @@ impl Default for Settings {
 impl From<StoredSettings> for Settings {
     fn from(value: StoredSettings) -> Self {
         let theme_mode = match value.theme_dark_mode {
-            true => match value.pure_black_theme {
-                true => Mode::Black,
-                false => Mode::Dark,
-            },
+            true => Mode::Dark,
             false => Mode::Light,
         };
 
