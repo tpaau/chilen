@@ -32,6 +32,7 @@ pub struct AlbumButton<'a, Message> {
     pub shuffle: Message,
     pub add_to_queue: Message,
     pub highlighted: bool,
+    pub vibrant: bool,
 }
 
 impl<'a, Message> From<AlbumButton<'a, Message>> for Element<'a, Message>
@@ -70,6 +71,7 @@ where
             }],
             &value.state.theme,
         )
+        .vibrant(value.vibrant)
         .icon_font(icons::filled());
 
         let info: Vec<_> = value

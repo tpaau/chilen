@@ -140,6 +140,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                 } else {
                     track_button::Status::Idle
                 },
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         })
@@ -158,8 +159,13 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
         column(track_buttons).spacing(BUTTON_SPACING).into()
     };
 
-    column![display, buttons, spacer(&state.theme), tracks_section]
-        .width(Length::Fill)
-        .spacing(SPACING_REGULAR)
-        .into()
+    column![
+        display,
+        buttons,
+        spacer(state.theme.outline_variant()),
+        tracks_section
+    ]
+    .width(Length::Fill)
+    .spacing(SPACING_REGULAR)
+    .into()
 }

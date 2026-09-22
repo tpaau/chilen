@@ -39,6 +39,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, Message
                 shuffle: Message::ShuffleArtist(artist.clone()),
                 add_to_queue: Message::AddArtistToQueue(artist.clone()),
                 highlighted,
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         }),

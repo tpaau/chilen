@@ -118,6 +118,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 highlighted: highlighted_album_title
                     .map(|t| *t == album.title)
                     .unwrap_or_default(),
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         })
@@ -163,6 +164,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             } else {
                 track_button::Status::Idle
             },
+            vibrant: state.settings.vibrant_widgets,
         }
         .into()
     });
@@ -170,7 +172,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
     let has_albums = !album_buttons.is_empty();
     let albums_section = has_albums.then_some(
         column![
-            spacer(&state.theme),
+            spacer(state.theme.outline_variant()),
             bold_text("Albums")
                 .color(state.theme.on_surface())
                 .size(font::SIZE_LARGE),
@@ -183,7 +185,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         display,
         buttons,
         albums_section,
-        spacer(&state.theme),
+        spacer(state.theme.outline_variant()),
         {
             if has_albums {
                 Some(

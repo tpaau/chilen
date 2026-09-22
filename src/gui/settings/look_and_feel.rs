@@ -5,10 +5,7 @@ use iced_m3::{
         ColorScheme,
         Mode::{self},
     },
-    widget::{
-        card::{self, MAX_CARD_BETWEEN_PADDING},
-        switch,
-    },
+    widget::switch,
 };
 use iced_widget::{
     column, mouse_area, row,
@@ -18,7 +15,7 @@ use iced_widget::{
 
 use crate::{
     gui::{
-        Chilen, SPACING_REGULAR,
+        self, Chilen, SPACING_REGULAR,
         font::{self, bold_text},
         themes::THEMES,
         widget::theme_mode_preview::ThemeModePreview,
@@ -31,6 +28,7 @@ pub enum Message {
     SetTheme(usize),
     SetDarkMode(Mode),
     ToggleAutoTheme,
+    ToggleVibrantWidgets,
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -75,7 +73,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             )
         },
     ]
-    .spacing(MAX_CARD_BETWEEN_PADDING);
+    .spacing(gui::settings::CARD_SPACING);
 
     let auto_switch = mouse_area(
         row![
@@ -83,7 +81,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 text("Automatic theme")
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
-                text("Follows your system's light or dark mode preference.")
+                text("Follow your system's light or dark mode preference.")
                     .size(font::SIZE_REGULAR)
                     .color(state.theme.on_surface_variant())
             ],
@@ -96,8 +94,27 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .interaction(iced::mouse::Interaction::Pointer)
     .on_press(Message::ToggleAutoTheme);
 
+    let vibrant_widgets_switch = mouse_area(
+        row![
+            column![
+                text("Vibrant widgets")
+                    .size(font::SIZE_LARGE)
+                    .color(state.theme.on_surface()),
+                text("Give the widgets a new fresh look!")
+                    .size(font::SIZE_REGULAR)
+                    .color(state.theme.on_surface_variant())
+            ],
+            space().width(Length::Fill),
+            switch(&state.theme, state.settings.vibrant_widgets)
+                .on_toggle(Message::ToggleVibrantWidgets)
+        ]
+        .align_y(Alignment::Center),
+    )
+    .interaction(iced::mouse::Interaction::Pointer)
+    .on_press(Message::ToggleVibrantWidgets);
+
     let themes = iced_m3::widget::card(
-        card::Style::elevated(&state.theme),
+        gui::settings::card_style(&state.theme),
         column![
             column![
                 bold_text("Palette")
@@ -115,9 +132,18 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     )
     .width(Length::Fill);
 
-    column![themes, auto_switch, modes]
-        .spacing(SPACING_REGULAR)
-        .into()
+    column![
+        themes,
+        modes,
+        column![
+            space().height(gui::settings::ITEM_SPACING / 2.0),
+            auto_switch,
+            vibrant_widgets_switch
+        ]
+        .spacing(gui::settings::ITEM_SPACING)
+    ]
+    .spacing(gui::settings::CARD_SPACING)
+    .into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
@@ -138,6 +164,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             } else {
                 state.theme.mode = state.settings.theme_mode;
             }
+        }
+        Message::ToggleVibrantWidgets => {
+            state.settings.vibrant_widgets = !state.settings.vibrant_widgets
         }
     }
     settings::save(state);

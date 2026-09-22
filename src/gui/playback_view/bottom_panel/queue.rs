@@ -53,6 +53,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                     } else {
                         track_button::Status::Idle
                     },
+                    vibrant: state.settings.vibrant_widgets,
                 }
                 .into()
             }),

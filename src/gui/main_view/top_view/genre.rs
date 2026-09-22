@@ -142,6 +142,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 highlighted: highlighted_album_title
                     .map(|t| *t == album.title)
                     .unwrap_or_default(),
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         })
@@ -150,7 +151,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     let has_albums = !album_buttons.is_empty();
     let albums_section = has_albums.then_some(
         column![
-            spacer(&state.theme),
+            spacer(state.theme.outline_variant()),
             bold_text("Albums")
                 .color(state.theme.on_surface())
                 .size(font::SIZE_LARGE),
@@ -186,6 +187,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 highlighted: highlighted_artist_name
                     .map(|name| *name == artist.name)
                     .unwrap_or_default(),
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         })
@@ -194,7 +196,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     let has_artists = !artist_buttons.is_empty();
     let artist_section = has_artists.then_some(
         column![
-            spacer(&state.theme),
+            spacer(state.theme.outline_variant()),
             bold_text("Artists")
                 .color(state.theme.on_surface())
                 .size(font::SIZE_LARGE),
@@ -243,6 +245,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             } else {
                 track_button::Status::Idle
             },
+            vibrant: state.settings.vibrant_widgets,
         }
         .into()
     });
@@ -255,7 +258,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         if has_albums || has_artists {
             Some(
                 column![
-                    spacer(&state.theme),
+                    spacer(state.theme.outline_variant()),
                     bold_text("Tracks")
                         .color(state.theme.on_surface())
                         .size(font::SIZE_LARGE),

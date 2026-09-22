@@ -171,6 +171,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             } else {
                 track_button::Status::Idle
             },
+            vibrant: state.settings.vibrant_widgets,
         }
         .into()
     });
@@ -178,7 +179,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     column![
         display,
         buttons,
-        spacer(&state.theme),
+        spacer(state.theme.outline_variant()),
         column(track_buttons).spacing(BUTTON_SPACING)
     ]
     .width(Length::Fill)

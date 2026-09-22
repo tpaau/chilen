@@ -30,6 +30,7 @@ where
     pub shuffle: Message,
     pub add_to_queue: Message,
     pub highlighted: bool,
+    pub vibrant: bool,
 }
 
 impl<'a, Message> From<ArtistButton<'a, Message>> for Element<'a, Message>
@@ -66,6 +67,7 @@ where
             }],
             value.theme,
         )
+        .vibrant(value.vibrant)
         .icon_font(icons::filled());
 
         let font = if value.highlighted {

@@ -28,6 +28,7 @@ struct StoredSettings {
     theme_name: String,
     theme_dark_mode: bool,
     theme_auto_mode: bool,
+    vibrant_widgets: bool,
     value_separator: String,
     show_lyrics_errors: bool,
 }
@@ -38,6 +39,7 @@ impl From<Settings> for StoredSettings {
             theme_name: value.theme_name,
             theme_dark_mode: value.theme_mode == Mode::Dark,
             theme_auto_mode: value.theme_auto_mode,
+            vibrant_widgets: value.vibrant_widgets,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }
@@ -49,6 +51,7 @@ pub struct Settings {
     pub theme_name: String,
     pub theme_mode: Mode,
     pub theme_auto_mode: bool,
+    pub vibrant_widgets: bool,
     pub value_separator: String,
     /// Whether Chilen should display errors when it detects lyrics are synchronized but malformed.
     pub show_lyrics_errors: bool,
@@ -61,6 +64,7 @@ impl Default for Settings {
             // TODO: Get dark mode preference from the host
             theme_mode: Mode::default(),
             theme_auto_mode: true,
+            vibrant_widgets: false,
             value_separator: ", ".to_string(),
             show_lyrics_errors: true,
         }
@@ -78,6 +82,7 @@ impl From<StoredSettings> for Settings {
             theme_name: value.theme_name,
             theme_mode,
             theme_auto_mode: value.theme_auto_mode,
+            vibrant_widgets: value.vibrant_widgets,
             value_separator: value.value_separator,
             show_lyrics_errors: value.show_lyrics_errors,
         }

@@ -9,7 +9,7 @@ use iced_m3::{
     style::{Elevation, shadow},
     theme::{Accent, ColorScheme},
     widget::{
-        OnPress, button,
+        OnPress, button, card,
         fab::{self},
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
     },
@@ -17,13 +17,15 @@ use iced_m3::{
 use iced_widget::{center, column, container, opaque, row, stack, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_REGULAR, SPACING_REGULAR,
+    Chilen, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_REGULAR,
     dialog::Dialog,
     font::bold_text,
     icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
 };
 
 const MAX_WIDTH: f32 = 1000.0;
+pub const CARD_SPACING: f32 = iced_m3::widget::card::MAX_CARD_BETWEEN_PADDING;
+pub const ITEM_SPACING: f32 = 2.0 * CARD_SPACING;
 
 #[repr(usize)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -80,6 +82,13 @@ pub enum Message {
 #[derive(Default)]
 pub struct State {
     pub screen: Option<Screen>,
+}
+
+pub fn card_style(theme: &(impl ColorScheme + ?Sized)) -> card::Style {
+    card::Style {
+        border: Border::default().rounded(ROUNDING_LARGE),
+        ..card::Style::elevated(theme)
+    }
 }
 
 pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {

@@ -53,6 +53,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, main_vi
                 } else {
                     track_button::Status::Idle
                 },
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         }),

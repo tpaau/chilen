@@ -3,16 +3,12 @@ use iced_core::text::LineHeight;
 use iced_m3::{
     style::DISABLED_STATE_LAYER_OPACITY,
     theme::ColorScheme,
-    widget::{
-        OnPress,
-        card::{Interaction, Style},
-        icon, progress_bar,
-    },
+    widget::{OnPress, card::Interaction, icon, progress_bar},
 };
 use iced_widget::{column, container, row, space};
 
 use crate::gui::{
-    ROUNDING_LARGE, ROUNDING_SMALL, SPACING_REGULAR, SPACING_SMALL,
+    self, ROUNDING_LARGE, ROUNDING_SMALL, SPACING_REGULAR, SPACING_SMALL,
     font::{self, bold_text},
     icons,
 };
@@ -160,21 +156,15 @@ where
             .spacing(container_label_spacing)
             .align_x(Alignment::Center);
 
-        iced_m3::widget::card(
-            Style {
-                border: Border::default().rounded(radius),
-                ..Style::filled(value.theme)
-            },
-            content,
-        )
-        .width(Length::Fill)
-        .interaction(
-            value
-                .on_press
-                .map(|on_press| Interaction::Press(on_press))
-                .unwrap_or(Interaction::Disabled),
-        )
-        .padding(Padding::from(padding))
-        .into()
+        iced_m3::widget::card(gui::settings::card_style(value.theme), content)
+            .width(Length::Fill)
+            .interaction(
+                value
+                    .on_press
+                    .map(|on_press| Interaction::Press(on_press))
+                    .unwrap_or(Interaction::Disabled),
+            )
+            .padding(Padding::from(padding))
+            .into()
     }
 }

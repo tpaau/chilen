@@ -37,6 +37,7 @@ pub fn view<'a>(state: &'a Chilen, lib: &'a MusicLibrary) -> Element<'a, Message
                 shuffle: Message::ShuffleGenre(genre.clone()),
                 add_to_queue: Message::AddGenreToQueue(genre.clone()),
                 highlighted,
+                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         }),

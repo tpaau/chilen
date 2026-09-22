@@ -68,7 +68,7 @@ pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Mess
         None => text("no library!!").into(),
     };
     let content = column![
-        spacer(&state.theme),
+        spacer(state.theme.outline_variant()),
         container(
             scrollable(choices).style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
         )

@@ -49,6 +49,7 @@ where
     pub messages: Messages<Message>,
     pub info: Info,
     pub status: Status,
+    pub vibrant: bool,
 }
 
 impl<'a, Message> From<TrackButton<'a, Message>> for iced::Element<'a, Message>
@@ -129,8 +130,9 @@ where
             },
         ];
 
-        let menu =
-            iced_m3::widget::menu(menu_groups, &value.state.theme).icon_font(icons::filled());
+        let menu = iced_m3::widget::menu(menu_groups, &value.state.theme)
+            .vibrant(value.vibrant)
+            .icon_font(icons::filled());
 
         let title_font = match value.status {
             Status::Playing => font::bold(),

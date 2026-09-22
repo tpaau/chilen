@@ -25,6 +25,7 @@ pub fn playlist_button<'a>(
     playlist: &'a Arc<Playlist>,
     index: usize,
     highlighted: bool,
+    vibrant: bool,
 ) -> Element<'a, playlist_view::Message> {
     let content: Element<'_, playlist_view::Message> = if let Some(visible) =
         &state.playlist_view.visible
@@ -120,6 +121,7 @@ pub fn playlist_button<'a>(
             ],
             &state.theme,
         )
+        .vibrant(vibrant)
         .icon_font(icons::filled());
 
         let font = if highlighted {

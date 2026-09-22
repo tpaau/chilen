@@ -76,6 +76,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                                 highlighted_playlist_name
                                     .map(|name| *name == playlist.name)
                                     .unwrap_or_default(),
+                                state.settings.vibrant_widgets,
                             )
                         }),
                         delegate_height: BUTTON_HEIGHT,
