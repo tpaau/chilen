@@ -18,7 +18,7 @@ use iced_widget::{
 
 use crate::{
     gui::{
-        Chilen, SPACING_REGULAR, SPACING_SMALL,
+        Chilen, SPACING_REGULAR,
         font::{self, bold_text},
         themes::THEMES,
         widget::theme_mode_preview::ThemeModePreview,

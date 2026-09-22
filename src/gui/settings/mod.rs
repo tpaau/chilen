@@ -79,13 +79,13 @@ pub enum Message {
 
 #[derive(Default)]
 pub struct State {
-    screen: Screen,
+    pub screen: Option<Screen>,
 }
 
 pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
-        Message::Close => state.settings_opened = false,
-        Message::SwitchScreen(screen) => state.settings_state.screen = screen,
+        Message::Close => state.settings_state.screen = None,
+        Message::SwitchScreen(screen) => state.settings_state.screen = Some(screen),
         Message::LookAndFeel(message) => {
             return look_and_feel::update(state, message).map(Message::LookAndFeel);
         }
@@ -94,104 +94,105 @@ pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     Task::none()
 }
 
-pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    let rounding = ROUNDING_REGULAR;
+pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
+    state.settings_state.screen.map(|screen| {
+        let rounding = ROUNDING_REGULAR;
 
-    let close_button = button(
-        button::Style {
-            elevation: button::ElevationStates {
-                shadow_color: state.theme.shadow(),
-                idle: Elevation::Level3,
-                disabled: Elevation::Level0,
-                hover: Elevation::Level3,
-                press: Elevation::Level3,
+        let close_button = button(
+            button::Style {
+                elevation: button::ElevationStates {
+                    shadow_color: state.theme.shadow(),
+                    idle: Elevation::Level3,
+                    disabled: Elevation::Level0,
+                    hover: Elevation::Level3,
+                    press: Elevation::Level3,
+                },
+                ..button::Style::filled(&state.theme, Accent::Primary)
             },
-            ..button::Style::filled(&state.theme, Accent::Primary)
-        },
-        button::Content::Label("Close".into()),
-    )
-    .size(button::Size::Medium)
-    .on_press(Message::Close);
-
-    let items = [
-        Screen::LookAndFeel,
-        Screen::Library,
-        Screen::Playback,
-        Screen::About,
-    ]
-    .into_iter()
-    .map(|screen| Item {
-        icon: iced_m3::widget::BadgeIcon {
-            icon: screen.icon().into_fragment(),
-            badge: None,
-        },
-        label: screen.label(),
-        on_press: OnPress::Direct(Message::SwitchScreen(screen)),
-    })
-    .collect();
-
-    let active_index = state.settings_state.screen.index();
-    let navrail = iced_m3::widget::navrail(&state.theme, items)
-        .status(navrail::Status::Expanded {
-            width: Pixels(CONTAINER_EXPANDED_MIN_WIDTH),
-        })
-        .fab(navrail::Fab {
-            icon: icons::RESET_SETTINGS.into_fragment(),
-            label: "Reset settings".into(),
-            style: fab::Style::fab_tonal(&state.theme, Accent::Tertiary),
-            on_press: OnPress::Direct(Message::Reset),
-        })
-        .icon_font(icons::filled())
-        .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
-        .icon_font_active(icons::filled())
-        .icon_font_inactive(icons::outlined())
-        .active(active_index);
-
-    let title = bold_text(state.settings_state.screen.label())
-        .size(32.0)
-        .line_height(Absolute(Pixels(32.0)))
-        .color(state.theme.on_surface());
-    let content_padding = SPACING_REGULAR;
-    let settings_page =
-        column![title, state.settings_state.screen.view(state)].spacing(SPACING_REGULAR);
-    let content = row![
-        container(navrail).style(move |_| container::Style::default()
-            .background(state.theme.surface_container())
-            .border(Border::default().rounded(rounding))),
-        container(
-            stack![
-                settings_page,
-                container(close_button)
-                    .padding(iced_m3::widget::fab::EDGE_SPACING - content_padding)
-                    .align_right(Length::Fill)
-                    .align_bottom(Length::Fill)
-            ]
-            .width(Length::Fill)
-            .height(Length::Fill)
+            button::Content::Label("Close".into()),
         )
-        .style(move |_| {
-            container::Style::default()
-                .background(state.theme.surface())
-                .border(Border::default().rounded(rounding))
-        })
-        .padding(content_padding)
-    ];
+        .size(button::Size::Medium)
+        .on_press(Message::Close);
 
-    opaque(
-        container(
-            center(content)
+        let items = [
+            Screen::LookAndFeel,
+            Screen::Library,
+            Screen::Playback,
+            Screen::About,
+        ]
+        .into_iter()
+        .map(|screen| Item {
+            icon: iced_m3::widget::BadgeIcon {
+                icon: screen.icon().into_fragment(),
+                badge: None,
+            },
+            label: screen.label(),
+            on_press: OnPress::Direct(Message::SwitchScreen(screen)),
+        })
+        .collect();
+
+        let active_index = screen.index();
+        let navrail = iced_m3::widget::navrail(&state.theme, items)
+            .status(navrail::Status::Expanded {
+                width: Pixels(CONTAINER_EXPANDED_MIN_WIDTH),
+            })
+            .fab(navrail::Fab {
+                icon: icons::RESET_SETTINGS.into_fragment(),
+                label: "Reset settings".into(),
+                style: fab::Style::fab_tonal(&state.theme, Accent::Tertiary),
+                on_press: OnPress::Direct(Message::Reset),
+            })
+            .icon_font(icons::filled())
+            .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
+            .icon_font_active(icons::filled())
+            .icon_font_inactive(icons::outlined())
+            .active(active_index);
+
+        let title = bold_text(screen.label())
+            .size(32.0)
+            .line_height(Absolute(Pixels(32.0)))
+            .color(state.theme.on_surface());
+        let content_padding = SPACING_REGULAR;
+        let settings_page = column![title, screen.view(state)].spacing(SPACING_REGULAR);
+        let content = row![
+            container(navrail).style(move |_| container::Style::default()
+                .background(state.theme.surface_container())
+                .border(Border::default().rounded(rounding))),
+            container(
+                stack![
+                    settings_page,
+                    container(close_button)
+                        .padding(iced_m3::widget::fab::EDGE_SPACING - content_padding)
+                        .align_right(Length::Fill)
+                        .align_bottom(Length::Fill)
+                ]
                 .width(Length::Fill)
                 .height(Length::Fill)
-                .max_width(MAX_WIDTH)
-                .style(move |_| {
-                    container::Style::default()
-                        .background(state.theme.surface_container())
-                        .border(Border::default().rounded(rounding))
-                        .shadow(shadow(state.theme.shadow(), Elevation::Level3))
-                }),
+            )
+            .style(move |_| {
+                container::Style::default()
+                    .background(state.theme.surface())
+                    .border(Border::default().rounded(rounding))
+            })
+            .padding(content_padding)
+        ];
+
+        opaque(
+            container(
+                center(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .max_width(MAX_WIDTH)
+                    .style(move |_| {
+                        container::Style::default()
+                            .background(state.theme.surface_container())
+                            .border(Border::default().rounded(rounding))
+                            .shadow(shadow(state.theme.shadow(), Elevation::Level3))
+                    }),
+            )
+            .align_x(Alignment::Center)
+            .style(|_| container::Style::default().background(color!(0x000000).scale_alpha(0.3)))
+            .padding(64),
         )
-        .align_x(Alignment::Center)
-        .style(|_| container::Style::default().background(color!(0x000000).scale_alpha(0.3)))
-        .padding(64),
-    )
+    })
 }

@@ -19,6 +19,7 @@ use log::trace;
 use crate::gui::{
     self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, dialog, icons,
     main_view::{self, top_view::TopView},
+    settings::Screen,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,7 +273,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
         Message::Noop => {}
-        Message::OpenSettings => state.settings_opened = true,
+        Message::OpenSettings => state.settings_state.screen = Some(Screen::default()),
         Message::PlayTracks { initial_position } => {
             common_actions::play_tracks(state, initial_position)
         }

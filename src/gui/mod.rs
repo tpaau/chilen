@@ -78,7 +78,6 @@ pub struct Chilen {
     loading_state: LoadingState,
     pub theme: Theme,
     pub settings: Settings,
-    settings_opened: bool,
     main_view: main_view::State,
     playlist_view: playlist_view::State,
     playback_view: playback_view::State,
@@ -94,7 +93,6 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(Mode::Light),
             settings: Settings::default(),
-            settings_opened: false,
             main_view: main_view::State {
                 nav_stack: main_view::NavStack::default(),
                 visible: None,
@@ -201,8 +199,10 @@ impl Chilen {
         stack![
             base,
             state
-                .settings_opened
-                .then_some(settings::view(state).map(Message::Settings)),
+                .settings_state
+                .screen
+                .is_some()
+                .then_some(settings::view(state).map(|e| e.map(Message::Settings))),
             dialog::view(state),
         ]
         .into()
