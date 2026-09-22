@@ -15,6 +15,7 @@ pub const TEMPLATE: Template = Template {
         primary_fixed_dim: color!(0x474747),
         on_primary_fixed_variant: color!(0xE2E2E2),
         inverse_primary: color!(0x5E5E5E),
+
         secondary: color!(0xC6C6C6),
         on_secondary: color!(0x1B1B1B),
         secondary_container: color!(0x474747),
@@ -23,6 +24,7 @@ pub const TEMPLATE: Template = Template {
         on_secondary_fixed: color!(0x1B1B1B),
         secondary_fixed_dim: color!(0xABABAB),
         on_secondary_fixed_variant: color!(0x3B3B3B),
+
         tertiary: color!(0xE2E2E2),
         on_tertiary: color!(0x1B1B1B),
         tertiary_container: color!(0x919191),
@@ -31,30 +33,38 @@ pub const TEMPLATE: Template = Template {
         on_tertiary_fixed: color!(0xFFFFFF),
         tertiary_fixed_dim: color!(0x474747),
         on_tertiary_fixed_variant: color!(0xE2E2E2),
+
         error: color!(0xFFB4AB),
         on_error: color!(0x690005),
         error_container: color!(0x93000A),
         on_error_container: color!(0xFFDAD6),
+
         surface: color!(0x131313),
         on_surface: color!(0xE2E2E2),
         surface_variant: color!(0x474747),
         on_surface_variant: color!(0xC6C6C6),
+
         surface_container_highest: color!(0x353535),
         surface_container_high: color!(0x2A2A2A),
         surface_container: color!(0x1F1F1F),
         surface_container_low: color!(0x1B1B1B),
         surface_container_lowest: color!(0x0E0E0E),
+
         inverse_surface: color!(0xE2E2E2),
         inverse_on_surface: color!(0x303030),
+
         background: color!(0x131313),
         on_background: color!(0xE2E2E2),
+
         surface_bright: color!(0x393939),
         surface_dim: color!(0x131313),
+
         scrim: color!(0x000000),
         shadow: color!(0x000000),
         outline: color!(0x919191),
         outline_variant: color!(0x474747),
     },
+
     light: Palette {
         primary: color!(0x000000),
         on_primary: color!(0xE2E2E2),
@@ -65,6 +75,7 @@ pub const TEMPLATE: Template = Template {
         primary_fixed_dim: color!(0x474747),
         on_primary_fixed_variant: color!(0xE2E2E2),
         inverse_primary: color!(0xC6C6C6),
+
         secondary: color!(0x5E5E5E),
         on_secondary: color!(0xFFFFFF),
         secondary_container: color!(0xE2E2E2),
@@ -73,6 +84,7 @@ pub const TEMPLATE: Template = Template {
         on_secondary_fixed: color!(0x1B1B1B),
         secondary_fixed_dim: color!(0xABABAB),
         on_secondary_fixed_variant: color!(0x3B3B3B),
+
         tertiary: color!(0x3B3B3B),
         on_tertiary: color!(0xE2E2E2),
         tertiary_container: color!(0x747474),
@@ -81,25 +93,32 @@ pub const TEMPLATE: Template = Template {
         on_tertiary_fixed: color!(0xFFFFFF),
         tertiary_fixed_dim: color!(0x474747),
         on_tertiary_fixed_variant: color!(0xE2E2E2),
+
         error: color!(0xBA1A1A),
         on_error: color!(0xFFFFFF),
         error_container: color!(0xFFDAD6),
         on_error_container: color!(0x410002),
+
         surface: color!(0xF9F9F9),
         on_surface: color!(0x1B1B1B),
         surface_variant: color!(0xE2E2E2),
         on_surface_variant: color!(0x474747),
+
         surface_container_highest: color!(0xE2E2E2),
         surface_container_high: color!(0xE8E8E8),
         surface_container: color!(0xEEEEEE),
         surface_container_low: color!(0xF3F3F3),
         surface_container_lowest: color!(0xFFFFFF),
+
         inverse_surface: color!(0x303030),
         inverse_on_surface: color!(0xF1F1F1),
+
         background: color!(0xF9F9F9),
         on_background: color!(0x1B1B1B),
+
         surface_bright: color!(0xF9F9F9),
         surface_dim: color!(0xDADADA),
+
         scrim: color!(0x000000),
         shadow: color!(0x000000),
         outline: color!(0x777777),
