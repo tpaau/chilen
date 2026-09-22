@@ -81,6 +81,7 @@ ignore = [
     "RUSTSEC-2026-0194",
     "RUSTSEC-2026-0195",
     { id = "RUSTSEC-2026-0274", reason = "rodio dependency" },
+    { id = "RUSTSEC-2026-0206", reason = "unmaintained crate, iced dependency" }
 ]
 # If this is true, then cargo deny will use the git executable to fetch advisory database.
 # If this is false, then it uses a built-in git library.
