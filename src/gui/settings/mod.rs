@@ -9,7 +9,7 @@ use iced_m3::{
     style::{Elevation, shadow},
     theme::{Accent, ColorScheme},
     widget::{
-        OnPress,
+        OnPress, button,
         fab::{self},
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
     },
@@ -18,8 +18,9 @@ use iced_widget::{center, column, container, opaque, row, stack, text};
 
 use crate::gui::{
     Chilen, ROUNDING_REGULAR, SPACING_REGULAR,
+    dialog::Dialog,
     font::bold_text,
-    icons::{self, CLOSE, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
+    icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
 };
 
 const MAX_WIDTH: f32 = 1000.0;
@@ -73,6 +74,7 @@ pub enum Message {
     Close,
     SwitchScreen(Screen),
     LookAndFeel(look_and_feel::Message),
+    Reset,
 }
 
 #[derive(Default)]
@@ -82,11 +84,12 @@ pub struct State {
 
 pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
     match message {
-        Message::Close => state.dialog = super::dialog::Dialog::None,
+        Message::Close => state.settings_opened = false,
         Message::SwitchScreen(screen) => state.settings_state.screen = screen,
         Message::LookAndFeel(message) => {
             return look_and_feel::update(state, message).map(Message::LookAndFeel);
         }
+        Message::Reset => state.dialog = Dialog::ResetSettings,
     }
     Task::none()
 }
@@ -94,14 +97,21 @@ pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
 pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let rounding = ROUNDING_REGULAR;
 
-    let close_button = iced_m3::widget::fab(
-        fab::Style::fab_tonal(&state.theme, Accent::Primary),
-        iced_m3::widget::fab::Content::Extended {
-            icon: CLOSE.into_fragment(),
-            label: "Close".into(),
+    let close_button = button(
+        button::Style {
+            elevation: button::ElevationStates {
+                shadow_color: state.theme.shadow(),
+                idle: Elevation::Level3,
+                disabled: Elevation::Level0,
+                hover: Elevation::Level3,
+                press: Elevation::Level3,
+            },
+            ..button::Style::filled(&state.theme, Accent::Primary)
         },
-        OnPress::Direct(Message::Close),
-    );
+        button::Content::Label("Close".into()),
+    )
+    .size(button::Size::Medium)
+    .on_press(Message::Close);
 
     let items = [
         Screen::LookAndFeel,
@@ -125,6 +135,13 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         .status(navrail::Status::Expanded {
             width: Pixels(CONTAINER_EXPANDED_MIN_WIDTH),
         })
+        .fab(navrail::Fab {
+            icon: icons::RESET_SETTINGS.into_fragment(),
+            label: "Reset settings".into(),
+            style: fab::Style::fab_tonal(&state.theme, Accent::Tertiary),
+            on_press: OnPress::Direct(Message::Reset),
+        })
+        .icon_font(icons::filled())
         .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
         .icon_font_active(icons::filled())
         .icon_font_inactive(icons::outlined())

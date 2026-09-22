@@ -132,10 +132,6 @@ impl Settings {
 
         Ok(stored_settings.into())
     }
-
-    pub fn set_theme_mode(&mut self, mode: Mode) {
-        self.theme_mode = mode;
-    }
 }
 
 pub fn save(state: &mut Chilen) {

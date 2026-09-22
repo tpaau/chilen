@@ -55,6 +55,7 @@ pub static PALETTE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe40a).unw
 pub static LIBRARY_MUSIC: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe030).unwrap());
 pub static CHECK: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5ca).unwrap());
 pub static PERSON: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe7fd).unwrap());
+pub static RESET_SETTINGS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xf47f).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const _SIZE_SMALL: f32 = 20.0;

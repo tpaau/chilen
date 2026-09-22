@@ -3,7 +3,7 @@ mod material;
 
 use iced_m3::theme::{Mode, Palette, Theme};
 
-pub const THEMES: &[Template] = &[graphite::TEMPLATE, material::TEMPLATE];
+pub const THEMES: &[Template] = &[material::TEMPLATE, graphite::TEMPLATE];
 
 #[derive(Clone)]
 pub struct Template<'a> {

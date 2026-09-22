@@ -25,7 +25,7 @@ use iced::{
     widget::{container, row},
     window::{self},
 };
-use iced_m3::theme::{ColorScheme, Theme};
+use iced_m3::theme::{ColorScheme, Mode, Theme};
 use iced_widget::{responsive, stack};
 use log::{error, trace};
 
@@ -60,6 +60,7 @@ pub enum Message {
     Settings(settings::Message),
     Playback(playback_view::Message),
     AddTrackToPlaylist { track: Arc<Track>, playlist: String },
+    ResetSettings,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -75,8 +76,9 @@ pub struct Chilen {
     player_state: Option<PlayerState>,
     pub dialog: Dialog,
     loading_state: LoadingState,
-    theme: Theme,
+    pub theme: Theme,
     pub settings: Settings,
+    settings_opened: bool,
     main_view: main_view::State,
     playlist_view: playlist_view::State,
     playback_view: playback_view::State,
@@ -85,21 +87,14 @@ pub struct Chilen {
 
 impl Default for Chilen {
     fn default() -> Self {
-        let settings = Settings::load().unwrap_or_default();
-        let theme = THEMES
-            .iter()
-            .find(|t| t.name == settings.theme_name)
-            .cloned()
-            .unwrap_or(THEMES[0].clone())
-            .into_theme(settings.theme_mode);
-
-        Self {
+        let mut state = Self {
             library: None,
             player_state: None,
             dialog: Dialog::Loading(None),
             loading_state: LoadingState::default(),
-            theme,
-            settings,
+            theme: Theme::default(Mode::Light),
+            settings: Settings::default(),
+            settings_opened: false,
             main_view: main_view::State {
                 nav_stack: main_view::NavStack::default(),
                 visible: None,
@@ -107,7 +102,11 @@ impl Default for Chilen {
             playlist_view: playlist_view::State::default(),
             playback_view: playback_view::State::default(),
             settings_state: settings::State::default(),
-        }
+        };
+
+        let settings = Settings::load().unwrap_or_default();
+        state.apply_settings(settings);
+        state
     }
 }
 
@@ -158,6 +157,18 @@ fn window_subscription() -> Subscription<Message> {
 }
 
 impl Chilen {
+    fn apply_settings(&mut self, settings: Settings) {
+        let theme = THEMES
+            .iter()
+            .find(|t| t.name == settings.theme_name)
+            .cloned()
+            .unwrap_or(THEMES[0].clone())
+            .into_theme(settings.theme_mode);
+
+        self.settings = settings;
+        self.theme = theme;
+    }
+
     fn view(state: &Chilen) -> Element<'_, Message> {
         let base_content = responsive(|size| {
             let offset =
@@ -187,7 +198,14 @@ impl Chilen {
         let base = container(base_content)
             .style(|_| container::background(state.theme.surface_container_low()));
 
-        stack![base, dialog::view(state),].into()
+        stack![
+            base,
+            state
+                .settings_opened
+                .then_some(settings::view(state).map(Message::Settings)),
+            dialog::view(state),
+        ]
+        .into()
     }
 
     fn update(state: &mut Chilen, message: Message) -> Task<Message> {
@@ -323,6 +341,12 @@ impl Chilen {
                 } else {
                     state.dialog = Dialog::None;
                 }
+            }
+            Message::ResetSettings => {
+                state.dialog = Dialog::None;
+                state.settings = Settings::default();
+                state.apply_settings(state.settings.clone());
+                crate::settings::save(state);
             }
         }
         Task::none()

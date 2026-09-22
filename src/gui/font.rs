@@ -1,5 +1,5 @@
 use iced_core::text::IntoFragment;
-use iced_widget::{Text, text};
+use iced_widget::Text;
 
 #[cfg(all(windows, feature = "cjk_fonts"))]
 pub(super) const BYTES_REGULAR_CJK: &[u8] =
@@ -50,6 +50,10 @@ pub fn bold() -> iced::Font {
     }
 }
 
+pub fn text<'a>(content: impl IntoFragment<'a>) -> Text<'a> {
+    iced_widget::text(content).font(regular())
+}
+
 pub fn bold_text<'a>(content: impl IntoFragment<'a>) -> Text<'a> {
-    text(content).font(bold())
+    iced_widget::text(content).font(bold())
 }

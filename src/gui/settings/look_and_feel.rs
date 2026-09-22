@@ -125,7 +125,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 .direction(Direction::Horizontal(Scrollbar::default()))
                 .style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
         ]
-        .spacing(SPACING_SMALL),
+        .spacing(SPACING_REGULAR),
     )
     .width(Length::Fill);
 

@@ -272,7 +272,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
         Message::Noop => {}
-        Message::OpenSettings => state.dialog = gui::dialog::Dialog::Settings,
+        Message::OpenSettings => state.settings_opened = true,
         Message::PlayTracks { initial_position } => {
             common_actions::play_tracks(state, initial_position)
         }

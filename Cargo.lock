@@ -1873,7 +1873,7 @@ dependencies = [
 [[package]]
 name = "iced_m3"
 version = "0.1.0"
-source = "git+https://github.com/tpaau/iced_m3#f5a8fee9a48030975aa4511d9ee2f41628371d7f"
+source = "git+https://github.com/tpaau/iced_m3#da7fb05f2d23ec4607322342f870681f14fce476"
 dependencies = [
  "iced",
  "iced_widget",
