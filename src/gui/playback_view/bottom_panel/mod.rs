@@ -1,8 +1,9 @@
 use iced::{Border, Element, Length, padding};
-use iced_m3::theme::ColorScheme;
+use iced_core::text::IntoFragment;
+use iced_m3::{theme::ColorScheme, widget::hybrid_icon::Icon};
 use iced_widget::{column, container};
 
-use crate::gui::{Chilen, ROUNDING_LARGER, SPACING_REGULAR, icons, playback_view::Message};
+use crate::gui::{Chilen, ROUNDING_LARGER, SPACING_REGULAR, font, icons, playback_view::Message};
 
 mod lyrics;
 mod queue;
@@ -14,24 +15,37 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let navbar = iced_m3::widget::navbar::<Message, iced::Theme, iced::Renderer>(
         vec![
             iced_m3::widget::navbar::Item {
-                icon: &icons::QUEUE_MUSIC,
-                label: "Queue",
+                icon_active: Icon::Text {
+                    text: icons::QUEUE_MUSIC.into_fragment(),
+                    font: Some(icons::filled()),
+                },
+                icon_inactive: Icon::Text {
+                    text: icons::QUEUE_MUSIC.into_fragment(),
+                    font: Some(icons::outlined()),
+                },
+                label: "Queue".into(),
                 message: Message::OpenQueue,
             },
             iced_m3::widget::navbar::Item {
-                icon: &icons::LYRICS,
-                label: "Lyrics",
+                icon_active: Icon::Text {
+                    text: icons::LYRICS.into_fragment(),
+                    font: Some(icons::filled()),
+                },
+                icon_inactive: Icon::Text {
+                    text: icons::LYRICS.into_fragment(),
+                    font: Some(icons::outlined()),
+                },
+                label: "Lyrics".into(),
                 message: Message::OpenLyrics,
             },
         ],
+        font::regular(),
         &state.theme,
     )
     .focused_index(match state.playback_view.tab {
         super::Tab::Queue => 0,
         super::Tab::Lyrics => 1,
-    })
-    .icon_font_active(icons::filled())
-    .icon_font_inactive(icons::outlined());
+    });
 
     let content = match state.playback_view.tab {
         super::Tab::Lyrics => lyrics::view(state, PANEL_PADDING / 2.0),

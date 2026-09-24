@@ -20,7 +20,8 @@ use iced_widget::{center, column, container, row, space, stack};
 use log::trace;
 
 use crate::gui::{
-    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, dialog, icons,
+    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, dialog, font,
+    icons,
     main_view::{self, top_view::TopView},
     settings::Screen,
 };
@@ -164,31 +165,58 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                 iced_m3::widget::navbar::<_, iced::Theme, iced::Renderer>(
                     vec![
                         iced_m3::widget::navbar::Item {
-                            icon: &icons::MUSIC_NOTE,
-                            label: "Tracks",
+                            icon_active: Icon::Text {
+                                text: icons::MUSIC_NOTE.into_fragment(),
+                                font: Some(icons::filled()),
+                            },
+                            icon_inactive: Icon::Text {
+                                text: icons::MUSIC_NOTE.into_fragment(),
+                                font: Some(icons::outlined()),
+                            },
+                            label: "Tracks".into(),
                             message: Message::SwitchTab(NavTab::Tracks),
                         },
                         iced_m3::widget::navbar::Item {
-                            icon: &icons::ALBUM,
-                            label: "Albums",
+                            icon_active: Icon::Text {
+                                text: icons::ALBUM.into_fragment(),
+                                font: Some(icons::filled()),
+                            },
+                            icon_inactive: Icon::Text {
+                                text: icons::ALBUM.into_fragment(),
+                                font: Some(icons::outlined()),
+                            },
+                            label: "Albums".into(),
                             message: Message::SwitchTab(NavTab::Albums),
                         },
                         iced_m3::widget::navbar::Item {
-                            icon: &icons::ARTIST,
-                            label: "Artists",
+                            icon_active: Icon::Text {
+                                text: icons::ARTIST.into_fragment(),
+                                font: Some(icons::filled()),
+                            },
+                            icon_inactive: Icon::Text {
+                                text: icons::ARTIST.into_fragment(),
+                                font: Some(icons::outlined()),
+                            },
+                            label: "Artists".into(),
                             message: Message::SwitchTab(NavTab::Artists),
                         },
                         iced_m3::widget::navbar::Item {
-                            icon: &icons::GENRES,
-                            label: "Genres",
+                            icon_active: Icon::Text {
+                                text: icons::GENRES.into_fragment(),
+                                font: Some(icons::filled()),
+                            },
+                            icon_inactive: Icon::Text {
+                                text: icons::GENRES.into_fragment(),
+                                font: Some(icons::outlined()),
+                            },
+                            label: "Genres".into(),
                             message: Message::SwitchTab(NavTab::Genres),
                         },
                     ],
+                    font::regular(),
                     &state.theme,
                 )
                 .focused_index(index)
-                .icon_font_active(icons::filled())
-                .icon_font_inactive(icons::outlined())
             },
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
