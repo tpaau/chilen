@@ -11,6 +11,7 @@ use iced_m3::{
     widget::{
         OnPress, button, card,
         fab::{self},
+        hybrid_icon::Icon,
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
     },
 };
@@ -131,10 +132,15 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
         ]
         .into_iter()
         .map(|screen| Item {
-            icon: iced_m3::widget::BadgeIcon {
-                icon: screen.icon().into_fragment(),
-                badge: None,
+            icon_active: Icon::Text {
+                text: screen.icon().into_fragment(),
+                font: Some(icons::filled()),
             },
+            icon_inactive: Icon::Text {
+                text: screen.icon().into_fragment(),
+                font: Some(icons::filled()),
+            },
+            badge: None,
             label: screen.label(),
             on_press: OnPress::Direct(Message::SwitchScreen(screen)),
         })
@@ -146,15 +152,15 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                 width: Pixels(CONTAINER_EXPANDED_MIN_WIDTH),
             })
             .fab(navrail::Fab {
-                icon: icons::RESET_SETTINGS.into_fragment(),
+                icon: Icon::Text {
+                    text: icons::RESET_SETTINGS.into_fragment(),
+                    font: Some(icons::filled()),
+                },
                 label: "Reset settings".into(),
                 style: fab::Style::fab_tonal(&state.theme, Accent::Tertiary),
                 on_press: OnPress::Direct(Message::Reset),
             })
-            .icon_font(icons::filled())
             .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
-            .icon_font_active(icons::filled())
-            .icon_font_inactive(icons::outlined())
             .active(active_index);
 
         let title = bold_text(screen.label())

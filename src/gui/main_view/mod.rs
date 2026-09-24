@@ -11,7 +11,10 @@ use iced::{Alignment, Border, Element, Length, Task, padding};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
-    widget::button::{self, Content},
+    widget::{
+        button::{self, Content},
+        hybrid_icon::Icon,
+    },
 };
 use iced_widget::{center, column, container, row, space, stack};
 use log::trace;
@@ -144,7 +147,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
         row![
             iced_m3::widget::button(
                 button::Style::filled(&state.theme, Accent::default()),
-                Content::Icon(icons::SEARCH.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::SEARCH.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .on_press(Message::Noop),
             // TODO: Custom ordering
@@ -186,7 +192,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
             },
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
-                Content::Icon(icons::SETTINGS.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::SETTINGS.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .on_press(Message::OpenSettings),
         ]

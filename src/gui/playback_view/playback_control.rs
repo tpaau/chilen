@@ -7,6 +7,7 @@ use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
         button::{self, Content},
+        hybrid_icon::Icon,
         slider,
     },
 };
@@ -249,10 +250,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         row![
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
-                Content::Icon(icons::SHUFFLE.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::SHUFFLE.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(toggle_size)
-            .icon_font(icons::filled())
             .selected(
                 state
                     .player_state
@@ -263,10 +266,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleShuffle)),
             iced_m3::widget::button(
                 button::Style::tonal(&state.theme, Accent::Tertiary),
-                Content::Icon(icons::SKIP_PREVIOUS.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::SKIP_PREVIOUS.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(skip_button_size)
-            .icon_font(icons::filled())
             .corner_style(iced_m3::widget::button::CornerStyle::Square)
             .on_press_maybe(
                 state
@@ -276,10 +281,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             ),
             iced_m3::widget::button(
                 button::Style::tonal(&state.theme, Accent::Primary),
-                Content::Icon(play_button_icon.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: play_button_icon.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(iced_m3::widget::button::Size::Medium)
-            .icon_font(icons::filled())
             .selected(
                 state
                     .player_state
@@ -295,10 +302,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             ),
             iced_m3::widget::button(
                 button::Style::tonal(&state.theme, Accent::Tertiary),
-                Content::Icon(icons::SKIP_NEXT.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::SKIP_NEXT.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(skip_button_size)
-            .icon_font(icons::filled())
             .corner_style(iced_m3::widget::button::CornerStyle::Square)
             .on_press_maybe(
                 state
@@ -308,10 +317,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             ),
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
-                Content::Icon(loop_button_icon.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: loop_button_icon.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(toggle_size)
-            .icon_font(icons::filled())
             .selected(
                 state
                     .player_state

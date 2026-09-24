@@ -1,18 +1,22 @@
 mod breathe;
 mod bubblegum;
-mod graphite;
+mod choco;
 mod mahogany;
 mod material;
+mod prince;
+mod watcher;
 
 use iced_m3::theme::{Mode, Palette, Theme};
 
 // Themes listed here appear in the same order in the settings. The first theme is the default.
 pub const THEMES: &[Template] = &[
     breathe::TEMPLATE,
-    graphite::TEMPLATE,
     mahogany::TEMPLATE,
     material::TEMPLATE,
     bubblegum::TEMPLATE,
+    watcher::TEMPLATE,
+    prince::TEMPLATE,
+    choco::TEMPLATE,
 ];
 
 #[derive(Clone)]

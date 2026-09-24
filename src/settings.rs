@@ -74,6 +74,7 @@ impl Default for Settings {
 }
 
 impl From<StoredSettings> for Settings {
+    // TODO: Fix the theme name if it's invalid
     fn from(value: StoredSettings) -> Self {
         let theme_mode = match value.theme_dark_mode {
             true => Mode::Dark,

@@ -10,7 +10,10 @@ use iced::{Element, Length, Task};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
-    widget::button::{self, Content},
+    widget::{
+        button::{self, Content},
+        hybrid_icon::Icon,
+    },
 };
 use iced_widget::{container, responsive, row, scrollable};
 use log::error;
@@ -112,37 +115,45 @@ fn horizontal_buttons<'a>(
         row![
             iced_m3::widget::button(
                 button::Style::tonal(theme, Accent::Tertiary),
-                Content::Icon(icons::ARROW_BACK.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::ARROW_BACK.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(button_size)
-            .icon_font(icons::filled())
             .on_press(Message::Unwind),
             iced_m3::widget::button(
                 button::Style::filled(theme, Accent::Primary),
                 Content::Full {
-                    icon: icons::PLAY_ARROW.into_fragment(),
+                    icon: Icon::Text {
+                        text: icons::PLAY_ARROW.into_fragment(),
+                        font: Some(icons::filled())
+                    },
                     label: "Play".into()
                 }
             )
             .size(button_size.with_width(Length::Fill))
-            .icon_font(icons::filled())
             .on_press_maybe(message_play.clone()),
             iced_m3::widget::button(
                 button::Style::filled(theme, Accent::Primary),
                 Content::Full {
-                    icon: icons::SHUFFLE.into_fragment(),
+                    icon: Icon::Text {
+                        text: icons::SHUFFLE.into_fragment(),
+                        font: Some(icons::filled())
+                    },
                     label: "Shuffle".into()
                 }
             )
             .size(button_size.with_width(Length::Fill))
-            .icon_font(icons::filled())
             .on_press_maybe(message_shuffle.clone()),
             iced_m3::widget::button(
                 button::Style::outlined(theme),
-                Content::Icon(icons::MORE_HORIZ.into_fragment())
+                Content::Icon(Icon::Text {
+                    text: icons::MORE_HORIZ.into_fragment(),
+                    font: Some(icons::filled())
+                })
             )
             .size(button_size)
-            .icon_font(icons::filled())
             .on_press(message_options.clone()),
         ]
         .spacing(SPACING_REGULAR)
