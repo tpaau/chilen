@@ -123,7 +123,7 @@ fn horizontal_buttons<'a>(
             .size(button_size)
             .on_press(Message::Unwind),
             iced_m3::widget::button(
-                button::Style::filled(theme, Accent::Primary),
+                button::Style::tonal(theme, Accent::Secondary),
                 Content::Full {
                     icon: Icon::Text {
                         text: icons::PLAY_ARROW.into_fragment(),

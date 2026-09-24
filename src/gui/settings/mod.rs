@@ -138,7 +138,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             },
             icon_inactive: Icon::Text {
                 text: screen.icon().into_fragment(),
-                font: Some(icons::filled()),
+                font: Some(icons::outlined()),
             },
             badge: None,
             label: screen.label(),
