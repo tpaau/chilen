@@ -1,4 +1,4 @@
-use chilen_widget::theme_preview::{ActiveIndicator, ThemePreview};
+use chilen_widget::theme_preview::ThemePreview;
 use iced::{Alignment, Element, Length, Task};
 use iced_m3::{
     theme::{
@@ -32,30 +32,17 @@ pub enum Message {
 }
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    let preview_size = 48.0;
     let themes = THEMES.iter().enumerate().map(|(i, t)| {
-        let active_indicator = match state.settings.theme_name == t.name {
-            true => ActiveIndicator {
-                color: state.theme.on_surface(),
-                ..ActiveIndicator::default()
-            },
-            false => ActiveIndicator::default(),
-        };
+        let selected = state.settings.theme_name == t.name;
         let preview = match state.theme.mode {
-            iced_m3::theme::Mode::Dark => ThemePreview {
-                color_top: t.dark.primary,
-                color_left: t.dark.primary_container,
-                color_right: t.dark.surface,
-                size: preview_size,
-                active_indicator,
-            },
-            iced_m3::theme::Mode::Light => ThemePreview {
-                color_top: t.light.primary,
-                color_left: t.light.primary_container,
-                color_right: t.light.surface,
-                size: preview_size,
-                active_indicator,
-            },
+            iced_m3::theme::Mode::Dark => {
+                ThemePreview::new(t.dark.primary, t.dark.primary_container, t.dark.surface)
+                    .selected(selected)
+            }
+            iced_m3::theme::Mode::Light => {
+                ThemePreview::new(t.light.primary, t.light.primary_container, t.light.surface)
+                    .selected(selected)
+            }
         };
 
         mouse_area(preview)

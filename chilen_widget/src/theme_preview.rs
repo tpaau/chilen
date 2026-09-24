@@ -1,31 +1,49 @@
 use iced::{
-    Border, Color, Element, Rectangle,
+    Border, Color, Element, Padding, Rectangle,
     advanced::{Widget, layout::atomic, renderer::Quad},
 };
 
-pub struct ActiveIndicator {
-    pub color: Color,
-    pub width: f32,
-    pub padding: f32,
+const DEFAULT_SIZE: f32 = 48.0;
+const RING_PADDING: f32 = 2.0;
+const RING_WIDTH: f32 = 2.0;
+const OUTLINE_HOVER_OPACITY: f32 = 0.6;
+
+/// Theme preview widget inspired by the one found in the Android color settings.
+///
+/// Displays a circle with three color sections, where the top one takes up half of the circle.
+pub struct ThemePreview {
+    color_top: Color,
+    color_left: Color,
+    color_right: Color,
+    size: f32,
+    is_hovered: bool,
+    selected: bool,
 }
 
-impl Default for ActiveIndicator {
-    fn default() -> Self {
+impl ThemePreview {
+    #[must_use]
+    pub fn new(color_top: Color, color_left: Color, color_right: Color) -> Self {
         Self {
-            color: Color::TRANSPARENT,
-            width: 2.0,
-            padding: 2.0,
+            color_top,
+            color_left,
+            color_right,
+            size: DEFAULT_SIZE,
+            is_hovered: false,
+            selected: false,
         }
     }
-}
 
-/// AOSP theme preview widget. Displays a circle with three color sections.
-pub struct ThemePreview {
-    pub color_top: Color,
-    pub color_left: Color,
-    pub color_right: Color,
-    pub active_indicator: ActiveIndicator,
-    pub size: f32,
+    #[must_use]
+    pub fn selected(mut self, selected: bool) -> Self {
+        self.selected = selected;
+        self
+    }
+
+    #[must_use]
+    pub fn size(mut self, size: f32) -> Self {
+        self.size = size;
+        self
+    }
 }
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for ThemePreview
@@ -59,8 +77,12 @@ where
         viewport: &iced::Rectangle,
     ) {
         let full_bounds = layout.bounds();
-        let padding = self.active_indicator.width + self.active_indicator.padding;
+        let padding = Padding::from(RING_PADDING + RING_WIDTH);
         let bounds = full_bounds.shrink(padding);
+        let radius = match self.selected {
+            true => bounds.width / 3.0,
+            false => f32::MAX,
+        };
 
         let draw_part = |renderer: &mut Renderer, clip: iced::Rectangle, color: Color| {
             if let Some(clip) = clip.intersection(viewport) {
@@ -68,7 +90,7 @@ where
                     renderer.fill_quad(
                         Quad {
                             bounds,
-                            border: Border::default().rounded(f32::MAX),
+                            border: Border::default().rounded(radius),
                             ..Default::default()
                         },
                         color,
@@ -110,17 +132,45 @@ where
             self.color_right,
         );
 
-        renderer.fill_quad(
-            Quad {
-                bounds: full_bounds,
-                border: Border::default()
-                    .rounded(f32::MAX)
-                    .width(self.active_indicator.width)
-                    .color(self.active_indicator.color),
-                ..Default::default()
-            },
-            Color::TRANSPARENT,
-        );
+        if self.selected {
+            renderer.fill_quad(
+                Quad {
+                    bounds: full_bounds,
+                    border: Border::default()
+                        .rounded(radius + RING_PADDING + RING_WIDTH)
+                        .color(self.color_top)
+                        .width(RING_WIDTH),
+                    ..Default::default()
+                },
+                Color::TRANSPARENT,
+            );
+        } else if self.is_hovered {
+            renderer.fill_quad(
+                Quad {
+                    bounds: full_bounds,
+                    border: Border::default()
+                        .rounded(f32::MAX)
+                        .color(self.color_top.scale_alpha(OUTLINE_HOVER_OPACITY))
+                        .width(RING_WIDTH),
+                    ..Default::default()
+                },
+                Color::TRANSPARENT,
+            );
+        }
+    }
+
+    fn update(
+        &mut self,
+        _tree: &mut iced::advanced::widget::Tree,
+        _event: &iced::Event,
+        layout: iced::advanced::Layout<'_>,
+        cursor: iced::advanced::mouse::Cursor,
+        _renderer: &Renderer,
+        _clipboard: &mut dyn iced::advanced::Clipboard,
+        _shell: &mut iced::advanced::Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) {
+        self.is_hovered = cursor.is_over(layout.bounds());
     }
 }
 

@@ -46,6 +46,8 @@ impl From<Settings> for StoredSettings {
     }
 }
 
+// TODO: Appearance: Lyrics highlight mode
+// TODO: Appearance: Playback control song info alignment
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub theme_name: String,
