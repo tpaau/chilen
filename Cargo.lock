@@ -1873,10 +1873,11 @@ dependencies = [
 [[package]]
 name = "iced_m3"
 version = "0.1.0"
-source = "git+https://github.com/tpaau/iced_m3#a65dbb0ae7752fd9487e69c7c50d0bb01bbcc11f"
+source = "git+https://github.com/tpaau/iced_m3#e0a49cccc30eedf213261062b96a77c36511df44"
 dependencies = [
  "iced",
  "iced_widget",
+ "lilt",
  "num-traits",
  "pollster 1.0.1",
  "unicode-segmentation",
