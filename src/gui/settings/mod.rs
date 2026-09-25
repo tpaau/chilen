@@ -121,7 +121,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             },
             button::Content::Label("Close".into()),
         )
-        .size(button::Size::Medium)
+        .size(button::Size::medium())
         .on_press(Message::Close);
 
         let items = [

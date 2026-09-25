@@ -239,12 +239,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         })
         .unwrap_or(*icons::REPEAT);
     let toggle_size = {
-        let size = iced_m3::widget::button::Size::Small;
-        size.with_width(size.height()).with_padding(0.0)
+        let size = iced_m3::widget::button::Size::small();
+        size.width(size.height).padding(0.0.into())
     };
     let skip_button_size = {
-        let size = iced_m3::widget::button::Size::Medium;
-        size.with_width(size.height()).with_padding(0.0)
+        let size = iced_m3::widget::button::Size::medium();
+        size.width(size.height).padding(0.0.into())
     };
     let buttons = container(
         row![
@@ -271,8 +271,13 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     font: Some(icons::filled())
                 })
             )
-            .size(skip_button_size)
-            .corner_style(iced_m3::widget::button::CornerStyle::Square)
+            .size(
+                skip_button_size.corner_radius(
+                    skip_button_size
+                        .corner_radius
+                        .style(button::CornerStyle::Square)
+                )
+            )
             .on_press_maybe(
                 state
                     .player_state
@@ -286,7 +291,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     font: Some(icons::filled())
                 })
             )
-            .size(iced_m3::widget::button::Size::Medium)
+            .size(iced_m3::widget::button::Size::medium())
             .selected(
                 state
                     .player_state
@@ -307,8 +312,13 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     font: Some(icons::filled())
                 })
             )
-            .size(skip_button_size)
-            .corner_style(iced_m3::widget::button::CornerStyle::Square)
+            .size(
+                skip_button_size.corner_radius(
+                    skip_button_size
+                        .corner_radius
+                        .style(button::CornerStyle::Square)
+                )
+            )
             .on_press_maybe(
                 state
                     .player_state

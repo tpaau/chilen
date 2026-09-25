@@ -108,9 +108,9 @@ fn horizontal_buttons<'a>(
 ) -> Element<'a, Message> {
     responsive(move |size| {
         let button_size = if size.width < 466.0 {
-            iced_m3::widget::button::Size::Small
+            iced_m3::widget::button::Size::small()
         } else {
-            iced_m3::widget::button::Size::Medium
+            iced_m3::widget::button::Size::medium()
         };
         row![
             iced_m3::widget::button(
@@ -132,7 +132,7 @@ fn horizontal_buttons<'a>(
                     label: "Play".into()
                 }
             )
-            .size(button_size.with_width(Length::Fill))
+            .size(button_size.width(Length::Fill))
             .on_press_maybe(message_play.clone()),
             iced_m3::widget::button(
                 button::Style::filled(theme, Accent::Primary),
@@ -144,7 +144,7 @@ fn horizontal_buttons<'a>(
                     label: "Shuffle".into()
                 }
             )
-            .size(button_size.with_width(Length::Fill))
+            .size(button_size.width(Length::Fill))
             .on_press_maybe(message_shuffle.clone()),
             iced_m3::widget::button(
                 button::Style::outlined(theme),
