@@ -81,7 +81,7 @@ pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Mess
         label: "Cancel".to_string(),
         style: iced_m3::widget::button::Style::outlined(&state.theme),
     }];
-    dialog(&state.theme, content, buttons)
+    dialog(dialog::Style::new(&state.theme), content, buttons)
         .title_font(font::bold())
         .title("Add to playlist")
         .icon_font(icons::filled())

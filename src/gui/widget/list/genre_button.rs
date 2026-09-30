@@ -2,7 +2,11 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Genre;
 use iced::{Alignment, Element, Length};
-use iced_m3::{theme::ColorScheme, widget::vertical_menu};
+use iced_core::text::IntoFragment;
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{hybrid_icon::Icon, vertical_menu},
+};
 use iced_widget::{button, column, container, hover, row, space, text};
 
 use crate::{
@@ -45,32 +49,40 @@ where
                 label: None,
                 entries: vec![
                     vertical_menu::Entry::Button {
-                        icon: Some(&icons::PLAY_ARROW),
-                        label: "Play",
+                        icon: Some(Icon::Text {
+                            text: icons::PLAY_ARROW.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Play".into(),
                         supporting_text: None,
                         error: false,
                         action: vertical_menu::Action::Message(Some(value.play)),
                     },
                     vertical_menu::Entry::Button {
-                        icon: Some(&icons::SHUFFLE),
-                        label: "Shuffle",
+                        icon: Some(Icon::Text {
+                            text: icons::SHUFFLE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Shuffle".into(),
                         supporting_text: None,
                         error: false,
                         action: vertical_menu::Action::Message(Some(value.shuffle)),
                     },
                     vertical_menu::Entry::Button {
-                        icon: Some(&icons::ADD_TO_QUEUE),
-                        label: "Add to queue",
+                        icon: Some(Icon::Text {
+                            text: icons::ADD_TO_QUEUE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Add to queue".into(),
                         supporting_text: None,
                         error: false,
                         action: vertical_menu::Action::Message(Some(value.add_to_queue)),
                     },
                 ],
             }],
-            value.theme,
-        )
-        .vibrant(value.vibrant)
-        .icon_font(icons::filled());
+            vertical_menu::Style::new(value.theme, value.vibrant),
+            font::regular(),
+        );
 
         let font = if value.highlighted {
             font::bold()

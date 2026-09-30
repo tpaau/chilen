@@ -56,7 +56,7 @@ pub fn view<'a>(theme: &'a impl ColorScheme, progress: Option<Progress>) -> Elem
             .color(theme.on_surface_variant()),
     );
 
-    dialog(theme, content, Vec::new())
+    dialog(dialog::Style::new(theme), content, Vec::new())
         .title_font(font::bold())
         .title(status)
         .icon_font(icons::filled())

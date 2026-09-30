@@ -147,8 +147,8 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
         .collect();
 
         let active_index = screen.index();
-        let navrail = iced_m3::widget::navrail(&state.theme, items)
-            .status(navrail::Status::Expanded {
+        let navrail = iced_m3::widget::navrail(navrail::Style::new(&state.theme), items)
+            .mode(navrail::Mode::Expanded {
                 width: Pixels(CONTAINER_EXPANDED_MIN_WIDTH),
             })
             .fab(navrail::Fab {

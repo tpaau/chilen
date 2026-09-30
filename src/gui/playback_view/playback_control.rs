@@ -240,11 +240,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         .unwrap_or(*icons::REPEAT);
     let toggle_size = {
         let size = iced_m3::widget::button::Size::small();
-        size.width(size.height).padding(0.0.into())
+        size.width(size.height.into()).padding(0.0.into())
     };
     let skip_button_size = {
         let size = iced_m3::widget::button::Size::medium();
-        size.width(size.height).padding(0.0.into())
+        size.width(size.height.into()).padding(0.0.into())
     };
     let buttons = container(
         row![

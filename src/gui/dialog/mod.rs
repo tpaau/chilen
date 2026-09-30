@@ -70,7 +70,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             };
 
             dialog(
-                &state.theme,
+                dialog::Style::new(&state.theme),
                 iced_m3::widget::text_input::<_, Message>(
                     &state.library.as_ref().unwrap().get_default_playlist_name(),
                     name,
@@ -123,7 +123,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             };
 
             dialog(
-                &state.theme,
+                dialog::Style::new(&state.theme),
                 iced_m3::widget::text_input::<_, Message>(default_name, name, &state.theme)
                     .error(!name_ok)
                     .with_label_text("Playlist name", state.theme.surface_container_high())
@@ -141,7 +141,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
         }),
         Dialog::Error(message) => Some({
             dialog(
-                &state.theme,
+                dialog::Style::new(&state.theme),
                 container(text(message))
                     .style(|_| container::Style {
                         text_color: Some(state.theme.on_error_container()),
@@ -185,7 +185,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             };
 
             dialog(
-                &state.theme,
+                dialog::Style::new(&state.theme),
                 iced_m3::widget::text_input::<_, Message>("Playlist name", name, &state.theme)
                     .error(!name_ok)
                     .with_label_text("Playlist name", state.theme.surface_container_high())
@@ -203,7 +203,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
         }),
         Dialog::DeletePlaylist(playlist) => Some({
             dialog(
-                &state.theme,
+                dialog::Style::new(&state.theme),
                 text(format!(
                     "Delete playlist \"{}\" with {} tracks?\n\nThis cannot be undone.",
                     playlist.name,
@@ -229,7 +229,7 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
         Dialog::Loading(progress) => Some(loading::view(&state.theme, progress.clone())),
         Dialog::ResetSettings => Some(
             dialog(
-                &state.theme,
+                dialog::Style::new(&state.theme),
                 text("Are you absolutely sure you want to reset all of your settings?"),
                 vec![
                     cancel_button(&state.theme),

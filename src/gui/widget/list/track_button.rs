@@ -2,7 +2,11 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::Track;
 use iced::Length;
-use iced_m3::{theme::ColorScheme, widget::vertical_menu};
+use iced_core::text::IntoFragment;
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{hybrid_icon::Icon, vertical_menu},
+};
 use iced_widget::{button, column, container, hover, row, space, text};
 
 use crate::gui::{
@@ -65,15 +69,21 @@ where
 
         let mut second_group_entries = vec![
             vertical_menu::Entry::Button {
-                icon: Some(&icons::PLAYLIST_PLAY),
-                label: "Add to playlist",
+                icon: Some(Icon::Text {
+                    text: icons::PLAYLIST_PLAY.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Add to playlist".into(),
                 supporting_text: None,
                 error: false,
                 action: vertical_menu::Action::Message(Some(value.messages.add_to_playlist)),
             },
             vertical_menu::Entry::Button {
-                icon: Some(&icons::INFO),
-                label: "Details",
+                icon: Some(Icon::Text {
+                    text: icons::INFO.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Details".into(),
                 supporting_text: None,
                 error: false,
                 action: vertical_menu::Action::Message(value.messages.details),
@@ -83,8 +93,11 @@ where
         if let Some(remove) = value.messages.remove {
             second_group_entries.push(vertical_menu::Entry::Separator);
             second_group_entries.push(vertical_menu::Entry::Button {
-                icon: Some(&icons::DELETE),
-                label: "Remove",
+                icon: Some(Icon::Text {
+                    text: icons::DELETE.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Remove".into(),
                 supporting_text: None,
                 error: true,
                 action: vertical_menu::Action::Message(Some(remove)),
@@ -92,8 +105,11 @@ where
         }
 
         let mut first_group_entries = vec![vertical_menu::Entry::Button {
-            icon: Some(&icons::PLAY_ARROW),
-            label: "Play",
+            icon: Some(Icon::Text {
+                text: icons::PLAY_ARROW.into_fragment(),
+                font: Some(icons::filled()),
+            }),
+            label: "Play".into(),
             supporting_text: None,
             error: false,
             action: vertical_menu::Action::Message(Some(value.messages.play)),
@@ -101,8 +117,11 @@ where
 
         if let Some(message) = value.messages.shuffle {
             first_group_entries.push(vertical_menu::Entry::Button {
-                icon: Some(&icons::SHUFFLE),
-                label: "Shuffle",
+                icon: Some(Icon::Text {
+                    text: icons::SHUFFLE.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Shuffle".into(),
                 supporting_text: None,
                 error: false,
                 action: vertical_menu::Action::Message(Some(message)),
@@ -111,8 +130,11 @@ where
 
         if let Some(message) = value.messages.add_to_queue {
             first_group_entries.push(vertical_menu::Entry::Button {
-                icon: Some(&icons::ADD_TO_QUEUE),
-                label: "Add to queue",
+                icon: Some(Icon::Text {
+                    text: icons::ADD_TO_QUEUE.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Add to queue".into(),
                 supporting_text: None,
                 error: false,
                 action: vertical_menu::Action::Message(Some(message)),
@@ -130,9 +152,11 @@ where
             },
         ];
 
-        let menu = iced_m3::widget::menu(menu_groups, &value.state.theme)
-            .vibrant(value.vibrant)
-            .icon_font(icons::filled());
+        let menu = iced_m3::widget::menu(
+            menu_groups,
+            vertical_menu::Style::new(&value.state.theme, value.vibrant),
+            font::regular(),
+        );
 
         let title_font = match value.status {
             Status::Playing => font::bold(),
