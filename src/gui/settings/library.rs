@@ -1,8 +1,13 @@
 use iced::Element;
-use iced_widget::space;
+use iced_widget::column;
 
-use crate::gui::{Chilen, settings::Message};
+use crate::gui::{
+    Chilen,
+    settings::{Message, Screen, TITLE_CONTENT_SPACE, title},
+};
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    space().into()
+    column![title(Screen::Library.label(), &state.theme),]
+        .spacing(TITLE_CONTENT_SPACE)
+        .into()
 }

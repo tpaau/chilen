@@ -1,3 +1,5 @@
+#![feature(iter_intersperse)]
+
 mod argparse;
 mod gui;
 pub mod settings;

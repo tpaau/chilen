@@ -691,6 +691,8 @@ dependencies = [
  "iced_widget",
  "icu",
  "log",
+ "open",
+ "rand 0.10.3",
  "rfd",
  "serde",
  "serde_json",
@@ -709,7 +711,7 @@ dependencies = [
  "m3u8_rs",
  "mpris-server",
  "pollster 1.0.1",
- "rand 0.10.2",
+ "rand 0.10.3",
  "rmp-serde",
  "rodio",
  "serde",
@@ -1895,7 +1897,7 @@ dependencies = [
 [[package]]
 name = "iced_m3"
 version = "0.1.0"
-source = "git+https://github.com/tpaau/iced_m3#b1c5223037ac93afa462b2411125a092c641c099"
+source = "git+https://github.com/tpaau/iced_m3#9a69ad75ed10b1b7021afe14518d60a9d572310d"
 dependencies = [
  "iced",
  "iced_widget",
@@ -2495,6 +2497,25 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
+]
+
+[[package]]
+name = "is-docker"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "928bae27f42bc99b60d9ac7334e3a21d10ad8f1835a4e12ec3ec0464765ed1b3"
+dependencies = [
+ "once_cell",
+]
+
+[[package]]
+name = "is-wsl"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "173609498df190136aa7dea1a91db051746d339e18476eed5ca40521f02d7aa5"
+dependencies = [
+ "is-docker",
+ "once_cell",
 ]
 
 [[package]]
@@ -3661,6 +3682,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
+name = "open"
+version = "5.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa576c76302b7b808eecc68061e67336c47833ef9d22caa74dda10fa9675eebc"
+dependencies = [
+ "is-wsl",
+ "libc",
+]
+
+[[package]]
 name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4095,9 +4126,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7f5fa3a058cd35567ef9bfa5e75732bee0f9e4c55fa90477bef2dfcdbc4be80"
+checksum = "65c9fb96cbc91e3478eaae79a69fcd3f1ae4ad052e471fe6732fff548984b4af"
 dependencies = [
  "chacha20",
  "getrandom 0.4.2",
@@ -4136,7 +4167,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4d431c2703ccf129de4d45253c03f49ebb22b97d6ad79ee3ecfc7e3f4862c1d8"
 dependencies = [
  "num-traits",
- "rand 0.10.2",
+ "rand 0.10.3",
 ]
 
 [[package]]
@@ -4417,7 +4448,7 @@ dependencies = [
  "cpal",
  "dasp_sample",
  "num-rational",
- "rand 0.10.2",
+ "rand 0.10.3",
  "rand_distr",
  "rtrb",
  "symphonia",

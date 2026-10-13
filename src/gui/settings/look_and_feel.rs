@@ -17,6 +17,7 @@ use crate::{
     gui::{
         self, Chilen, SPACING_REGULAR,
         font::{self, bold_text},
+        settings::{CLOSE_BUTTON_SIZE, Screen, TITLE_CONTENT_SPACE, title},
         themes::THEMES,
         widget::theme_mode_preview::ThemeModePreview,
     },
@@ -128,18 +129,25 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     )
     .width(Length::Fill);
 
-    column![
-        themes,
-        modes,
+    let content = column![
+        title(Screen::LookAndFeel.label(), &state.theme),
         column![
-            space().height(gui::settings::ITEM_SPACING / 2.0),
-            auto_switch,
-            vibrant_widgets_switch
+            themes,
+            modes,
+            column![
+                space().height(gui::settings::ITEM_SPACING / 2.0),
+                auto_switch,
+                vibrant_widgets_switch
+            ]
+            .spacing(gui::settings::ITEM_SPACING)
         ]
-        .spacing(gui::settings::ITEM_SPACING)
+        .spacing(gui::settings::CARD_SPACING)
     ]
-    .spacing(gui::settings::CARD_SPACING)
-    .into()
+    .spacing(TITLE_CONTENT_SPACE);
+
+    iced_widget::scrollable(column![content, space().height(CLOSE_BUTTON_SIZE.height)])
+        .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
+        .into()
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {

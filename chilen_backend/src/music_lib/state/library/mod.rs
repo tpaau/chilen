@@ -70,6 +70,7 @@ pub struct MusicLibrary {
     pub albums: Vec<Arc<Album>>,
     pub artists: Vec<Arc<Artist>>,
     pub genres: Vec<Arc<Genre>>,
+    pub total_duration: Duration,
     playlist_id_counter: u64,
     tracks_by_path: HashMap<String, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
@@ -413,6 +414,8 @@ impl MusicLibrary {
             .map(|a| (a.name.clone(), a.clone()))
             .collect();
 
+        let total_duration = tracks.iter().map(|t| t.duration).sum();
+
         Self {
             playlists: Vec::new(),
             tracks,
@@ -427,6 +430,7 @@ impl MusicLibrary {
             artists_by_name,
             albums_by_title,
             genres_by_name,
+            total_duration,
         }
     }
 

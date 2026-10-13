@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use iced::Pixels;
+use iced_core::text::IntoFragment;
 use iced_widget::Text;
 
 #[cfg(unix)]
@@ -54,6 +55,12 @@ pub static LIBRARY_MUSIC: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe03
 pub static CHECK: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5ca).unwrap());
 pub static PERSON: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe7fd).unwrap());
 pub static RESET_SETTINGS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xf47f).unwrap());
+pub static SNOWFLAKE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xed5b).unwrap());
+pub static SCHEDULE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8b5).unwrap());
+pub static COMMIT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xeaf5).unwrap());
+pub static CODE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe86f).unwrap());
+pub static LANGUAGE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe894).unwrap());
+pub static MAIL: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe158).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const _SIZE_SMALL: f32 = 20.0;
@@ -79,14 +86,14 @@ pub fn outlined() -> iced::Font {
     }
 }
 
-pub fn icon_filled<'a, P>(icon: char, size: P) -> Text<'a>
+pub fn icon_filled<'a, P>(icon: impl IntoFragment<'a>, size: P) -> Text<'a>
 where
     P: Into<Pixels> + Copy,
 {
     iced_m3::widget::icon(icon, size).font(filled())
 }
 
-pub fn icon_outlined<'a, P>(icon: char, size: P) -> Text<'a>
+pub fn icon_outlined<'a, P>(icon: impl IntoFragment<'a>, size: P) -> Text<'a>
 where
     P: Into<Pixels> + Copy,
 {

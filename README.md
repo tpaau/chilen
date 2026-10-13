@@ -78,7 +78,7 @@ Please refer to the
 [`chilen_backend`](https://tpaau.github.io/chilen/chilen_backend/) - The thing that manages the music library and audio playback, can be reused with different frontends (there may be a mobile port of Chilen someday maybe!!)
 
 Other projects related to Chilen:
-- [`iced_m3`](https://tpaau.github.io/chilen/iced_m3/) - Material Design 3 widget library for [iced](https://iced.rs/)
+- [`iced_m3`](https://tpaau.github.io/chilen/iced_m3/) - Implementation of the Material Design 3 system for [Iced](https://iced.rs/)
 - [`lrc_rs`](https://github.com/tpaau/lrc_rs) - Robust crate for working with synced lyrics content in the LRC format with support for the A2 extension
 - [`m3u8_rs`](https://github.com/tpaau/m3u8_rs) - Crate for working with M3U8 playlist files
 

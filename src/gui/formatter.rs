@@ -4,12 +4,14 @@ use chilen_backend::music_lib::Timestamp;
 
 pub const UNKNOWN_TRACK_DURATION: &str = "--:--";
 
+/// Formats the given [`Duration`] to a `mm:ss` format.
 pub fn format_track_duration(duration: Duration) -> String {
     let minutes = duration.as_secs() / 60;
     let seconds = duration.as_secs() - minutes * 60;
     format!("{minutes}:{seconds:02}")
 }
 
+/// Formats the given [`Duration`] to a `hh:mm:ss` format.
 pub fn format_album_duration(d: Duration) -> String {
     let hours = d.as_secs() / 3600;
     let minutes = d.as_secs() / 60 - hours * 60;

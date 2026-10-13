@@ -3,8 +3,13 @@ mod library;
 mod look_and_feel;
 mod playback;
 
+use std::{sync::LazyLock, thread};
+
 use iced::{Alignment, Border, Element, Length, Pixels, Task, color};
-use iced_core::text::{IntoFragment, LineHeight::Absolute};
+use iced_core::{
+    image::Handle,
+    text::{IntoFragment, LineHeight::Absolute},
+};
 use iced_m3::{
     style::{Elevation, shadow},
     theme::{Accent, ColorScheme},
@@ -13,20 +18,26 @@ use iced_m3::{
         fab::{self},
         hybrid_icon::Icon,
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
+        shapes::polymorpher::RoundedPolygon,
     },
 };
-use iced_widget::{center, column, container, opaque, row, stack, text};
+use iced_widget::{center, container, opaque, row, stack, text};
+use log::error;
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_REGULAR,
     dialog::Dialog,
     font::bold_text,
     icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
+    widget::icon_shape,
 };
 
 const MAX_WIDTH: f32 = 1000.0;
-pub const CARD_SPACING: f32 = iced_m3::widget::card::MAX_CARD_BETWEEN_PADDING;
-pub const ITEM_SPACING: f32 = 2.0 * CARD_SPACING;
+const PFP_IMAGE: &[u8] = include_bytes!("../../../resources/images/pfp.png");
+pub(super) const TITLE_CONTENT_SPACE: f32 = SPACING_REGULAR;
+pub(super) const CARD_SPACING: f32 = iced_m3::widget::card::MAX_CARD_BETWEEN_PADDING;
+pub(super) const ITEM_SPACING: f32 = 2.0 * CARD_SPACING;
+pub(super) static CLOSE_BUTTON_SIZE: LazyLock<button::Size> = LazyLock::new(button::Size::medium);
 
 #[repr(usize)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -77,12 +88,42 @@ pub enum Message {
     Close,
     SwitchScreen(Screen),
     LookAndFeel(look_and_feel::Message),
+    OpenURL(String),
     Reset,
 }
 
-#[derive(Default)]
 pub struct State {
     pub screen: Option<Screen>,
+    random_shape: RoundedPolygon,
+    random_accent: Accent,
+    pfp_image_handle: Handle,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        let accents = [Accent::Primary, Accent::Secondary, Accent::Tertiary];
+        let shapes = &icon_shape::AVAILABLE_SHAPES;
+        let random_shape = shapes[rand::random_range(0..=(shapes.len() - 1))].clone();
+        let random_accent = accents[rand::random_range(0..=(accents.len() - 1))];
+
+        Self {
+            screen: None,
+            random_shape,
+            random_accent,
+            pfp_image_handle: Handle::from_bytes(PFP_IMAGE),
+        }
+    }
+}
+
+pub(super) fn title<'a, Message>(
+    title: impl IntoFragment<'a>,
+    theme: &(impl ColorScheme + ?Sized),
+) -> Element<'a, Message> {
+    bold_text(title)
+        .size(32.0)
+        .line_height(Absolute(Pixels(32.0)))
+        .color(theme.on_surface())
+        .into()
 }
 
 pub fn card_style(theme: &(impl ColorScheme + ?Sized)) -> card::Style {
@@ -100,6 +141,13 @@ pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             return look_and_feel::update(state, message).map(Message::LookAndFeel);
         }
         Message::Reset => state.dialog = Dialog::ResetSettings,
+        Message::OpenURL(url) => {
+            thread::spawn(move || {
+                if let Err(e) = open::that(&url) {
+                    error!("Failed to open URL \"{url}\": {e}");
+                }
+            });
+        }
     }
     Task::none()
 }
@@ -121,7 +169,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             },
             button::Content::Label("Close".into()),
         )
-        .size(button::Size::medium())
+        .size(*CLOSE_BUTTON_SIZE)
         .on_press(Message::Close);
 
         let items = [
@@ -163,19 +211,14 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
             .active(active_index);
 
-        let title = bold_text(screen.label())
-            .size(32.0)
-            .line_height(Absolute(Pixels(32.0)))
-            .color(state.theme.on_surface());
         let content_padding = SPACING_REGULAR;
-        let settings_page = column![title, screen.view(state)].spacing(SPACING_REGULAR);
         let content = row![
             container(navrail).style(move |_| container::Style::default()
                 .background(state.theme.surface_container())
                 .border(Border::default().rounded(rounding))),
             container(
                 stack![
-                    settings_page,
+                    screen.view(state),
                     container(close_button)
                         .padding(iced_m3::widget::fab::EDGE_SPACING - content_padding)
                         .align_right(Length::Fill)
