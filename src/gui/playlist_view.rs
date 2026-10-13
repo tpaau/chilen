@@ -8,7 +8,7 @@ use iced::{
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
-    widget::{OnPress, fab, fab_menu, hybrid_icon::Icon},
+    widget::{OnPress, fab_menu, hybrid_icon::Icon},
 };
 use iced_widget::{bottom_right, center, responsive, space, stack};
 use log::{debug, error, info, trace};
@@ -100,6 +100,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
 
         let fab = {
             bottom_right(fab_menu(
+                fab_menu::Style::new(&state.theme, Accent::default()),
                 vec![
                     iced_m3::widget::fab_menu::Item {
                         on_press: OnPress::Direct(Message::ImportPlaylist),
@@ -118,10 +119,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                         },
                     },
                 ],
-                fab::Size::Regular,
                 None,
-                &state.theme,
-                Accent::Primary,
             ))
             .padding(padding::bottom(SPACING_SMALL))
         };

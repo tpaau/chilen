@@ -408,6 +408,7 @@ pub(crate) fn update_properties(properties: Vec<Property>) {
             }
         };
         pollster::block_on(async {
+            // FIX: Breaks with certain tracks is seems (eg. Partiality)
             if let Err(e) = server.properties_changed(properties).await {
                 error!("Cannot update MPRIS properties: {e}");
             }

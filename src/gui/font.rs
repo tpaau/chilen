@@ -1,17 +1,17 @@
 use iced_core::text::IntoFragment;
 use iced_widget::Text;
 
-#[cfg(all(windows, feature = "cjk_fonts"))]
+#[cfg(all(windows, feature = "cjk-fonts"))]
 pub(super) const BYTES_REGULAR_CJK: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Regular.ttc");
-#[cfg(all(unix, feature = "cjk_fonts"))]
+#[cfg(all(unix, feature = "cjk-fonts"))]
 pub(super) const BYTES_REGULAR_CJK: &[u8] =
     include_bytes!("../../resources/fonts/NotoSansCJK-Regular.ttc");
 
-#[cfg(all(windows, feature = "cjk_fonts"))]
+#[cfg(all(windows, feature = "cjk-fonts"))]
 pub(super) const BYTES_BOLD_CJK: &[u8] =
     include_bytes!("..\\..\\resources\\fonts\\NotoSansCJK-Bold.ttc");
-#[cfg(all(unix, feature = "cjk_fonts"))]
+#[cfg(all(unix, feature = "cjk-fonts"))]
 pub(super) const BYTES_BOLD_CJK: &[u8] =
     include_bytes!("../../resources/fonts/NotoSansCJK-Bold.ttc");
 

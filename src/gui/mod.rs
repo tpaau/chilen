@@ -393,7 +393,7 @@ pub fn start() -> iced::Result {
         .font(font::BYTES_REGULAR)
         .font(font::BYTES_BOLD);
 
-    #[cfg(feature = "cjk_fonts")]
+    #[cfg(feature = "cjk-fonts")]
     let app = app.font(font::BYTES_REGULAR_CJK).font(font::BYTES_BOLD_CJK);
 
     app.title(APP_NAME)

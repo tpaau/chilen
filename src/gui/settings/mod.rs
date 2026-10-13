@@ -142,7 +142,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             },
             badge: None,
             label: screen.label(),
-            on_press: OnPress::Direct(Message::SwitchScreen(screen)),
+            on_press: Message::SwitchScreen(screen),
         })
         .collect();
 

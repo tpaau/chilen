@@ -14,14 +14,14 @@ use iced_m3::{
     widget::{
         button::{self, Content},
         hybrid_icon::Icon,
+        navbar,
     },
 };
 use iced_widget::{center, column, container, row, space, stack};
 use log::trace;
 
 use crate::gui::{
-    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, dialog, font,
-    icons,
+    self, Chilen, ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL, common_actions, dialog, icons,
     main_view::{self, top_view::TopView},
     settings::Screen,
 };
@@ -162,7 +162,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                     NavTab::Artists => 2,
                     NavTab::Genres => 3,
                 };
-                iced_m3::widget::navbar::<_, iced::Theme, iced::Renderer>(
+                iced_m3::widget::navbar(
+                    navbar::Style {
+                        container_color: state.theme.surface(),
+                        ..navbar::Style::new(&state.theme)
+                    },
                     vec![
                         iced_m3::widget::navbar::Item {
                             icon_active: Icon::Text {
@@ -174,7 +178,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                                 font: Some(icons::outlined()),
                             },
                             label: "Tracks".into(),
-                            message: Message::SwitchTab(NavTab::Tracks),
+                            badge: None,
+                            on_press: Message::SwitchTab(NavTab::Tracks),
                         },
                         iced_m3::widget::navbar::Item {
                             icon_active: Icon::Text {
@@ -186,7 +191,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                                 font: Some(icons::outlined()),
                             },
                             label: "Albums".into(),
-                            message: Message::SwitchTab(NavTab::Albums),
+                            badge: None,
+                            on_press: Message::SwitchTab(NavTab::Albums),
                         },
                         iced_m3::widget::navbar::Item {
                             icon_active: Icon::Text {
@@ -198,7 +204,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                                 font: Some(icons::outlined()),
                             },
                             label: "Artists".into(),
-                            message: Message::SwitchTab(NavTab::Artists),
+                            badge: None,
+                            on_press: Message::SwitchTab(NavTab::Artists),
                         },
                         iced_m3::widget::navbar::Item {
                             icon_active: Icon::Text {
@@ -210,13 +217,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                                 font: Some(icons::outlined()),
                             },
                             label: "Genres".into(),
-                            message: Message::SwitchTab(NavTab::Genres),
+                            badge: None,
+                            on_press: Message::SwitchTab(NavTab::Genres),
                         },
                     ],
-                    font::regular(),
-                    &state.theme,
                 )
-                .focused_index(index)
+                .active_index(index)
             },
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
@@ -235,7 +241,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                     View::Top(top) => top_view::view(state, top).map(Message::TopView),
                     // FIX: This is a WORKAROUND.
                     // The `Scrollable` widget doesn't correctly manage its state which makes multiple
-                    // scrollables in the same state tree share a state.
+                    //  in the same state tree share a state.
                     //
                     // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
                     View::Tab(tab) => match tab {

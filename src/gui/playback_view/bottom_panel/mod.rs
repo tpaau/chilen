@@ -1,9 +1,12 @@
-use iced::{Border, Element, Length, padding};
+use iced::{Border, Color, Element, Length, padding};
 use iced_core::text::IntoFragment;
-use iced_m3::{theme::ColorScheme, widget::hybrid_icon::Icon};
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{hybrid_icon::Icon, navbar},
+};
 use iced_widget::{column, container};
 
-use crate::gui::{Chilen, ROUNDING_LARGER, SPACING_REGULAR, font, icons, playback_view::Message};
+use crate::gui::{Chilen, ROUNDING_LARGER, SPACING_REGULAR, icons, playback_view::Message};
 
 mod lyrics;
 mod queue;
@@ -12,7 +15,11 @@ const PANEL_ROUNDING: f32 = ROUNDING_LARGER;
 const PANEL_PADDING: f32 = SPACING_REGULAR;
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    let navbar = iced_m3::widget::navbar::<Message, iced::Theme, iced::Renderer>(
+    let navbar = iced_m3::widget::navbar(
+        navbar::Style {
+            container_color: Color::TRANSPARENT,
+            ..navbar::Style::new(&state.theme)
+        },
         vec![
             iced_m3::widget::navbar::Item {
                 icon_active: Icon::Text {
@@ -24,7 +31,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     font: Some(icons::outlined()),
                 },
                 label: "Queue".into(),
-                message: Message::OpenQueue,
+                badge: None,
+                on_press: Message::OpenQueue,
             },
             iced_m3::widget::navbar::Item {
                 icon_active: Icon::Text {
@@ -36,13 +44,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     font: Some(icons::outlined()),
                 },
                 label: "Lyrics".into(),
-                message: Message::OpenLyrics,
+                badge: None,
+                on_press: Message::OpenLyrics,
             },
         ],
-        font::regular(),
-        &state.theme,
     )
-    .focused_index(match state.playback_view.tab {
+    .active_index(match state.playback_view.tab {
         super::Tab::Queue => 0,
         super::Tab::Lyrics => 1,
     });

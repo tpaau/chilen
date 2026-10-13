@@ -27,15 +27,15 @@ serde_json = "1.0.151"
 mpris = [ "chilen_backend/mpris" ]
 # Bundles CJK fonts with the binary. Disabling this drastically reduces binary size and may reduce
 # RAM usage at the cost of occasional stutters when displaying characters from the CJK font.
-cjk_fonts = []
+cjk-fonts = []
 # Additional command-line options for testing.
 dev-opts = []
 
 # Presets
-default = [ "cjk_fonts" ]
-linux = [ "mpris", "cjk_fonts" ]
-windows = [ "cjk_fonts" ]
-macos = [ "cjk_fonts" ]
+default = [ "cjk-fonts" ]
+linux = [ "mpris", "cjk-fonts" ]
+windows = [ "cjk-fonts" ]
+macos = [ "cjk-fonts" ]
 
 [workspace]
 members = [
