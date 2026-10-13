@@ -74,7 +74,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
         }
         None => center(
             IconShape::new(
-                shapes::polymorpher::shapes::clover4(),
+                shapes::polymorpher::shapes::sunny(),
                 state.theme.surface_container_high(),
                 icons::MUSIC_NOTE.into_fragment(),
                 state.theme.on_surface_variant(),

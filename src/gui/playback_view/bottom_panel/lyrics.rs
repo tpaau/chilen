@@ -20,7 +20,7 @@ pub(super) fn view<'a>(state: &'a Chilen, lyrics_padding: f32) -> Element<'a, Me
     } else {
         center(
             IconShape::new(
-                shapes::polymorpher::shapes::oval(),
+                shapes::polymorpher::shapes::cookie4(),
                 state.theme.surface_container_high(),
                 icons::LYRICS.into_fragment(),
                 state.theme.on_surface_variant(),

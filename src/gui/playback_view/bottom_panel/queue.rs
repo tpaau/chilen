@@ -78,7 +78,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
     } else {
         center(
             IconShape::new(
-                shapes::polymorpher::shapes::cookie12(),
+                shapes::polymorpher::shapes::cookie4(),
                 state.theme.surface_container_high(),
                 icons::QUEUE_MUSIC.into_fragment(),
                 state.theme.on_surface_variant(),
