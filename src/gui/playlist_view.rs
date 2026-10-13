@@ -2,24 +2,23 @@ use std::{env::home_dir, path::PathBuf, sync::Arc};
 
 use chilen_backend::music_lib::Playlist;
 use iced::{
-    Border, Element, Length, Padding, Task, padding,
-    widget::{column, container, text},
+    Element, Length, Task, padding,
+    widget::{column, container},
 };
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
-    widget::{OnPress, fab_menu, hybrid_icon::Icon},
+    widget::{OnPress, fab_menu, hybrid_icon::Icon, shapes},
 };
 use iced_widget::{bottom_right, center, responsive, space, stack};
 use log::{debug, error, info, trace};
 
 use crate::gui::{
-    Chilen, Dialog, LoadingState, ROUNDING_REGULAR, SPACING_SMALL, SPACING_SMALLER, common_actions,
-    font::{self, bold_text},
-    icons,
+    Chilen, Dialog, SPACING_SMALL, common_actions, icons,
     main_view::top_view::TopView,
     playlist_view,
     widget::{
+        icon_shape::IconShape,
         list::{BUTTON_HEIGHT, BUTTON_SPACING, playlist_button::playlist_button},
         virtual_list::VirtualList,
     },
@@ -48,10 +47,6 @@ pub struct State {
 }
 
 pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
-    let heading = bold_text("Playlists")
-        .color(state.theme.on_surface())
-        .size(font::SIZE_LARGE);
-
     let content: Element<'_, Message> = if let Some(lib) = &state.library {
         let base = responsive(move |size| {
             {
@@ -126,38 +121,22 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
 
         center(stack!(base, fab)).into()
     } else {
-        match &state.loading_state {
-            LoadingState::Loading => space().into(),
-            LoadingState::Failed(e) => {
-                container(text!("Load failed: {e}").color(state.theme.on_error()))
-                    .style(|_| {
-                        container::Style::default()
-                            .background(state.theme.error_container())
-                            .border(Border::default().rounded(ROUNDING_REGULAR))
-                    })
-                    .width(Length::Fill)
-                    .padding(Padding::new(SPACING_SMALLER))
-                    .into()
-            }
-            LoadingState::Loaded => container(
-                text!(
-                    "The loading status is {:?}, but the library is not initialized!",
-                    state.loading_state
-                )
-                .color(state.theme.on_error()),
+        center(
+            IconShape::new(
+                shapes::polymorpher::shapes::cookie9(),
+                state.theme.surface_container_high(),
+                icons::LYRICS.into_fragment(),
+                state.theme.on_surface_variant(),
             )
-            .style(|_| {
-                container::Style::default()
-                    .background(state.theme.error_container())
-                    .border(Border::default().rounded(ROUNDING_REGULAR))
-            })
-            .width(Length::Fill)
-            .padding(Padding::new(SPACING_SMALLER))
-            .into(),
-        }
+            .label(
+                "Your playlists will show up here",
+                state.theme.on_surface_variant(),
+            ),
+        )
+        .into()
     };
 
-    container(column![heading, content].spacing(SPACING_SMALLER))
+    container(content)
         .padding(padding::horizontal(SPACING_SMALL).top(SPACING_SMALL))
         .width(width)
         .height(Length::Fill)

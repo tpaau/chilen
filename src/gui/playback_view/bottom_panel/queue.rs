@@ -1,13 +1,17 @@
 use iced::Element;
-use iced_m3::theme::ColorScheme;
-use iced_widget::{center, column, container, stack, text};
+use iced_core::text::IntoFragment;
+use iced_m3::{theme::ColorScheme, widget::shapes};
+use iced_widget::{center, column, container, stack};
 
 use crate::gui::{
-    Chilen, SPACING_SMALL,
+    Chilen, SPACING_SMALL, icons,
     playback_view::Message,
-    widget::list::{
-        BUTTON_HEIGHT,
-        track_button::{self, TrackButton},
+    widget::{
+        icon_shape::IconShape,
+        list::{
+            BUTTON_HEIGHT,
+            track_button::{self, TrackButton},
+        },
     },
 };
 
@@ -73,9 +77,13 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
         .into()
     } else {
         center(
-            text("The queue is empty")
-                .color(state.theme.on_surface_variant())
-                .size(crate::gui::widget::lyrics::FONT_SIZE),
+            IconShape::new(
+                shapes::polymorpher::shapes::cookie12(),
+                state.theme.surface_container_high(),
+                icons::QUEUE_MUSIC.into_fragment(),
+                state.theme.on_surface_variant(),
+            )
+            .label("The queue is empty", state.theme.on_surface_variant()),
         )
         .into()
     }

@@ -5,14 +5,15 @@ use chilen_backend::music_lib::{
     LyricsAccess, SyncedLyrics,
 };
 use iced::{Alignment, Element, Length, padding};
-use iced_core::text::LineHeight;
-use iced_m3::{style::Elevation, theme::ColorScheme};
+use iced_core::text::{IntoFragment, LineHeight};
+use iced_m3::{style::Elevation, theme::ColorScheme, widget::shapes};
 use iced_widget::{center, column, container, mouse_area, row, scrollable, text};
 
 use crate::gui::{
     ROUNDING_REGULAR, SPACING_REGULAR, SPACING_SMALL,
     font::{self, bold_text},
     icons::{self, icon_outlined},
+    widget::icon_shape::IconShape,
 };
 
 pub const FONT_SIZE: f32 = font::SIZE_LARGER;
@@ -136,9 +137,13 @@ pub fn view<'a, Message: 'a + Clone>(
         }
     } else {
         center(
-            text("This is an instrumental")
-                .color(theme.on_surface_variant())
-                .size(FONT_SIZE),
+            IconShape::new(
+                shapes::polymorpher::shapes::cookie4(),
+                theme.surface_container_high(),
+                icons::LYRICS.into_fragment(),
+                theme.on_surface_variant(),
+            )
+            .label("This is an instrumental", theme.on_surface_variant()),
         )
         .into()
     }

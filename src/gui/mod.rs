@@ -68,7 +68,7 @@ pub enum Message {
 pub enum LoadingState {
     #[default]
     Loading,
-    Failed(String),
+    Failed,
     Loaded,
 }
 
@@ -222,8 +222,8 @@ impl Chilen {
                         top_view::reload(state);
                         playlist_view::reload(state);
                     }
-                    chilen_backend::Event::LibraryLoadFailed(e) => {
-                        state.loading_state = LoadingState::Failed(e)
+                    chilen_backend::Event::LibraryLoadFailed(_) => {
+                        state.loading_state = LoadingState::Failed
                     }
                     chilen_backend::Event::Quit => return window::latest().and_then(window::close),
                     chilen_backend::Event::Raise => {

@@ -236,35 +236,30 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
         .align_y(Alignment::Center)
         .spacing(SPACING_REGULAR),
         {
-            let content: Element<'_, Message> = if let Some(lib) = &state.library {
-                let content = match state.main_view.nav_stack.top() {
-                    View::Top(top) => top_view::view(state, top).map(Message::TopView),
-                    // FIX: This is a WORKAROUND.
-                    // The `Scrollable` widget doesn't correctly manage its state which makes multiple
-                    //  in the same state tree share a state.
-                    //
-                    // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
-                    View::Tab(tab) => match tab {
-                        NavTab::Tracks => tracks::view(state, lib),
-                        NavTab::Albums => stack![albums::view(state, lib)].into(),
-                        NavTab::Artists => stack![
-                            space().width(Length::Fill).height(Length::Fill),
-                            artists::view(state, lib)
-                        ]
-                        .into(),
-                        NavTab::Genres => stack![
-                            space().width(Length::Fill).height(Length::Fill),
-                            space().width(Length::Fill).height(Length::Fill),
-                            genres::view(state, lib)
-                        ]
-                        .into(),
-                    },
-                };
-                center(content).into()
-            } else {
-                space().into()
+            let content = match state.main_view.nav_stack.top() {
+                View::Top(top) => top_view::view(state, top).map(Message::TopView),
+                // FIX: This is a WORKAROUND.
+                // The `Scrollable` widget doesn't correctly manage its state which makes multiple
+                //  in the same state tree share a state.
+                //
+                // There is a PR in iced that resolves this: https://github.com/iced-rs/iced/pull/3347
+                View::Tab(tab) => match tab {
+                    NavTab::Tracks => tracks::view(state),
+                    NavTab::Albums => stack![albums::view(state)].into(),
+                    NavTab::Artists => stack![
+                        space().width(Length::Fill).height(Length::Fill),
+                        artists::view(state)
+                    ]
+                    .into(),
+                    NavTab::Genres => stack![
+                        space().width(Length::Fill).height(Length::Fill),
+                        space().width(Length::Fill).height(Length::Fill),
+                        genres::view(state)
+                    ]
+                    .into(),
+                },
             };
-            content
+            center(content)
         }
     ])
     .style(|_| {
