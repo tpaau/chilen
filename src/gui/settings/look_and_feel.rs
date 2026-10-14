@@ -47,7 +47,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         };
 
         mouse_area(preview)
-            .on_press(Message::SetTheme(i))
+            .on_release(Message::SetTheme(i))
             .interaction(iced::mouse::Interaction::Pointer)
             .into()
     });

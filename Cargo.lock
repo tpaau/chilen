@@ -723,6 +723,7 @@ name = "chilen_widget"
 version = "0.1.0"
 dependencies = [
  "iced",
+ "iced_m3",
  "iced_widget",
 ]
 
