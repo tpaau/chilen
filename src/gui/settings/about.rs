@@ -18,7 +18,6 @@ use crate::gui::{
 };
 
 const BIO_TEXT: &str = "Hi, I'm tpaau - the dev behind Chilen!";
-const IMAGE_SIZE: f32 = 96.0;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const COMMIT: &str = env!("APP_GIT_COMMIT");
 const REPOSITORY_URL: &str = "https://github.com/tpaau/chilen";
@@ -166,10 +165,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             ..card::Style::outlined(&state.theme)
         },
         row![
-            image(state.settings_state.pfp_image_handle.clone())
-                .border_radius(f32::MAX)
-                .width(IMAGE_SIZE)
-                .height(IMAGE_SIZE),
+            image(state.settings_state.pfp_image_handle.clone()).border_radius(f32::MAX),
             column![
                 bold_text("tpaau")
                     .color(state.theme.on_surface())

@@ -107,7 +107,7 @@ pub fn view<'a, Message: 'a + Clone>(
                 if show_errors && let chilen_backend::music_lib::LyricsError::Timestamp(e) = reason
                 {
                     let message = format!(
-                        "These lyrics appear to be synchronized, but timestamp order is incorrect. {e}. Showing lyrics without synchronization."
+                        "These lyrics appear to be synchronized, but the timestamp order is incorrect. {e}. Showing lyrics without synchronization."
                     );
                     let rounding = ROUNDING_REGULAR;
                     let dialog = container(
