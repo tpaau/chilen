@@ -132,7 +132,7 @@ pub(crate) fn tracks_from_paths(
     let mut out = Vec::with_capacity(track_paths.len());
 
     for path in track_paths {
-        if let Some(track) = lib.find_track_by_path(path) {
+        if let Some(track) = lib.find_track_by_path(&path.to_string_lossy()) {
             out.push(track);
         } else if !allow_failure {
             return Err(Error::UnknownTrackPath(path.to_path_buf()));
@@ -206,7 +206,7 @@ pub fn export_playlist_to_m3u8(name: &str, path: &Path) -> Result<(), Error> {
                 }
             },
             duration: t.duration,
-            title: t.title.clone(),
+            title: t.title.clone().map(|t| t.into_string()),
         })
         .collect();
     drop(guard);
@@ -227,7 +227,7 @@ pub fn export_playlist_to_m3u8(name: &str, path: &Path) -> Result<(), Error> {
     }
 }
 
-pub fn create_playlist(name: String, track_paths: &Option<Vec<PathBuf>>) -> Result<(), Error> {
+pub fn create_playlist(name: &str, track_paths: &Option<Vec<PathBuf>>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     let name = name.trim();
@@ -236,7 +236,7 @@ pub fn create_playlist(name: String, track_paths: &Option<Vec<PathBuf>>) -> Resu
     } else {
         name.to_string()
     };
-    lib.create_playlist(name, track_paths)?;
+    lib.create_playlist(&name, track_paths)?;
 
     drop(guard);
     save_library()
@@ -259,7 +259,7 @@ pub fn import_playlist_from_m3u8(name: Option<String>, file: &PathBuf) -> Result
     save_library()
 }
 
-pub fn delete_playlists(playlists: Vec<String>) -> Result<(), Error> {
+pub fn delete_playlists(playlists: Vec<&str>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.remove_playlists(playlists)?;

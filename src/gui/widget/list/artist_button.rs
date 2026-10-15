@@ -92,7 +92,7 @@ where
         } else {
             font::regular()
         };
-        let title = text(value.artist.name.clone())
+        let title = text(value.artist.name.clone().into_string())
             .size(font::SIZE_REGULAR)
             .color(value.theme.on_surface())
             .font(font)

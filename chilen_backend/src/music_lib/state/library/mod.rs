@@ -4,7 +4,7 @@ mod tests;
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
-    path::{Path, PathBuf},
+    path::PathBuf,
     sync::Arc,
     time::Duration,
 };
@@ -38,29 +38,29 @@ pub struct HashMatchingResult {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Album {
-    pub title: String,
+    pub title: Box<str>,
     pub cover: Cover,
-    pub artists: Vec<String>,
-    pub tracks: Vec<Arc<Track>>,
+    pub artists: Box<[Box<str>]>,
+    pub tracks: Box<[Arc<Track>]>,
     pub date: Option<Timestamp>,
     pub duration: Duration,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Artist {
-    pub name: String,
+    pub name: Box<str>,
     pub cover: Cover,
-    pub tracks: Vec<Arc<Track>>,
-    pub albums: Vec<Arc<Album>>,
+    pub tracks: Box<[Arc<Track>]>,
+    pub albums: Box<[Arc<Album>]>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Genre {
-    pub name: String,
+    pub name: Box<str>,
     pub cover: Cover,
-    pub artists: Vec<Arc<Artist>>,
-    pub albums: Vec<Arc<Album>>,
-    pub tracks: Vec<Arc<Track>>,
+    pub artists: Box<[Arc<Artist>]>,
+    pub albums: Box<[Arc<Album>]>,
+    pub tracks: Box<[Arc<Track>]>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -72,13 +72,13 @@ pub struct MusicLibrary {
     pub genres: Vec<Arc<Genre>>,
     pub total_duration: Duration,
     playlist_id_counter: u64,
-    tracks_by_path: HashMap<String, Arc<Track>>,
+    tracks_by_path: HashMap<Box<str>, Arc<Track>>,
     tracks_by_hash: HashMap<u64, Arc<Track>>,
-    playlists_by_name: HashMap<String, Arc<Playlist>>,
+    playlists_by_name: HashMap<Box<str>, Arc<Playlist>>,
     playlists_by_id: HashMap<u64, Arc<Playlist>>,
-    artists_by_name: HashMap<String, Arc<Artist>>,
-    albums_by_title: HashMap<String, Arc<Album>>,
-    genres_by_name: HashMap<String, Arc<Genre>>,
+    artists_by_name: HashMap<Box<str>, Arc<Artist>>,
+    albums_by_title: HashMap<Box<str>, Arc<Album>>,
+    genres_by_name: HashMap<Box<str>, Arc<Genre>>,
 }
 
 // TODO: Fallback alphabetic sorting w/out the collator
@@ -199,11 +199,11 @@ impl MusicLibrary {
             .flat_map(|t| t.genres.as_ref().into_iter().flatten())
             .collect();
 
-        let mut tracks_by_artist: HashMap<&String, HashSet<Arc<Track>>> =
+        let mut tracks_by_artist: HashMap<&Box<str>, HashSet<Arc<Track>>> =
             HashMap::with_capacity(artist_names.len());
-        let mut tracks_by_album: HashMap<&String, HashSet<Arc<Track>>> =
+        let mut tracks_by_album: HashMap<&Box<str>, HashSet<Arc<Track>>> =
             HashMap::with_capacity(album_titles.len());
-        let mut tracks_by_genre: HashMap<&String, HashSet<Arc<Track>>> =
+        let mut tracks_by_genre: HashMap<&Box<str>, HashSet<Arc<Track>>> =
             HashMap::with_capacity(genre_names.len());
 
         for track in &tracks {
@@ -243,7 +243,7 @@ impl MusicLibrary {
                 let mut artists: Vec<_> = tracks
                     .iter()
                     .flat_map(|t| t.artists.clone().into_iter().flatten())
-                    .collect::<HashSet<String>>()
+                    .collect::<HashSet<Box<str>>>()
                     .into_iter()
                     .collect();
                 if let Some(collator) = collator {
@@ -261,10 +261,10 @@ impl MusicLibrary {
                 let duration = tracks.iter().map(|t| t.duration).sum();
 
                 Arc::new(Album {
-                    title: title.to_string(),
+                    title: title.to_string().into(),
                     cover,
-                    tracks,
-                    artists,
+                    tracks: tracks.into(),
+                    artists: artists.into(),
                     date,
                     duration,
                 })
@@ -272,12 +272,12 @@ impl MusicLibrary {
             .collect();
         Self::sort_albums_alphabetically(&mut albums, collator);
 
-        let albums_by_title: HashMap<String, Arc<Album>> = albums
+        let albums_by_title: HashMap<Box<str>, Arc<Album>> = albums
             .iter()
             .map(|a| (a.title.clone(), a.clone()))
             .collect();
 
-        let mut albums_by_artist: HashMap<&String, HashSet<Arc<Album>>> =
+        let mut albums_by_artist: HashMap<&Box<str>, HashSet<Arc<Album>>> =
             HashMap::with_capacity(artist_names.len());
         for album in &albums {
             for artist in &album.artists {
@@ -310,16 +310,16 @@ impl MusicLibrary {
                     .unwrap_or(Cover::none());
 
                 Arc::new(Artist {
-                    name: name.to_string(),
+                    name: name.to_string().into(),
                     cover,
-                    tracks,
-                    albums,
+                    tracks: tracks.into(),
+                    albums: albums.into(),
                 })
             })
             .collect();
         Self::sort_artists(&mut artists, collator);
 
-        let mut artists_by_album: HashMap<&String, HashSet<Arc<Artist>>> =
+        let mut artists_by_album: HashMap<&Box<str>, HashSet<Arc<Artist>>> =
             HashMap::with_capacity(albums.len());
         for artist in &artists {
             for album in &artist.albums {
@@ -331,7 +331,7 @@ impl MusicLibrary {
             }
         }
 
-        let mut albums_by_genre: HashMap<&String, HashSet<Arc<Album>>> =
+        let mut albums_by_genre: HashMap<&Box<str>, HashSet<Arc<Album>>> =
             HashMap::with_capacity(albums.len());
         for album in &albums {
             for track in &album.tracks {
@@ -347,7 +347,7 @@ impl MusicLibrary {
             }
         }
 
-        let mut artists_by_genre: HashMap<&String, HashSet<Arc<Artist>>> =
+        let mut artists_by_genre: HashMap<&Box<str>, HashSet<Arc<Artist>>> =
             HashMap::with_capacity(artists.len());
         for artist in &artists {
             for track in &artist.tracks {
@@ -383,25 +383,25 @@ impl MusicLibrary {
                 Self::sort_albums_alphabetically(&mut albums, collator);
 
                 Arc::new(Genre {
-                    name: name.to_string(),
+                    name: name.to_string().into(),
                     cover,
-                    tracks,
-                    albums,
-                    artists,
+                    tracks: tracks.into(),
+                    albums: albums.into(),
+                    artists: artists.into(),
                 })
             })
             .collect();
 
-        let genres_by_name: HashMap<String, Arc<Genre>> =
+        let genres_by_name: HashMap<Box<str>, Arc<Genre>> =
             genres.iter().map(|g| (g.name.clone(), g.clone())).collect();
 
         if let Some(collator) = collator {
             genres.sort_by(|g1, g2| collator.compare(&g1.name, &g2.name));
         }
 
-        let mut track_path_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
+        let mut track_path_map: HashMap<Box<str>, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
-            track_path_map.insert(t.path.to_string_lossy().to_string(), t.clone());
+            track_path_map.insert(t.path.to_string_lossy().to_string().into(), t.clone());
         }
 
         let mut track_hash_map: HashMap<_, _> = HashMap::with_capacity(tracks.len());
@@ -409,7 +409,7 @@ impl MusicLibrary {
             track_hash_map.insert(t.hash_self(), t.clone());
         }
 
-        let artists_by_name: HashMap<String, Arc<Artist>> = artists
+        let artists_by_name: HashMap<Box<str>, Arc<Artist>> = artists
             .iter()
             .map(|a| (a.name.clone(), a.clone()))
             .collect();
@@ -482,10 +482,8 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn find_track_by_path(&self, path: &Path) -> Option<Arc<Track>> {
-        self.tracks_by_path
-            .get(&path.to_string_lossy().to_string())
-            .cloned()
+    pub fn find_track_by_path(&self, path: &str) -> Option<Arc<Track>> {
+        self.tracks_by_path.get(path).cloned()
     }
 
     pub fn find_artist(&self, name: &str) -> Option<&Arc<Artist>> {
@@ -541,7 +539,7 @@ impl MusicLibrary {
         }
     }
 
-    pub fn remove_playlists(&mut self, mut playlists: Vec<String>) -> Result<(), Error> {
+    pub fn remove_playlists(&mut self, mut playlists: Vec<&str>) -> Result<(), Error> {
         playlists.sort();
         let mut unique = playlists.clone();
         unique.dedup();
@@ -550,10 +548,10 @@ impl MusicLibrary {
         }
 
         for name in &playlists {
-            if let Some(index) = self.playlists.iter().position(|p| p.name == *name) {
+            if let Some(index) = self.playlists.iter().position(|p| p.name.as_ref() == *name) {
                 let id = self.playlists[index].id;
                 self.playlists.remove(index);
-                self.playlists_by_name.remove(name);
+                self.playlists_by_name.remove(*name);
                 self.playlists_by_id.remove(&id);
             } else {
                 return Err(Error::UnknownPlaylist(name.to_string()));
@@ -566,7 +564,7 @@ impl MusicLibrary {
 
     pub fn create_playlist(
         &mut self,
-        name: String,
+        name: &str,
         track_paths: &Option<Vec<PathBuf>>,
     ) -> Result<(), Error> {
         trace!("Creating a new playlist \"{name}\" from a list of tracks");
@@ -577,7 +575,7 @@ impl MusicLibrary {
         let tracks = if let Some(tracks) = track_paths {
             let mut out = Vec::with_capacity(tracks.len());
             for path in tracks {
-                if let Some(track) = self.find_track_by_path(path) {
+                if let Some(track) = self.find_track_by_path(&path.to_string_lossy()) {
                     out.push(track);
                 } else {
                     error!("The track {path:?} was not found in the music library");
@@ -603,15 +601,15 @@ impl MusicLibrary {
         };
 
         let playlist = Arc::new(Playlist {
-            name: name.to_string(),
-            tracks,
+            name: name.to_string().into_boxed_str(),
+            tracks: tracks.into(),
             duration,
-            unmatched: Vec::new(),
+            unmatched: Box::new([]),
             id: self.get_playlist_id(),
             cover,
         });
         self.playlists.push(playlist.clone());
-        self.playlists_by_name.insert(name.to_string(), playlist);
+        self.playlists_by_name.insert(name.into(), playlist);
         self.sort_playlists();
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -623,14 +621,18 @@ impl MusicLibrary {
         trace!("Renaming playlist \"{source}\" to \"{target}\"");
         self.check_name(target)?;
 
-        let src_playlist_index = match self.playlists.iter().position(|p| p.name == source) {
+        let src_playlist_index = match self
+            .playlists
+            .iter()
+            .position(|p| p.name.as_ref() == source)
+        {
             Some(pos) => pos,
             None => return Err(Error::UnknownPlaylist(source.to_string())),
         };
         let src_playlist = self.playlists[src_playlist_index].clone();
         let playlist_id = src_playlist.id;
         let mut playlist = src_playlist.as_ref().clone();
-        playlist.name = target.to_string();
+        playlist.name = target.to_string().into();
 
         self.playlists.remove(src_playlist_index);
         self.playlists_by_name.remove(source);
@@ -638,7 +640,7 @@ impl MusicLibrary {
         let playlist = Arc::new(playlist);
         self.playlists.push(playlist.clone());
         self.playlists_by_name
-            .insert(target.to_string(), playlist.clone());
+            .insert(target.into(), playlist.clone());
         self.playlists_by_id.insert(playlist_id, playlist);
         self.sort_playlists();
 
@@ -650,14 +652,14 @@ impl MusicLibrary {
         let name = name.trim();
         trace!("Adding tracks to playlist \"{name}\"");
 
-        let playlist_index = match self.playlists.iter().position(|p| p.name == *name) {
+        let playlist_index = match self.playlists.iter().position(|p| p.name.as_ref() == name) {
             Some(i) => i,
             None => return Err(Error::UnknownPlaylist(name.to_string())),
         };
 
         let mut out = Vec::with_capacity(tracks.len());
         for path in tracks {
-            if let Some(track) = self.find_track_by_path(&path) {
+            if let Some(track) = self.find_track_by_path(&path.to_string_lossy()) {
                 out.push(track.clone());
             } else {
                 return Err(Error::UnknownTrackPath(path.to_path_buf()));
@@ -669,7 +671,9 @@ impl MusicLibrary {
         self.playlists_by_name.remove(&playlist.name);
         self.playlists_by_id.remove(&playlist.id);
 
-        playlist.tracks.append(&mut out);
+        let mut tracks = std::mem::take(&mut playlist.tracks).into_vec();
+        tracks.append(&mut out);
+        playlist.tracks = tracks.into_boxed_slice();
 
         let playlist = Arc::new(playlist);
         self.playlists.push(playlist.clone());
@@ -686,7 +690,7 @@ impl MusicLibrary {
         let name = name.trim();
         trace!("Removing tracks from playlist \"{name}\"");
 
-        let playlist_index = match self.playlists.iter().position(|p| p.name == *name) {
+        let playlist_index = match self.playlists.iter().position(|p| p.name.as_ref() == name) {
             Some(i) => i,
             None => return Err(Error::UnknownPlaylist(name.to_string())),
         };
@@ -731,7 +735,7 @@ impl MusicLibrary {
                 }
             }
         };
-        self.create_playlist(name, &Some(tracks))
+        self.create_playlist(&name, &Some(tracks))
     }
 }
 

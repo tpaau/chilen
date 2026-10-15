@@ -33,7 +33,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 model: lib.albums.iter(),
                 delegate: Box::new(move |album| {
                     let highlighted = highlighted_album_title
-                        .map(|t| *t == album.title)
+                        .map(|t| t == album.title.as_ref())
                         .unwrap_or_default();
                     AlbumButton {
                         state,

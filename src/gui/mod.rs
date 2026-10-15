@@ -289,7 +289,7 @@ impl Chilen {
                 }
             }
             Message::CreatePlaylist(name) => {
-                if let Err(e) = chilen_backend::music_lib::create_playlist(name, &None) {
+                if let Err(e) = chilen_backend::music_lib::create_playlist(&name, &None) {
                     error!("Couldn't create the playlist: {e}");
                     state.dialog = Dialog::Error(format!("Couldn't create the playlist: {e}"));
                 } else {
@@ -315,9 +315,7 @@ impl Chilen {
                 }
             }
             Message::DeletePlaylist(playlist) => {
-                if let Err(e) =
-                    chilen_backend::music_lib::delete_playlists(vec![playlist.name.clone()])
-                {
+                if let Err(e) = chilen_backend::music_lib::delete_playlists(vec![&playlist.name]) {
                     error!("Couldn't delete playlist: {e}");
                     state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
                 } else {

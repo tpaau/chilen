@@ -39,7 +39,7 @@ fn playlist_choice<'a>(
                 width: THUMBNAIL_SIZE.into(),
                 height: THUMBNAIL_SIZE.into()
             },
-            bold_text(&playlist.name)
+            bold_text(playlist.name.as_ref())
                 .color(theme.on_surface())
                 .wrapping(text::Wrapping::None)
                 .size(font::SIZE_LARGE)
@@ -51,7 +51,7 @@ fn playlist_choice<'a>(
     .width(Length::Fill)
     .on_press(Message::AddTrackToPlaylist {
         track,
-        playlist: playlist.name.clone(),
+        playlist: playlist.name.clone().into_string(),
     })
     .style(|_, status| crate::gui::widget::list::button_style(status, theme.on_surface()))
     .into()

@@ -341,13 +341,13 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
         Message::AddAlbumToQueue(album) => {
-            common_actions::append_tracks_to_queue(album.tracks.clone())
+            common_actions::append_tracks_to_queue(album.tracks.to_vec())
         }
         Message::AddArtistToQueue(artist) => {
-            common_actions::append_tracks_to_queue(artist.tracks.clone())
+            common_actions::append_tracks_to_queue(artist.tracks.to_vec())
         }
         Message::AddGenreToQueue(genre) => {
-            common_actions::append_tracks_to_queue(genre.tracks.clone())
+            common_actions::append_tracks_to_queue(genre.tracks.to_vec())
         }
         Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
     }

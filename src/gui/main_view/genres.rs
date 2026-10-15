@@ -31,7 +31,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 model: lib.genres.iter(),
                 delegate: Box::new(move |genre| {
                     let highlighted = highlighted_genre_name
-                        .map(|name| *name == genre.name)
+                        .map(|name| name == genre.name.as_ref())
                         .unwrap_or_default();
                     GenreButton {
                         theme: &state.theme,

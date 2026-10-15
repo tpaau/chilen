@@ -162,26 +162,32 @@ where
             Status::Playing => font::bold(),
             Status::Idle | Status::Dimmed => font::regular(),
         };
-        let title = text(if let Some(title) = value.track.title.clone() {
-            title
-        } else {
-            "Unknown".to_string()
-        })
-        .size(font::SIZE_REGULAR)
-        .font(title_font)
-        .color(value.state.theme.on_surface().scale_alpha(opacity))
-        .wrapping(text::Wrapping::None);
+        let title = value
+            .track
+            .title
+            .as_ref()
+            .map(|t| t.clone().into_string())
+            .unwrap_or("Unknown".to_string());
+        let title = text(title)
+            .size(font::SIZE_REGULAR)
+            .font(title_font)
+            .color(value.state.theme.on_surface().scale_alpha(opacity))
+            .wrapping(text::Wrapping::None);
 
         let info = match value.info {
-            Info::Artist => {
-                if let Some(artists) = &value.track.artists {
-                    artists.join(&value.state.settings.value_separator)
-                } else {
-                    "Unknown".to_string()
-                }
-            }
+            Info::Artist => value
+                .track
+                .artists
+                .as_ref()
+                .map(|a| a.join(&value.state.settings.value_separator))
+                .unwrap_or("Unknown".to_string()),
             Info::Length => format_track_duration(value.track.duration),
-            Info::Album => value.track.album.clone().unwrap_or("Unknown".to_string()),
+            Info::Album => value
+                .track
+                .album
+                .as_ref()
+                .map(|a| a.clone().into_string())
+                .unwrap_or("Unknown".to_string()),
         };
 
         // TODO: Maybe an animated indicator would look better?

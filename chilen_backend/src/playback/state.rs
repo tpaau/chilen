@@ -64,16 +64,16 @@ impl Queue {
     pub fn source(&self) -> QueueSource {
         match self {
             Self::Playlist(playlist) => QueueSource::Playlist {
-                name: playlist.name.clone(),
+                name: playlist.name.clone().into_string(),
             },
             Self::Album(album) => QueueSource::Album {
-                title: album.title.clone(),
+                title: album.title.clone().into_string(),
             },
             Self::Artist(artist) => QueueSource::Artist {
-                name: artist.name.clone(),
+                name: artist.name.clone().into_string(),
             },
             Self::Genre(genre) => QueueSource::Genre {
-                name: genre.name.clone(),
+                name: genre.name.clone().into_string(),
             },
             Self::AllTracks(_) => QueueSource::AllTracks,
             Self::Custom { label, tracks: _ } => QueueSource::Custom {
@@ -84,10 +84,10 @@ impl Queue {
 
     pub fn tracks(self) -> Vec<Arc<Track>> {
         match self {
-            Self::Playlist(playlist) => playlist.tracks.clone(),
-            Self::Album(album) => album.tracks.clone(),
-            Self::Artist(artist) => artist.tracks.clone(),
-            Self::Genre(genre) => genre.tracks.clone(),
+            Self::Playlist(playlist) => playlist.tracks.to_vec(),
+            Self::Album(album) => album.tracks.to_vec(),
+            Self::Artist(artist) => artist.tracks.to_vec(),
+            Self::Genre(genre) => genre.tracks.to_vec(),
             Self::AllTracks(tracks) => tracks,
             Self::Custom { label: _, tracks } => tracks,
         }

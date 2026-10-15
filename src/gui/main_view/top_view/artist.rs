@@ -116,7 +116,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 },
                 add_to_queue: Message::AddAlbumToQueue(album.clone()),
                 highlighted: highlighted_album_title
-                    .map(|t| *t == album.title)
+                    .map(|t| t == album.title.as_ref())
                     .unwrap_or_default(),
                 vibrant: state.settings.vibrant_widgets,
             }
@@ -126,7 +126,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
 
     let highlighted_index = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Artist { name: a } = &p.queue_source
-            && a == &artist.name
+            && a == artist.name.as_ref()
         {
             p.real_track_index(p.position)
         } else {

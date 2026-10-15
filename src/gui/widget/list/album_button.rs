@@ -131,7 +131,7 @@ where
         } else {
             font::regular()
         };
-        let title = text(value.album.title.clone())
+        let title = text(value.album.title.clone().into_string())
             .size(font::SIZE_REGULAR)
             .color(value.state.theme.on_surface())
             .font(font)

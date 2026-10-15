@@ -69,7 +69,7 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
                                 playlist,
                                 index,
                                 highlighted_playlist_name
-                                    .map(|name| *name == playlist.name)
+                                    .map(|name| name == playlist.name.as_ref())
                                     .unwrap_or_default(),
                                 state.settings.vibrant_widgets,
                             )
@@ -229,9 +229,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::ConfirmPlaylistDeletion(playlist) => {
             if playlist.tracks.is_empty() {
-                if let Err(e) =
-                    chilen_backend::music_lib::delete_playlists(vec![playlist.name.clone()])
-                {
+                if let Err(e) = chilen_backend::music_lib::delete_playlists(vec![&playlist.name]) {
                     error!("Couldn't delete playlist: {e}");
                     state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
                 }
@@ -247,7 +245,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             common_actions::play_playlist(playlist, None);
         }
         Message::AddPlaylistToQueue(playlist) => {
-            common_actions::append_tracks_to_queue(playlist.tracks.clone())
+            common_actions::append_tracks_to_queue(playlist.tracks.to_vec())
         }
     }
     Task::none()

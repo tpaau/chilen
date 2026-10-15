@@ -99,7 +99,9 @@ pub fn playlist_button<'a>(
                             error: false,
                             action: vertical_menu::Action::Message(
                                 (!playlist.tracks.is_empty()).then_some(
-                                    playlist_view::Message::ExportPlaylist(playlist.name.clone()),
+                                    playlist_view::Message::ExportPlaylist(
+                                        playlist.name.clone().into_string(),
+                                    ),
                                 ),
                             ),
                         },
@@ -123,8 +125,8 @@ pub fn playlist_button<'a>(
                             error: false,
                             action: vertical_menu::Action::Message(Some(
                                 playlist_view::Message::OpenPlaylistRenameDialog {
-                                    playlist: playlist.name.clone(),
-                                    name: playlist.name.clone(),
+                                    playlist: playlist.name.clone().into_string(),
+                                    name: playlist.name.clone().into_string(),
                                 },
                             )),
                         },
@@ -153,7 +155,7 @@ pub fn playlist_button<'a>(
         } else {
             font::regular()
         };
-        let title = text(playlist.name.clone())
+        let title = text(playlist.name.as_ref())
             .size(SIZE_REGULAR)
             .color(state.theme.on_surface())
             .font(font)

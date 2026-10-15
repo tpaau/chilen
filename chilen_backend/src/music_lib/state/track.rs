@@ -44,13 +44,13 @@ pub struct Track {
     /// Cover art for the track.
     pub cover: Cover,
     pub duration: Duration,
-    pub title: Option<String>,
-    pub artists: Option<Vec<String>>,
-    pub genres: Option<Vec<String>>,
+    pub title: Option<Box<str>>,
+    pub artists: Option<Box<[Box<str>]>>,
+    pub genres: Option<Box<[Box<str>]>>,
     /// Name of the album the track belongs to.
-    pub album: Option<String>,
+    pub album: Option<Box<str>>,
     pub lyrics: Option<Lyrics>,
-    pub comment: Option<String>,
+    pub comment: Option<Box<str>>,
     /// Index of the track in the album.
     pub track: Option<u32>,
     /// Total number of tracks in the album.
@@ -67,9 +67,11 @@ impl std::fmt::Display for Track {
             "{} - {}",
             self.artists
                 .clone()
-                .unwrap_or(vec![String::from("Unknown")])
+                .unwrap_or(Box::new(["Unknown".to_string().into_boxed_str()]))
                 .join(", "),
-            self.title.clone().unwrap_or(String::from("Unknown")),
+            self.title
+                .clone()
+                .unwrap_or("Unknown".to_string().into_boxed_str()),
         )
     }
 }
@@ -129,12 +131,17 @@ impl Track {
                             .iter()
                             .any(|s| s.chars().any(|sc| sc == c))
                     })
-                    .map(|s| s.trim().to_string())
+                    .map(|s| s.trim().to_string().into_boxed_str())
                     .filter(|s| !s.is_empty())
                     .collect()
                 })
             } else {
-                Some(artists.into_iter().map(|s| s.trim().to_string()).collect())
+                Some(
+                    artists
+                        .into_iter()
+                        .map(|s| s.trim().to_string().into_boxed_str())
+                        .collect(),
+                )
             }
         };
 
@@ -147,7 +154,7 @@ impl Track {
                         .iter()
                         .any(|s| s.chars().any(|sc| sc == c))
                 })
-                .map(|s| s.trim().to_string())
+                .map(|s| s.trim().to_string().into_boxed_str())
                 .filter(|s| !s.is_empty())
                 .collect()
         });
@@ -182,7 +189,7 @@ impl Track {
             artists,
             title: tag.title().map(|title| title.into()),
             album: tag.album().map(|album| album.into()),
-            genres,
+            genres: genres.map(|g| g.into_boxed_slice()),
             lyrics,
             comment: tag.comment().map(|comment| comment.into()),
             track: tag.track(),
@@ -239,14 +246,16 @@ impl Track {
             .url(self.path.to_string_lossy())
             .artist(
                 self.artists
-                    .clone()
+                    .as_ref()
+                    .map(|a| a.into_iter().map(|a| a.to_string()).collect::<Vec<_>>())
                     .unwrap_or(vec!["Unknown artist".to_string()]),
             )
             .title(self.title.clone().unwrap_or_default())
             .album(self.album.clone().unwrap_or_default())
             .genre(
                 self.genres
-                    .clone()
+                    .as_ref()
+                    .map(|g| g.into_iter().map(|g| g.to_string()).collect::<Vec<_>>())
                     .unwrap_or(vec!["Unknown genre".to_string()]),
             )
             .comment(self.comment.clone())

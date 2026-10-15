@@ -13,9 +13,9 @@ fn album_track_sorting() {
     let mut tracks = Track::unique_tracks(5);
     tracks[0].track = Some(4);
     tracks[1].track = Some(1);
-    tracks[2].title = Some("aaa".to_string());
+    tracks[2].title = Some("aaa".to_string().into());
     tracks[3].track = Some(2);
-    tracks[4].title = Some("bbb".to_string());
+    tracks[4].title = Some("bbb".to_string().into());
     let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
     let tracks_unsorted = tracks.clone();
 

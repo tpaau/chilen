@@ -31,7 +31,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 model: lib.artists.iter(),
                 delegate: Box::new(move |artist| {
                     let highlighted = highlighted_artist_name
-                        .map(|name| *name == artist.name)
+                        .map(|name| name == artist.name.as_ref())
                         .unwrap_or_default();
                     ArtistButton {
                         theme: &state.theme,

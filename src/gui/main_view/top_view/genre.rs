@@ -65,7 +65,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             text("Genre")
                 .size(font::SIZE_REGULAR)
                 .color(state.theme.on_surface_variant()),
-            title(&state.theme, genre_cloned.name.clone()),
+            title(&state.theme, genre_cloned.name.as_ref().to_string()),
             row![
                 text(track_count_text)
                     .size(font::SIZE_LARGE)
@@ -140,7 +140,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 },
                 add_to_queue: Message::AddAlbumToQueue(album.clone()),
                 highlighted: highlighted_album_title
-                    .map(|t| *t == album.title)
+                    .map(|t| t == album.title.as_ref())
                     .unwrap_or_default(),
                 vibrant: state.settings.vibrant_widgets,
             }
@@ -185,7 +185,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 },
                 add_to_queue: Message::AddArtistToQueue(artist.clone()),
                 highlighted: highlighted_artist_name
-                    .map(|name| *name == artist.name)
+                    .map(|name| name == artist.name.as_ref())
                     .unwrap_or_default(),
                 vibrant: state.settings.vibrant_widgets,
             }
@@ -207,7 +207,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
 
     let highlighted_index = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Genre { name: g } = &p.queue_source
-            && g == &genre.name
+            && g == genre.name.as_ref()
         {
             p.real_track_index(p.position)
         } else {

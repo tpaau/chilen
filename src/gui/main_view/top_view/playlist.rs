@@ -49,7 +49,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
             text("Playlist")
                 .size(font::SIZE_REGULAR)
                 .color(state.theme.on_surface_variant()),
-            title(&state.theme, playlist_cloned.name.clone()),
+            title(&state.theme, playlist_cloned.name.as_ref().to_string()),
             row![
                 text(track_count_text)
                     .size(font::SIZE_LARGE)
@@ -94,7 +94,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
 
     let highlighted_index = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Playlist { name: pl_name } = &p.queue_source
-            && pl_name == &playlist.name
+            && pl_name == playlist.name.as_ref()
         {
             p.real_track_index(p.position)
         } else {

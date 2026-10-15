@@ -33,7 +33,7 @@ pub fn artist_chip<'a, Message: 'a>(
                 width: thumbnail_size,
                 height: thumbnail_size,
             },
-            bold_text(artist.name.clone()).size(font::SIZE_REGULAR)
+            bold_text(artist.name.clone().into_string()).size(font::SIZE_REGULAR)
         ]
         .spacing(SPACING_SMALLER)
         .align_y(Alignment::Center),

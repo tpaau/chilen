@@ -1,4 +1,4 @@
-use std::{collections::HashSet, hash::Hash, sync::Arc, time::Duration};
+use std::{hash::Hash, sync::Arc, time::Duration};
 
 use log::warn;
 use serde::{Deserialize, Serialize};
@@ -18,8 +18,8 @@ use crate::{
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Playlist {
-    pub name: String,
-    pub tracks: Vec<Arc<Track>>,
+    pub name: Box<str>,
+    pub tracks: Box<[Arc<Track>]>,
     pub duration: Duration,
     pub cover: Cover,
     /// Unique ID for identifying the playlist in the library.
@@ -27,7 +27,7 @@ pub struct Playlist {
     /// This ID is not dependent on the contents of the playlist or it's name, and once a playlist
     /// with a specific ID has been created, no new playlist can reclaim it.
     pub id: u64,
-    pub(crate) unmatched: Vec<u64>,
+    pub(crate) unmatched: Box<[u64]>,
 }
 
 impl Playlist {
@@ -53,38 +53,40 @@ impl Playlist {
         };
 
         Self {
-            name: loaded.name,
-            tracks: result.matched,
+            name: loaded.name.into(),
+            tracks: result.matched.into(),
             duration,
-            unmatched: result.unmatched,
+            unmatched: result.unmatched.into(),
             id: loaded.id,
             cover,
         }
     }
 
     pub(crate) fn remove_tracks(&mut self, mut ids: Vec<usize>) -> Result<(), Error> {
-        ids.sort();
-        let mut unique = ids.clone();
-        unique.dedup();
-        if unique != ids {
+        ids.sort_unstable();
+
+        if ids.windows(2).any(|pair| pair[0] == pair[1]) {
             return Err(Error::DuplicateItems);
         }
-        if ids.iter().find(|i| i >= &&self.tracks.len()).is_some() {
+        if ids.iter().any(|&i| i >= self.tracks.len()) {
             return Err(Error::IndexOutOfBounds);
         }
-        let remove_set: HashSet<usize> = ids.into_iter().collect();
-        self.tracks = self
-            .tracks
-            .drain(..)
-            .enumerate()
-            .filter_map(|(i, t)| {
-                if remove_set.contains(&i) {
-                    None
-                } else {
-                    Some(t)
-                }
-            })
-            .collect();
+
+        let mut ids = ids.into_iter().peekable();
+        let mut tracks = std::mem::take(&mut self.tracks).into_vec();
+        let mut index = 0;
+
+        tracks.retain(|_| {
+            let remove = ids.peek() == Some(&index);
+            if remove {
+                ids.next();
+            }
+            index += 1;
+            !remove
+        });
+
+        self.tracks = tracks.into_boxed_slice();
+
         Ok(())
     }
 }
@@ -101,7 +103,7 @@ impl From<Playlist> for ConfPlaylist {
         let mut track_hashes: Vec<_> = value.tracks.iter().map(|t| t.hash_self()).collect();
         track_hashes.extend(value.unmatched);
         Self {
-            name: value.name,
+            name: value.name.to_string(),
             id: value.id,
             track_hashes,
         }

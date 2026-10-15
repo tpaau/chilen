@@ -48,7 +48,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     // TODO: Should move left and right if it can't fit on screen
     let title = bold_text(if let Some(state) = &state.player_state {
         if let Some(track) = state.current() {
-            track.title.clone().unwrap_or("Untitled".to_string())
+            track
+                .title
+                .as_ref()
+                .map(|t| t.clone().into_string())
+                .unwrap_or("Untitled".to_string())
         } else {
             "Nothing playing".to_string()
         }
@@ -68,7 +72,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .iter()
             .map(|a| {
                 mouse_area(
-                    text(a)
+                    text(a.clone().into_string())
                         .wrapping(text::Wrapping::None)
                         .size(font::SIZE_REGULAR)
                         .color(state.theme.on_surface_variant()),
@@ -118,10 +122,16 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         && let Some(album) = &track.album
     {
         mouse_area(
-            text(track.album.clone().unwrap_or("Unknown album".to_string()))
-                .wrapping(text::Wrapping::None)
-                .size(font::SIZE_REGULAR)
-                .color(state.theme.on_surface_variant()),
+            text(
+                track
+                    .album
+                    .as_ref()
+                    .map(|a| a.clone().into_string())
+                    .unwrap_or("Unknown album".to_string()),
+            )
+            .wrapping(text::Wrapping::None)
+            .size(font::SIZE_REGULAR)
+            .color(state.theme.on_surface_variant()),
         )
         .interaction(iced::mouse::Interaction::Pointer)
         .on_press(Message::OpenAlbum(album.to_string()))
