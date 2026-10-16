@@ -1,25 +1,34 @@
 use iced::Element;
 use iced_widget::{sensor, space};
 
-pub struct VirtualList<'a, Model, I, Message>
+pub type ListWidget<'a, Message, Theme, Renderer> = Box<
+    dyn Fn(Vec<Element<'a, Message, Theme, Renderer>>) -> Element<'a, Message, Theme, Renderer>
+        + 'a,
+>;
+
+pub struct VirtualList<'a, Model, I, Message, Theme, Renderer>
 where
     I: IntoIterator<Item = Model>,
 {
     pub model: I,
-    pub delegate: Box<dyn Fn(Model) -> Element<'a, Message> + 'a>,
+    pub delegate: Box<dyn Fn(Model) -> Element<'a, Message, Theme, Renderer> + 'a>,
     pub delegate_height: f32,
     pub visibilities: &'a [bool],
-    pub list: Box<dyn Fn(Vec<Element<'a, Message>>) -> Element<'a, Message> + 'a>,
+    pub list: ListWidget<'a, Message, Theme, Renderer>,
     pub on_show: Box<dyn Fn(usize) -> Message + 'a>,
     pub on_hide: Box<dyn Fn(usize) -> Message + 'a>,
 }
 
-impl<'a, Model, I, Message> From<VirtualList<'a, Model, I, Message>> for Element<'a, Message>
+impl<'a, Model, I, Message, Theme, Renderer>
+    From<VirtualList<'a, Model, I, Message, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
 where
-    Message: 'a + Clone,
     I: IntoIterator<Item = Model>,
+    Message: 'a + Clone,
+    Theme: 'a,
+    Renderer: 'a + iced::advanced::Renderer,
 {
-    fn from(value: VirtualList<'a, Model, I, Message>) -> Self {
+    fn from(value: VirtualList<'a, Model, I, Message, Theme, Renderer>) -> Self {
         let delegates: Vec<_> = value
             .model
             .into_iter()

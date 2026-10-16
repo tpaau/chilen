@@ -1,3 +1,4 @@
+use chilen_widget::virtual_list::VirtualList;
 use iced::Element;
 use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::shapes};
@@ -12,7 +13,6 @@ use crate::gui::{
     widget::{
         icon_shape::IconShape,
         list::{BUTTON_HEIGHT, BUTTON_SPACING, artist_button::ArtistButton},
-        virtual_list::VirtualList,
     },
 };
 

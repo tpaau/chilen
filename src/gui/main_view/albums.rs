@@ -1,3 +1,4 @@
+use chilen_widget::virtual_list::VirtualList;
 use iced::Element;
 use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::shapes};
@@ -15,7 +16,6 @@ use crate::gui::{
             BUTTON_HEIGHT, BUTTON_SPACING,
             album_button::{self, AlbumButton},
         },
-        virtual_list::VirtualList,
     },
 };
 

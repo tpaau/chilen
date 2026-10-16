@@ -1,3 +1,4 @@
+use chilen_widget::virtual_list::VirtualList;
 use iced::Element;
 use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::shapes};
@@ -34,7 +35,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
             player_state.tracks.iter().enumerate().collect()
         };
 
-        let track_buttons: Element<'_, Message> = crate::gui::widget::virtual_list::VirtualList {
+        let track_buttons: Element<'_, Message> = VirtualList {
             model: tracks_ordered,
             delegate: Box::new(|(virtual_index, track)| {
                 TrackButton {

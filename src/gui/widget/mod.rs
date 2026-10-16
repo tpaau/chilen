@@ -5,4 +5,3 @@ pub mod list;
 pub mod lyrics;
 pub mod text_spacer;
 pub mod theme_mode_preview;
-pub mod virtual_list;

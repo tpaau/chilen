@@ -1,6 +1,7 @@
 use std::{env::home_dir, path::PathBuf, sync::Arc};
 
 use chilen_backend::music_lib::Playlist;
+use chilen_widget::virtual_list::VirtualList;
 use iced::{
     Element, Length, Task, padding,
     widget::{column, container},
@@ -20,7 +21,6 @@ use crate::gui::{
     widget::{
         icon_shape::IconShape,
         list::{BUTTON_HEIGHT, BUTTON_SPACING, playlist_button::playlist_button},
-        virtual_list::VirtualList,
     },
 };
 
