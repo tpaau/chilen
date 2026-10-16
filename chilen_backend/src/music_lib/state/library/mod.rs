@@ -446,7 +446,7 @@ impl MusicLibrary {
         lib.playlists_by_name = HashMap::with_capacity(loaded.playlists.len());
         lib.playlists_by_id = HashMap::with_capacity(loaded.playlists.len());
         for p in loaded.playlists {
-            let playlist = Arc::new(Playlist::load(&lib, p, config));
+            let playlist = Arc::new(Playlist::load(&mut lib, p, config));
             playlists.push(playlist.clone());
             lib.playlists_by_name
                 .insert(playlist.name.clone(), playlist.clone());
@@ -455,7 +455,6 @@ impl MusicLibrary {
 
         lib.playlists = playlists;
         lib.sort_playlists();
-        lib.playlist_id_counter = loaded.playlist_id_counter;
 
         lib
     }
@@ -465,7 +464,7 @@ impl MusicLibrary {
         Self::new(tracks)
     }
 
-    fn get_playlist_id(&mut self) -> u64 {
+    pub(super) fn get_playlist_id(&mut self) -> u64 {
         self.playlist_id_counter += 1;
         self.playlist_id_counter
     }
@@ -741,14 +740,12 @@ impl MusicLibrary {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct ConfMusicLibrary {
-    playlist_id_counter: u64,
     playlists: Vec<ConfPlaylist>,
 }
 
 impl From<MusicLibrary> for ConfMusicLibrary {
     fn from(value: MusicLibrary) -> Self {
         Self {
-            playlist_id_counter: value.playlist_id_counter,
             playlists: value
                 .playlists
                 .into_iter()

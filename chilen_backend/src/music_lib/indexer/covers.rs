@@ -49,16 +49,18 @@ impl Quality {
 #[cfg_attr(test, derive(Default))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Cover {
-    cover: Option<u64>,
-    thumbnail: Option<u64>,
+    hash: u64,
+    cover_available: bool,
+    thumbnail_available: bool,
     is_playlist: bool,
 }
 
 impl Cover {
     pub(crate) fn none() -> Self {
         Self {
-            cover: None,
-            thumbnail: None,
+            hash: 0,
+            cover_available: false,
+            thumbnail_available: false,
             is_playlist: false,
         }
     }
@@ -78,12 +80,12 @@ impl Cover {
         let guard = crate::CONFIG.read().unwrap();
         let extension = guard.as_ref().unwrap().library.indexer.covers.extension();
 
-        match self.cover {
-            Some(cover) => {
-                path.push(format!("{cover}.{extension}"));
+        match self.cover_available {
+            true => {
+                path.push(format!("{}.{extension}", self.hash));
                 Ok(path)
             }
-            None => Err(CoverError::ImageUnavailable),
+            false => Err(CoverError::ImageUnavailable),
         }
     }
 
@@ -102,12 +104,12 @@ impl Cover {
         let guard = crate::CONFIG.read().unwrap();
         let extension = guard.as_ref().unwrap().library.indexer.covers.extension();
 
-        match self.thumbnail {
-            Some(thumbnail) => {
-                path.push(format!("{thumbnail}.{extension}"));
+        match self.thumbnail_available {
+            true => {
+                path.push(format!("{}.{extension}", self.hash));
                 Ok(path)
             }
-            None => Err(CoverError::ImageUnavailable),
+            false => Err(CoverError::ImageUnavailable),
         }
     }
 }
@@ -348,7 +350,7 @@ pub(crate) fn get_track_cover(
             },
         );
 
-    let cover_ok = if config.cache_mode == CacheMode::UseCache
+    let cover_available = if config.cache_mode == CacheMode::UseCache
         && covers_lookup_set.read().unwrap().contains(&cover_path)
     {
         true
@@ -398,7 +400,7 @@ pub(crate) fn get_track_cover(
         }
     };
 
-    let thumbnail_ok = if config.cache_mode == CacheMode::UseCache
+    let thumbnail_available = if config.cache_mode == CacheMode::UseCache
         && covers_lookup_set.read().unwrap().contains(&thumbnail_path)
     {
         true
@@ -445,8 +447,9 @@ pub(crate) fn get_track_cover(
     };
 
     Ok(Cover {
-        cover: cover_ok.then_some(hash),
-        thumbnail: thumbnail_ok.then_some(hash),
+        hash,
+        cover_available,
+        thumbnail_available,
         is_playlist: false,
     })
 }
@@ -554,43 +557,44 @@ pub(crate) fn get_playlist_cover(
                 buffers.map(tile_2x2)
             });
 
-            let cover_ok = if config.cache_mode == CacheMode::UseCache && cover_path.is_file() {
-                true
-            } else {
-                let image = match image.as_ref() {
-                    Some(image) => image,
-                    None => {
-                        return Err(CoverError::Playlist);
-                    }
-                };
-
-                let cover = match config.covers.quality.resolution() {
-                    Some(res) => {
-                        if image.height() > res && image.height() > res {
-                            resize(image, res, res, config.covers.filter)
-                        } else {
-                            image.clone()
+            let cover_available =
+                if config.cache_mode == CacheMode::UseCache && cover_path.is_file() {
+                    true
+                } else {
+                    let image = match image.as_ref() {
+                        Some(image) => image,
+                        None => {
+                            return Err(CoverError::Playlist);
                         }
-                    }
-                    None => image.clone(),
-                };
+                    };
 
-                match File::create(&cover_path) {
-                    Ok(mut file) => match cover.write_to(&mut file, config.covers.format) {
-                        Ok(_) => true,
+                    let cover = match config.covers.quality.resolution() {
+                        Some(res) => {
+                            if image.height() > res && image.height() > res {
+                                resize(image, res, res, config.covers.filter)
+                            } else {
+                                image.clone()
+                            }
+                        }
+                        None => image.clone(),
+                    };
+
+                    match File::create(&cover_path) {
+                        Ok(mut file) => match cover.write_to(&mut file, config.covers.format) {
+                            Ok(_) => true,
+                            Err(e) => {
+                                warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
+                                false
+                            }
+                        },
                         Err(e) => {
                             warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
                             false
                         }
-                    },
-                    Err(e) => {
-                        warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
-                        false
                     }
-                }
-            };
+                };
 
-            let thumbnail_ok =
+            let thumbnail_available =
                 if config.cache_mode == CacheMode::UseCache && thumbnail_path.is_file() {
                     true
                 } else {
@@ -624,8 +628,9 @@ pub(crate) fn get_playlist_cover(
                 };
 
             Ok(Cover {
-                cover: cover_ok.then_some(hash),
-                thumbnail: thumbnail_ok.then_some(hash),
+                hash,
+                cover_available,
+                thumbnail_available,
                 is_playlist: true,
             })
         } else {

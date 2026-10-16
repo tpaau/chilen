@@ -22,7 +22,7 @@ pub struct Playlist {
     pub tracks: Box<[Arc<Track>]>,
     pub duration: Duration,
     pub cover: Cover,
-    /// Unique ID for identifying the playlist in the library.
+    /// Unique per-session ID for identifying the playlist in the library.
     ///
     /// This ID is not dependent on the contents of the playlist or it's name, and once a playlist
     /// with a specific ID has been created, no new playlist can reclaim it.
@@ -31,7 +31,11 @@ pub struct Playlist {
 }
 
 impl Playlist {
-    pub(super) fn load(lib: &MusicLibrary, loaded: ConfPlaylist, config: indexer::Config) -> Self {
+    pub(super) fn load(
+        lib: &mut MusicLibrary,
+        loaded: ConfPlaylist,
+        config: indexer::Config,
+    ) -> Self {
         let result = lib.tracks_from_hashes(loaded.track_hashes);
         if !result.unmatched.is_empty() {
             warn!(
@@ -57,7 +61,7 @@ impl Playlist {
             tracks: result.matched.into(),
             duration,
             unmatched: result.unmatched.into(),
-            id: loaded.id,
+            id: lib.get_playlist_id(),
             cover,
         }
     }
@@ -94,7 +98,6 @@ impl Playlist {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ConfPlaylist {
     name: String,
-    id: u64,
     track_hashes: Vec<u64>,
 }
 
@@ -104,7 +107,6 @@ impl From<Playlist> for ConfPlaylist {
         track_hashes.extend(value.unmatched);
         Self {
             name: value.name.to_string(),
-            id: value.id,
             track_hashes,
         }
     }
