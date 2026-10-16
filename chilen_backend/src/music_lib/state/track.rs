@@ -274,7 +274,7 @@ impl Track {
             })
             .trackid(self.track_id(position));
 
-        let builder = match &self.cover.thumbnail() {
+        let builder = match &self.cover.cover() {
             Ok(cover) => builder.art_url(cover.to_string_lossy().to_string()),
             Err(_) => builder,
         };
