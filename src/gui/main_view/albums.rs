@@ -20,51 +20,52 @@ use crate::gui::{
 };
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
-    match &state.library {
-        Some(lib) => {
-            let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
-                if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
-                    Some(title)
-                } else {
-                    None
+    if let Some(lib) = &state.library
+        && !lib.albums.is_empty()
+    {
+        let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
+            if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
+                Some(title)
+            } else {
+                None
+            }
+        });
+        let content = VirtualList {
+            model: lib.albums.iter(),
+            delegate: Box::new(move |album| {
+                let highlighted = highlighted_album_title
+                    .map(|t| t == album.title.as_ref())
+                    .unwrap_or_default();
+                AlbumButton {
+                    state,
+                    album: album.clone(),
+                    info: vec![
+                        album_button::Info::TrackCount,
+                        album_button::Info::ArtistCount,
+                    ],
+                    play: Message::PlayAlbum(album.clone()),
+                    press: Message::TopView(top_view::Message::Navigate(TopView::Album(
+                        album.clone(),
+                    ))),
+                    shuffle: Message::ShuffleAlbum(album.clone()),
+                    add_to_queue: Message::AddAlbumToQueue(album.clone()),
+                    highlighted,
+                    vibrant: state.settings.vibrant_widgets,
                 }
-            });
-            let content = VirtualList {
-                model: lib.albums.iter(),
-                delegate: Box::new(move |album| {
-                    let highlighted = highlighted_album_title
-                        .map(|t| t == album.title.as_ref())
-                        .unwrap_or_default();
-                    AlbumButton {
-                        state,
-                        album: album.clone(),
-                        info: vec![
-                            album_button::Info::TrackCount,
-                            album_button::Info::ArtistCount,
-                        ],
-                        play: Message::PlayAlbum(album.clone()),
-                        press: Message::TopView(top_view::Message::Navigate(TopView::Album(
-                            album.clone(),
-                        ))),
-                        shuffle: Message::ShuffleAlbum(album.clone()),
-                        add_to_queue: Message::AddAlbumToQueue(album.clone()),
-                        highlighted,
-                        vibrant: state.settings.vibrant_widgets,
-                    }
-                    .into()
-                }),
-                delegate_height: BUTTON_HEIGHT,
-                visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
-                list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-                on_show: Box::new(Message::ButtonPoppedIn),
-                on_hide: Box::new(Message::ButtonPoppedOut),
-            };
-
-            iced_widget::scrollable(content)
-                .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
                 .into()
-        }
-        None => center(
+            }),
+            delegate_height: BUTTON_HEIGHT,
+            visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
+            list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
+            on_show: Box::new(Message::ButtonPoppedIn),
+            on_hide: Box::new(Message::ButtonPoppedOut),
+        };
+
+        iced_widget::scrollable(content)
+            .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
+            .into()
+    } else {
+        center(
             IconShape::new(
                 shapes::polymorpher::shapes::sunny(),
                 state.theme.surface_container_high(),
@@ -76,6 +77,6 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 state.theme.on_surface_variant(),
             ),
         )
-        .into(),
+        .into()
     }
 }

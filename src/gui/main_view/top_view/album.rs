@@ -57,7 +57,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
         });
 
         let cover = CoverImage {
-            image_path: album_cloned.cover.hires.clone(),
+            image_path: album_cloned.cover.cover().ok(),
             icon: *icons::ALBUM,
             icon_size: cover_size / 4.0,
             icon_color: state.theme.on_surface_variant(),

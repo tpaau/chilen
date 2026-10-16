@@ -23,7 +23,7 @@ pub fn artist_chip<'a, Message: 'a>(
     button(
         row![
             CoverImage {
-                image_path: artist.cover.thumbnail.clone(),
+                image_path: artist.cover.thumbnail().ok(),
                 icon: *icons::ARTIST,
                 icon_size: icons::SIZE_SMALLER,
                 icon_color: theme.on_surface_variant(),

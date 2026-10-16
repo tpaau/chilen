@@ -107,7 +107,7 @@ where
             ),
         };
         let image_path = (!value.highlighted)
-            .then_some(value.genre.cover.thumbnail.clone())
+            .then_some(value.genre.cover.thumbnail().ok())
             .flatten();
         let cover = CoverImage {
             image_path,

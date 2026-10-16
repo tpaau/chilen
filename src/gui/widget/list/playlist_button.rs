@@ -173,7 +173,7 @@ pub fn playlist_button<'a>(
             ),
         };
         let image_path = (!highlighted)
-            .then_some(playlist.cover.thumbnail.clone())
+            .then_some(playlist.cover.thumbnail().ok())
             .flatten();
 
         let cover = CoverImage {

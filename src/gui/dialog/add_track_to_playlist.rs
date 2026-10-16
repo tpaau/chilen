@@ -29,7 +29,7 @@ fn playlist_choice<'a>(
     button(
         row![
             CoverImage {
-                image_path: playlist.cover.thumbnail.clone(),
+                image_path: playlist.cover.thumbnail().ok(),
                 icon: *icons::PLAYLIST_PLAY,
                 icon_size: icons::SIZE_LARGE,
                 icon_color: theme.on_surface_variant(),

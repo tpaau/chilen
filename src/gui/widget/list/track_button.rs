@@ -202,7 +202,7 @@ where
             value.state.theme.surface_container_high()
         };
         let image_path = (value.status != Status::Playing)
-            .then_some(value.track.cover.thumbnail.clone())
+            .then_some(value.track.cover.thumbnail().ok())
             .flatten();
         let cover = CoverImage {
             image_path,

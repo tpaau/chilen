@@ -274,9 +274,9 @@ impl Track {
             })
             .trackid(self.track_id(position));
 
-        let builder = match &self.cover.hires {
-            Some(cover) => builder.art_url(cover.to_string_lossy().to_string()),
-            None => builder,
+        let builder = match &self.cover.thumbnail() {
+            Ok(cover) => builder.art_url(cover.to_string_lossy().to_string()),
+            Err(_) => builder,
         };
 
         builder.build()

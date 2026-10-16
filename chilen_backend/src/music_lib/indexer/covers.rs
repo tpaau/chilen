@@ -49,15 +49,65 @@ impl Quality {
 #[cfg_attr(test, derive(Default))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Cover {
-    pub hires: Option<PathBuf>,
-    pub thumbnail: Option<PathBuf>,
+    cover: Option<u64>,
+    thumbnail: Option<u64>,
+    is_playlist: bool,
 }
 
 impl Cover {
     pub(crate) fn none() -> Self {
         Self {
-            hires: None,
+            cover: None,
             thumbnail: None,
+            is_playlist: false,
+        }
+    }
+
+    /// Returns the path to the high resolution cover image of the element.
+    ///
+    /// This method might fail if the cache directory is not accessible, the image file is not
+    /// available.
+    ///
+    /// # Panics
+    /// Panics if the backend config isn't initialized.
+    pub fn cover(&self) -> Result<PathBuf, CoverError> {
+        let mut path = match self.is_playlist {
+            true => PLAYLIST_COVER_CACHE_DIR.clone()?,
+            false => TRACK_COVER_CACHE_DIR.clone()?,
+        };
+        let guard = crate::CONFIG.read().unwrap();
+        let extension = guard.as_ref().unwrap().library.indexer.covers.extension();
+
+        match self.cover {
+            Some(cover) => {
+                path.push(format!("{cover}.{extension}"));
+                Ok(path)
+            }
+            None => Err(CoverError::ImageUnavailable),
+        }
+    }
+
+    /// Returns the path to the low resolution thumbnail image of the element.
+    ///
+    /// This method might fail if the cache directory is not accessible, the image file is not
+    /// available.
+    ///
+    /// # Panics
+    /// Panics if the backend config isn't initialized.
+    pub fn thumbnail(&self) -> Result<PathBuf, CoverError> {
+        let mut path = match self.is_playlist {
+            true => PLAYLIST_THUMBNAIL_CACHE_DIR.clone()?,
+            false => TRACK_THUMBNAIL_CACHE_DIR.clone()?,
+        };
+        let guard = crate::CONFIG.read().unwrap();
+        let extension = guard.as_ref().unwrap().library.indexer.covers.extension();
+
+        match self.thumbnail {
+            Some(thumbnail) => {
+                path.push(format!("{thumbnail}.{extension}"));
+                Ok(path)
+            }
+            None => Err(CoverError::ImageUnavailable),
         }
     }
 }
@@ -114,6 +164,7 @@ pub enum CoverError {
     UnknownFileFormat,
     DecodingError,
     Playlist,
+    ImageUnavailable,
 }
 
 impl std::fmt::Display for CoverError {
@@ -134,9 +185,13 @@ impl std::fmt::Display for CoverError {
                     "Could not create the cache directory at {path:?}: {error}"
                 )
             }
-            CoverError::UnknownFileFormat => write!(f, "Could not guess the image format"),
-            CoverError::DecodingError => write!(f, "Could not decode the image data"),
+            Self::UnknownFileFormat => write!(f, "Could not guess the image format"),
+            Self::DecodingError => write!(f, "Could not decode the image data"),
             Self::Playlist => write!(f, "Could not create a playlist cover image"),
+            Self::ImageUnavailable => write!(
+                f,
+                "The cover image does not exist in the cache or is unavailable"
+            ),
         }
     }
 }
@@ -165,7 +220,7 @@ const FRONT_COVER_PRIORITY: [PictureType; 21] = [
     PictureType::OtherIcon,
 ];
 
-pub(crate) static TRACK_HIRES_COVER_CACHE_DIR: LazyLock<Result<PathBuf, CoverError>> =
+pub(crate) static TRACK_COVER_CACHE_DIR: LazyLock<Result<PathBuf, CoverError>> =
     LazyLock::new(|| {
         let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
         cache.push("covers");
@@ -203,7 +258,7 @@ pub(crate) static TRACK_THUMBNAIL_CACHE_DIR: LazyLock<Result<PathBuf, CoverError
         }
     });
 
-pub(crate) static PLAYLIST_HIRES_COVER_CACHE_DIR: LazyLock<Result<PathBuf, CoverError>> =
+pub(crate) static PLAYLIST_COVER_CACHE_DIR: LazyLock<Result<PathBuf, CoverError>> =
     LazyLock::new(|| {
         let mut cache = CACHE_DIR.read().unwrap().clone().unwrap();
         cache.push("covers");
@@ -262,7 +317,7 @@ pub(crate) fn get_track_cover(
     config: indexer::Config,
     covers_lookup_set: &RwLock<HashSet<PathBuf>>,
 ) -> Result<Cover, CoverError> {
-    let hires_cache = TRACK_HIRES_COVER_CACHE_DIR.clone()?;
+    let cover_cache = TRACK_COVER_CACHE_DIR.clone()?;
     let thumbnail_cache = TRACK_THUMBNAIL_CACHE_DIR.clone()?;
 
     let image_buf = pick_front_cover_or_replacement(tag.pictures())?.data();
@@ -271,8 +326,8 @@ pub(crate) fn get_track_cover(
     let hash = hasher.finish();
 
     let extension = config.covers.extension();
-    let mut hires_path = hires_cache.clone();
-    hires_path.push(format!("{hash}.{extension}"));
+    let mut cover_path = cover_cache.clone();
+    cover_path.push(format!("{hash}.{extension}"));
     let mut thumbnail_path = thumbnail_cache.clone();
     thumbnail_path.push(format!("{hash}.{extension}"));
 
@@ -293,16 +348,16 @@ pub(crate) fn get_track_cover(
             },
         );
 
-    let hires = if config.cache_mode == CacheMode::UseCache
-        && covers_lookup_set.read().unwrap().contains(&hires_path)
+    let cover_ok = if config.cache_mode == CacheMode::UseCache
+        && covers_lookup_set.read().unwrap().contains(&cover_path)
     {
-        Some(hires_path)
-    } else if config.cache_mode == CacheMode::UseCache && hires_path.is_file() {
+        true
+    } else if config.cache_mode == CacheMode::UseCache && cover_path.is_file() {
         covers_lookup_set
             .write()
             .unwrap()
-            .insert(hires_path.clone());
-        Some(hires_path)
+            .insert(cover_path.clone());
+        true
     } else {
         let image = match image.as_ref() {
             Ok(image) => image,
@@ -322,37 +377,37 @@ pub(crate) fn get_track_cover(
             None => image.clone().into(),
         };
 
-        match File::create(&hires_path) {
+        match File::create(&cover_path) {
             Ok(mut file) => match cover.write_to(&mut file, config.covers.format) {
                 Ok(_) => {
                     covers_lookup_set
                         .write()
                         .unwrap()
-                        .insert(hires_path.clone());
-                    Some(hires_path)
+                        .insert(cover_path.clone());
+                    true
                 }
                 Err(e) => {
-                    warn!("Couldn't write thumbnail to {hires_path:?}: {e}");
-                    None
+                    warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
+                    false
                 }
             },
             Err(e) => {
-                warn!("Couldn't write thumbnail to {hires_path:?}: {e}");
-                None
+                warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
+                false
             }
         }
     };
 
-    let thumbnail = if config.cache_mode == CacheMode::UseCache
+    let thumbnail_ok = if config.cache_mode == CacheMode::UseCache
         && covers_lookup_set.read().unwrap().contains(&thumbnail_path)
     {
-        Some(thumbnail_path)
+        true
     } else if config.cache_mode == CacheMode::UseCache && thumbnail_path.is_file() {
         covers_lookup_set
             .write()
             .unwrap()
             .insert(thumbnail_path.clone());
-        Some(thumbnail_path)
+        true
     } else {
         let image = match &*image {
             Ok(image) => image,
@@ -375,21 +430,25 @@ pub(crate) fn get_track_cover(
                         .write()
                         .unwrap()
                         .insert(thumbnail_path.clone());
-                    Some(thumbnail_path)
+                    true
                 }
                 Err(e) => {
                     warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
-                    None
+                    false
                 }
             },
             Err(e) => {
                 warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
-                None
+                false
             }
         }
     };
 
-    Ok(Cover { hires, thumbnail })
+    Ok(Cover {
+        cover: cover_ok.then_some(hash),
+        thumbnail: thumbnail_ok.then_some(hash),
+        is_playlist: false,
+    })
 }
 
 fn get_unique_covers(tracks: &[Arc<Track>]) -> Vec<&Cover> {
@@ -437,16 +496,16 @@ pub(crate) fn get_playlist_cover(
             let hash = hasher.finish();
 
             let extension = config.covers.extension();
-            let mut hires_path = PLAYLIST_HIRES_COVER_CACHE_DIR.clone()?;
-            hires_path.push(format!("{hash}.{extension}"));
+            let mut cover_path = PLAYLIST_COVER_CACHE_DIR.clone()?;
+            cover_path.push(format!("{hash}.{extension}"));
             let mut thumbnail_path = PLAYLIST_THUMBNAIL_CACHE_DIR.clone()?;
             thumbnail_path.push(format!("{hash}.{extension}"));
 
             let image = LazyLock::new(|| {
                 let mut image_buffers = Vec::new();
                 for cover in &unique_covers {
-                    let image_buf = match cover.hires.as_ref() {
-                        Some(path) => match File::open(path) {
+                    let image_buf = match cover.cover() {
+                        Ok(path) => match File::open(&path) {
                             Ok(mut handle) => {
                                 let mut buf = Vec::new();
                                 if let Err(e) = handle.read_to_end(&mut buf) {
@@ -459,7 +518,7 @@ pub(crate) fn get_playlist_cover(
                                 continue;
                             }
                         },
-                        None => continue,
+                        Err(_) => continue,
                     };
 
                     match ImageReader::new(Cursor::new(image_buf)).with_guessed_format() {
@@ -495,8 +554,8 @@ pub(crate) fn get_playlist_cover(
                 buffers.map(tile_2x2)
             });
 
-            let hires = if config.cache_mode == CacheMode::UseCache && hires_path.is_file() {
-                Some(hires_path)
+            let cover_ok = if config.cache_mode == CacheMode::UseCache && cover_path.is_file() {
+                true
             } else {
                 let image = match image.as_ref() {
                     Some(image) => image,
@@ -516,55 +575,59 @@ pub(crate) fn get_playlist_cover(
                     None => image.clone(),
                 };
 
-                match File::create(&hires_path) {
+                match File::create(&cover_path) {
                     Ok(mut file) => match cover.write_to(&mut file, config.covers.format) {
-                        Ok(_) => Some(hires_path),
+                        Ok(_) => true,
                         Err(e) => {
-                            warn!("Couldn't write thumbnail to {hires_path:?}: {e}");
-                            None
+                            warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
+                            false
                         }
                     },
                     Err(e) => {
-                        warn!("Couldn't write thumbnail to {hires_path:?}: {e}");
-                        None
+                        warn!("Couldn't write thumbnail to {cover_path:?}: {e}");
+                        false
                     }
                 }
             };
 
-            let thumbnail = if config.cache_mode == CacheMode::UseCache && thumbnail_path.is_file()
-            {
-                Some(thumbnail_path)
-            } else {
-                let image = match image.as_ref() {
-                    Some(image) => image,
-                    None => {
-                        return Err(CoverError::Playlist);
+            let thumbnail_ok =
+                if config.cache_mode == CacheMode::UseCache && thumbnail_path.is_file() {
+                    true
+                } else {
+                    let image = match image.as_ref() {
+                        Some(image) => image,
+                        None => {
+                            return Err(CoverError::Playlist);
+                        }
+                    };
+
+                    let thumbnail = resize(
+                        image,
+                        config.covers.thumbnail_resolution,
+                        config.covers.thumbnail_resolution,
+                        config.covers.filter,
+                    );
+
+                    match File::create(&thumbnail_path) {
+                        Ok(mut file) => match thumbnail.write_to(&mut file, config.covers.format) {
+                            Ok(_) => true,
+                            Err(e) => {
+                                warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
+                                false
+                            }
+                        },
+                        Err(e) => {
+                            warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
+                            false
+                        }
                     }
                 };
 
-                let thumbnail = resize(
-                    image,
-                    config.covers.thumbnail_resolution,
-                    config.covers.thumbnail_resolution,
-                    config.covers.filter,
-                );
-
-                match File::create(&thumbnail_path) {
-                    Ok(mut file) => match thumbnail.write_to(&mut file, config.covers.format) {
-                        Ok(_) => Some(thumbnail_path),
-                        Err(e) => {
-                            warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
-                            None
-                        }
-                    },
-                    Err(e) => {
-                        warn!("Couldn't write thumbnail to {thumbnail_path:?}: {e}");
-                        None
-                    }
-                }
-            };
-
-            Ok(Cover { hires, thumbnail })
+            Ok(Cover {
+                cover: cover_ok.then_some(hash),
+                thumbnail: thumbnail_ok.then_some(hash),
+                is_playlist: true,
+            })
         } else {
             Ok(tracks[0].cover.clone())
         }

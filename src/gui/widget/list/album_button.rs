@@ -149,7 +149,7 @@ where
             ),
         };
         let image_path = (!value.highlighted)
-            .then_some(value.album.cover.thumbnail.clone())
+            .then_some(value.album.cover.thumbnail().ok())
             .flatten();
 
         let cover = CoverImage {

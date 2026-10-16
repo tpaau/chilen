@@ -47,7 +47,35 @@ pub struct State {
 }
 
 pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
-    let content: Element<'_, Message> = if let Some(lib) = &state.library {
+    let fab = {
+        bottom_right(fab_menu(
+            fab_menu::Style::new(&state.theme, Accent::default()),
+            vec![
+                iced_m3::widget::fab_menu::Item {
+                    on_press: OnPress::Direct(Message::ImportPlaylist),
+                    label: "Import playlist".into(),
+                    icon: Icon::Text {
+                        text: icons::UPLOAD_FILE.into_fragment(),
+                        font: Some(icons::filled()),
+                    },
+                },
+                iced_m3::widget::fab_menu::Item {
+                    on_press: OnPress::Direct(Message::CreatePlaylist),
+                    label: "New playlist".into(),
+                    icon: Icon::Text {
+                        text: icons::PLAYLIST_ADD.into_fragment(),
+                        font: Some(icons::filled()),
+                    },
+                },
+            ],
+            None,
+        ))
+        .padding(padding::bottom(SPACING_SMALL))
+    };
+
+    let content: Element<'_, Message> = if let Some(lib) = &state.library
+        && !lib.playlists.is_empty()
+    {
         let base = responsive(move |size| {
             {
                 iced::widget::scrollable({
@@ -93,46 +121,23 @@ pub fn view(state: &Chilen, width: f32) -> Element<'_, playlist_view::Message> {
             }
         });
 
-        let fab = {
-            bottom_right(fab_menu(
-                fab_menu::Style::new(&state.theme, Accent::default()),
-                vec![
-                    iced_m3::widget::fab_menu::Item {
-                        on_press: OnPress::Direct(Message::ImportPlaylist),
-                        label: "Import playlist".into(),
-                        icon: Icon::Text {
-                            text: icons::UPLOAD_FILE.into_fragment(),
-                            font: Some(icons::filled()),
-                        },
-                    },
-                    iced_m3::widget::fab_menu::Item {
-                        on_press: OnPress::Direct(Message::CreatePlaylist),
-                        label: "New playlist".into(),
-                        icon: Icon::Text {
-                            text: icons::PLAYLIST_ADD.into_fragment(),
-                            font: Some(icons::filled()),
-                        },
-                    },
-                ],
-                None,
-            ))
-            .padding(padding::bottom(SPACING_SMALL))
-        };
-
-        center(stack!(base, fab)).into()
+        center(stack![base, fab]).into()
     } else {
-        center(
-            IconShape::new(
-                shapes::polymorpher::shapes::cookie9(),
-                state.theme.surface_container_high(),
-                icons::LYRICS.into_fragment(),
-                state.theme.on_surface_variant(),
-            )
-            .label(
-                "Your playlists will show up here",
-                state.theme.on_surface_variant(),
+        stack![
+            center(
+                IconShape::new(
+                    shapes::polymorpher::shapes::cookie9(),
+                    state.theme.surface_container_high(),
+                    icons::LYRICS.into_fragment(),
+                    state.theme.on_surface_variant(),
+                )
+                .label(
+                    "Your playlists will show up here",
+                    state.theme.on_surface_variant(),
+                ),
             ),
-        )
+            fab
+        ]
         .into()
     };
 

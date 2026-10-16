@@ -28,7 +28,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         let image_path = state
             .player_state
             .as_ref()
-            .and_then(|s| s.current().and_then(|track| track.cover.hires.clone()));
+            .and_then(|s| s.current().and_then(|track| track.cover.cover().ok()));
 
         CoverImage {
             image_path,
