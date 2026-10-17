@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use chilen_backend::playback::LoopState;
-use chilen_widget::marquee::Marquee;
 use iced::{Alignment, Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{
@@ -20,7 +19,7 @@ use crate::gui::{
     formatter::{UNKNOWN_TRACK_DURATION, format_track_duration},
     icons,
     playback_view::Message,
-    widget::cover_image::CoverImage,
+    widget::{cover_image::CoverImage, wrappers::marquee},
 };
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -60,7 +59,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         "Nothing playing".to_string()
     };
 
-    let title = Marquee::new(
+    let title = marquee(
         bold_text(title)
             .size(32.0)
             .wrapping(text::Wrapping::None)
@@ -120,6 +119,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .color(state.theme.on_surface_variant())
             .into()
     };
+    let artists = marquee(artists);
 
     let album: Element<'_, Message> = if let Some(player_state) = &state.player_state
         && let Some(track) = player_state.current()
@@ -157,6 +157,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .color(state.theme.on_surface_variant())
             .into()
     };
+    let album = marquee(album);
 
     let content = column![title, artists, album];
 
