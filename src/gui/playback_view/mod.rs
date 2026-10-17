@@ -49,12 +49,7 @@ pub struct State {
 pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
     let padding = SPACING_SMALL;
     container(
-        column![
-            playback_control::view(state),
-            // FIX: This is a WORKAROUND.
-            bottom_panel::view(state)
-        ]
-        .spacing(SPACING_REGULAR),
+        column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
     )
     .width(width)
     .padding(Padding::from(padding))

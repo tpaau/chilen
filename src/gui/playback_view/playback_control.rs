@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use chilen_backend::playback::LoopState;
+use chilen_widget::marquee::Marquee;
 use iced::{Alignment, Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{
@@ -45,8 +46,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     }))
     .height(Length::Shrink);
 
-    // TODO: Should move left and right if it can't fit on screen
-    let title = bold_text(if let Some(state) = &state.player_state {
+    let title = if let Some(state) = &state.player_state {
         if let Some(track) = state.current() {
             track
                 .title
@@ -58,10 +58,14 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         }
     } else {
         "Nothing playing".to_string()
-    })
-    .size(32.0)
-    .wrapping(text::Wrapping::None)
-    .color(state.theme.on_surface());
+    };
+
+    let title = Marquee::new(
+        bold_text(title)
+            .size(32.0)
+            .wrapping(text::Wrapping::None)
+            .color(state.theme.on_surface()),
+    );
 
     let artists: Element<'_, Message> = if let Some(player_state) = &state.player_state
         && let Some(track) = player_state.current()
