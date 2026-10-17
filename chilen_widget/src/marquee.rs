@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use iced::{
-    Element, Length, Point, Rectangle, Size, Vector,
+    Element, Length, Pixels, Point, Rectangle, Size, Vector,
     advanced::{
         Widget,
         layout::{Limits, Node},
@@ -36,22 +36,24 @@ impl Behavior {
         content_width: f32,
         viewport_width: f32,
         elapsed: Duration,
-        scroll_time: Duration,
+        scroll_speed: ScrollSpeed,
         pause: Duration,
     ) -> f32 {
-        let travel = scroll_time.as_secs_f32();
         let pause = pause.as_secs_f32();
-
-        if travel == 0.0 {
-            return match self {
-                Self::Alternate => 0.0,
-                Self::Scroll => content_width,
-            };
-        }
 
         match self {
             Self::Alternate => {
                 let to = (content_width - viewport_width).max(0.0);
+
+                let travel = match scroll_speed {
+                    ScrollSpeed::Relative(duration) => duration.as_secs_f32(),
+                    ScrollSpeed::Absolute(pixels) => to / pixels.0,
+                };
+
+                if travel == 0.0 {
+                    return 0.0;
+                }
+
                 let t = elapsed.as_secs_f32().rem_euclid(2.0 * (travel + pause));
 
                 if t < travel {
@@ -66,6 +68,14 @@ impl Behavior {
             }
             Self::Scroll => {
                 let total_distance = content_width + viewport_width;
+                let travel = match scroll_speed {
+                    ScrollSpeed::Relative(duration) => duration.as_secs_f32(),
+                    ScrollSpeed::Absolute(pixels) => total_distance / pixels.0,
+                };
+
+                if travel == 0.0 {
+                    return 0.0;
+                }
 
                 let left_travel = travel * content_width / total_distance;
                 let right_travel = travel - left_travel;
@@ -83,12 +93,26 @@ impl Behavior {
     }
 }
 
+/// The scroll speed of the [`Marquee`] content.
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub enum ScrollSpeed {
+    /// Time required to complete one full loop of the content.
+    Relative(Duration),
+    /// Constant velocity in pixels per second.
+    Absolute(Pixels),
+}
+
+impl Default for ScrollSpeed {
+    fn default() -> Self {
+        Self::Relative(Duration::from_secs(3))
+    }
+}
+
 // TODO: A fade effect for the widget around viewport edges would be nice
 pub struct Marquee<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer> {
     content: Element<'a, Message, Theme, Renderer>,
     pause: Duration,
-    // TODO: Absolute speed by pixels/s
-    scroll_time: Duration,
+    scroll_speed: ScrollSpeed,
     behavior: Behavior,
 }
 
@@ -98,7 +122,7 @@ impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
         Self {
             content: content.into(),
             pause: Duration::from_secs(1),
-            scroll_time: Duration::from_secs(3),
+            scroll_speed: ScrollSpeed::default(),
             behavior: Behavior::default(),
         }
     }
@@ -110,8 +134,8 @@ impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
     }
 
     #[must_use]
-    pub fn scroll_time(mut self, scroll_time: Duration) -> Self {
-        self.scroll_time = scroll_time;
+    pub fn scroll_speed(mut self, scroll_speed: ScrollSpeed) -> Self {
+        self.scroll_speed = scroll_speed;
         self
     }
 
@@ -252,7 +276,7 @@ where
                     state.last_bounds.width,
                     layout.bounds().width,
                     now.duration_since(state.start),
-                    self.scroll_time,
+                    self.scroll_speed,
                     self.pause,
                 ),
             };
