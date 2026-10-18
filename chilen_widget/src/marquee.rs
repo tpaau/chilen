@@ -22,6 +22,8 @@ pub fn marquee<'a, Message, Theme, Renderer>(
 #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub enum ScrollGap {
     /// Automatically detect the gap so that only one widget is visible at a time.
+    ///
+    /// Same as [`Relative(0.0)`](ScrollGap::Relative)
     #[default]
     Auto,
     /// Manual gap in pixels.
@@ -133,12 +135,25 @@ impl Default for ScrollSpeed {
     }
 }
 
+/// Specifies when the [`Marquee`] animation should play.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Animation {
+    /// Never play the animation.
+    Off,
+    #[default]
+    /// Only play the animation when the widget is hovered.
+    WhenHovered,
+    /// Always play the animation.
+    Always,
+}
+
 // TODO: A fade effect for the widget around viewport edges would be nice
 pub struct Marquee<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer> {
     content: Element<'a, Message, Theme, Renderer>,
     pause: Duration,
     scroll_speed: ScrollSpeed,
     behavior: Behavior,
+    animation: Animation,
 }
 
 impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
@@ -149,6 +164,7 @@ impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
             pause: Duration::from_secs(1),
             scroll_speed: ScrollSpeed::default(),
             behavior: Behavior::default(),
+            animation: Animation::default(),
         }
     }
 
@@ -167,6 +183,12 @@ impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
     #[must_use]
     pub fn behavior(mut self, behavior: Behavior) -> Self {
         self.behavior = behavior;
+        self
+    }
+
+    #[must_use]
+    pub fn animation(mut self, animation: Animation) -> Self {
+        self.animation = animation;
         self
     }
 }
@@ -192,8 +214,9 @@ impl Default for State {
 }
 
 impl State {
-    fn reset_offsets(&mut self) {
+    fn reset_offsets(&mut self, now: Instant) {
         self.offsets = (0.0, None);
+        self.start = now;
     }
 }
 
@@ -217,7 +240,7 @@ where
     fn diff(&self, tree: &mut Tree) {
         tree.diff_children(&[&self.content]);
         let state = tree.state.downcast_mut::<State>();
-        state.reset_offsets();
+        state.reset_offsets(Instant::now());
     }
 
     fn size(&self) -> Size<Length> {
@@ -242,8 +265,7 @@ where
             bounds.height.min(max_bounds.height).max(min_bounds.height),
         );
         if state.last_bounds != bounds || state.last_size != size {
-            state.start = Instant::now();
-            state.reset_offsets();
+            state.reset_offsets(Instant::now());
             state.last_bounds = bounds;
             state.last_size = size;
         }
@@ -322,10 +344,21 @@ where
         shell: &mut iced::advanced::Shell<'_, Message>,
         viewport: &iced::Rectangle,
     ) {
-        if let iced::Event::Window(iced::window::Event::RedrawRequested(now)) = event {
+        if matches!(
+            event,
+            iced::Event::Window(iced::window::Event::RedrawRequested(_))
+        ) || matches!(
+            event,
+            iced::Event::Mouse(mouse::Event::CursorMoved { position: _ })
+        ) {
+            let now = Instant::now();
             let state = tree.state.downcast_mut::<State>();
 
-            if state.animate {
+            let is_over = cursor.is_over(layout.bounds());
+            if state.animate
+                && (self.animation == Animation::Always
+                    || (self.animation == Animation::WhenHovered && is_over))
+            {
                 state.offsets = self.behavior.interpolate(
                     state.last_bounds.width,
                     layout.bounds().width,
@@ -336,7 +369,8 @@ where
 
                 shell.request_redraw();
             } else {
-                state.offsets = (0.0, None);
+                state.reset_offsets(now);
+                state.start = now;
             }
         }
 
