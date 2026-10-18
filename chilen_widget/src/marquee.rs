@@ -270,7 +270,7 @@ where
     ) {
         if let iced::Event::Window(iced::window::Event::RedrawRequested(now)) = event {
             let state = tree.state.downcast_mut::<State>();
-            state.offset = match state.animate {
+            let offset = match state.animate {
                 true => 0.0,
                 false => self.behavior.interpolate(
                     state.last_bounds.width,
@@ -280,7 +280,10 @@ where
                     self.pause,
                 ),
             };
-            shell.request_redraw();
+            if offset != state.offset {
+                state.offset = offset;
+                shell.request_redraw();
+            }
         }
 
         self.content.as_widget_mut().update(

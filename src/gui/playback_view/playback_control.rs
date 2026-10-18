@@ -121,6 +121,31 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     };
     let artists = marquee(artists);
 
+    // TODO: Can't do this fancy thing as I can't set the exact button content
+    // let album = if let Some(state) = &state.player_state
+    //     && let Some(track) = state.current()
+    // {
+    //     track.album.clone()
+    // } else {
+    //     None
+    // };
+    // let album_text = album
+    //     .as_ref()
+    //     .map(|a| a.clone().into_string())
+    //     .unwrap_or("Unknown album".to_string());
+    // let album_button = iced_m3::widget::button(
+    //     button::Style::tonal(&state.theme, Accent::Tertiary),
+    //     Content::Full {
+    //         icon: Icon::Text {
+    //             text: icons::ALBUM.into_fragment(),
+    //             font: Some(icons::filled()),
+    //         },
+    //         label: album_text.into(),
+    //     },
+    // )
+    // .on_press_maybe(album.map(|a| Message::OpenAlbum(a.into_string())))
+    // .size(button::Size::extra_small());
+
     let album: Element<'_, Message> = if let Some(player_state) = &state.player_state
         && let Some(track) = player_state.current()
         && let Some(album) = &track.album

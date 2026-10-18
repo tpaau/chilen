@@ -21,6 +21,7 @@ use crate::gui::{
         self,
         cover_image::CoverImage,
         list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
+        wrappers::marquee,
     },
 };
 
@@ -155,11 +156,13 @@ pub fn playlist_button<'a>(
         } else {
             font::regular()
         };
-        let title = text(playlist.name.as_ref())
-            .size(SIZE_REGULAR)
-            .color(state.theme.on_surface())
-            .font(font)
-            .wrapping(text::Wrapping::None);
+        let title = marquee(
+            text(playlist.name.as_ref())
+                .size(SIZE_REGULAR)
+                .color(state.theme.on_surface())
+                .font(font)
+                .wrapping(text::Wrapping::None),
+        );
 
         // TODO: Maybe an animated indicator would look better?
         let (icon_color, container_color) = match highlighted {
@@ -192,16 +195,18 @@ pub fn playlist_button<'a>(
             cover,
             container(column![
                 title,
-                text({
-                    if playlist.tracks.is_empty() {
-                        "Empty".to_string()
-                    } else {
-                        format!("{} tracks", playlist.tracks.len())
-                    }
-                })
-                .size(SIZE_SMALL)
-                .wrapping(text::Wrapping::None)
-                .color(state.theme.on_surface_variant()),
+                marquee(
+                    text({
+                        if playlist.tracks.is_empty() {
+                            "Empty".to_string()
+                        } else {
+                            format!("{} tracks", playlist.tracks.len())
+                        }
+                    })
+                    .size(SIZE_SMALL)
+                    .wrapping(text::Wrapping::None)
+                    .color(state.theme.on_surface_variant())
+                ),
             ])
             .width(Length::Fill)
             .clip(true)

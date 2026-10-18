@@ -17,6 +17,7 @@ use crate::gui::{
         self,
         cover_image::CoverImage,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
+        wrappers::marquee,
     },
 };
 
@@ -168,11 +169,13 @@ where
             .as_ref()
             .map(|t| t.clone().into_string())
             .unwrap_or("Unknown".to_string());
-        let title = text(title)
-            .size(font::SIZE_REGULAR)
-            .font(title_font)
-            .color(value.state.theme.on_surface().scale_alpha(opacity))
-            .wrapping(text::Wrapping::None);
+        let title = marquee(
+            text(title)
+                .size(font::SIZE_REGULAR)
+                .font(title_font)
+                .color(value.state.theme.on_surface().scale_alpha(opacity))
+                .wrapping(text::Wrapping::None),
+        );
 
         let info = match value.info {
             Info::Artist => value
@@ -220,10 +223,12 @@ where
             cover,
             container(column![
                 title,
-                text(info)
-                    .size(font::SIZE_SMALL)
-                    .color(value.state.theme.on_surface_variant().scale_alpha(opacity))
-                    .wrapping(text::Wrapping::None),
+                marquee(
+                    text(info)
+                        .size(font::SIZE_SMALL)
+                        .color(value.state.theme.on_surface_variant().scale_alpha(opacity))
+                        .wrapping(text::Wrapping::None)
+                ),
             ])
             .width(Length::Fill)
             .clip(true)

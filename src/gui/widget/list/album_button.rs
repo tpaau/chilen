@@ -19,6 +19,7 @@ use crate::gui::{
         cover_image::CoverImage,
         list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
         text_spacer::text_spacer,
+        wrappers::marquee,
     },
 };
 
@@ -131,11 +132,13 @@ where
         } else {
             font::regular()
         };
-        let title = text(value.album.title.clone().into_string())
-            .size(font::SIZE_REGULAR)
-            .color(value.state.theme.on_surface())
-            .font(font)
-            .wrapping(text::Wrapping::None);
+        let title = marquee(
+            text(value.album.title.clone().into_string())
+                .size(font::SIZE_REGULAR)
+                .color(value.state.theme.on_surface())
+                .font(font)
+                .wrapping(text::Wrapping::None),
+        );
 
         // TODO: Maybe an animated indicator would look better?
         let (icon_color, container_color) = match value.highlighted {
@@ -168,9 +171,11 @@ where
             cover,
             container(column![
                 title,
-                row(info_text)
-                    .align_y(Alignment::Center)
-                    .spacing(SPACING_SMALLER),
+                marquee(
+                    row(info_text)
+                        .align_y(Alignment::Center)
+                        .spacing(SPACING_SMALLER)
+                ),
             ])
             .width(Length::Fill)
             .clip(true)
