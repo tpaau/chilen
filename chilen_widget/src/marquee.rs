@@ -18,16 +18,29 @@ pub fn marquee<'a, Message, Theme, Renderer>(
     Marquee::new(content)
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// The visual gap between the widget when scrolling.
+#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+pub enum ScrollGap {
+    /// Automatically detect the gap so that only one widget is visible at a time.
+    #[default]
+    Auto,
+    /// Manual gap in pixels.
+    Absolute(Pixels),
+    /// Relative gap.
+    ///
+    /// Setting this to `0` means no gap, `1` is the same as [`Auto`](ScrollGap::Auto).
+    Relative(f32),
+}
+
 /// Determines how the text is scrolled within a [`Marquee`].
+#[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
 pub enum Behavior {
     /// The text bounces back and forth between edges
     #[default]
     Alternate,
 
-    // TODO: Maybe this one should draw the widget twice so it's always visible?
     /// The text continuously enters from the left and exits to the right.
-    Scroll,
+    Scroll(ScrollGap),
 }
 
 impl Behavior {
@@ -38,7 +51,7 @@ impl Behavior {
         elapsed: Duration,
         scroll_speed: ScrollSpeed,
         pause: Duration,
-    ) -> f32 {
+    ) -> (f32, Option<f32>) {
         let pause = pause.as_secs_f32();
 
         match self {
@@ -51,42 +64,54 @@ impl Behavior {
                 };
 
                 if travel == 0.0 {
-                    return 0.0;
+                    return (0.0, None);
                 }
 
                 let t = elapsed.as_secs_f32().rem_euclid(2.0 * (travel + pause));
 
                 if t < travel {
-                    0.0.interpolate(to, t / travel)
+                    (0.0.interpolate(to, t / travel), None)
                 } else if t < travel + pause {
-                    to
+                    (to, None)
                 } else if t < 2.0 * travel + pause {
-                    to.interpolate(0.0, (t - travel - pause) / travel)
+                    (to.interpolate(0.0, (t - travel - pause) / travel), None)
                 } else {
-                    0.0
+                    (0.0, None)
                 }
             }
-            Self::Scroll => {
-                let total_distance = content_width + viewport_width;
-                let travel = match scroll_speed {
-                    ScrollSpeed::Relative(duration) => duration.as_secs_f32(),
-                    ScrollSpeed::Absolute(pixels) => total_distance / pixels.0,
+            Self::Scroll(gap) => {
+                let gap = match gap {
+                    ScrollGap::Auto => viewport_width,
+                    ScrollGap::Absolute(pixels) => pixels.0.max(0.0),
+                    ScrollGap::Relative(ratio) => ratio.max(0.0) * viewport_width,
                 };
 
-                if travel == 0.0 {
-                    return 0.0;
+                let travel_distance = gap + content_width;
+                let travel_time = match scroll_speed {
+                    ScrollSpeed::Relative(duration) => duration.as_secs_f32(),
+                    ScrollSpeed::Absolute(pixels) if pixels.0 > 0.0 => travel_distance / pixels.0,
+                    ScrollSpeed::Absolute(_) => 0.0,
+                };
+
+                if travel_distance <= 0.0
+                    || !travel_distance.is_finite()
+                    || travel_time <= 0.0
+                    || !travel_time.is_finite()
+                {
+                    return (0.0, None);
                 }
 
-                let left_travel = travel * content_width / total_distance;
-                let right_travel = travel - left_travel;
-                let t = elapsed.as_secs_f32().rem_euclid(travel + pause);
+                let t = elapsed.as_secs_f32().rem_euclid(travel_time + pause);
 
                 if t < pause {
-                    0.0
-                } else if t < right_travel + pause {
-                    0.0.interpolate(-viewport_width, (t - pause) / right_travel)
+                    (0.0, None)
                 } else {
-                    content_width.interpolate(0.0, (t - pause - right_travel) / left_travel)
+                    let progress = (t - pause) / travel_time;
+
+                    (
+                        0.0.interpolate(-travel_distance, progress),
+                        Some(travel_distance.interpolate(0.0, progress)),
+                    )
                 }
             }
         }
@@ -148,7 +173,7 @@ impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
 
 struct State {
     animate: bool,
-    offset: f32,
+    offsets: (f32, Option<f32>),
     start: Instant,
     last_bounds: Rectangle,
     last_size: Size,
@@ -158,11 +183,17 @@ impl Default for State {
     fn default() -> Self {
         Self {
             animate: false,
-            offset: 0.0,
+            offsets: (0.0, None),
             start: Instant::now(),
             last_bounds: Rectangle::new(Point::ORIGIN, Size::ZERO),
             last_size: Size::ZERO,
         }
+    }
+}
+
+impl State {
+    fn reset_offsets(&mut self) {
+        self.offsets = (0.0, None);
     }
 }
 
@@ -186,7 +217,7 @@ where
     fn diff(&self, tree: &mut Tree) {
         tree.diff_children(&[&self.content]);
         let state = tree.state.downcast_mut::<State>();
-        state.offset = 0.0;
+        state.reset_offsets();
     }
 
     fn size(&self) -> Size<Length> {
@@ -204,7 +235,7 @@ where
 
         let bounds = node.bounds();
         let state = tree.state.downcast_mut::<State>();
-        state.animate = bounds.width - max_bounds.width < 0.0;
+        state.animate = bounds.width > max_bounds.width;
 
         let size = Size::new(
             bounds.width.min(max_bounds.width).max(min_bounds.width),
@@ -212,7 +243,7 @@ where
         );
         if state.last_bounds != bounds || state.last_size != size {
             state.start = Instant::now();
-            state.offset = 0.0;
+            state.reset_offsets();
             state.last_bounds = bounds;
             state.last_size = size;
         }
@@ -232,18 +263,20 @@ where
     ) {
         let state = tree.state.downcast_ref::<State>();
 
-        let child_viewport = iced::Rectangle {
-            x: viewport.x + state.offset,
-            y: viewport.y,
-            width: viewport.width,
-            height: viewport.height,
-        };
+        let (offset1, offset2) = state.offsets;
 
         // offset == 0    => no translation
         // offset == diff => widget is anchored to the right
 
         renderer.with_layer(layout.bounds(), |renderer| {
-            renderer.with_translation(Vector::new(-state.offset, 0.0), |renderer| {
+            renderer.with_translation(Vector::new(-offset1, 0.0), |renderer| {
+                let child_viewport = iced::Rectangle {
+                    x: viewport.x + offset1,
+                    y: viewport.y,
+                    width: viewport.width,
+                    height: viewport.height,
+                };
+
                 self.content.as_widget().draw(
                     &tree.children[0],
                     renderer,
@@ -254,6 +287,27 @@ where
                     &child_viewport,
                 );
             });
+
+            if let Some(offset) = offset2 {
+                let child_viewport = iced::Rectangle {
+                    x: viewport.x + offset,
+                    y: viewport.y,
+                    width: viewport.width,
+                    height: viewport.height,
+                };
+
+                renderer.with_translation(Vector::new(-offset, 0.0), |renderer| {
+                    self.content.as_widget().draw(
+                        &tree.children[0],
+                        renderer,
+                        theme,
+                        style,
+                        layout.child(0),
+                        cursor,
+                        &child_viewport,
+                    );
+                });
+            }
         });
     }
 
@@ -270,19 +324,19 @@ where
     ) {
         if let iced::Event::Window(iced::window::Event::RedrawRequested(now)) = event {
             let state = tree.state.downcast_mut::<State>();
-            let offset = match state.animate {
-                true => 0.0,
-                false => self.behavior.interpolate(
+
+            if state.animate {
+                state.offsets = self.behavior.interpolate(
                     state.last_bounds.width,
                     layout.bounds().width,
                     now.duration_since(state.start),
                     self.scroll_speed,
                     self.pause,
-                ),
-            };
-            if offset != state.offset {
-                state.offset = offset;
+                );
+
                 shell.request_redraw();
+            } else {
+                state.offsets = (0.0, None);
             }
         }
 
