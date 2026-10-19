@@ -194,8 +194,9 @@ impl<'a, Message, Theme, Renderer> Marquee<'a, Message, Theme, Renderer> {
 }
 
 struct State {
-    animate: bool,
+    content_overflow: bool,
     offsets: (f32, Option<f32>),
+    is_over: bool,
     start: Instant,
     last_bounds: Rectangle,
     last_size: Size,
@@ -204,8 +205,9 @@ struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
-            animate: false,
+            content_overflow: false,
             offsets: (0.0, None),
+            is_over: false,
             start: Instant::now(),
             last_bounds: Rectangle::new(Point::ORIGIN, Size::ZERO),
             last_size: Size::ZERO,
@@ -256,17 +258,23 @@ where
             &Limits::new(min_bounds, Size::new(f32::INFINITY, max_bounds.height)),
         );
 
-        let bounds = node.bounds();
+        let content_bounds = node.bounds();
         let state = tree.state.downcast_mut::<State>();
-        state.animate = bounds.width > max_bounds.width;
+        state.content_overflow = content_bounds.width > max_bounds.width;
 
         let size = Size::new(
-            bounds.width.min(max_bounds.width).max(min_bounds.width),
-            bounds.height.min(max_bounds.height).max(min_bounds.height),
+            content_bounds
+                .width
+                .min(max_bounds.width)
+                .max(min_bounds.width),
+            content_bounds
+                .height
+                .min(max_bounds.height)
+                .max(min_bounds.height),
         );
-        if state.last_bounds != bounds || state.last_size != size {
+        if state.last_bounds != content_bounds || state.last_size != size {
             state.reset_offsets(Instant::now());
-            state.last_bounds = bounds;
+            state.last_bounds = content_bounds;
             state.last_size = size;
         }
 
@@ -344,36 +352,6 @@ where
         shell: &mut iced::advanced::Shell<'_, Message>,
         viewport: &iced::Rectangle,
     ) {
-        if matches!(
-            event,
-            iced::Event::Window(iced::window::Event::RedrawRequested(_))
-        ) || matches!(
-            event,
-            iced::Event::Mouse(mouse::Event::CursorMoved { position: _ })
-        ) {
-            let now = Instant::now();
-            let state = tree.state.downcast_mut::<State>();
-
-            let is_over = cursor.is_over(layout.bounds());
-            if state.animate
-                && (self.animation == Animation::Always
-                    || (self.animation == Animation::WhenHovered && is_over))
-            {
-                state.offsets = self.behavior.interpolate(
-                    state.last_bounds.width,
-                    layout.bounds().width,
-                    now.duration_since(state.start),
-                    self.scroll_speed,
-                    self.pause,
-                );
-
-                shell.request_redraw();
-            } else {
-                state.reset_offsets(now);
-                state.start = now;
-            }
-        }
-
         self.content.as_widget_mut().update(
             &mut tree.children[0],
             event,
@@ -384,6 +362,48 @@ where
             shell,
             viewport,
         );
+
+        let state = tree.state.downcast_mut::<State>();
+        if !state.content_overflow {
+            return;
+        }
+
+        let is_over = cursor.is_over(layout.bounds());
+
+        match event {
+            iced::Event::Mouse(mouse::Event::CursorMoved { .. }) => {
+                if state.is_over != is_over && self.animation == Animation::WhenHovered {
+                    state.reset_offsets(Instant::now());
+                    state.is_over = is_over;
+                }
+            }
+            iced::Event::Window(iced::window::Event::RedrawRequested(at)) => {
+                let should_animate = state.content_overflow
+                    && (self.animation == Animation::Always
+                        || (self.animation == Animation::WhenHovered && is_over));
+
+                let offsets = if should_animate {
+                    self.behavior.interpolate(
+                        state.last_bounds.width,
+                        layout.bounds().width,
+                        at.duration_since(state.start),
+                        self.scroll_speed,
+                        self.pause,
+                    )
+                } else {
+                    (0.0, None)
+                };
+
+                if state.offsets != offsets {
+                    state.offsets = offsets;
+                    if !should_animate {
+                        state.reset_offsets(*at);
+                    }
+                }
+            }
+            _ => {}
+        }
+        shell.request_redraw();
     }
 
     fn mouse_interaction(
