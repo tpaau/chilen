@@ -12,15 +12,15 @@ use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
         button::{self, Content},
+        button_group,
         hybrid_icon::Icon,
+        standard_button_group,
     },
 };
-use iced_widget::{container, responsive, row, scrollable};
+use iced_widget::{container, responsive, scrollable};
 use log::error;
 
-use crate::gui::{
-    Chilen, SPACING_REGULAR, common_actions, dialog, font::bold_text, icons, main_view::NavStack,
-};
+use crate::gui::{Chilen, common_actions, dialog, font::bold_text, icons, main_view::NavStack};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -107,57 +107,67 @@ fn horizontal_buttons<'a>(
     message_options: Message,
 ) -> Element<'a, Message> {
     responsive(move |size| {
-        let button_size = if size.width < 466.0 {
-            iced_m3::widget::button::Size::small()
+        let (size, spacing) = if size.width < 466.0 {
+            (
+                iced_m3::widget::button::Size::small(),
+                button_group::standard::SPACING_SMALL,
+            )
         } else {
-            iced_m3::widget::button::Size::medium()
+            (
+                iced_m3::widget::button::Size::medium(),
+                button_group::standard::SPACING_MEDIUM,
+            )
         };
-        row![
+
+        let buttons = vec![
             iced_m3::widget::button(
                 button::Style::tonal(theme, Accent::Tertiary),
                 Content::Icon(Icon::Text {
                     text: icons::ARROW_BACK.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
-            .size(button_size)
+            .size(size)
             .on_press(Message::Unwind),
             iced_m3::widget::button(
                 button::Style::tonal(theme, Accent::Secondary),
                 Content::Full {
                     icon: Icon::Text {
                         text: icons::PLAY_ARROW.into_fragment(),
-                        font: Some(icons::filled())
+                        font: Some(icons::filled()),
                     },
-                    label: "Play".into()
-                }
+                    label: "Play".into(),
+                },
             )
-            .size(button_size.width(Length::Fill))
+            .size(size.width(Length::Fill))
             .on_press_maybe(message_play.clone()),
             iced_m3::widget::button(
                 button::Style::filled(theme, Accent::Primary),
                 Content::Full {
                     icon: Icon::Text {
                         text: icons::SHUFFLE.into_fragment(),
-                        font: Some(icons::filled())
+                        font: Some(icons::filled()),
                     },
-                    label: "Shuffle".into()
-                }
+                    label: "Shuffle".into(),
+                },
             )
-            .size(button_size.width(Length::Fill))
+            .size(size.width(Length::Fill))
             .on_press_maybe(message_shuffle.clone()),
             iced_m3::widget::button(
                 button::Style::outlined(theme),
                 Content::Icon(Icon::Text {
                     text: icons::MORE_HORIZ.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
-            .size(button_size)
+            .size(size)
             .on_press(message_options.clone()),
-        ]
-        .spacing(SPACING_REGULAR)
-        .into()
+        ];
+
+        standard_button_group(buttons)
+            .spacing(spacing)
+            .expanded_ratio(0.03) // So that the smaller buttons don't get crushed
+            .into()
     })
     .into()
 }

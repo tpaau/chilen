@@ -1,14 +1,15 @@
 use std::time::Duration;
 
 use chilen_backend::playback::LoopState;
-use iced::{Alignment, Element, Length};
+use iced::{Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
         button::{self, Content},
+        button_group,
         hybrid_icon::Icon,
-        slider,
+        slider, standard_button_group,
     },
 };
 use iced_widget::{column, container, mouse_area, responsive, row, space, text};
@@ -287,13 +288,13 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         size.width(size.height).padding(0.0.into())
     };
     let buttons = container(
-        row![
+        standard_button_group(vec![
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
                 Content::Icon(Icon::Text {
                     text: icons::SHUFFLE.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
             .size(toggle_size)
             .selected(
@@ -301,35 +302,35 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .player_state
                     .as_ref()
                     .map(|p| p.shuffle_enabled())
-                    .unwrap_or_default()
+                    .unwrap_or_default(),
             )
             .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleShuffle)),
             iced_m3::widget::button(
                 button::Style::tonal(&state.theme, Accent::Tertiary),
                 Content::Icon(Icon::Text {
                     text: icons::SKIP_PREVIOUS.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
             .size(
                 skip_button_size.corner_radius(
                     skip_button_size
                         .corner_radius
-                        .style(button::CornerStyle::Square)
-                )
+                        .style(button::CornerStyle::Square),
+                ),
             )
             .on_press_maybe(
                 state
                     .player_state
                     .as_ref()
-                    .and_then(|p| p.can_go_previous().then_some(Message::Previous))
+                    .and_then(|p| p.can_go_previous().then_some(Message::Previous)),
             ),
             iced_m3::widget::button(
                 button::Style::tonal(&state.theme, Accent::Primary),
                 Content::Icon(Icon::Text {
                     text: play_button_icon.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
             .size(iced_m3::widget::button::Size::medium())
             .selected(
@@ -337,40 +338,40 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .player_state
                     .as_ref()
                     .map(|p| p.is_playing())
-                    .unwrap_or_default()
+                    .unwrap_or_default(),
             )
             .on_press_maybe(
                 state
                     .player_state
                     .as_ref()
-                    .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying))
+                    .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying)),
             ),
             iced_m3::widget::button(
                 button::Style::tonal(&state.theme, Accent::Tertiary),
                 Content::Icon(Icon::Text {
                     text: icons::SKIP_NEXT.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
             .size(
                 skip_button_size.corner_radius(
                     skip_button_size
                         .corner_radius
-                        .style(button::CornerStyle::Square)
-                )
+                        .style(button::CornerStyle::Square),
+                ),
             )
             .on_press_maybe(
                 state
                     .player_state
                     .as_ref()
-                    .and_then(|p| p.can_go_next().then_some(Message::Next))
+                    .and_then(|p| p.can_go_next().then_some(Message::Next)),
             ),
             iced_m3::widget::button(
                 button::Style::outlined(&state.theme),
                 Content::Icon(Icon::Text {
                     text: loop_button_icon.into_fragment(),
-                    font: Some(icons::filled())
-                })
+                    font: Some(icons::filled()),
+                }),
             )
             .size(toggle_size)
             .selected(
@@ -378,12 +379,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .player_state
                     .as_ref()
                     .map(|p| p.loop_state != LoopState::Off)
-                    .unwrap_or_default()
+                    .unwrap_or_default(),
             )
             .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleLooping)),
-        ]
-        .align_y(Alignment::Center)
-        .spacing(SPACING_SMALLER),
+        ])
+        .spacing(button_group::standard::SPACING_MEDIUM),
     )
     .center_x(Length::Fill);
 
