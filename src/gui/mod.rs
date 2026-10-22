@@ -4,6 +4,7 @@ mod font;
 mod formatter;
 mod icons;
 mod main_view;
+pub(super) mod persistent_state;
 mod playback_view;
 mod settings;
 #[cfg(test)]
@@ -24,9 +25,12 @@ use iced::{
     widget::{container, row},
     window::{self},
 };
-use iced_m3::theme::{ColorScheme, Mode, Theme};
+use iced_m3::{
+    theme::{ColorScheme, Mode, Theme},
+    widget::navrail,
+};
 use iced_widget::{responsive, stack};
-use log::{error, trace};
+use log::{debug, error, trace};
 
 use crate::{
     APP_NAME,
@@ -81,6 +85,7 @@ pub struct Chilen {
     playback_view: playback_view::State,
     settings_state: settings::State,
     host_theme_preference: Mode,
+    persistent: persistent_state::State,
 }
 
 impl Default for Chilen {
@@ -99,6 +104,7 @@ impl Default for Chilen {
             playback_view: playback_view::State::default(),
             settings_state: settings::State::default(),
             host_theme_preference: Mode::default(),
+            persistent: persistent_state::State::load().unwrap_or_default(),
         };
 
         let settings = Settings::load().unwrap_or_default();
@@ -125,10 +131,10 @@ const ROUNDING_LARGER: f32 = 20.0;
 const GOTH_CORNER_ROUNDING: f32 = ROUNDING_LARGE;
 
 const PLAYBACK_DESIRED_WIDTH: f32 = 410.0;
-const PLAYLIST_MIN_WIDTH: f32 = 220.0;
 const MAIN_MIN_WIDTH: f32 = 400.0;
 const PLAYBACK_MIN_WIDTH: f32 = 320.0;
-const TOTAL_MIN_WIDTH: f32 = PLAYLIST_MIN_WIDTH + MAIN_MIN_WIDTH + PLAYBACK_MIN_WIDTH;
+const TOTAL_MIN_WIDTH: f32 =
+    MAIN_MIN_WIDTH + PLAYBACK_MIN_WIDTH + navrail::CONTAINER_COLLAPSED_WIDTH;
 // TODO: Should be calculated dynamically based on the window width
 const MIN_HEIGHT: f32 = 1000.0;
 
@@ -154,6 +160,15 @@ fn window_subscription() -> Subscription<Message> {
 }
 
 impl Chilen {
+    pub fn save_persistent(&mut self) {
+        debug!("Saving app state to disk");
+        if let Err(e) = self.persistent.clone().save() {
+            let msg = format!("Failed to save app state to disk: {e}");
+            error!("{}", msg.clone());
+            self.dialog = Dialog::Error(msg)
+        }
+    }
+
     fn apply_settings(&mut self, settings: Settings) {
         let theme = THEMES
             .iter()
@@ -168,9 +183,14 @@ impl Chilen {
 
     fn view(state: &Chilen) -> Element<'_, Message> {
         let base_content = responsive(|size| {
+            let compact = size.width
+                <= MAIN_MIN_WIDTH + PLAYBACK_DESIRED_WIDTH + navrail::CONTAINER_EXPANDED_MIN_WIDTH;
+            let playback_width = (size.width - MAIN_MIN_WIDTH - navrail::CONTAINER_COLLAPSED_WIDTH)
+                .min(PLAYBACK_DESIRED_WIDTH);
+
             row![
-                main_view::view(state).map(Message::MainView),
-                playback_view::view(state, PLAYBACK_DESIRED_WIDTH).map(Message::Playback),
+                main_view::view(state, compact).map(Message::MainView),
+                playback_view::view(state, playback_width).map(Message::Playback),
             ]
             .into()
         });
@@ -219,7 +239,6 @@ impl Chilen {
                             )
                         });
                     }
-                    // TODO: Display the progress
                     chilen_backend::Event::LoadProgressChanged(progress) => match progress {
                         chilen_backend::music_lib::Progress::Done => {
                             if let Dialog::Loading(_) = state.dialog {

@@ -174,8 +174,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .size(font::SIZE_REGULAR)
                     .color(state.theme.on_surface_variant())
             ]
-            .spacing(SPACING_SMALLER),
-            space().width(Length::Fill),
+            .spacing(SPACING_SMALLER)
+            .width(Length::Fill),
             button(
                 button::Style::outlined(&state.theme),
                 button::Content::Full {

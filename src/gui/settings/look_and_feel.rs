@@ -1,11 +1,8 @@
 use chilen_widget::theme_preview::ThemePreview;
-use iced::{Alignment, Element, Length, Task};
-use iced_m3::{
-    theme::{
-        ColorScheme,
-        Mode::{self},
-    },
-    widget::switch,
+use iced::{Element, Length, Task};
+use iced_m3::theme::{
+    ColorScheme,
+    Mode::{self},
 };
 use iced_widget::{
     column, mouse_area, row,
@@ -17,7 +14,7 @@ use crate::{
     gui::{
         self, Chilen, SPACING_REGULAR,
         font::{self, bold_text},
-        settings::{CLOSE_BUTTON_SIZE, Screen, TITLE_CONTENT_SPACE, title},
+        settings::{CLOSE_BUTTON_SIZE, Screen, TITLE_CONTENT_SPACE, labeled_switch, title},
         themes::THEMES,
         widget::theme_mode_preview::ThemeModePreview,
     },
@@ -72,43 +69,21 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     ]
     .spacing(gui::settings::CARD_SPACING);
 
-    let auto_switch = mouse_area(
-        row![
-            column![
-                text("Automatic theme")
-                    .size(font::SIZE_LARGE)
-                    .color(state.theme.on_surface()),
-                text("Follow your system's light or dark mode preference.")
-                    .size(font::SIZE_REGULAR)
-                    .color(state.theme.on_surface_variant())
-            ],
-            space().width(Length::Fill),
-            switch(&state.theme, state.settings.theme_auto_mode)
-                .on_toggle(Message::ToggleAutoTheme)
-        ]
-        .align_y(Alignment::Center),
-    )
-    .interaction(iced::mouse::Interaction::Pointer)
-    .on_press(Message::ToggleAutoTheme);
+    let auto_switch = labeled_switch(
+        "Automatic theme".into(),
+        "Follow your system's light or dark mode preference.".into(),
+        &state.theme,
+        state.settings.theme_auto_mode,
+        Message::ToggleAutoTheme,
+    );
 
-    let vibrant_widgets_switch = mouse_area(
-        row![
-            column![
-                text("Vibrant widgets")
-                    .size(font::SIZE_LARGE)
-                    .color(state.theme.on_surface()),
-                text("Give the widgets a new fresh look!")
-                    .size(font::SIZE_REGULAR)
-                    .color(state.theme.on_surface_variant())
-            ],
-            space().width(Length::Fill),
-            switch(&state.theme, state.settings.vibrant_widgets)
-                .on_toggle(Message::ToggleVibrantWidgets)
-        ]
-        .align_y(Alignment::Center),
-    )
-    .interaction(iced::mouse::Interaction::Pointer)
-    .on_press(Message::ToggleVibrantWidgets);
+    let vibrant_widgets_switch = labeled_switch(
+        "Vibrant widgets".into(),
+        "Give the widgets a new fresh look!".into(),
+        &state.theme,
+        state.settings.vibrant_widgets,
+        Message::ToggleVibrantWidgets,
+    );
 
     let themes = iced_m3::widget::card(
         gui::settings::card_style(&state.theme),

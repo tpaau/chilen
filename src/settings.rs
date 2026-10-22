@@ -6,7 +6,7 @@ use std::{
 };
 
 use iced_m3::theme::Mode;
-use log::{error, info};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 
 use crate::gui::{Chilen, dialog::Dialog, themes::THEMES};
@@ -63,7 +63,6 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme_name: THEMES[0].name.to_string(),
-            // TODO: Get dark mode preference from the host
             theme_mode: Mode::default(),
             theme_auto_mode: true,
             vibrant_widgets: false,
@@ -131,14 +130,14 @@ impl Settings {
             }
         };
 
-        info!("Settings loaded");
+        debug!("Settings loaded");
 
         Ok(stored_settings.into())
     }
 }
 
 pub fn save(state: &mut Chilen) {
-    info!("Saving settings to disk");
+    debug!("Saving settings to disk");
     if let Err(e) = state.settings.clone().save() {
         let msg = format!("Failed to save settings to disk: {e}");
         error!("{}", msg.clone());

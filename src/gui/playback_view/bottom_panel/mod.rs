@@ -49,12 +49,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             },
         ],
     )
-    .active_index(match state.playback_view.tab {
+    .active_index(match state.persistent.playback_tab {
         super::Tab::Queue => 0,
         super::Tab::Lyrics => 1,
     });
 
-    let content = match state.playback_view.tab {
+    let content = match state.persistent.playback_tab {
         super::Tab::Lyrics => lyrics::view(state, PANEL_PADDING / 2.0),
         super::Tab::Queue => queue::view(state, PANEL_PADDING / 2.0),
     };

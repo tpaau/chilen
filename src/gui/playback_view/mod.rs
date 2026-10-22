@@ -8,6 +8,7 @@ use iced::{Element, Padding, Task};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{column, container};
 use log::{error, trace, warn};
+use serde::{Deserialize, Serialize};
 
 use crate::gui::{Chilen, SPACING_REGULAR, dialog, main_view::VIEW_INNER_PADDING};
 
@@ -33,7 +34,7 @@ pub enum Message {
 }
 
 // TODO: Save the last opened tab
-#[derive(Default, PartialEq, Eq)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Tab {
     Lyrics,
     #[default]
@@ -44,7 +45,6 @@ pub enum Tab {
 pub struct State {
     seek_slider_value: Option<f32>,
     pub visible_tracks: Vec<bool>,
-    tab: Tab,
 }
 
 pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
@@ -112,8 +112,14 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 let _ = chilen_backend::playback::set_player_position(position);
             }
         }
-        Message::OpenLyrics => state.playback_view.tab = Tab::Lyrics,
-        Message::OpenQueue => state.playback_view.tab = Tab::Queue,
+        Message::OpenLyrics => {
+            state.persistent.playback_tab = Tab::Lyrics;
+            state.save_persistent();
+        }
+        Message::OpenQueue => {
+            state.persistent.playback_tab = Tab::Queue;
+            state.save_persistent();
+        }
         Message::SetPlayerPosition(position) => {
             let _ = chilen_backend::playback::set_player_position(position);
             if let Some(player_state) = state.player_state.as_mut() {

@@ -19,15 +19,16 @@ use iced_m3::{
         hybrid_icon::Icon,
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
         shapes::polymorpher::RoundedPolygon,
+        switch,
     },
 };
-use iced_widget::{center, container, opaque, row, stack, text};
+use iced_widget::{center, column, container, opaque, row, stack, text};
 use log::error;
 
 use crate::gui::{
     Chilen, GOTH_CORNER_ROUNDING, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_REGULAR,
     dialog::Dialog,
-    font::bold_text,
+    font::{self, bold_text},
     icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
     widget::icon_shape,
 };
@@ -126,7 +127,31 @@ pub(super) fn title<'a, Message>(
         .into()
 }
 
-pub fn card_style(theme: &(impl ColorScheme + ?Sized)) -> card::Style {
+pub(super) fn labeled_switch<'a, Message>(
+    label: text::Fragment<'a>,
+    description: text::Fragment<'a>,
+    theme: &'a (impl ColorScheme + ?Sized),
+    toggled: bool,
+    message: Message,
+) -> Element<'a, Message>
+where
+    Message: 'a + Clone,
+{
+    row![
+        column![
+            text(label).size(font::SIZE_LARGE).color(theme.on_surface()),
+            text(description)
+                .size(font::SIZE_REGULAR)
+                .color(theme.on_surface_variant())
+        ]
+        .width(Length::Fill),
+        switch(theme, toggled).on_toggle(message)
+    ]
+    .align_y(Alignment::Center)
+    .into()
+}
+
+pub(super) fn card_style(theme: &(impl ColorScheme + ?Sized)) -> card::Style {
     card::Style {
         border: Border::default().rounded(ROUNDING_LARGE),
         ..card::Style::elevated(theme)

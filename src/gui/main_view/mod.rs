@@ -6,7 +6,7 @@ mod playlists;
 pub mod top_view;
 mod tracks;
 
-use std::{path::PathBuf, sync::Arc};
+use std::{ops::Not, path::PathBuf, sync::Arc};
 
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Playlist, Track};
 use dirs::home_dir;
@@ -128,7 +128,6 @@ pub(crate) fn reload(state: &mut Chilen) {
     }
 }
 
-// TODO: Saving the navigation state on disk and then restoring it on startup would be a nice addition
 pub struct State {
     pub nav_stack: NavStack,
     /// Holds which elements are visible and which are not.
@@ -170,9 +169,10 @@ pub enum Message {
     PlayPlaylist(Arc<Playlist>),
     ShufflePlaylist(Arc<Playlist>),
     AddPlaylistToQueue(Arc<Playlist>),
+    ToggleSideBar,
 }
 
-pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
+pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Message> {
     let index = state.main_view.nav_stack.tab as usize;
     let items = vec![
         navrail::Item {
@@ -255,13 +255,19 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
         },
     ];
 
+    let mode = if state.persistent.sidebar_opened && !compact {
+        navrail::Mode::Expanded {
+            width: Pixels(navrail::CONTAINER_EXPANDED_MIN_WIDTH),
+        }
+    } else {
+        navrail::Mode::Collapsed
+    };
     let navrail = container(
         navrail(navrail::Style::new(&state.theme), items)
             .active(index)
-            .mode(navrail::Mode::Expanded {
-                width: Pixels(navrail::CONTAINER_EXPANDED_MIN_WIDTH),
-            })
-            .container_vertical_padding(navrail::ITEM_OFFSET),
+            .mode(mode)
+            .container_vertical_padding(navrail::ITEM_OFFSET)
+            .on_menu_pressed_maybe(compact.not().then_some(|_| Message::ToggleSideBar)),
     )
     .style(|_| container::Style::default().background(state.theme.surface_container()));
 
@@ -509,6 +515,10 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::AddPlaylistToQueue(playlist) => {
             common_actions::append_tracks_to_queue(playlist.tracks.to_vec())
+        }
+        Message::ToggleSideBar => {
+            state.persistent.sidebar_opened = !state.persistent.sidebar_opened;
+            state.save_persistent();
         }
     }
     Task::none()
