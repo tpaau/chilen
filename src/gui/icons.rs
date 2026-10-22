@@ -61,6 +61,7 @@ pub static COMMIT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xeaf5).unwr
 pub static CODE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe86f).unwrap());
 pub static LANGUAGE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe894).unwrap());
 pub static MAIL: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe158).unwrap());
+pub static HOME: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe88a).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const _SIZE_SMALL: f32 = 20.0;

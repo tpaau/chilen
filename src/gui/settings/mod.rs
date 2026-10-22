@@ -25,7 +25,7 @@ use iced_widget::{center, container, opaque, row, stack, text};
 use log::error;
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_REGULAR,
+    Chilen, GOTH_CORNER_ROUNDING, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_REGULAR,
     dialog::Dialog,
     font::bold_text,
     icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
@@ -230,7 +230,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             .style(move |_| {
                 container::Style::default()
                     .background(state.theme.surface())
-                    .border(Border::default().rounded(rounding))
+                    .border(Border::default().rounded(GOTH_CORNER_ROUNDING))
             })
             .padding(content_padding)
         ];

@@ -16,7 +16,7 @@ use crate::gui::{
     Chilen, THUMBNAIL_SIZE,
     font::{self, SIZE_REGULAR, SIZE_SMALL},
     icons::{self, icon_filled},
-    playlist_view,
+    main_view,
     widget::{
         self,
         cover_image::CoverImage,
@@ -31,9 +31,8 @@ pub fn playlist_button<'a>(
     index: usize,
     highlighted: bool,
     vibrant: bool,
-) -> Element<'a, playlist_view::Message> {
-    let content: Element<'_, playlist_view::Message> = if let Some(visible) =
-        &state.playlist_view.visible
+) -> Element<'a, main_view::Message> {
+    let content: Element<'_, main_view::Message> = if let Some(visible) = &state.main_view.visible
         && let Some(val) = visible.get(index)
         && *val
     {
@@ -52,9 +51,8 @@ pub fn playlist_button<'a>(
                             supporting_text: None,
                             error: false,
                             action: vertical_menu::Action::Message(
-                                (!playlist.tracks.is_empty()).then_some(
-                                    playlist_view::Message::PlayPlaylist(playlist.clone()),
-                                ),
+                                (!playlist.tracks.is_empty())
+                                    .then_some(main_view::Message::PlayPlaylist(playlist.clone())),
                             ),
                         },
                         vertical_menu::Entry::Button {
@@ -67,7 +65,7 @@ pub fn playlist_button<'a>(
                             error: false,
                             action: vertical_menu::Action::Message(
                                 (!playlist.tracks.is_empty()).then_some(
-                                    playlist_view::Message::ShufflePlaylist(playlist.clone()),
+                                    main_view::Message::ShufflePlaylist(playlist.clone()),
                                 ),
                             ),
                         },
@@ -81,7 +79,7 @@ pub fn playlist_button<'a>(
                             error: false,
                             action: vertical_menu::Action::Message(
                                 (!playlist.tracks.is_empty()).then_some(
-                                    playlist_view::Message::AddPlaylistToQueue(playlist.clone()),
+                                    main_view::Message::AddPlaylistToQueue(playlist.clone()),
                                 ),
                             ),
                         },
@@ -100,7 +98,7 @@ pub fn playlist_button<'a>(
                             error: false,
                             action: vertical_menu::Action::Message(
                                 (!playlist.tracks.is_empty()).then_some(
-                                    playlist_view::Message::ExportPlaylist(
+                                    main_view::Message::ExportPlaylist(
                                         playlist.name.clone().into_string(),
                                     ),
                                 ),
@@ -125,7 +123,7 @@ pub fn playlist_button<'a>(
                             supporting_text: None,
                             error: false,
                             action: vertical_menu::Action::Message(Some(
-                                playlist_view::Message::OpenPlaylistRenameDialog {
+                                main_view::Message::OpenPlaylistRenameDialog {
                                     playlist: playlist.name.clone().into_string(),
                                     name: playlist.name.clone().into_string(),
                                 },
@@ -141,7 +139,7 @@ pub fn playlist_button<'a>(
                             supporting_text: None,
                             error: true,
                             action: vertical_menu::Action::Message(Some(
-                                playlist_view::Message::ConfirmPlaylistDeletion(playlist.clone()),
+                                main_view::Message::ConfirmPlaylistDeletion(playlist.clone()),
                             )),
                         },
                     ],
@@ -218,7 +216,7 @@ pub fn playlist_button<'a>(
         let button = button(content)
             .padding(Padding::new(BUTTON_PADDING))
             .style(|_, status| button_style(status, state.theme.on_surface()))
-            .on_press_with(|| playlist_view::Message::OpenPlaylist(playlist.clone()));
+            .on_press_with(|| main_view::Message::OpenPlaylist(playlist.clone()));
 
         // TODO: Should be more like a button
         let menu = container(iced_m3::widget::advanced::drop_down_menu(
@@ -240,7 +238,7 @@ pub fn playlist_button<'a>(
     };
 
     sensor(content)
-        .on_show(move |_| playlist_view::Message::ButtonPoppedIn(index))
-        .on_hide(playlist_view::Message::ButtonPoppedOut(index))
+        .on_show(move |_| main_view::Message::ButtonPoppedIn(index))
+        .on_hide(main_view::Message::ButtonPoppedOut(index))
         .into()
 }

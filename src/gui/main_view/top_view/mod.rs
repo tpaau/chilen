@@ -20,7 +20,7 @@ use iced_m3::{
 use iced_widget::{container, responsive, scrollable};
 use log::error;
 
-use crate::gui::{Chilen, common_actions, dialog, font::bold_text, icons, main_view::NavStack};
+use crate::gui::{Chilen, common_actions, dialog, font::bold_text, icons};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -192,14 +192,6 @@ pub fn view<'a>(state: &'a Chilen, view: TopView) -> Element<'a, Message> {
     )
     .align_top(Length::Fill)
     .into()
-}
-
-pub(crate) fn reload(state: &mut Chilen) {
-    if let Some(lib) = &state.library {
-        state.main_view.nav_stack.reload(lib);
-    } else {
-        state.main_view.nav_stack = NavStack::default();
-    }
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {

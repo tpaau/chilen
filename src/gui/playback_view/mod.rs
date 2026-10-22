@@ -5,10 +5,11 @@ use std::{sync::Arc, time::Duration};
 
 use chilen_backend::{music_lib::Track, playback};
 use iced::{Element, Padding, Task};
+use iced_m3::theme::ColorScheme;
 use iced_widget::{column, container};
 use log::{error, trace, warn};
 
-use crate::gui::{Chilen, SPACING_REGULAR, SPACING_SMALL, dialog};
+use crate::gui::{Chilen, SPACING_REGULAR, dialog, main_view::VIEW_INNER_PADDING};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -47,12 +48,12 @@ pub struct State {
 }
 
 pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
-    let padding = SPACING_SMALL;
     container(
         column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
     )
+    .style(|_| container::Style::default().background(state.theme.surface_container()))
     .width(width)
-    .padding(Padding::from(padding))
+    .padding(Padding::from(VIEW_INNER_PADDING))
     .into()
 }
 

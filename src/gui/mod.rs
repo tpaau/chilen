@@ -5,7 +5,6 @@ mod formatter;
 mod icons;
 mod main_view;
 mod playback_view;
-mod playlist_view;
 mod settings;
 #[cfg(test)]
 mod tests;
@@ -31,7 +30,7 @@ use log::{error, trace};
 
 use crate::{
     APP_NAME,
-    gui::{dialog::Dialog, main_view::top_view, themes::THEMES},
+    gui::{dialog::Dialog, themes::THEMES},
     settings::Settings,
 };
 
@@ -56,7 +55,6 @@ pub enum Message {
     RenamePlaylist { playlist: String, name: String },
     DeletePlaylist(Arc<Playlist>),
     MainView(main_view::Message),
-    PlaylistView(playlist_view::Message),
     Settings(settings::Message),
     Playback(playback_view::Message),
     AddTrackToPlaylist { track: Arc<Track>, playlist: String },
@@ -80,7 +78,6 @@ pub struct Chilen {
     pub theme: Theme,
     pub settings: Settings,
     main_view: main_view::State,
-    playlist_view: playlist_view::State,
     playback_view: playback_view::State,
     settings_state: settings::State,
     host_theme_preference: Mode,
@@ -99,7 +96,6 @@ impl Default for Chilen {
                 nav_stack: main_view::NavStack::default(),
                 visible: None,
             },
-            playlist_view: playlist_view::State::default(),
             playback_view: playback_view::State::default(),
             settings_state: settings::State::default(),
             host_theme_preference: Mode::default(),
@@ -126,9 +122,9 @@ const ROUNDING_SMALL: f32 = 14.0;
 const ROUNDING_REGULAR: f32 = 14.0;
 const ROUNDING_LARGE: f32 = 18.0;
 const ROUNDING_LARGER: f32 = 20.0;
+const GOTH_CORNER_ROUNDING: f32 = ROUNDING_LARGE;
 
 const PLAYBACK_DESIRED_WIDTH: f32 = 410.0;
-const PLAYLIST_DESIRED_WIDTH: f32 = 350.0;
 const PLAYLIST_MIN_WIDTH: f32 = 220.0;
 const MAIN_MIN_WIDTH: f32 = 400.0;
 const PLAYBACK_MIN_WIDTH: f32 = 320.0;
@@ -172,32 +168,15 @@ impl Chilen {
 
     fn view(state: &Chilen) -> Element<'_, Message> {
         let base_content = responsive(|size| {
-            let offset =
-                size.width - PLAYLIST_DESIRED_WIDTH - PLAYBACK_DESIRED_WIDTH - MAIN_MIN_WIDTH;
-            let ratio_base = PLAYLIST_DESIRED_WIDTH - PLAYLIST_MIN_WIDTH + PLAYBACK_DESIRED_WIDTH
-                - PLAYBACK_MIN_WIDTH;
-            let playlist_ratio = (PLAYLIST_DESIRED_WIDTH - PLAYLIST_MIN_WIDTH) / ratio_base;
-            let playback_ratio = (PLAYBACK_DESIRED_WIDTH - PLAYBACK_MIN_WIDTH) / ratio_base;
-            let playlist_width = if offset < 0.0 {
-                PLAYLIST_DESIRED_WIDTH + offset * playlist_ratio
-            } else {
-                PLAYLIST_DESIRED_WIDTH
-            };
-            let playback_width = if offset < 0.0 {
-                PLAYBACK_DESIRED_WIDTH + offset * playback_ratio
-            } else {
-                PLAYBACK_DESIRED_WIDTH
-            };
             row![
-                playlist_view::view(state, playlist_width).map(Message::PlaylistView),
                 main_view::view(state).map(Message::MainView),
-                playback_view::view(state, playback_width).map(Message::Playback),
+                playback_view::view(state, PLAYBACK_DESIRED_WIDTH).map(Message::Playback),
             ]
             .into()
         });
 
         let base = container(base_content)
-            .style(|_| container::background(state.theme.surface_container_low()));
+            .style(|_| container::background(state.theme.surface_container()));
 
         stack![
             base,
@@ -219,8 +198,7 @@ impl Chilen {
                     chilen_backend::Event::LibraryChanged(lib) => {
                         state.loading_state = LoadingState::Loaded;
                         state.library = Some(lib);
-                        top_view::reload(state);
-                        playlist_view::reload(state);
+                        main_view::reload(state);
                     }
                     chilen_backend::Event::LibraryLoadFailed(_) => {
                         state.loading_state = LoadingState::Failed
@@ -324,9 +302,6 @@ impl Chilen {
             }
             Message::MainView(msg) => {
                 return main_view::update(state, msg).map(Message::MainView);
-            }
-            Message::PlaylistView(msg) => {
-                return playlist_view::update(state, msg).map(Message::PlaylistView);
             }
             Message::Settings(msg) => return settings::update(state, msg).map(Message::Settings),
             Message::Playback(message) => {
