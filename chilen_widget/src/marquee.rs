@@ -241,8 +241,6 @@ where
 
     fn diff(&self, tree: &mut Tree) {
         tree.diff_children(&[&self.content]);
-        let state = tree.state.downcast_mut::<State>();
-        state.reset_offsets(Instant::now());
     }
 
     fn size(&self) -> Size<Length> {

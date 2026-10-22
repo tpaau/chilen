@@ -65,7 +65,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             .size(32.0)
             .wrapping(text::Wrapping::None)
             .color(state.theme.on_surface()),
-    );
+    )
+    .animation(chilen_widget::marquee::Animation::Always);
 
     let artists: Element<'_, Message> = if let Some(player_state) = &state.player_state
         && let Some(track) = player_state.current()
@@ -387,7 +388,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     )
     .center_x(Length::Fill);
 
-    column![cover, content, slider_stuff, buttons]
-        .spacing(SPACING_REGULAR)
-        .into()
+    column![
+        cover,
+        content,
+        column![slider_stuff, buttons].spacing(SPACING_SMALLER)
+    ]
+    .spacing(SPACING_REGULAR)
+    .into()
 }

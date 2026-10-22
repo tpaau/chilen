@@ -4,7 +4,7 @@ use iced::{Alignment, Border, Element, Length, Pixels, padding};
 use iced_core::text::{IntoFragment, LineHeight};
 use iced_m3::{
     theme::ColorScheme,
-    widget::{badge, button, card, hybrid_icon::Icon, spacer},
+    widget::{badge, button, button_group, card, hybrid_icon::Icon, spacer, standard_button_group},
 };
 use iced_widget::{column, container, image, row, space, text};
 
@@ -128,16 +128,16 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .align_x(Alignment::Center)
     .spacing(SPACING_REGULAR);
 
-    let buttons = row![
+    let buttons = standard_button_group(vec![
         button(
             button::Style::filled(&state.theme, accent),
             button::Content::Full {
                 icon: Icon::Text {
                     text: icons::CODE.into_fragment(),
-                    font: Some(icons::filled())
+                    font: Some(icons::filled()),
                 },
-                label: "Source Code".into()
-            }
+                label: "Source Code".into(),
+            },
         )
         .size(button::Size::medium())
         .on_press(Message::OpenURL(REPOSITORY_URL.to_owned())),
@@ -146,15 +146,15 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             button::Content::Full {
                 icon: Icon::Text {
                     text: icons::LANGUAGE.into_fragment(),
-                    font: Some(icons::filled())
+                    font: Some(icons::filled()),
                 },
-                label: "Website".into()
-            }
+                label: "Website".into(),
+            },
         )
         .size(button::Size::medium())
-        .on_press(Message::OpenURL(WEBSITE_URL.to_owned()))
-    ]
-    .spacing(SPACING_LARGE);
+        .on_press(Message::OpenURL(WEBSITE_URL.to_owned())),
+    ])
+    .spacing(button_group::standard::SPACING_MEDIUM);
 
     let profile_card = card(
         card::Style {
