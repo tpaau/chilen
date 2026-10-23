@@ -131,12 +131,12 @@ const ROUNDING_LARGER: f32 = 20.0;
 const GOTH_CORNER_ROUNDING: f32 = ROUNDING_LARGE;
 
 const PLAYBACK_DESIRED_WIDTH: f32 = 410.0;
-const MAIN_MIN_WIDTH: f32 = 400.0;
+const MAIN_MIN_WIDTH: f32 = 450.0;
 const PLAYBACK_MIN_WIDTH: f32 = 320.0;
 const TOTAL_MIN_WIDTH: f32 =
     MAIN_MIN_WIDTH + PLAYBACK_MIN_WIDTH + navrail::CONTAINER_COLLAPSED_WIDTH;
 // TODO: Should be calculated dynamically based on the window width
-const MIN_HEIGHT: f32 = 1000.0;
+const MIN_HEIGHT: f32 = 920.0;
 
 pub fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()

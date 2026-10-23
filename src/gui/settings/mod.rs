@@ -18,7 +18,12 @@ use iced_m3::{
         fab::{self},
         hybrid_icon::Icon,
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
-        shapes::polymorpher::RoundedPolygon,
+        shapes::polymorpher::{
+            RoundedPolygon,
+            shapes::{
+                clover4, clover8, cookie4, cookie6, cookie7, cookie9, cookie12, sunny, very_sunny,
+            },
+        },
         switch,
     },
 };
@@ -30,7 +35,6 @@ use crate::gui::{
     dialog::Dialog,
     font::{self, bold_text},
     icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
-    widget::icon_shape,
 };
 
 const MAX_WIDTH: f32 = 1000.0;
@@ -100,10 +104,23 @@ pub struct State {
     pfp_image_handle: Handle,
 }
 
+pub static AVAILABLE_SHAPES: LazyLock<[RoundedPolygon; 9]> = LazyLock::new(|| {
+    [
+        cookie12(),
+        cookie4(),
+        cookie6(),
+        cookie7(),
+        cookie9(),
+        sunny(),
+        very_sunny(),
+        clover4(),
+        clover8(),
+    ]
+});
 impl Default for State {
     fn default() -> Self {
         let accents = [Accent::Primary, Accent::Secondary, Accent::Tertiary];
-        let shapes = &icon_shape::AVAILABLE_SHAPES;
+        let shapes = &AVAILABLE_SHAPES;
         let random_shape = shapes[rand::random_range(0..=(shapes.len() - 1))].clone();
         let random_accent = accents[rand::random_range(0..=(accents.len() - 1))];
 

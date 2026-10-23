@@ -35,7 +35,6 @@ pub static ARTIST: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe01a).unwr
 pub static ALBUM: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe019).unwrap());
 pub static MUSIC_NOTE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe405).unwrap());
 pub static GENRES: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe022).unwrap());
-pub static PLAYLIST_PLAY: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe05f).unwrap());
 pub static ARROW_BACK: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5c4).unwrap());
 pub static SEARCH: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8b6).unwrap());
 pub static SETTINGS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8b8).unwrap());
@@ -62,6 +61,9 @@ pub static CODE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe86f).unwrap
 pub static LANGUAGE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe894).unwrap());
 pub static MAIL: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe158).unwrap());
 pub static HOME: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe88a).unwrap());
+pub static ARROW_FORWARD_IOS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5e1).unwrap());
+pub static EQUALIZER: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe01d).unwrap());
+pub static TRENDING_UP: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8e5).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const _SIZE_SMALL: f32 = 20.0;

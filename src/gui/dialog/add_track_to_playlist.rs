@@ -30,7 +30,7 @@ fn playlist_choice<'a>(
         row![
             CoverImage {
                 image_path: playlist.cover.thumbnail().ok(),
-                icon: *icons::PLAYLIST_PLAY,
+                icon: *icons::LIBRARY_MUSIC,
                 icon_size: icons::SIZE_LARGE,
                 icon_color: theme.on_surface_variant(),
                 container_color: theme.surface_container(),

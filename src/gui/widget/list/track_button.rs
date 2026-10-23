@@ -71,7 +71,7 @@ where
         let mut second_group_entries = vec![
             vertical_menu::Entry::Button {
                 icon: Some(Icon::Text {
-                    text: icons::PLAYLIST_PLAY.into_fragment(),
+                    text: icons::LIBRARY_MUSIC.into_fragment(),
                     font: Some(icons::filled()),
                 }),
                 label: "Add to playlist".into(),

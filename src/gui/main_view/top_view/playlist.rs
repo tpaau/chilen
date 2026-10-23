@@ -35,7 +35,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
 
         let cover = CoverImage {
             image_path: playlist_cloned.cover.cover().ok(),
-            icon: *icons::PLAYLIST_PLAY,
+            icon: *icons::LIBRARY_MUSIC,
             icon_size: cover_size / 4.0,
             icon_color: state.theme.on_surface_variant(),
             container_color: state.theme.surface_container(),

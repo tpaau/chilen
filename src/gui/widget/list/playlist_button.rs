@@ -179,7 +179,7 @@ pub fn playlist_button<'a>(
 
         let cover = CoverImage {
             image_path,
-            icon: *icons::PLAYLIST_PLAY,
+            icon: *icons::LIBRARY_MUSIC,
             icon_size: icons::SIZE_LARGE,
             icon_color,
             container_color,

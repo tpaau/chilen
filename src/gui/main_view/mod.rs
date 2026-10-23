@@ -11,24 +11,35 @@ use std::{ops::Not, path::PathBuf, sync::Arc};
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Playlist, Track};
 use dirs::home_dir;
 use iced::{Alignment, Border, Element, Length, Pixels, Task};
-use iced_core::text::IntoFragment;
+use iced_core::text::{self, IntoFragment};
 use iced_m3::{
+    animation::motion::{self, fast_spatial},
     theme::{Accent, ColorScheme},
     widget::{
         button::{self, Content},
         hybrid_icon::Icon,
         navrail,
+        shapes::polymorpher::{
+            RoundedPolygon,
+            shapes::{clover4, clover8, cookie6, cookie7, ghostish, sunny},
+        },
     },
 };
-use iced_widget::{center, container, opaque, row, space, stack};
+use iced_widget::{center, column, container, opaque, row, space, stack};
 use log::{debug, error, info, trace};
 
-use crate::gui::{
-    self, Chilen, GOTH_CORNER_ROUNDING, SPACING_REGULAR, SPACING_SMALLER, common_actions,
-    dialog::{self, Dialog},
-    icons,
-    main_view::{self, top_view::TopView},
-    settings::Screen,
+use crate::{
+    APP_NAME,
+    gui::{
+        self, Chilen, GOTH_CORNER_ROUNDING, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+        common_actions,
+        dialog::{self, Dialog},
+        font::bold_text,
+        icons,
+        main_view::{self, top_view::TopView},
+        settings::Screen,
+        widget::icon_shape::IconShape,
+    },
 };
 
 pub(super) const VIEW_INNER_PADDING: f32 = crate::gui::SPACING_SMALL;
@@ -55,6 +66,43 @@ pub enum NavTab {
     Albums,
     Artists,
     Genres,
+}
+
+impl NavTab {
+    fn title(&self) -> String {
+        match self {
+            NavTab::Home => APP_NAME,
+            NavTab::Playlists => "Playlists",
+            NavTab::Tracks => "Tracks",
+            NavTab::Albums => "Albums",
+            NavTab::Artists => "Artists",
+            NavTab::Genres => "Genres",
+        }
+        .to_string()
+    }
+
+    fn shape(&self) -> RoundedPolygon {
+        match self {
+            NavTab::Home => cookie6(),
+            NavTab::Playlists => clover4(),
+            NavTab::Tracks => ghostish(),
+            NavTab::Albums => cookie7(),
+            NavTab::Artists => clover8(),
+            NavTab::Genres => sunny(),
+        }
+    }
+
+    fn icon(&self) -> text::Fragment<'static> {
+        match self {
+            NavTab::Home => *icons::SNOWFLAKE,
+            NavTab::Playlists => *icons::LIBRARY_MUSIC,
+            NavTab::Tracks => *icons::MUSIC_NOTE,
+            NavTab::Albums => *icons::ALBUM,
+            NavTab::Artists => *icons::ARTIST,
+            NavTab::Genres => *icons::GENRES,
+        }
+        .into_fragment()
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -190,11 +238,11 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
         },
         navrail::Item {
             icon_active: Icon::Text {
-                text: icons::PLAYLIST_PLAY.into_fragment(),
+                text: icons::LIBRARY_MUSIC.into_fragment(),
                 font: Some(icons::filled()),
             },
             icon_inactive: Icon::Text {
-                text: icons::PLAYLIST_PLAY.into_fragment(),
+                text: icons::LIBRARY_MUSIC.into_fragment(),
                 font: Some(icons::outlined()),
             },
             label: "Playlists".into(),
@@ -313,7 +361,28 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
         center(content)
     };
 
-    let main_container = container(main_content)
+    let title = if let View::Tab(tab) = state.main_view.nav_stack.top() {
+        Some(
+            row![
+                IconShape::new(
+                    tab.shape(),
+                    state.theme.primary(),
+                    tab.icon(),
+                    state.theme.on_primary()
+                )
+                .size(60.0)
+                .icon_size(34.0)
+                .transition_spring(fast_spatial(motion::Scheme::default())),
+                bold_text(tab.title()).size(32.0)
+            ]
+            .align_y(Alignment::Center)
+            .spacing(SPACING_SMALL),
+        )
+    } else {
+        None
+    };
+
+    let main_container = container(column![title, main_content].spacing(SPACING_SMALL))
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(VIEW_INNER_PADDING)

@@ -1,16 +1,10 @@
-use std::sync::LazyLock;
-
 use iced::{Alignment, Color, Element};
-use iced_m3::widget::{
-    icon, shape,
-    shapes::{
-        self,
-        polymorpher::{
-            RoundedPolygon,
-            shapes::{
-                clover4, clover8, cookie4, cookie6, cookie7, cookie9, cookie12, sunny, very_sunny,
-            },
-        },
+use iced_core::text::IntoFragment;
+use iced_m3::{
+    animation::motion::Spring,
+    widget::{
+        icon, shape,
+        shapes::{self, polymorpher::RoundedPolygon},
     },
 };
 use iced_widget::{column, container, stack, text};
@@ -18,19 +12,6 @@ use iced_widget::{column, container, stack, text};
 const DEFAULT_SIZE: f32 = 128.0;
 const LABEL_SIZE: f32 = font::SIZE_LARGE;
 const SHAPE_LABEL_SPACE: f32 = SPACING_REGULAR;
-pub static AVAILABLE_SHAPES: LazyLock<[RoundedPolygon; 9]> = LazyLock::new(|| {
-    [
-        cookie12(),
-        cookie4(),
-        cookie6(),
-        cookie7(),
-        cookie9(),
-        sunny(),
-        very_sunny(),
-        clover4(),
-        clover8(),
-    ]
-});
 
 use crate::gui::{SPACING_REGULAR, font, icons};
 
@@ -42,6 +23,7 @@ pub struct IconShape<'a> {
     size: f32,
     icon_size: Option<f32>,
     label: Option<(text::Fragment<'a>, Color)>,
+    transition_spring: Option<Spring>,
 }
 
 impl<'a> IconShape<'a> {
@@ -49,17 +31,18 @@ impl<'a> IconShape<'a> {
     pub fn new(
         shape: RoundedPolygon,
         shape_color: Color,
-        icon: text::Fragment<'a>,
+        icon: impl IntoFragment<'a>,
         icon_color: Color,
     ) -> Self {
         Self {
             shape,
             shape_color,
-            icon,
+            icon: icon.into_fragment(),
             icon_color,
             size: DEFAULT_SIZE,
             label: None,
             icon_size: None,
+            transition_spring: None,
         }
     }
 
@@ -80,6 +63,12 @@ impl<'a> IconShape<'a> {
         self.icon_size = Some(size);
         self
     }
+
+    #[must_use]
+    pub fn transition_spring(mut self, spring: Spring) -> Self {
+        self.transition_spring = Some(spring);
+        self
+    }
 }
 
 impl<'a, Message, Theme, Renderer> From<IconShape<'a>> for Element<'a, Message, Theme, Renderer>
@@ -91,6 +80,15 @@ where
     Theme: iced_widget::text::Catalog<Class<'a>: From<iced_widget::text::StyleFn<'a, Theme>>>,
 {
     fn from(value: IconShape<'a>) -> Self {
+        let icon = icon(value.icon, value.icon_size.unwrap_or(value.size / 3.0))
+            .font(icons::filled())
+            .color(value.icon_color);
+        let icon = if let Some(size) = value.icon_size {
+            icon.size(size)
+        } else {
+            icon
+        };
+
         let shape = stack![
             shape(
                 value.shape,
@@ -99,14 +97,9 @@ where
                     stroke: None
                 }
             )
+            .transition_spring_maybe(value.transition_spring)
             .size(value.size),
-            container(
-                icon(value.icon, value.icon_size.unwrap_or(value.size / 3.0))
-                    .font(icons::filled())
-                    .color(value.icon_color)
-            )
-            .center_x(value.size)
-            .center_y(value.size),
+            container(icon).center_x(value.size).center_y(value.size),
         ];
 
         match value.label {

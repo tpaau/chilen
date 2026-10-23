@@ -41,6 +41,7 @@ pub enum Behavior {
     #[default]
     Alternate,
 
+    // TODO: Customizable direction
     /// The text continuously enters from the left and exits to the right.
     Scroll(ScrollGap),
 }
