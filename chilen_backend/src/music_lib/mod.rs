@@ -287,3 +287,25 @@ pub fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
     save_library()?;
     Ok(())
 }
+
+/// Adds a new favorite item to the library.
+///
+/// The `Ok` variant tells the item was already marked as a favorite.
+///
+/// Fails if the library is not initialized.
+pub fn add_favorite(favorite: impl Into<FavoriteItem>) -> Result<bool, Error> {
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+    Ok(lib.add_favorite(favorite.into()))
+}
+
+/// Removes an item from the favorites list.
+///
+/// The `Ok` variant tells whether item was marked as a favorite.
+///
+/// Fails if the library is not initialized.
+pub fn remove_favorite(favorite: &FavoriteItem) -> Result<bool, Error> {
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+    Ok(lib.remove_favorite(favorite))
+}
