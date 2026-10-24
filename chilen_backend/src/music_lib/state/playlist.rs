@@ -33,7 +33,7 @@ pub struct Playlist {
 impl Playlist {
     pub(super) fn load(
         lib: &mut MusicLibrary,
-        loaded: ConfPlaylist,
+        loaded: PlaylistStored,
         config: indexer::Config,
     ) -> Self {
         let result = lib.tracks_from_hashes(loaded.track_hashes);
@@ -96,12 +96,12 @@ impl Playlist {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct ConfPlaylist {
+pub(crate) struct PlaylistStored {
     name: String,
     track_hashes: Vec<u64>,
 }
 
-impl From<Playlist> for ConfPlaylist {
+impl From<Playlist> for PlaylistStored {
     fn from(value: Playlist) -> Self {
         let mut track_hashes: Vec<_> = value.tracks.iter().map(|t| t.hash_self()).collect();
         track_hashes.extend(value.unmatched);

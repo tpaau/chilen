@@ -23,7 +23,7 @@ use crate::{
             self,
             covers::{Cover, get_playlist_cover},
         },
-        state::{ConfPlaylist, Playlist, Progress, Track},
+        state::{Playlist, PlaylistStored, Progress, Track},
         tracks_from_m3u8,
     },
 };
@@ -435,7 +435,7 @@ impl MusicLibrary {
     }
 
     pub(super) fn load(
-        loaded: ConfMusicLibrary,
+        loaded: MusicLibraryStored,
         tracks: Vec<Track>,
         config: indexer::Config,
     ) -> Self {
@@ -739,11 +739,11 @@ impl MusicLibrary {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(super) struct ConfMusicLibrary {
-    playlists: Vec<ConfPlaylist>,
+pub(super) struct MusicLibraryStored {
+    playlists: Vec<PlaylistStored>,
 }
 
-impl From<MusicLibrary> for ConfMusicLibrary {
+impl From<MusicLibrary> for MusicLibraryStored {
     fn from(value: MusicLibrary) -> Self {
         Self {
             playlists: value

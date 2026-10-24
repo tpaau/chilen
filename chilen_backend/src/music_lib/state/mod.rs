@@ -72,7 +72,7 @@ pub enum Progress {
 
 static LIBRARY_FILE: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut data = DATA_DIR.read().unwrap().clone().unwrap();
-    data.push("playlists");
+    data.push("library");
     data
 });
 
@@ -107,7 +107,7 @@ pub(crate) fn save_library() -> Result<(), Error> {
     let lib = MUSIC_LIBRARY.read().unwrap().clone();
 
     if let Some(lib_data) = lib {
-        let lib = ConfMusicLibrary::from(lib_data.clone());
+        let lib = MusicLibraryStored::from(lib_data.clone());
 
         let library_state = LIBRARY_FILE.clone();
 
@@ -190,7 +190,7 @@ pub(crate) fn load(config: music_lib::Config) -> Result<(), Error> {
             }
         };
 
-        let lib = match ConfMusicLibrary::deserialize(&mut Deserializer::from_read_ref(&data)) {
+        let lib = match MusicLibraryStored::deserialize(&mut Deserializer::from_read_ref(&data)) {
             Ok(lib) => {
                 MusicLibrary::load(lib, tracks.clone().into_iter().collect(), config.indexer)
             }
