@@ -10,7 +10,7 @@ use std::{ops::Not, path::PathBuf, sync::Arc};
 
 use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Playlist, Track};
 use dirs::home_dir;
-use iced::{Alignment, Border, Element, Length, Pixels, Task};
+use iced::{Alignment, Border, Element, Length, Pixels, Task, padding};
 use iced_core::text::{self, IntoFragment};
 use iced_m3::{
     animation::motion::{self, fast_spatial},
@@ -23,6 +23,7 @@ use iced_m3::{
             RoundedPolygon,
             shapes::{clover4, clover8, cookie6, cookie7, ghostish, sunny},
         },
+        spacer,
     },
 };
 use iced_widget::{center, column, container, opaque, row, space, stack};
@@ -206,7 +207,6 @@ pub enum Message {
     AddArtistToQueue(Arc<Artist>),
     AddGenreToQueue(Arc<Genre>),
     AddTrackToPlaylist(Arc<Track>),
-    OpenPlaylist(Arc<Playlist>),
     CreatePlaylist,
     ExportPlaylist(String),
     SaveExportedPlaylist(String, Option<rfd::FileHandle>),
@@ -362,6 +362,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
     };
 
     let title = if let View::Tab(tab) = state.main_view.nav_stack.top() {
+        let icon_size = if tab == NavTab::Home { 42.0 } else { 34.0 };
         Some(
             row![
                 IconShape::new(
@@ -371,10 +372,12 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
                     state.theme.on_primary()
                 )
                 .size(60.0)
-                .icon_size(34.0)
+                .icon_size(icon_size)
                 .transition_spring(fast_spatial(motion::Scheme::default())),
-                bold_text(tab.title()).size(32.0)
+                bold_text(tab.title()).size(38.0),
+                spacer(state.theme.outline_variant())
             ]
+            .padding(padding::horizontal(SPACING_REGULAR).top(SPACING_REGULAR))
             .align_y(Alignment::Center)
             .spacing(SPACING_SMALL),
         )
@@ -482,31 +485,31 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::Noop => {}
         Message::OpenSettings => state.settings_state.screen = Some(Screen::default()),
         Message::PlayTracks { initial_position } => {
-            common_actions::play_tracks(state, initial_position)
+            common_actions::play_all_tracks(state, initial_position)
         }
         Message::PlayTracksNoShuffle { initial_position } => {
-            common_actions::play_tracks_no_shuffle(state, Some(initial_position));
+            common_actions::play_all_tracks_no_shuffle(state, Some(initial_position));
         }
         Message::ShuffleTracks { initial_position } => {
             common_actions::shuffle_tracks(state, Some(initial_position));
         }
         Message::PlayAlbum(album) => {
-            common_actions::play_album_no_shuffle(album, None);
+            common_actions::play_album_no_shuffle(state, album, None);
         }
         Message::ShuffleAlbum(album) => {
-            common_actions::shuffle_album(album, None);
+            common_actions::shuffle_album(state, album, None);
         }
         Message::PlayArtist(artist) => {
-            common_actions::play_artist_no_shuffle(artist, None);
+            common_actions::play_artist_no_shuffle(state, artist, None);
         }
         Message::ShuffleArtist(artist) => {
-            common_actions::shuffle_artist(artist, None);
+            common_actions::shuffle_artist(state, artist, None);
         }
         Message::PlayGenre(genre) => {
-            common_actions::play_genre_no_shuffle(genre, None);
+            common_actions::play_genre_no_shuffle(state, genre, None);
         }
         Message::ShuffleGenre(genre) => {
-            common_actions::shuffle_genre(genre, None);
+            common_actions::shuffle_genre(state, genre, None);
         }
         Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
         Message::AddAlbumToQueue(album) => {
@@ -575,12 +578,11 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 state.dialog = Dialog::DeletePlaylist(playlist)
             }
         }
-        Message::OpenPlaylist(pl) => state.main_view.nav_stack.set_top(TopView::Playlist(pl)),
         Message::PlayPlaylist(playlist) => {
-            common_actions::play_playlist(playlist, None);
+            common_actions::play_playlist(state, playlist, None);
         }
         Message::ShufflePlaylist(playlist) => {
-            common_actions::play_playlist(playlist, None);
+            common_actions::play_playlist(state, playlist, None);
         }
         Message::AddPlaylistToQueue(playlist) => {
             common_actions::append_tracks_to_queue(playlist.tracks.to_vec())

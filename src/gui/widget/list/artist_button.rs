@@ -13,6 +13,7 @@ use crate::{
     THUMBNAIL_SIZE,
     gui::{
         SPACING_SMALL, SPACING_SMALLER, font,
+        formatter::{format_album_count, format_track_count},
         icons::{self, icon_filled},
         widget::{
             self,
@@ -134,22 +135,15 @@ where
                 title,
                 marquee(
                     row![
-                        text(match value.artist.albums.len() {
-                            0 => "No albums".to_string(),
-                            1 => "1 album".to_string(),
-                            _ => format!("{} albums", value.artist.albums.len()),
-                        })
-                        .size(font::SIZE_SMALL)
-                        .color(value.theme.on_surface_variant())
-                        .wrapping(text::Wrapping::None),
+                        text(format_album_count(value.artist.albums.len()))
+                            .size(font::SIZE_SMALL)
+                            .color(value.theme.on_surface_variant())
+                            .wrapping(text::Wrapping::None),
                         text_spacer(value.theme.on_surface_variant(), font::SIZE_SMALL),
-                        text(match value.artist.tracks.len() {
-                            1 => "1 track".to_string(),
-                            _ => format!("{} tracks", value.artist.tracks.len()),
-                        })
-                        .size(font::SIZE_SMALL)
-                        .color(value.theme.on_surface_variant())
-                        .wrapping(text::Wrapping::None),
+                        text(format_track_count(value.artist.tracks.len()))
+                            .size(font::SIZE_SMALL)
+                            .color(value.theme.on_surface_variant())
+                            .wrapping(text::Wrapping::None),
                     ]
                     .align_y(Alignment::Center)
                     .spacing(SPACING_SMALLER)

@@ -60,6 +60,30 @@ pub enum Queue {
     },
 }
 
+impl From<Arc<Playlist>> for Queue {
+    fn from(value: Arc<Playlist>) -> Self {
+        Self::Playlist(value)
+    }
+}
+
+impl From<Arc<Album>> for Queue {
+    fn from(value: Arc<Album>) -> Self {
+        Self::Album(value)
+    }
+}
+
+impl From<Arc<Artist>> for Queue {
+    fn from(value: Arc<Artist>) -> Self {
+        Self::Artist(value)
+    }
+}
+
+impl From<Arc<Genre>> for Queue {
+    fn from(value: Arc<Genre>) -> Self {
+        Self::Genre(value)
+    }
+}
+
 impl Queue {
     pub fn source(&self) -> QueueSource {
         match self {
@@ -330,8 +354,9 @@ impl PlayerState {
         self.on_track_changed();
     }
 
-    pub(crate) fn play_new_queue(&mut self, queue: Queue, index: Option<usize>) {
+    pub(crate) fn play_new_queue(&mut self, queue: impl Into<Queue>, index: Option<usize>) {
         trace!("Setting a new queue");
+        let queue = queue.into();
         let shuffle_enabled = self.shuffle_state.enabled();
         if shuffle_enabled {
             // Setting this manually to prevent needless shuffling

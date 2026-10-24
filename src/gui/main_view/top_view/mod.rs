@@ -30,6 +30,30 @@ pub enum TopView {
     Genre(Arc<Genre>),
 }
 
+impl From<Arc<Playlist>> for TopView {
+    fn from(value: Arc<Playlist>) -> Self {
+        Self::Playlist(value)
+    }
+}
+
+impl From<Arc<Album>> for TopView {
+    fn from(value: Arc<Album>) -> Self {
+        Self::Album(value)
+    }
+}
+
+impl From<Arc<Artist>> for TopView {
+    fn from(value: Arc<Artist>) -> Self {
+        Self::Artist(value)
+    }
+}
+
+impl From<Arc<Genre>> for TopView {
+    fn from(value: Arc<Genre>) -> Self {
+        Self::Genre(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
     Noop,
@@ -214,73 +238,73 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             playlist,
             initial_position,
         } => {
-            common_actions::play_playlist(playlist, initial_position);
+            common_actions::play_playlist(state, playlist, initial_position);
         }
         Message::PlayPlaylistNoShuffle {
             playlist,
             initial_position,
         } => {
-            common_actions::play_playlist_no_shuffle(playlist, initial_position);
+            common_actions::play_playlist_no_shuffle(state, playlist, initial_position);
         }
         Message::ShufflePlaylist {
             playlist,
             initial_position,
         } => {
-            common_actions::shuffle_playlist(playlist, initial_position);
+            common_actions::shuffle_playlist(state, playlist, initial_position);
         }
         Message::PlayAlbum {
             album,
             initial_position,
         } => {
-            common_actions::play_album(album, initial_position);
+            common_actions::play_album(state, album, initial_position);
         }
         Message::PlayAlbumNoShuffle {
             album,
             initial_position,
         } => {
-            common_actions::play_album_no_shuffle(album, initial_position);
+            common_actions::play_album_no_shuffle(state, album, initial_position);
         }
         Message::ShuffleAlbum {
             album,
             initial_position,
         } => {
-            common_actions::shuffle_album(album, initial_position);
+            common_actions::shuffle_album(state, album, initial_position);
         }
         Message::PlayArtist {
             artist,
             initial_position,
         } => {
-            common_actions::play_artist(artist, initial_position);
+            common_actions::play_artist(state, artist, initial_position);
         }
         Message::PlayArtistNoShuffle {
             artist,
             initial_position,
         } => {
-            common_actions::play_artist_no_shuffle(artist, initial_position);
+            common_actions::play_artist_no_shuffle(state, artist, initial_position);
         }
         Message::ShuffleArtist {
             artist,
             initial_position,
         } => {
-            common_actions::shuffle_artist(artist, initial_position);
+            common_actions::shuffle_artist(state, artist, initial_position);
         }
         Message::PlayGenre {
             genre,
             initial_position,
         } => {
-            common_actions::play_genre(genre, initial_position);
+            common_actions::play_genre(state, genre, initial_position);
         }
         Message::PlayGenreNoShuffle {
             genre,
             initial_position,
         } => {
-            common_actions::play_genre_no_shuffle(genre, initial_position);
+            common_actions::play_genre_no_shuffle(state, genre, initial_position);
         }
         Message::ShuffleGenre {
             genre,
             initial_position,
         } => {
-            common_actions::shuffle_genre(genre, initial_position);
+            common_actions::shuffle_genre(state, genre, initial_position);
         }
         Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
         Message::AddAlbumToQueue(album) => {

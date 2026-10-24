@@ -117,7 +117,7 @@ impl Settings {
             Err(e) => {
                 let msg = format!("Failed to load settings: {e}");
                 error!("{}", msg.clone());
-                msg
+                return Err(msg);
             }
         };
 

@@ -12,7 +12,7 @@ use iced_widget::{button, column, container, hover, row, space, text};
 use crate::gui::{
     Chilen, SPACING_SMALL, SPACING_SMALLER,
     font::{self},
-    formatter::format_date,
+    formatter::{format_album_track_count, format_artist_count, format_date_maybe},
     icons::{self, icon_filled},
     widget::{
         self,
@@ -92,18 +92,9 @@ where
             .info
             .into_iter()
             .map(|i| match i {
-                Info::ArtistCount => match value.album.artists.len() {
-                    1 => "1 artist".to_string(),
-                    _ => format!("{} artists", value.album.artists.len()),
-                },
-                Info::TrackCount => match value.album.tracks.len() {
-                    1 => "Single".to_string(),
-                    _ => format!("{} tracks", value.album.tracks.len()),
-                },
-                Info::Date => match value.album.date {
-                    Some(date) => format_date(date),
-                    None => "Unknown date".to_string(),
-                },
+                Info::ArtistCount => format_artist_count(value.album.artists.len()),
+                Info::TrackCount => format_album_track_count(value.album.tracks.len()),
+                Info::Date => format_date_maybe(value.album.date),
             })
             .collect();
 

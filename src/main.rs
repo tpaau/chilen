@@ -29,6 +29,8 @@ const APP_ID: &str = "dev.tpaau.Chilen";
 
 static DATA_DIR: LazyLock<Arc<RwLock<Option<PathBuf>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
+static CACHE_DIR: LazyLock<Arc<RwLock<Option<PathBuf>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 fn handle_events(receiver: Receiver<chilen_backend::Event>) {
     while !gui::event_sender_initialized() {
@@ -109,6 +111,7 @@ fn main() {
         };
         #[cfg(not(feature = "dev-opts"))]
         let cache_dir = cache_dir();
+        *CACHE_DIR.write().unwrap() = Some(cache_dir.clone());
 
         #[cfg(feature = "dev-opts")]
         let music_dir = match args.music_dir_override {

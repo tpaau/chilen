@@ -470,7 +470,8 @@ pub fn open_uri(uri: PathBuf) -> Result<(), Error> {
 ///
 /// If the index is specified, then playback will start from the track at index in the queue, even
 /// if shuffle is enabled.
-pub fn play_new_queue(queue: Queue, index: Option<usize>) -> Result<(), Error> {
+pub fn play_new_queue(queue: impl Into<Queue>, index: Option<usize>) -> Result<(), Error> {
+    let queue = queue.into();
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.play_new_queue(queue, index);
@@ -502,8 +503,9 @@ pub fn play_new_queue(queue: Queue, index: Option<usize>) -> Result<(), Error> {
 /// Note that if shuffle is enabled, the queue will be shuffled immediately after setting it. For
 /// that reason, please use the `[play_new_queue]` function for setting the queue and then playing a
 /// track at a specific index in that queue.
-pub fn set_queue(queue: Queue) -> Result<(), Error> {
+pub fn set_queue(queue: impl Into<Queue>) -> Result<(), Error> {
     trace!("Setting a new queue");
+    let queue = queue.into();
     let mut state_guard = PLAYER_STATE.write().unwrap();
     let state = unwrap_state_mut(state_guard.as_mut())?;
     state.set_queue(queue);

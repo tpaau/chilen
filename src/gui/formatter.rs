@@ -55,3 +55,48 @@ pub fn format_date(timestamp: Timestamp) -> String {
         timestamp.year.to_string()
     }
 }
+
+pub fn format_date_maybe(timestamp: Option<Timestamp>) -> String {
+    match timestamp {
+        Some(timestamp) => format_date(timestamp),
+        None => "Unknown date".to_string(),
+    }
+}
+
+pub fn format_artist_count(count: usize) -> String {
+    match count {
+        0 => "No artists".to_string(),
+        1 => "1 artist".to_string(),
+        _ => format!("{count} artists"),
+    }
+}
+
+pub fn format_playlist_track_count(count: usize) -> String {
+    match count {
+        0 => "Empty".to_string(),
+        1 => "1 track".to_string(),
+        _ => format!("{count} tracks"),
+    }
+}
+
+pub fn format_album_track_count(count: usize) -> String {
+    match count {
+        1 => "Single".to_string(),
+        _ => format!("{count} tracks"),
+    }
+}
+
+pub fn format_track_count(count: usize) -> String {
+    match count {
+        1 => "1 track".to_string(),
+        _ => format!("{count} tracks"),
+    }
+}
+
+pub fn format_album_count(count: usize) -> String {
+    match count {
+        0 => "No albums".to_string(),
+        1 => "1 album".to_string(),
+        _ => format!("{count} albums"),
+    }
+}

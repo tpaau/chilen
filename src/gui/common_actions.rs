@@ -10,10 +10,10 @@ use chilen_backend::{
 };
 use log::error;
 
-use crate::gui::Chilen;
+use crate::gui::{Chilen, persistent_state};
 
 /// Plays all tracks in the music library with the current shuffle state.
-pub fn play_tracks(state: &Chilen, initial_position: usize) {
+pub fn play_all_tracks(state: &Chilen, initial_position: usize) {
     match &state.library {
         Some(lib) => {
             let _ = chilen_backend::playback::play_new_queue(
@@ -26,7 +26,7 @@ pub fn play_tracks(state: &Chilen, initial_position: usize) {
 }
 
 /// Disables shuffling and plays all tracks in the music library.
-pub fn play_tracks_no_shuffle(state: &Chilen, initial_position: Option<usize>) {
+pub fn play_all_tracks_no_shuffle(state: &Chilen, initial_position: Option<usize>) {
     match &state.library {
         Some(lib) => {
             let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::Off);
@@ -54,71 +54,103 @@ pub fn shuffle_tracks(state: &Chilen, initial_position: Option<usize>) {
 }
 
 /// Plays tracks in the given playlist with the current shuffle state.
-pub fn play_playlist(playlist: Arc<Playlist>, initial_position: Option<usize>) {
-    let _ = chilen_backend::playback::play_new_queue(Queue::Playlist(playlist), initial_position);
+pub fn play_playlist(state: &mut Chilen, playlist: Arc<Playlist>, initial_position: Option<usize>) {
+    let _ = chilen_backend::playback::play_new_queue(playlist.clone(), initial_position);
+    persistent_state::push_recent(state, playlist);
 }
 
 /// Disables shuffling and plays tracks in the given playlist.
-pub fn play_playlist_no_shuffle(playlist: Arc<Playlist>, initial_position: Option<usize>) {
+pub fn play_playlist_no_shuffle(
+    state: &mut Chilen,
+    playlist: Arc<Playlist>,
+    initial_position: Option<usize>,
+) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::Off);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Playlist(playlist), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(playlist.clone(), initial_position);
+    persistent_state::push_recent(state, playlist);
 }
 
 /// Enables shuffling and plays tracks in the given playlist.
-pub fn shuffle_playlist(playlist: Arc<Playlist>, initial_position: Option<usize>) {
+pub fn shuffle_playlist(
+    state: &mut Chilen,
+    playlist: Arc<Playlist>,
+    initial_position: Option<usize>,
+) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::On);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Playlist(playlist), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(playlist.clone(), initial_position);
+    persistent_state::push_recent(state, playlist);
 }
 
 /// Plays tracks in the given album with the current shuffle state.
-pub fn play_album(album: Arc<Album>, initial_position: Option<usize>) {
-    let _ = chilen_backend::playback::play_new_queue(Queue::Album(album), initial_position);
+pub fn play_album(state: &mut Chilen, album: Arc<Album>, initial_position: Option<usize>) {
+    let _ = chilen_backend::playback::play_new_queue(album.clone(), initial_position);
+    persistent_state::push_recent(state, album);
 }
 
 /// Disables shuffling and plays tracks in the given album.
-pub fn play_album_no_shuffle(album: Arc<Album>, initial_position: Option<usize>) {
+pub fn play_album_no_shuffle(
+    state: &mut Chilen,
+    album: Arc<Album>,
+    initial_position: Option<usize>,
+) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::Off);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Album(album), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(album.clone(), initial_position);
+    persistent_state::push_recent(state, album);
 }
 
 /// Enables shuffling and plays tracks in the given album.
-pub fn shuffle_album(album: Arc<Album>, initial_position: Option<usize>) {
+pub fn shuffle_album(state: &mut Chilen, album: Arc<Album>, initial_position: Option<usize>) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::On);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Album(album), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(album.clone(), initial_position);
+    persistent_state::push_recent(state, album);
 }
 
 /// Plays tracks of the given artist with the current shuffle state.
-pub fn play_artist(artist: Arc<Artist>, initial_position: Option<usize>) {
-    let _ = chilen_backend::playback::play_new_queue(Queue::Artist(artist), initial_position);
+pub fn play_artist(state: &mut Chilen, artist: Arc<Artist>, initial_position: Option<usize>) {
+    let _ = chilen_backend::playback::play_new_queue(artist.clone(), initial_position);
+    persistent_state::push_recent(state, artist);
 }
 
 /// Disables shuffling and plays tracks of the given artist.
-pub fn play_artist_no_shuffle(artist: Arc<Artist>, initial_position: Option<usize>) {
+pub fn play_artist_no_shuffle(
+    state: &mut Chilen,
+    artist: Arc<Artist>,
+    initial_position: Option<usize>,
+) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::Off);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Artist(artist), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(artist.clone(), initial_position);
+    persistent_state::push_recent(state, artist);
 }
 
 /// Enables shuffling and plays tracks of the given artist.
-pub fn shuffle_artist(artist: Arc<Artist>, initial_position: Option<usize>) {
+pub fn shuffle_artist(state: &mut Chilen, artist: Arc<Artist>, initial_position: Option<usize>) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::On);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Artist(artist), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(artist.clone(), initial_position);
+    persistent_state::push_recent(state, artist);
 }
 
 /// Plays all tracks in the music library with the given genre with the current shuffle state.
-pub fn play_genre(genre: Arc<Genre>, initial_position: Option<usize>) {
-    let _ = chilen_backend::playback::play_new_queue(Queue::Genre(genre), initial_position);
+pub fn play_genre(state: &mut Chilen, genre: Arc<Genre>, initial_position: Option<usize>) {
+    let _ = chilen_backend::playback::play_new_queue(genre.clone(), initial_position);
+    persistent_state::push_recent(state, genre);
 }
 
 /// Disables shuffling and plays all tracks in the music library with the given genre.
-pub fn play_genre_no_shuffle(genre: Arc<Genre>, initial_position: Option<usize>) {
+pub fn play_genre_no_shuffle(
+    state: &mut Chilen,
+    genre: Arc<Genre>,
+    initial_position: Option<usize>,
+) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::Off);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Genre(genre), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(genre.clone(), initial_position);
+    persistent_state::push_recent(state, genre);
 }
 
 /// Enables shuffling and plays all tracks in the music library with the given genre.
-pub fn shuffle_genre(genre: Arc<Genre>, initial_position: Option<usize>) {
+pub fn shuffle_genre(state: &mut Chilen, genre: Arc<Genre>, initial_position: Option<usize>) {
     let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::On);
-    let _ = chilen_backend::playback::play_new_queue(Queue::Genre(genre), initial_position);
+    let _ = chilen_backend::playback::play_new_queue(genre.clone(), initial_position);
+    persistent_state::push_recent(state, genre);
 }
 
 /// Appends multiple tracks to the queue.

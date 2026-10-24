@@ -218,6 +218,7 @@ impl Chilen {
                     chilen_backend::Event::LibraryChanged(lib) => {
                         state.loading_state = LoadingState::Loaded;
                         state.library = Some(lib);
+                        persistent_state::library_loaded(state);
                         main_view::reload(state);
                     }
                     chilen_backend::Event::LibraryLoadFailed(_) => {

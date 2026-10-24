@@ -15,8 +15,9 @@ use iced_widget::{hover, sensor};
 use crate::gui::{
     Chilen, THUMBNAIL_SIZE,
     font::{self, SIZE_REGULAR, SIZE_SMALL},
+    formatter::format_playlist_track_count,
     icons::{self, icon_filled},
-    main_view,
+    main_view::{self, top_view},
     widget::{
         self,
         cover_image::CoverImage,
@@ -194,16 +195,10 @@ pub fn playlist_button<'a>(
             container(column![
                 title,
                 marquee(
-                    text({
-                        if playlist.tracks.is_empty() {
-                            "Empty".to_string()
-                        } else {
-                            format!("{} tracks", playlist.tracks.len())
-                        }
-                    })
-                    .size(SIZE_SMALL)
-                    .wrapping(text::Wrapping::None)
-                    .color(state.theme.on_surface_variant())
+                    text(format_playlist_track_count(playlist.tracks.len()))
+                        .size(SIZE_SMALL)
+                        .wrapping(text::Wrapping::None)
+                        .color(state.theme.on_surface_variant())
                 ),
             ])
             .width(Length::Fill)
@@ -216,7 +211,9 @@ pub fn playlist_button<'a>(
         let button = button(content)
             .padding(Padding::new(BUTTON_PADDING))
             .style(|_, status| button_style(status, state.theme.on_surface()))
-            .on_press_with(|| main_view::Message::OpenPlaylist(playlist.clone()));
+            .on_press_with(|| {
+                main_view::Message::TopView(top_view::Message::Navigate(playlist.clone().into()))
+            });
 
         // TODO: Should be more like a button
         let menu = container(iced_m3::widget::advanced::drop_down_menu(
