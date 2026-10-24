@@ -44,7 +44,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     };
 
     if let Some(lib) = &state.library
-        && !lib.tracks.is_empty()
+        && !lib.playlists.is_empty()
     {
         let highlighted_index = state.player_state.as_ref().and_then(|p| {
             if p.queue_source == chilen_backend::playback::QueueSource::AllTracks {
@@ -81,18 +81,21 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         ]
         .into()
     } else {
-        center(
-            IconShape::new(
-                shapes::polymorpher::shapes::sunny(),
-                state.theme.surface_container_high(),
-                icons::MUSIC_NOTE.into_fragment(),
-                state.theme.on_surface_variant(),
-            )
-            .label(
-                "Your playlists will show up here",
-                state.theme.on_surface_variant(),
+        stack![
+            center(
+                IconShape::new(
+                    shapes::polymorpher::shapes::sunny(),
+                    state.theme.surface_container_high(),
+                    icons::MUSIC_NOTE.into_fragment(),
+                    state.theme.on_surface_variant(),
+                )
+                .label(
+                    "Your playlists will show up here",
+                    state.theme.on_surface_variant(),
+                ),
             ),
-        )
+            fab
+        ]
         .into()
     }
 }
