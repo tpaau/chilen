@@ -42,7 +42,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                             initial_position: index,
                         },
                         shuffle: Some(main_view::Message::ShuffleTracks {
-                            initial_position: index,
+                            initial_position: Some(index),
                         }),
                         add_to_queue: Some(main_view::Message::AddTrackToQueue(track.clone())),
                         add_to_playlist: main_view::Message::AddTrackToPlaylist(track.clone()),

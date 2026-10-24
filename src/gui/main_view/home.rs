@@ -20,7 +20,7 @@ use iced_m3::{
         OnPress, card,
         shapes::polymorpher::{
             RoundedPolygon,
-            shapes::{cookie4, cookie12},
+            shapes::{clover8, cookie4, cookie12},
         },
         spacer,
     },
@@ -209,12 +209,14 @@ fn card_item<'a>(
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let cards = responsive(|size| {
-        let favorites_card = card_item(
+        let shuffle_card = card_item(
             &state.theme,
-            *icons::FAVORITE,
-            "Favorites",
-            "No favorites!",
-            Message::Noop,
+            *icons::SHUFFLE,
+            "Shuffle",
+            "Shuffle your tracks",
+            Message::ShuffleTracks {
+                initial_position: None,
+            },
         );
 
         let playlist_text = if let Some(lib) = &state.library
@@ -252,10 +254,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         let compact = size.width < 780.0;
 
         match compact {
-            true => column![favorites_card, playlist_card, statistics_card, eq_card]
+            true => column![shuffle_card, playlist_card, statistics_card, eq_card]
                 .spacing(card::MAX_CARD_BETWEEN_PADDING),
             false => column![
-                row![favorites_card, playlist_card].spacing(card::MAX_CARD_BETWEEN_PADDING),
+                row![shuffle_card, playlist_card].spacing(card::MAX_CARD_BETWEEN_PADDING),
                 row![statistics_card, eq_card].spacing(card::MAX_CARD_BETWEEN_PADDING)
             ]
             .spacing(card::MAX_CARD_BETWEEN_PADDING),
@@ -264,7 +266,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     })
     .height(Length::Shrink);
 
-    let recent_title = title(&state.theme, cookie12(), *icons::MUSIC_NOTE, "Recent");
+    let recent_title = title(&state.theme, cookie12(), *icons::RESTART_ALT, "Recent");
 
     // TODO: Should be a carousel!
     let recent_cards = scrollable(
@@ -280,10 +282,17 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let recent = column![recent_title, recent_cards].spacing(SPACING_REGULAR);
 
-    column![column![space().height(16), cards], recent]
-        .spacing(42)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .padding(padding::horizontal(SPACING_REGULAR))
-        .into()
+    let favorites_title = title(&state.theme, clover8(), *icons::STAR, "Favorites");
+
+    let favorites = column![favorites_title].spacing(SPACING_REGULAR);
+
+    scrollable(
+        column![column![space().height(16), cards], recent, favorites]
+            .spacing(42)
+            .padding(padding::horizontal(SPACING_REGULAR)),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
+    .into()
 }

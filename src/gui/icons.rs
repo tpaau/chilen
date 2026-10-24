@@ -64,7 +64,8 @@ pub static HOME: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe88a).unwrap
 pub static ARROW_FORWARD_IOS: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5e1).unwrap());
 pub static EQUALIZER: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe01d).unwrap());
 pub static TRENDING_UP: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8e5).unwrap());
-pub static FAVORITE: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe87d).unwrap());
+pub static STAR: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe838).unwrap());
+pub static RESTART_ALT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xf053).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const SIZE_SMALL: f32 = 20.0;
