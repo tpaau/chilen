@@ -12,7 +12,7 @@ pub fn format_track_duration(duration: Duration) -> String {
 }
 
 /// Formats the given [`Duration`] to a `hh:mm:ss` format.
-pub fn format_album_duration(d: Duration) -> String {
+pub fn format_long_duration(d: Duration) -> String {
     let hours = d.as_secs() / 3600;
     let minutes = d.as_secs() / 60 - hours * 60;
     let seconds = d.as_secs() - minutes * 60 - hours * 3600;

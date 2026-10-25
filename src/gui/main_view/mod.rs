@@ -177,6 +177,7 @@ impl NavStack {
 pub(crate) fn reload(state: &mut Chilen) {
     if let Some(lib) = &state.library {
         state.main_view.nav_stack.reload(lib);
+        state.main_view.reload_visibilities(lib);
     } else {
         state.main_view.nav_stack = NavStack::default();
     }
@@ -188,6 +189,25 @@ pub struct State {
     /// Sadly I couldn't use a range for this, it would've used much less memory but it lagged too
     /// much when I was scrolling erratically.
     pub visible: Option<Vec<bool>>,
+}
+
+impl State {
+    fn reload_visibilities(&mut self, lib: &MusicLibrary) {
+        if let Some(visible) = self.visible.as_mut() {
+            let len = match self.nav_stack.tab {
+                NavTab::Home => 0,
+                NavTab::Playlists => lib.playlists.len(),
+                NavTab::Tracks => lib.tracks.len(),
+                NavTab::Albums => lib.albums.len(),
+                NavTab::Artists => lib.artists.len(),
+                NavTab::Genres => lib.genres.len(),
+            };
+            if len != visible.len() {
+                // FIX: May cause issues if a lot of stuff is needlessly loaded because of this
+                visible.resize(len, true);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -602,15 +622,17 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             let _ = toggle_favorite(favorite_item);
         }
         Message::PlayTrack(track) => {
-            let _ = chilen_backend::playback::set_queue(Queue::Custom {
-                label: track
-                    .title
-                    .clone()
-                    .map(|t| t.into_string())
-                    .unwrap_or("Track".to_string()),
-                tracks: vec![track],
-            });
-            let _ = chilen_backend::playback::play(None);
+            let _ = chilen_backend::playback::play_new_queue(
+                Queue::Custom {
+                    label: track
+                        .title
+                        .clone()
+                        .map(|t| t.into_string())
+                        .unwrap_or("Track".to_string()),
+                    tracks: vec![track],
+                },
+                None,
+            );
         }
     }
     Task::none()

@@ -3,7 +3,8 @@ use crate::gui::{
     font::{self, bold_text, text},
     formatter::{
         format_album_count, format_album_track_count, format_artist_count, format_date_maybe,
-        format_playlist_track_count, format_track_count, format_track_duration,
+        format_long_duration, format_playlist_track_count, format_track_count,
+        format_track_duration,
     },
     icons::{self, icon_filled},
     main_view::{Message, NavTab, top_view},
@@ -66,7 +67,10 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
             playlist.name.clone().into_string(),
             playlist.cover.cover(),
             *icons::LIBRARY_MUSIC,
-            vec![format_playlist_track_count(playlist.tracks.len())],
+            vec![
+                format_playlist_track_count(playlist.tracks.len()),
+                format_long_duration(playlist.duration),
+            ],
             "Playlist".to_string(),
             Message::TopView(top_view::Message::Navigate(playlist.clone().into())),
         ),
@@ -249,14 +253,18 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             },
         );
 
-        // TODO: Make this one be a playlist creation button if no playlists are present in the library
         let playlist_text = if let Some(lib) = &state.library
             && !lib.playlists.is_empty()
         {
-            format!("Explore your {} playlists", lib.playlists.len())
+            if lib.playlists.len() == 1 {
+                "Explore your 1 playlist".to_string()
+            } else {
+                format!("Explore your {} playlists", lib.playlists.len())
+            }
         } else {
             "No playlists yet!".to_string()
         };
+        // TODO: Make this one be a playlist creation button if no playlists are present in the library
         let playlist_card = card_item(
             &state.theme,
             *icons::LIBRARY_MUSIC,

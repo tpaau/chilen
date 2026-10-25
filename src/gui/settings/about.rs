@@ -11,7 +11,7 @@ use iced_widget::{column, container, image, row, space, text};
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
     font::{self, bold_text},
-    formatter::format_album_duration,
+    formatter::format_long_duration,
     icons::{self, icon_filled},
     settings::{CLOSE_BUTTON_SIZE, Message},
     widget::icon_shape::IconShape,
@@ -239,7 +239,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 state
                     .library
                     .as_ref()
-                    .map(|l| format_album_duration(l.total_duration))
+                    .map(|l| format_long_duration(l.total_duration))
                     .unwrap_or("Unavailable".to_string()),
             ),
         ],

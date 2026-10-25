@@ -7,7 +7,7 @@ use iced_widget::{column, container, responsive, row, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font,
-    formatter::format_album_duration,
+    formatter::format_long_duration,
     icons,
     main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, title},
     widget::{
@@ -59,7 +59,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                     font::SIZE_LARGE
                 )),
                 has_tracks.then_some(
-                    text(format_album_duration(playlist_cloned.duration))
+                    text(format_long_duration(playlist_cloned.duration))
                         .size(font::SIZE_LARGE)
                         .color(state.theme.on_surface())
                 )

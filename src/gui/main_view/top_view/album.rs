@@ -7,7 +7,7 @@ use iced_widget::{column, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
-    formatter::format_album_duration,
+    formatter::format_long_duration,
     icons,
     main_view::top_view::{
         MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, title,
@@ -93,7 +93,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
                 text_spacer(state.theme.on_surface_variant(), font::SIZE_LARGE),
-                text(format_album_duration(album_cloned.duration))
+                text(format_long_duration(album_cloned.duration))
                     .size(font::SIZE_LARGE)
                     .color(state.theme.on_surface()),
             ]
