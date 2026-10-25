@@ -37,6 +37,8 @@ pub struct AlbumButton<'a, Message> {
     pub press: Message,
     pub shuffle: Message,
     pub add_to_queue: Message,
+    pub toggle_favorite: Message,
+    pub is_favorite: bool,
     pub highlighted: bool,
     pub vibrant: bool,
 }
@@ -48,41 +50,57 @@ where
     fn from(value: AlbumButton<'a, Message>) -> Self {
         let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
 
+        let (icon_font, label) = match value.is_favorite {
+            true => (icons::filled(), "Unfavorite".into()),
+            false => (icons::outlined(), "Favorite".into()),
+        };
+        let entries = vec![
+            vertical_menu::Entry::Button {
+                icon: Some(Icon::Text {
+                    text: icons::PLAY_ARROW.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Play".into(),
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(Some(value.play)),
+            },
+            vertical_menu::Entry::Button {
+                icon: Some(Icon::Text {
+                    text: icons::SHUFFLE.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Shuffle".into(),
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(Some(value.shuffle)),
+            },
+            vertical_menu::Entry::Button {
+                icon: Some(Icon::Text {
+                    text: icons::ADD_TO_QUEUE.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                label: "Add to queue".into(),
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(Some(value.add_to_queue)),
+            },
+            vertical_menu::Entry::Button {
+                icon: Some(Icon::Text {
+                    text: icons::STAR.into_fragment(),
+                    font: Some(icon_font),
+                }),
+                label,
+                supporting_text: None,
+                error: false,
+                action: vertical_menu::Action::Message(Some(value.toggle_favorite)),
+            },
+        ];
+
         let menu = iced_m3::widget::menu(
             vec![vertical_menu::Group {
                 label: None,
-                entries: vec![
-                    vertical_menu::Entry::Button {
-                        icon: Some(Icon::Text {
-                            text: icons::PLAY_ARROW.into_fragment(),
-                            font: Some(icons::filled()),
-                        }),
-                        label: "Play".into(),
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(Some(value.play)),
-                    },
-                    vertical_menu::Entry::Button {
-                        icon: Some(Icon::Text {
-                            text: icons::SHUFFLE.into_fragment(),
-                            font: Some(icons::filled()),
-                        }),
-                        label: "Shuffle".into(),
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(Some(value.shuffle)),
-                    },
-                    vertical_menu::Entry::Button {
-                        icon: Some(Icon::Text {
-                            text: icons::ADD_TO_QUEUE.into_fragment(),
-                            font: Some(icons::filled()),
-                        }),
-                        label: "Add to queue".into(),
-                        supporting_text: None,
-                        error: false,
-                        action: vertical_menu::Action::Message(Some(value.add_to_queue)),
-                    },
-                ],
+                entries,
             }],
             vertical_menu::Style::new(&value.state.theme, value.vibrant),
             font::regular(),

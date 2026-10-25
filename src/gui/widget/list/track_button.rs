@@ -132,8 +132,8 @@ where
         }
 
         let (icon_font, label) = match value.is_favorite {
-            true => (icons::filled(), "Remove from favorites".into()),
-            false => (icons::outlined(), "Add to favorites".into()),
+            true => (icons::filled(), "Unfavorite".into()),
+            false => (icons::outlined(), "Favorite".into()),
         };
         first_group_entries.push(vertical_menu::Entry::Button {
             icon: Some(Icon::Text {

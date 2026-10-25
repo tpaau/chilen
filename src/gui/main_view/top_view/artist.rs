@@ -101,6 +101,8 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         .albums
         .iter()
         .map(|album| {
+            let favorite_item: LibraryItem = album.clone().into();
+            let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
             AlbumButton {
                 state,
                 album: album.clone(),
@@ -115,6 +117,8 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                     initial_position: None,
                 },
                 add_to_queue: Message::AddAlbumToQueue(album.clone()),
+                toggle_favorite: Message::ToggleFavorite(favorite_item),
+                is_favorite,
                 highlighted: highlighted_album_title
                     .map(|t| t == album.title.as_ref())
                     .unwrap_or_default(),
