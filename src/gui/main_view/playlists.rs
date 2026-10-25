@@ -1,5 +1,5 @@
 use chilen_widget::virtual_list::VirtualList;
-use iced::{Element, padding, widget::column};
+use iced::{Element, Length, padding, widget::column};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
@@ -76,6 +76,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
         stack![
             iced_widget::scrollable(content)
+                .width(Length::Fill)
+                .height(Length::Fill)
                 .style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
             fab
         ]

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::Playlist;
+use chilen_backend::music_lib::{LibraryItem, Playlist, is_favorite};
 use iced::{
     Element, Length, Padding,
     widget::{button, column, container, row, space, text},
@@ -89,6 +89,26 @@ pub fn playlist_button<'a>(
                 vertical_menu::Group {
                     label: None,
                     entries: vec![
+                        {
+                            let favorite_item: LibraryItem = playlist.clone().into();
+                            let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+                            let (icon_font, label) = match is_favorite {
+                                true => (icons::filled(), "Unfavorite".into()),
+                                false => (icons::outlined(), "Favorite".into()),
+                            };
+                            vertical_menu::Entry::Button {
+                                icon: Some(Icon::Text {
+                                    text: icons::STAR.into_fragment(),
+                                    font: Some(icon_font),
+                                }),
+                                label,
+                                supporting_text: None,
+                                error: false,
+                                action: vertical_menu::Action::Message(Some(
+                                    main_view::Message::ToggleFavorite(favorite_item),
+                                )),
+                            }
+                        },
                         vertical_menu::Entry::Button {
                             icon: Some(Icon::Text {
                                 text: icons::UPLOAD.into_fragment(),
