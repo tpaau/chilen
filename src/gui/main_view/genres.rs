@@ -1,3 +1,4 @@
+use chilen_backend::music_lib::{LibraryItem, is_favorite};
 use chilen_widget::virtual_list::VirtualList;
 use iced::{Element, Length};
 use iced_core::text::IntoFragment;
@@ -34,6 +35,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 let highlighted = highlighted_genre_name
                     .map(|name| name == genre.name.as_ref())
                     .unwrap_or_default();
+                let favorite_item: LibraryItem = genre.clone().into();
+                let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
                 GenreButton {
                     theme: &state.theme,
                     genre: genre.clone(),
@@ -43,6 +46,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     ))),
                     shuffle: Message::ShuffleGenre(genre.clone()),
                     add_to_queue: Message::AddGenreToQueue(genre.clone()),
+                    toggle_favorite: Message::ToggleFavorite(favorite_item),
+                    is_favorite,
                     highlighted,
                     vibrant: state.settings.vibrant_widgets,
                 }
