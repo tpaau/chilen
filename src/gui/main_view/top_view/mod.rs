@@ -5,7 +5,9 @@ mod playlist;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{Album, Artist, Genre, Playlist, Track};
+use chilen_backend::music_lib::{
+    Album, Artist, Genre, LibraryItem, Playlist, Track, toggle_favorite,
+};
 use iced::{Element, Length, Task};
 use iced_core::text::IntoFragment;
 use iced_m3::{
@@ -115,6 +117,7 @@ pub enum Message {
     AddAlbumToQueue(Arc<Album>),
     AddArtistToQueue(Arc<Artist>),
     AddTrackToPlaylist(Arc<Track>),
+    ToggleFavorite(LibraryItem),
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -314,6 +317,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             common_actions::append_tracks_to_queue(artist.tracks.to_vec())
         }
         Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
+        Message::ToggleFavorite(favorite_item) => {
+            let _ = toggle_favorite(favorite_item);
+        }
     }
     Task::none()
 }

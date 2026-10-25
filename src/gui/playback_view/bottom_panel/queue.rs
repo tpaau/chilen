@@ -1,3 +1,4 @@
+use chilen_backend::music_lib::{LibraryItem, is_favorite};
 use chilen_widget::virtual_list::VirtualList;
 use iced::Element;
 use iced_core::text::IntoFragment;
@@ -38,12 +39,16 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
         let track_buttons: Element<'_, Message> = VirtualList {
             model: tracks_ordered,
             delegate: Box::new(|(virtual_index, track)| {
+                let favorite_item: LibraryItem = track.clone().into();
+                let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
                 TrackButton {
                     state,
                     track: track.clone(),
+                    is_favorite,
                     messages: track_button::Messages {
                         play: Message::PlayTrack(virtual_index),
                         press: Message::PlayTrack(virtual_index),
+                        toggle_favorite: Message::ToggleFavorite(favorite_item),
                         shuffle: None,
                         add_to_queue: None,
                         add_to_playlist: Message::AddTrackToPlaylist(track.clone()),

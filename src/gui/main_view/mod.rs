@@ -8,7 +8,12 @@ mod tracks;
 
 use std::{ops::Not, path::PathBuf, sync::Arc};
 
-use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Playlist, Track};
+use chilen_backend::{
+    music_lib::{
+        Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist, Track, toggle_favorite,
+    },
+    playback::Queue,
+};
 use dirs::home_dir;
 use iced::{Alignment, Border, Element, Length, Pixels, Task, padding};
 use iced_core::text::{self, IntoFragment};
@@ -218,6 +223,8 @@ pub enum Message {
     ShufflePlaylist(Arc<Playlist>),
     AddPlaylistToQueue(Arc<Playlist>),
     ToggleSideBar,
+    ToggleFavorite(LibraryItem),
+    PlayTrack(Arc<Track>),
 }
 
 pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Message> {
@@ -590,6 +597,20 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::ToggleSideBar => {
             state.persistent.sidebar_opened = !state.persistent.sidebar_opened;
             state.save_persistent();
+        }
+        Message::ToggleFavorite(favorite_item) => {
+            let _ = toggle_favorite(favorite_item);
+        }
+        Message::PlayTrack(track) => {
+            let _ = chilen_backend::playback::set_queue(Queue::Custom {
+                label: track
+                    .title
+                    .clone()
+                    .map(|t| t.into_string())
+                    .unwrap_or("Track".to_string()),
+                tracks: vec![track],
+            });
+            let _ = chilen_backend::playback::play(None);
         }
     }
     Task::none()

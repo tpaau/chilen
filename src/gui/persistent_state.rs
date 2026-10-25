@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use chilen_backend::music_lib::{Album, Artist, Genre, MusicLibrary, Playlist};
+use chilen_backend::music_lib::{Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist};
 use log::{debug, error, trace};
 use serde::{Deserialize, Serialize};
 
@@ -52,6 +52,17 @@ impl From<Arc<Artist>> for RecentItem {
 impl From<Arc<Genre>> for RecentItem {
     fn from(value: Arc<Genre>) -> Self {
         Self::Genre(value)
+    }
+}
+
+impl From<RecentItem> for LibraryItem {
+    fn from(value: RecentItem) -> Self {
+        match value {
+            RecentItem::Playlist(playlist) => playlist.into(),
+            RecentItem::Album(album) => album.into(),
+            RecentItem::Artist(artist) => artist.into(),
+            RecentItem::Genre(genre) => genre.into(),
+        }
     }
 }
 

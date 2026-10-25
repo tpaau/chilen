@@ -290,22 +290,54 @@ pub fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
 
 /// Adds a new favorite item to the library.
 ///
-/// The `Ok` variant tells the item was already marked as a favorite.
-///
 /// Fails if the library is not initialized.
-pub fn add_favorite(favorite: impl Into<FavoriteItem>) -> Result<bool, Error> {
+pub fn add_favorite(item: impl Into<LibraryItem>) -> Result<(), Error> {
+    trace!("Adding an item to favorites");
+
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
-    Ok(lib.add_favorite(favorite.into()))
+    lib.add_favorite(item.into())?;
+    save_library()
 }
 
 /// Removes an item from the favorites list.
 ///
-/// The `Ok` variant tells whether item was marked as a favorite.
-///
 /// Fails if the library is not initialized.
-pub fn remove_favorite(favorite: &FavoriteItem) -> Result<bool, Error> {
+pub fn remove_favorite(item: &LibraryItem) -> Result<(), Error> {
+    trace!("Removing an item from favorites");
+
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
-    Ok(lib.remove_favorite(favorite))
+    lib.remove_favorite(item)?;
+
+    drop(guard);
+    save_library()
+}
+
+/// Adds an item to the favorites list if it's not present there, or removes it if it is.
+///
+/// Fails if the library is not initialized.
+pub fn toggle_favorite(item: impl Into<LibraryItem>) -> Result<(), Error> {
+    let item = item.into();
+
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+
+    if lib.favorites.contains(&item) {
+        lib.remove_favorite(&item)?;
+    } else {
+        lib.add_favorite(item)?;
+    }
+
+    drop(guard);
+    save_library()
+}
+
+/// Checks whether the given item is in the favorites list.
+///
+/// Fails if the library is not initialized.
+pub fn is_favorite(item: &LibraryItem) -> Result<bool, Error> {
+    let mut guard = MUSIC_LIBRARY.write().unwrap();
+    let lib = unwrap_lib_mut(guard.as_mut())?;
+    Ok(lib.favorites.contains(item))
 }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::Artist;
+use chilen_backend::music_lib::{Artist, LibraryItem, is_favorite};
 use iced::{Alignment, Element, Length};
 use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, responsive, row, text};
@@ -134,9 +134,12 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
         }
     });
     let track_buttons = artist.tracks.iter().enumerate().map(|(index, track)| {
+        let favorite_item: LibraryItem = track.clone().into();
+        let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
         TrackButton {
             state,
             track: track.clone(),
+            is_favorite,
             messages: track_button::Messages {
                 play: Message::PlayArtistNoShuffle {
                     artist: artist.clone(),
@@ -146,6 +149,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                     artist: artist.clone(),
                     initial_position: Some(index),
                 },
+                toggle_favorite: Message::ToggleFavorite(favorite_item),
                 shuffle: Some(Message::ShuffleArtist {
                     artist: artist.clone(),
                     initial_position: Some(index),

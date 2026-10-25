@@ -3,15 +3,15 @@ use crate::gui::{
     font::{self, bold_text, text},
     formatter::{
         format_album_count, format_album_track_count, format_artist_count, format_date_maybe,
-        format_playlist_track_count, format_track_count,
+        format_playlist_track_count, format_track_count, format_track_duration,
     },
     icons::{self, icon_filled},
     main_view::{Message, NavTab, top_view},
-    persistent_state::RecentItem,
     widget::{
         cover_image::CoverImage, icon_shape::IconShape, text_spacer::text_spacer, wrappers::marquee,
     },
 };
+use chilen_backend::music_lib::LibraryItem;
 use iced::{Alignment, Border, Element, Length, padding};
 use iced_core::text::{self, IntoFragment};
 use iced_m3::{
@@ -27,21 +27,51 @@ use iced_m3::{
 };
 use iced_widget::{column, container, responsive, row, scrollable, space, stack};
 
-fn recent_item<'a>(
-    theme: &'a (impl ColorScheme + ?Sized),
-    item: &'a RecentItem,
+// TODO: Should be a carousel!
+fn card_list<'a>(
+    items: impl IntoIterator<Item = Element<'a, Message>>,
+    theme: &'a impl ColorScheme,
 ) -> Element<'a, Message> {
+    scrollable(row(items).spacing(card::MAX_CARD_BETWEEN_PADDING))
+        .style(|_, status| iced_m3::style::scrollable(status, theme))
+        .horizontal()
+        .into()
+}
+
+fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Message> {
     let (title, cover, icon, info, kind, on_press) = match item {
-        RecentItem::Playlist(playlist) => (
-            playlist.name.as_ref(),
+        LibraryItem::Track(track) => (
+            track
+                .title
+                .as_ref()
+                .map(|b| b.as_ref())
+                .unwrap_or("Track")
+                .to_string(),
+            track.cover.cover(),
+            *icons::MUSIC_NOTE,
+            {
+                let mut info = Vec::new();
+
+                if let Some(artists) = &track.artists {
+                    info.push(artists.join(&state.settings.value_separator))
+                }
+                info.push(format_track_duration(track.duration));
+
+                info
+            },
+            "Track".to_string(),
+            Message::PlayTrack(track.clone()),
+        ),
+        LibraryItem::Playlist(playlist) => (
+            playlist.name.clone().into_string(),
             playlist.cover.cover(),
             *icons::LIBRARY_MUSIC,
             vec![format_playlist_track_count(playlist.tracks.len())],
             "Playlist".to_string(),
             Message::TopView(top_view::Message::Navigate(playlist.clone().into())),
         ),
-        RecentItem::Album(album) => (
-            album.title.as_ref(),
+        LibraryItem::Album(album) => (
+            album.title.clone().into_string(),
             album.cover.cover(),
             *icons::ALBUM,
             vec![
@@ -51,8 +81,8 @@ fn recent_item<'a>(
             "Album".to_string(),
             Message::TopView(top_view::Message::Navigate(album.clone().into())),
         ),
-        RecentItem::Artist(artist) => (
-            artist.name.as_ref(),
+        LibraryItem::Artist(artist) => (
+            artist.name.clone().into_string(),
             artist.cover.cover(),
             *icons::ARTIST,
             vec![
@@ -62,8 +92,8 @@ fn recent_item<'a>(
             "Artist".to_string(),
             Message::TopView(top_view::Message::Navigate(artist.clone().into())),
         ),
-        RecentItem::Genre(genre) => (
-            genre.name.as_ref(),
+        LibraryItem::Genre(genre) => (
+            genre.name.clone().into_string(),
             genre.cover.cover(),
             *icons::GENRES,
             vec![
@@ -82,8 +112,8 @@ fn recent_item<'a>(
         image_path: cover.ok(),
         icon,
         icon_size: cover_size / 2.0,
-        icon_color: theme.on_surface_variant(),
-        container_color: theme.surface_container(),
+        icon_color: state.theme.on_surface_variant(),
+        container_color: state.theme.surface_container(),
         radius: rounding.into(),
         opacity: 1.0,
         width: cover_size.into(),
@@ -92,38 +122,38 @@ fn recent_item<'a>(
 
     let chip = container(
         row![
-            icon_filled(icon, icons::SIZE_SMALL).color(theme.on_tertiary_container()),
+            icon_filled(icon, icons::SIZE_SMALL).color(state.theme.on_tertiary_container()),
             text(kind)
                 .size(font::SIZE_REGULAR)
-                .color(theme.on_tertiary_container())
+                .color(state.theme.on_tertiary_container())
         ]
         .spacing(SPACING_SMALLER),
     )
     .style(|_| {
         container::Style::default()
-            .background(theme.tertiary_container())
+            .background(state.theme.tertiary_container())
             .border(Border::default().rounded(f32::MAX))
     })
     .padding(SPACING_SMALLER);
 
     let cover = stack![cover, container(chip).padding(SPACING_SMALLER)];
 
-    let title = marquee(bold_text(title).size(32).color(theme.on_surface()));
+    let title = marquee(bold_text(title).size(32).color(state.theme.on_surface()));
 
     let info = {
-        let mut info_text = Vec::with_capacity(info.len() * 2 - 1);
+        let mut info_text = Vec::with_capacity(info.len().saturating_mul(2).saturating_sub(1));
         let font_size = font::SIZE_REGULAR;
         let len = info.len();
         for (i, info) in info.into_iter().enumerate() {
             let text = iced_widget::text(info.clone())
                 .size(font_size)
-                .color(theme.on_surface_variant())
+                .color(state.theme.on_surface_variant())
                 .wrapping(text::Wrapping::None);
 
             info_text.push(text.into());
 
             if i != len - 1 {
-                info_text.push(text_spacer(theme.on_surface_variant(), font_size));
+                info_text.push(text_spacer(state.theme.on_surface_variant(), font_size));
             }
         }
 
@@ -140,7 +170,7 @@ fn recent_item<'a>(
 
     let style = card::Style {
         border: Border::default().rounded(rounding),
-        ..card::Style::elevated(theme)
+        ..card::Style::elevated(&state.theme)
     };
     card(style, column![cover, bottom])
         .interaction(card::Interaction::Press(OnPress::Direct(on_press)))
@@ -219,6 +249,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             },
         );
 
+        // TODO: Make this one be a playlist creation button if no playlists are present in the library
         let playlist_text = if let Some(lib) = &state.library
             && !lib.playlists.is_empty()
         {
@@ -268,23 +299,31 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let recent_title = title(&state.theme, cookie12(), *icons::RESTART_ALT, "Recent");
 
-    // TODO: Should be a carousel!
-    let recent_cards = scrollable(
-        row(state
+    let recent_cards = card_list(
+        state
             .persistent
             .recent_items()
             .iter()
-            .map(|item| recent_item(&state.theme, item)))
-        .spacing(card::MAX_CARD_BETWEEN_PADDING),
-    )
-    .style(|_, status| iced_m3::style::scrollable(status, &state.theme))
-    .horizontal();
+            .map(|item| library_item_card(state, item.clone().into())),
+        &state.theme,
+    );
 
     let recent = column![recent_title, recent_cards].spacing(SPACING_REGULAR);
 
     let favorites_title = title(&state.theme, clover8(), *icons::STAR, "Favorites");
 
-    let favorites = column![favorites_title].spacing(SPACING_REGULAR);
+    let favorite_cards = state
+        .library
+        .as_ref()
+        .map(|lib| {
+            lib.favorites
+                .iter()
+                .take(8)
+                .map(|favorite| library_item_card(state, favorite.clone()))
+        })
+        .map(|i| card_list(i, &state.theme));
+
+    let favorites = column![favorites_title, favorite_cards].spacing(SPACING_REGULAR);
 
     scrollable(
         column![column![space().height(16), cards], recent, favorites]

@@ -46,6 +46,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     }))
     .height(Length::Shrink);
 
+    // TODO: An options menu somewhere right to the title
     let title = if let Some(state) = &state.player_state {
         if let Some(track) = state.current() {
             track

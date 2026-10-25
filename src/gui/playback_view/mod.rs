@@ -3,7 +3,10 @@ mod playback_control;
 
 use std::{sync::Arc, time::Duration};
 
-use chilen_backend::{music_lib::Track, playback};
+use chilen_backend::{
+    music_lib::{LibraryItem, Track, toggle_favorite},
+    playback,
+};
 use iced::{Element, Padding, Task};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{column, container};
@@ -31,6 +34,7 @@ pub enum Message {
     TrackButtonPoppedOut(usize),
     RemoveFromQueue(usize),
     AddTrackToPlaylist(Arc<Track>),
+    ToggleFavorite(LibraryItem),
 }
 
 // TODO: Save the last opened tab
@@ -179,6 +183,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             let _ = chilen_backend::playback::remove_from_queue(vec![index]);
         }
         Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
+        Message::ToggleFavorite(favorite_item) => {
+            let _ = toggle_favorite(favorite_item);
+        }
     }
     Task::none()
 }

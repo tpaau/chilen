@@ -37,11 +37,11 @@ pub enum Status {
 pub struct Messages<Message> {
     pub play: Message,
     pub press: Message,
+    pub toggle_favorite: Message,
     pub shuffle: Option<Message>,
     pub add_to_queue: Option<Message>,
     pub add_to_playlist: Message,
-    // TODO: Shouldn't be optional
-    pub details: Option<Message>,
+    pub details: Option<Message>, // TODO: Shouldn't be optional
     pub remove: Option<Message>,
 }
 
@@ -53,6 +53,7 @@ where
     pub track: Arc<Track>,
     pub messages: Messages<Message>,
     pub info: Info,
+    pub is_favorite: bool,
     pub status: Status,
     pub vibrant: bool,
 }
@@ -105,6 +106,7 @@ where
             });
         }
 
+        // TODO: Optimize allocations
         let mut first_group_entries = vec![vertical_menu::Entry::Button {
             icon: Some(Icon::Text {
                 text: icons::PLAY_ARROW.into_fragment(),
@@ -128,6 +130,21 @@ where
                 action: vertical_menu::Action::Message(Some(message)),
             });
         }
+
+        let (icon_font, label) = match value.is_favorite {
+            true => (icons::filled(), "Remove from favorites".into()),
+            false => (icons::outlined(), "Add to favorites".into()),
+        };
+        first_group_entries.push(vertical_menu::Entry::Button {
+            icon: Some(Icon::Text {
+                text: icons::STAR.into_fragment(),
+                font: Some(icon_font),
+            }),
+            label,
+            supporting_text: None,
+            error: false,
+            action: vertical_menu::Action::Message(Some(value.messages.toggle_favorite)),
+        });
 
         if let Some(message) = value.messages.add_to_queue {
             first_group_entries.push(vertical_menu::Entry::Button {

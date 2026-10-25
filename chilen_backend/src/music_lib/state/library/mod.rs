@@ -64,7 +64,7 @@ pub struct Genre {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum FavoriteItem {
+pub enum LibraryItem {
     Track(Arc<Track>),
     Playlist(Arc<Playlist>),
     Album(Arc<Album>),
@@ -72,31 +72,31 @@ pub enum FavoriteItem {
     Genre(Arc<Genre>),
 }
 
-impl From<Arc<Track>> for FavoriteItem {
+impl From<Arc<Track>> for LibraryItem {
     fn from(value: Arc<Track>) -> Self {
         Self::Track(value)
     }
 }
 
-impl From<Arc<Playlist>> for FavoriteItem {
+impl From<Arc<Playlist>> for LibraryItem {
     fn from(value: Arc<Playlist>) -> Self {
         Self::Playlist(value)
     }
 }
 
-impl From<Arc<Album>> for FavoriteItem {
+impl From<Arc<Album>> for LibraryItem {
     fn from(value: Arc<Album>) -> Self {
         Self::Album(value)
     }
 }
 
-impl From<Arc<Artist>> for FavoriteItem {
+impl From<Arc<Artist>> for LibraryItem {
     fn from(value: Arc<Artist>) -> Self {
         Self::Artist(value)
     }
 }
 
-impl From<Arc<Genre>> for FavoriteItem {
+impl From<Arc<Genre>> for LibraryItem {
     fn from(value: Arc<Genre>) -> Self {
         Self::Genre(value)
     }
@@ -105,7 +105,7 @@ impl From<Arc<Genre>> for FavoriteItem {
 #[derive(Clone, Debug, PartialEq)]
 pub struct MusicLibrary {
     pub playlists: Vec<Arc<Playlist>>,
-    pub favorites: HashSet<FavoriteItem>,
+    pub favorites: HashSet<LibraryItem>,
     pub tracks: Vec<Arc<Track>>,
     pub albums: Vec<Arc<Album>>,
     pub artists: Vec<Arc<Artist>>,
@@ -499,19 +499,19 @@ impl MusicLibrary {
             .favorites
             .into_iter()
             .flat_map(|favorite| match favorite {
-                FavoriteItemStored::Track(hash) => {
+                LibraryItemStored::Track(hash) => {
                     lib.track_from_hash(hash).cloned().map(|t| t.into())
                 }
-                FavoriteItemStored::Playlist(name) => {
+                LibraryItemStored::Playlist(name) => {
                     lib.find_playlist_by_name(&name).cloned().map(|p| p.into())
                 }
-                FavoriteItemStored::Album(title) => {
+                LibraryItemStored::Album(title) => {
                     lib.find_album(&title).cloned().map(|a| a.into())
                 }
-                FavoriteItemStored::Artist(name) => {
+                LibraryItemStored::Artist(name) => {
                     lib.find_artist(&name).cloned().map(|a| a.into())
                 }
-                FavoriteItemStored::Genre(name) => lib.find_genre(&name).cloned().map(|g| g.into()),
+                LibraryItemStored::Genre(name) => lib.find_genre(&name).cloned().map(|g| g.into()),
             })
             .collect();
 
@@ -807,20 +807,24 @@ impl MusicLibrary {
     /// Adds a new favorite item to the library.
     ///
     /// Returns whether the item was already marked as a favorite.
-    pub fn add_favorite(&mut self, favorite: FavoriteItem) -> bool {
-        self.favorites.insert(favorite)
+    pub fn add_favorite(&mut self, favorite: LibraryItem) -> Result<(), Error> {
+        self.favorites.insert(favorite);
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
+        Ok(())
     }
 
     /// Removes an item from the favorites list.
     ///
     /// Returns whether the item was marked as a favorite.
-    pub fn remove_favorite(&mut self, favorite: &FavoriteItem) -> bool {
-        self.favorites.remove(favorite)
+    pub fn remove_favorite(&mut self, favorite: &LibraryItem) -> Result<(), Error> {
+        self.favorites.remove(favorite);
+        crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
+        Ok(())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub(super) enum FavoriteItemStored {
+pub(super) enum LibraryItemStored {
     Track(u64),
     Playlist(String),
     Album(String),
@@ -828,14 +832,14 @@ pub(super) enum FavoriteItemStored {
     Genre(String),
 }
 
-impl From<FavoriteItem> for FavoriteItemStored {
-    fn from(value: FavoriteItem) -> Self {
+impl From<LibraryItem> for LibraryItemStored {
+    fn from(value: LibraryItem) -> Self {
         match value {
-            FavoriteItem::Track(track) => Self::Track(track.hash_self()),
-            FavoriteItem::Playlist(playlist) => Self::Playlist(playlist.name.clone().into_string()),
-            FavoriteItem::Album(album) => Self::Album(album.title.clone().into_string()),
-            FavoriteItem::Artist(artist) => Self::Artist(artist.name.clone().into_string()),
-            FavoriteItem::Genre(genre) => Self::Genre(genre.name.clone().into_string()),
+            LibraryItem::Track(track) => Self::Track(track.hash_self()),
+            LibraryItem::Playlist(playlist) => Self::Playlist(playlist.name.clone().into_string()),
+            LibraryItem::Album(album) => Self::Album(album.title.clone().into_string()),
+            LibraryItem::Artist(artist) => Self::Artist(artist.name.clone().into_string()),
+            LibraryItem::Genre(genre) => Self::Genre(genre.name.clone().into_string()),
         }
     }
 }
@@ -843,7 +847,7 @@ impl From<FavoriteItem> for FavoriteItemStored {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(super) struct MusicLibraryStored {
     playlists: Vec<PlaylistStored>,
-    favorites: Vec<FavoriteItemStored>,
+    favorites: Vec<LibraryItemStored>,
 }
 
 impl From<MusicLibrary> for MusicLibraryStored {
