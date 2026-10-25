@@ -351,6 +351,12 @@ impl PlayerState {
             self.shuffle();
         }
         Event::QueueSourceChanged(self.queue_source.clone()).send();
+        Event::TracksChanged {
+            position: self.position,
+            tracks: self.tracks.clone(),
+            shuffled_indices: self.shuffled_track_indices.clone(),
+        }
+        .send();
         self.on_track_changed();
     }
 

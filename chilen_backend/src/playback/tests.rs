@@ -1,9 +1,13 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, mpsc},
+    time::Duration,
+};
 
 use crate::{
+    EVENT_SENDER,
     music_lib::{Track, get_library},
     playback::{
-        LoopState, PLAYER_HANDLE, PlaybackState, ShuffleState, set_queue,
+        LoopState, PLAYER_HANDLE, PlaybackState, Queue, ShuffleState, set_queue,
         state::{PLAYER_STATE, PlayerState},
     },
     tests::setup_test_env,
@@ -221,4 +225,36 @@ fn test_play_new_queue() {
         assert_eq!(state.current(), expected.as_ref());
         assert_eq!(state.position, 0);
     }
+}
+
+// Checks whether setting the queue via `set_queue` triggers the `TracksChanged` event.
+#[test]
+fn test_set_queue_emits_tracks_changed() {
+    let (sender, receiver) = mpsc::channel();
+    {
+        let mut sender_guard = EVENT_SENDER.write().unwrap();
+        *sender_guard = Some(sender);
+    }
+    let mut state = PlayerState::default();
+
+    let dummy_track = Arc::new(Track::default());
+    let queue = Queue::Custom {
+        label: "Test Queue".to_string(),
+        tracks: vec![dummy_track],
+    };
+
+    state.set_queue(queue);
+
+    let mut found_tracks_changed = false;
+    while let Ok(event) = receiver.try_recv() {
+        if let crate::Event::Playback(crate::playback::Event::TracksChanged { .. }) = event {
+            found_tracks_changed = true;
+            break;
+        }
+    }
+
+    assert!(
+        found_tracks_changed,
+        "set_queue did not emit Event::TracksChanged"
+    );
 }
