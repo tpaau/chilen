@@ -175,6 +175,8 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
         .artists
         .iter()
         .map(|artist| {
+            let favorite_item: LibraryItem = artist.clone().into();
+            let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
             ArtistButton {
                 theme: &state.theme,
                 artist: artist.clone(),
@@ -188,6 +190,8 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     initial_position: None,
                 },
                 add_to_queue: Message::AddArtistToQueue(artist.clone()),
+                toggle_favorite: Message::ToggleFavorite(favorite_item),
+                is_favorite,
                 highlighted: highlighted_artist_name
                     .map(|name| name == artist.name.as_ref())
                     .unwrap_or_default(),
