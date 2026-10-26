@@ -305,29 +305,63 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     })
     .height(Length::Shrink);
 
-    let recent_title = title(&state.theme, cookie12(), *icons::RESTART_ALT, "Recent");
+    let shape_padding = 20;
+    let recent_icon = *icons::RESTART_ALT;
+    let recent_shape = cookie12();
 
-    let recent_cards = card_list(
-        state
-            .persistent
-            .recent_items()
-            .iter()
-            .map(|item| library_item_card(state, item.clone().into())),
-        &state.theme,
-    );
+    let recent_items = state.persistent.recent_items();
+    let recent_cards = if recent_items.is_empty() {
+        container(
+            IconShape::new(
+                recent_shape.clone(),
+                state.theme.surface_container_high(),
+                recent_icon,
+                state.theme.on_surface_variant(),
+            )
+            .label("Play something!", state.theme.on_surface_variant()),
+        )
+        .padding(shape_padding)
+        .center_x(Length::Fill)
+        .into()
+    } else {
+        card_list(
+            recent_items
+                .iter()
+                .map(|item| library_item_card(state, item.clone().into())),
+            &state.theme,
+        )
+    };
+
+    let recent_title = title(&state.theme, recent_shape, recent_icon, "Recent");
 
     let recent = column![recent_title, recent_cards].spacing(SPACING_REGULAR);
 
-    let favorites_title = title(&state.theme, clover8(), *icons::STAR, "Favorites");
+    let favorites_shape = clover8();
+    let favorites_icon = *icons::STAR;
+    let favorites = state.persistent.favorites();
+    let favorite_cards = if favorites.is_empty() {
+        container(
+            IconShape::new(
+                favorites_shape.clone(),
+                state.theme.surface_container_high(),
+                favorites_icon,
+                state.theme.on_surface_variant(),
+            )
+            .label("No favorites yet!", state.theme.on_surface_variant()),
+        )
+        .padding(shape_padding)
+        .center_x(Length::Fill)
+        .into()
+    } else {
+        card_list(
+            favorites
+                .into_iter()
+                .map(|favorite| library_item_card(state, favorite)),
+            &state.theme,
+        )
+    };
 
-    let favorite_cards = card_list(
-        state
-            .persistent
-            .favorites()
-            .into_iter()
-            .map(|favorite| library_item_card(state, favorite)),
-        &state.theme,
-    );
+    let favorites_title = title(&state.theme, favorites_shape, favorites_icon, "Favorites");
 
     let favorites = column![favorites_title, favorite_cards].spacing(SPACING_REGULAR);
 

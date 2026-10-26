@@ -283,6 +283,24 @@ impl State {
             .collect();
     }
 
+    fn sync_tracked_favorites(&mut self, lib: &MusicLibrary) {
+        let existing_map: HashMap<LibraryItem, Option<DateTime<Utc>>> = self
+            .tracked_favorites
+            .iter()
+            .map(|f| (f.item.clone(), f.shown_at))
+            .collect();
+
+        self.tracked_favorites = lib
+            .favorites
+            .clone()
+            .into_iter()
+            .map(|item| {
+                let shown_at = existing_map.get(&item).cloned().unwrap_or(None);
+                RecentFavorite { item, shown_at }
+            })
+            .collect();
+    }
+
     fn refresh_shown_favorites(&mut self) {
         self.tracked_favorites.sort_by_key(|f| f.shown_at);
 
@@ -428,6 +446,7 @@ pub fn library_loaded(state: &mut Chilen) {
             state.persistent.refresh_shown_favorites();
         } else {
             state.persistent.refresh_recent_items(lib);
+            state.persistent.sync_tracked_favorites(lib);
             state.persistent.repair_shown_favorites(lib);
         }
         state.save_persistent();
