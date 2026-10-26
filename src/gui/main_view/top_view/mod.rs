@@ -116,7 +116,7 @@ pub enum Message {
     AddTrackToQueue(Arc<Track>),
     AddAlbumToQueue(Arc<Album>),
     AddArtistToQueue(Arc<Artist>),
-    AddTrackToPlaylist(Arc<Track>),
+    AddTracksToPlaylist(Vec<u64>),
     ToggleFavorite(LibraryItem),
 }
 
@@ -318,7 +318,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::AddArtistToQueue(artist) => {
             common_actions::append_tracks_to_queue(artist.tracks.to_vec())
         }
-        Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
+        Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
         Message::ToggleFavorite(favorite_item) => {
             let _ = toggle_favorite(favorite_item);
         }

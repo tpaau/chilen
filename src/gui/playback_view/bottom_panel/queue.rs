@@ -51,7 +51,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                         toggle_favorite: Message::ToggleFavorite(favorite_item),
                         shuffle: None,
                         add_to_queue: None,
-                        add_to_playlist: Message::AddTrackToPlaylist(track.clone()),
+                        add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
                         details: None,
                         remove: Some(Message::RemoveFromQueue(virtual_index)),
                     },

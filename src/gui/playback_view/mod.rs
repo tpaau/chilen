@@ -1,10 +1,10 @@
 mod bottom_panel;
 mod playback_control;
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use chilen_backend::{
-    music_lib::{LibraryItem, Track, toggle_favorite},
+    music_lib::{LibraryItem, toggle_favorite},
     playback,
 };
 use iced::{Element, Padding, Task};
@@ -33,7 +33,7 @@ pub enum Message {
     TrackButtonPoppedIn(usize),
     TrackButtonPoppedOut(usize),
     RemoveFromQueue(usize),
-    AddTrackToPlaylist(Arc<Track>),
+    AddTracksToPlaylist(Vec<u64>),
     ToggleFavorite(LibraryItem),
 }
 
@@ -182,7 +182,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::RemoveFromQueue(index) => {
             let _ = chilen_backend::playback::remove_from_queue(vec![index]);
         }
-        Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
+        Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
         Message::ToggleFavorite(favorite_item) => {
             let _ = toggle_favorite(favorite_item);
         }

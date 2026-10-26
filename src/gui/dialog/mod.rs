@@ -1,9 +1,9 @@
-mod add_track_to_playlist;
+mod add_tracks_to_playlist;
 mod loading;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{Playlist, Progress, Track};
+use chilen_backend::music_lib::{Playlist, Progress};
 use iced::{Element, Length, border::Radius};
 use iced_m3::{theme::ColorScheme, widget::dialog};
 use iced_widget::container;
@@ -22,14 +22,14 @@ pub enum Dialog {
     Error(String),
     RenamePlaylist { playlist: String, name: String },
     DeletePlaylist(Arc<Playlist>),
-    AddTrackToPlaylist(Arc<Track>),
+    AddTracksToPlaylist(Vec<u64>),
     Loading(Option<Progress>),
     ResetSettings,
 }
 
-/// Appends a single track to the queue.
-pub fn add_track_to_playlist(state: &mut Chilen, track: Arc<Track>) {
-    state.dialog = Dialog::AddTrackToPlaylist(track)
+/// Appends a list of tracks to a playlist.
+pub fn add_tracks_to_playlist(state: &mut Chilen, tracks: Vec<u64>) {
+    state.dialog = Dialog::AddTracksToPlaylist(tracks)
 }
 
 fn cancel_button(theme: &(impl ColorScheme + ?Sized)) -> iced_m3::widget::dialog::Button<Message> {
@@ -223,8 +223,8 @@ pub fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             .width((dialog::MIN_WIDTH + dialog::MAX_WIDTH) / 2.0)
             .into()
         }),
-        Dialog::AddTrackToPlaylist(track) => {
-            Some(add_track_to_playlist::view(state, track.clone()))
+        Dialog::AddTracksToPlaylist(tracks) => {
+            Some(add_tracks_to_playlist::view(state, tracks.clone()))
         }
         Dialog::Loading(progress) => Some(loading::view(&state.theme, progress.clone())),
         Dialog::ResetSettings => Some(

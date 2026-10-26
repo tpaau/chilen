@@ -176,16 +176,15 @@ fn track_append() {
     let mut lib = MusicLibrary::new_testing(tracks.clone());
 
     lib.create_playlist("Test1", &None).unwrap();
-    lib.add_tracks("Test1", vec![tracks[0].hash_self()])
-        .unwrap();
+    lib.add_tracks("Test1", &[tracks[0].hash_self()]).unwrap();
     assert_eq!(
-        lib.add_tracks("Test2", vec![tracks[0].hash_self()])
+        lib.add_tracks("Test2", &[tracks[0].hash_self()])
             .unwrap_err(),
         Error::UnknownPlaylist("Test2".to_string())
     );
 
     assert_eq!(
-        lib.add_tracks("Test1", vec![4]).unwrap_err(),
+        lib.add_tracks("Test1", &[4]).unwrap_err(),
         Error::UnknownTrack { hash: 4 }
     );
 }

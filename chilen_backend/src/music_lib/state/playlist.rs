@@ -36,7 +36,7 @@ impl Playlist {
         loaded: PlaylistStored,
         config: indexer::Config,
     ) -> Self {
-        let result = lib.find_tracks_by_hashes(loaded.track_hashes);
+        let result = lib.find_tracks_by_hashes(&loaded.track_hashes);
         if !result.unmatched.is_empty() {
             warn!(
                 "{} missing tracks in playlist {}",

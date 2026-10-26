@@ -50,7 +50,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                             initial_position: Some(index),
                         }),
                         add_to_queue: Some(main_view::Message::AddTrackToQueue(track.clone())),
-                        add_to_playlist: main_view::Message::AddTrackToPlaylist(track.clone()),
+                        add_to_playlist: main_view::Message::AddTracksToPlaylist(vec![
+                            track.hash_self(),
+                        ]),
                         details: None,
                         remove: None,
                     },

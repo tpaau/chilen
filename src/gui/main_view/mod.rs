@@ -247,7 +247,7 @@ pub enum Message {
     AddAlbumToQueue(Arc<Album>),
     AddArtistToQueue(Arc<Artist>),
     AddGenreToQueue(Arc<Genre>),
-    AddTrackToPlaylist(Arc<Track>),
+    AddTracksToPlaylist(Vec<u64>),
     CreatePlaylist,
     ExportPlaylist(String),
     SaveExportedPlaylist(String, Option<rfd::FileHandle>),
@@ -566,7 +566,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::AddGenreToQueue(genre) => {
             common_actions::append_tracks_to_queue(genre.tracks.to_vec())
         }
-        Message::AddTrackToPlaylist(track) => dialog::add_track_to_playlist(state, track),
+        Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
         Message::CreatePlaylist => {
             state.dialog = Dialog::CreatePlaylist(String::new());
         }

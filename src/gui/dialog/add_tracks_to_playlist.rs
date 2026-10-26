@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{Playlist, Track};
+use chilen_backend::music_lib::Playlist;
 use iced::{Alignment, Element, Length};
 use iced_m3::{
     theme::ColorScheme,
@@ -23,7 +23,7 @@ use crate::{
 
 fn playlist_choice<'a>(
     theme: &'a impl ColorScheme,
-    track: Arc<Track>,
+    tracks: Vec<u64>,
     playlist: &'a Arc<Playlist>,
 ) -> Element<'a, Message> {
     button(
@@ -49,20 +49,20 @@ fn playlist_choice<'a>(
     )
     .padding(BUTTON_PADDING)
     .width(Length::Fill)
-    .on_press(Message::AddTrackToPlaylist {
-        track,
+    .on_press(Message::AddTracksToPlaylist {
+        tracks: tracks.to_vec(),
         playlist: playlist.name.clone().into_string(),
     })
     .style(|_, status| crate::gui::widget::list::button_style(status, theme.on_surface()))
     .into()
 }
 
-pub(super) fn view<'a>(state: &'a Chilen, track: Arc<Track>) -> Element<'a, Message> {
+pub(super) fn view<'a>(state: &'a Chilen, tracks: Vec<u64>) -> Element<'a, Message> {
     let choices: Element<'_, Message> = match &state.library {
         Some(lib) => column(
             lib.playlists
                 .iter()
-                .map(|p| playlist_choice(&state.theme, track.clone(), p)),
+                .map(|p| playlist_choice(&state.theme, tracks.clone(), p)),
         )
         .into(),
         None => text("no library!!").into(),

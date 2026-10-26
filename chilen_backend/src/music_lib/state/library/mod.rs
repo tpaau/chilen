@@ -588,15 +588,15 @@ impl MusicLibrary {
     }
 
     /// Retrieves tracks corresponding to a list of provided hashes.
-    pub fn find_tracks_by_hashes(&self, hashes: Vec<u64>) -> HashMatchingResult {
+    pub fn find_tracks_by_hashes(&self, hashes: &[u64]) -> HashMatchingResult {
         // In most cases all tracks will match
         let mut tracks = Vec::with_capacity(hashes.len());
         let mut unmatched = Vec::new();
         for hash in hashes {
-            if let Some(track) = self.tracks_by_hash.get(&hash) {
+            if let Some(track) = self.tracks_by_hash.get(hash) {
                 tracks.push(track.clone());
             } else {
-                unmatched.push(hash);
+                unmatched.push(*hash);
             }
         }
         tracks.shrink_to_fit();
@@ -715,7 +715,7 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn add_tracks(&mut self, name: &str, tracks: Vec<u64>) -> Result<(), Error> {
+    pub fn add_tracks(&mut self, name: &str, tracks: &[u64]) -> Result<(), Error> {
         let name = name.trim();
         trace!("Adding tracks to playlist \"{name}\"");
 

@@ -159,7 +159,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                     initial_position: Some(index),
                 }),
                 add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
-                add_to_playlist: Message::AddTrackToPlaylist(track.clone()),
+                add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
                 details: None,
                 remove: None,
             },
