@@ -131,7 +131,9 @@ enum LibraryItemStored {
 impl Storable<LibraryItemStored> for LibraryItem {
     fn from_stored(lib: &MusicLibrary, stored: LibraryItemStored) -> Option<Self> {
         match stored {
-            LibraryItemStored::Track(hash) => lib.track_from_hash(hash).cloned().map(Self::Track),
+            LibraryItemStored::Track(hash) => {
+                lib.find_track_by_hash(hash).cloned().map(Self::Track)
+            }
             LibraryItemStored::Playlist(name) => lib
                 .find_playlist_by_name(&name)
                 .cloned()
@@ -145,7 +147,7 @@ impl Storable<LibraryItemStored> for LibraryItem {
     fn reload(self, lib: &MusicLibrary) -> Option<Self> {
         match self {
             Self::Track(track) => lib
-                .track_from_hash(track.hash_self())
+                .find_track_by_hash(track.hash_self())
                 .cloned()
                 .map(Self::Track),
             Self::Playlist(playlist) => lib

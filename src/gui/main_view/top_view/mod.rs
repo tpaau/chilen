@@ -231,7 +231,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             // TODO: This is a placeholder
         }
         Message::RemoveTrackFromPlaylist { playlist, index } => {
-            if let Err(e) = chilen_backend::music_lib::remove_tracks(&playlist.name, vec![index]) {
+            if let Err(e) =
+                chilen_backend::music_lib::remove_tracks_by_indices(&playlist.name, vec![index])
+            {
                 let msg = format!("Couldn't remove track from playlist: {e}");
                 error!("{msg}");
                 state.dialog = crate::gui::dialog::Dialog::Error(msg);

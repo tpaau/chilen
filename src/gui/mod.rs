@@ -329,7 +329,7 @@ impl Chilen {
             }
             Message::AddTrackToPlaylist { track, playlist } => {
                 if let Err(e) =
-                    chilen_backend::music_lib::add_tracks(&playlist, vec![track.path.clone()])
+                    chilen_backend::music_lib::add_tracks(&playlist, vec![track.hash_self()])
                 {
                     state.dialog = Dialog::Error(format!(
                         "Couldn't add the track to playlist {playlist}: {e}"

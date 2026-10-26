@@ -157,6 +157,10 @@ pub enum Error {
     ///
     /// This likely either means that the specified file path doesn't exists or is not writable.
     PlaylistExportFailed,
+    /// Track with the given id does not exist in the library
+    UnknownTrack {
+        hash: u64,
+    },
 }
 
 impl std::error::Error for Error {}
@@ -220,6 +224,9 @@ impl std::fmt::Display for Error {
                 write!(f, "Could not create a directory at {path_buf:?}: {e}")
             }
             Error::EmptyName => write!(f, "The name is empty"),
+            Self::UnknownTrack { hash } => {
+                write!(f, "Track with id {hash} does not exist in the library")
+            }
         }
     }
 }

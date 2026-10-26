@@ -142,10 +142,10 @@ pub(crate) fn tracks_from_paths(
     Ok(out)
 }
 
-pub(crate) fn tracks_from_hashes(hashes: Vec<u64>) -> Result<HashMatchingResult, Error> {
+pub(crate) fn find_tracks_by_hashes(hashes: Vec<u64>) -> Result<HashMatchingResult, Error> {
     let guard = MUSIC_LIBRARY.read().unwrap();
     let lib = unwrap_lib_ref(guard.as_ref())?;
-    Ok(lib.tracks_from_hashes(hashes))
+    Ok(lib.find_tracks_by_hashes(hashes))
 }
 
 // TEST: Check if import works correctly
@@ -268,7 +268,7 @@ pub fn delete_playlists(playlists: Vec<&str>) -> Result<(), Error> {
     save_library()
 }
 
-pub fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
+pub fn add_tracks(playlist: &str, tracks: Vec<u64>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.add_tracks(playlist, tracks)?;
@@ -278,7 +278,7 @@ pub fn add_tracks(playlist: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
 }
 
 /// Remove tracks by indices from a playlist.
-pub fn remove_tracks(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
+pub fn remove_tracks_by_indices(playlist: &str, tracks: Vec<usize>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.remove_tracks(playlist, tracks)?;

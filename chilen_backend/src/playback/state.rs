@@ -15,7 +15,7 @@ use rand::seq::SliceRandom;
 
 use crate::{
     Error,
-    music_lib::{Album, Artist, CACHE_DIR, Genre, Playlist, Track, tracks_from_hashes},
+    music_lib::{Album, Artist, CACHE_DIR, Genre, Playlist, Track, find_tracks_by_hashes},
     playback::{LoopState, PlaybackState, PlayerVolume, ShuffleState},
 };
 
@@ -176,7 +176,7 @@ impl TryFrom<PlayerStateRaw> for PlayerState {
     type Error = Error;
     fn try_from(value: PlayerStateRaw) -> Result<Self, Self::Error> {
         let (tracks, shuffled_track_indices) = {
-            let result = tracks_from_hashes(value.track_hashes)?;
+            let result = find_tracks_by_hashes(value.track_hashes)?;
             if !result.unmatched.is_empty() {
                 warn!("{} missing tracks in the queue", result.unmatched.len());
                 let indices = result.matched.iter().enumerate().map(|(i, _)| i).collect();

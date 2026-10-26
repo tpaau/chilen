@@ -500,7 +500,7 @@ impl MusicLibrary {
             .into_iter()
             .flat_map(|favorite| match favorite {
                 LibraryItemStored::Track(hash) => {
-                    lib.track_from_hash(hash).cloned().map(|t| t.into())
+                    lib.find_track_by_hash(hash).cloned().map(|t| t.into())
                 }
                 LibraryItemStored::Playlist(name) => {
                     lib.find_playlist_by_name(&name).cloned().map(|p| p.into())
@@ -582,12 +582,13 @@ impl MusicLibrary {
         playlist_name
     }
 
-    pub fn track_from_hash(&self, hash: u64) -> Option<&Arc<Track>> {
+    /// Retrieves a track corresponding to the provided hash.
+    pub fn find_track_by_hash(&self, hash: u64) -> Option<&Arc<Track>> {
         self.tracks_by_hash.get(&hash)
     }
 
     /// Retrieves tracks corresponding to a list of provided hashes.
-    pub fn tracks_from_hashes(&self, hashes: Vec<u64>) -> HashMatchingResult {
+    pub fn find_tracks_by_hashes(&self, hashes: Vec<u64>) -> HashMatchingResult {
         // In most cases all tracks will match
         let mut tracks = Vec::with_capacity(hashes.len());
         let mut unmatched = Vec::new();
@@ -714,7 +715,7 @@ impl MusicLibrary {
         Ok(())
     }
 
-    pub fn add_tracks(&mut self, name: &str, tracks: Vec<PathBuf>) -> Result<(), Error> {
+    pub fn add_tracks(&mut self, name: &str, tracks: Vec<u64>) -> Result<(), Error> {
         let name = name.trim();
         trace!("Adding tracks to playlist \"{name}\"");
 
@@ -723,13 +724,9 @@ impl MusicLibrary {
             None => return Err(Error::UnknownPlaylist(name.to_string())),
         };
 
-        let mut out = Vec::with_capacity(tracks.len());
-        for path in tracks {
-            if let Some(track) = self.find_track_by_path(&path.to_string_lossy()) {
-                out.push(track.clone());
-            } else {
-                return Err(Error::UnknownTrackPath(path.to_path_buf()));
-            }
+        let mut result = self.find_tracks_by_hashes(tracks);
+        if let Some(unmatched) = result.unmatched.first() {
+            return Err(Error::UnknownTrack { hash: *unmatched });
         }
 
         let mut playlist = self.playlists[playlist_index].as_ref().clone();
@@ -738,7 +735,7 @@ impl MusicLibrary {
         self.playlists_by_id.remove(&playlist.id);
 
         let mut tracks = std::mem::take(&mut playlist.tracks).into_vec();
-        tracks.append(&mut out);
+        tracks.append(&mut result.matched);
         playlist.tracks = tracks.into_boxed_slice();
 
         let playlist = Arc::new(playlist);
