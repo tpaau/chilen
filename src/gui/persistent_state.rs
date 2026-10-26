@@ -1,4 +1,5 @@
 use std::{
+    collections::{HashMap, HashSet},
     fs::{File, read_to_string},
     io::Write,
     path::PathBuf,
@@ -6,7 +7,9 @@ use std::{
 };
 
 use chilen_backend::music_lib::{Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist};
+use chrono::{DateTime, Utc};
 use log::{debug, error, trace};
+use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 
 use crate::gui::{Chilen, playback_view};
@@ -66,7 +69,12 @@ impl From<RecentItem> for LibraryItem {
     }
 }
 
-impl RecentItem {
+trait Storable<T>: Sized {
+    fn from_stored(lib: &MusicLibrary, stored: T) -> Option<Self>;
+    fn reload(self, lib: &MusicLibrary) -> Option<Self>;
+}
+
+impl Storable<RecentItemStored> for RecentItem {
     fn from_stored(lib: &MusicLibrary, stored: RecentItemStored) -> Option<Self> {
         match stored {
             RecentItemStored::Playlist(name) => lib
@@ -111,11 +119,86 @@ impl From<RecentItem> for RecentItemStored {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum LibraryItemStored {
+    Track(u64),
+    Playlist(String),
+    Album(String),
+    Artist(String),
+    Genre(String),
+}
+
+impl Storable<LibraryItemStored> for LibraryItem {
+    fn from_stored(lib: &MusicLibrary, stored: LibraryItemStored) -> Option<Self> {
+        match stored {
+            LibraryItemStored::Track(hash) => lib.track_from_hash(hash).cloned().map(Self::Track),
+            LibraryItemStored::Playlist(name) => lib
+                .find_playlist_by_name(&name)
+                .cloned()
+                .map(Self::Playlist),
+            LibraryItemStored::Album(title) => lib.find_album(&title).cloned().map(Self::Album),
+            LibraryItemStored::Artist(name) => lib.find_artist(&name).cloned().map(Self::Artist),
+            LibraryItemStored::Genre(name) => lib.find_genre(&name).cloned().map(Self::Genre),
+        }
+    }
+
+    fn reload(self, lib: &MusicLibrary) -> Option<Self> {
+        match self {
+            Self::Track(track) => lib
+                .track_from_hash(track.hash_self())
+                .cloned()
+                .map(Self::Track),
+            Self::Playlist(playlist) => lib
+                .find_playlist_by_id(playlist.id)
+                .cloned()
+                .map(Self::Playlist),
+            Self::Album(album) => lib.find_album(&album.title).cloned().map(Self::Album),
+            Self::Artist(artist) => lib.find_artist(&artist.name).cloned().map(Self::Artist),
+            Self::Genre(genre) => lib.find_genre(&genre.name).cloned().map(Self::Genre),
+        }
+    }
+}
+
+impl From<LibraryItem> for LibraryItemStored {
+    fn from(value: LibraryItem) -> Self {
+        match value {
+            LibraryItem::Track(track) => Self::Track(track.hash_self()),
+            LibraryItem::Playlist(playlist) => Self::Playlist(playlist.name.clone().into_string()),
+            LibraryItem::Album(album) => Self::Album(album.title.clone().into_string()),
+            LibraryItem::Artist(artist) => Self::Artist(artist.name.clone().into_string()),
+            LibraryItem::Genre(genre) => Self::Genre(genre.name.clone().into_string()),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct RecentFavorite {
+    item: LibraryItem,
+    shown_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct RecentFavoriteStored {
+    item: LibraryItemStored,
+    shown_at: Option<DateTime<Utc>>,
+}
+
+impl From<RecentFavorite> for RecentFavoriteStored {
+    fn from(value: RecentFavorite) -> Self {
+        Self {
+            item: value.item.into(),
+            shown_at: value.shown_at,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct State {
     pub sidebar_opened: bool,
     pub playback_tab: playback_view::Tab,
     recent_items: Vec<RecentItem>,
+    tracked_favorites: Vec<RecentFavorite>,
+    shown_favorites: Vec<RecentFavorite>,
 }
 
 impl Default for State {
@@ -124,6 +207,8 @@ impl Default for State {
             sidebar_opened: true,
             playback_tab: playback_view::Tab::default(),
             recent_items: Vec::new(),
+            tracked_favorites: Vec::new(),
+            shown_favorites: Vec::new(),
         }
     }
 }
@@ -133,6 +218,7 @@ struct StoredState {
     sidebar_opened: bool,
     playback_tab: playback_view::Tab,
     recent_items: Vec<RecentItemStored>,
+    tracked_favorites: Vec<RecentFavoriteStored>,
 }
 
 impl From<State> for StoredState {
@@ -141,6 +227,11 @@ impl From<State> for StoredState {
             sidebar_opened: value.sidebar_opened,
             playback_tab: value.playback_tab,
             recent_items: value.recent_items.into_iter().map(|i| i.into()).collect(),
+            tracked_favorites: value
+                .tracked_favorites
+                .into_iter()
+                .map(|i| i.into())
+                .collect(),
         }
     }
 }
@@ -153,6 +244,8 @@ impl State {
             sidebar_opened: stored.sidebar_opened,
             playback_tab: stored.playback_tab,
             recent_items: Vec::new(),
+            tracked_favorites: Vec::new(),
+            shown_favorites: Vec::new(),
         }
     }
 
@@ -166,7 +259,87 @@ impl State {
             .collect();
     }
 
-    fn reload(&mut self, lib: &MusicLibrary) {
+    fn restore_tracked_favorites(&mut self, lib: &MusicLibrary, items: Vec<RecentFavoriteStored>) {
+        trace!("Restoring tracked favorite items");
+
+        let stored_map: HashMap<LibraryItemStored, Option<DateTime<Utc>>> =
+            items.into_iter().map(|f| (f.item, f.shown_at)).collect();
+
+        self.tracked_favorites = lib
+            .favorites
+            .clone()
+            .into_iter()
+            .map(|item| {
+                let stored_at = stored_map
+                    .get(&LibraryItemStored::from(item.clone()))
+                    .cloned()
+                    .unwrap_or(None);
+
+                RecentFavorite {
+                    item,
+                    shown_at: stored_at,
+                }
+            })
+            .collect();
+    }
+
+    fn refresh_shown_favorites(&mut self) {
+        self.tracked_favorites.sort_by_key(|f| f.shown_at);
+
+        let mut selected_indices: Vec<usize> = (0..self.tracked_favorites.len())
+            .take(Self::MAX_RECENT_ITEMS)
+            .collect();
+
+        selected_indices.shuffle(&mut rand::rng());
+
+        let now = Utc::now();
+        self.shown_favorites = selected_indices
+            .into_iter()
+            .map(|idx| {
+                let fav = &mut self.tracked_favorites[idx];
+                fav.shown_at = Some(now);
+                fav.clone()
+            })
+            .collect();
+    }
+
+    pub fn repair_shown_favorites(&mut self, lib: &MusicLibrary) {
+        let current_favs: HashSet<&LibraryItem> = lib.favorites.iter().collect();
+
+        self.shown_favorites
+            .retain(|f| current_favs.contains(&f.item));
+
+        if self.shown_favorites.len() < Self::MAX_RECENT_ITEMS {
+            let gap = Self::MAX_RECENT_ITEMS - self.shown_favorites.len();
+
+            let mut candidates: Vec<_> = self
+                .tracked_favorites
+                .clone()
+                .into_iter()
+                .filter(|tf| !self.shown_favorites.iter().any(|sf| sf.item == tf.item))
+                .collect();
+
+            candidates.sort_by_key(|f| f.shown_at);
+
+            let now = Utc::now();
+            for candidate in candidates.into_iter().take(gap) {
+                if let Some(master_fav) = self
+                    .tracked_favorites
+                    .iter_mut()
+                    .find(|f| f.item == candidate.item)
+                {
+                    master_fav.shown_at = Some(now);
+                }
+
+                self.shown_favorites.push(RecentFavorite {
+                    item: candidate.item.clone(),
+                    shown_at: Some(now),
+                });
+            }
+        }
+    }
+
+    fn refresh_recent_items(&mut self, lib: &MusicLibrary) {
         trace!("Reloading the persistent state");
         let items = std::mem::take(&mut self.recent_items);
         self.recent_items = items.into_iter().flat_map(|i| i.reload(lib)).collect();
@@ -218,6 +391,13 @@ impl State {
     pub fn recent_items(&self) -> &Vec<RecentItem> {
         &self.recent_items
     }
+
+    pub fn favorites(&self) -> Vec<LibraryItem> {
+        self.shown_favorites
+            .iter()
+            .map(|f| f.item.clone())
+            .collect()
+    }
 }
 
 pub fn library_loaded(state: &mut Chilen) {
@@ -242,8 +422,13 @@ pub fn library_loaded(state: &mut Chilen) {
             state
                 .persistent
                 .restore_recent_items(lib, stored_state.recent_items);
+            state
+                .persistent
+                .restore_tracked_favorites(lib, stored_state.tracked_favorites);
+            state.persistent.refresh_shown_favorites();
         } else {
-            state.persistent.reload(lib);
+            state.persistent.refresh_recent_items(lib);
+            state.persistent.repair_shown_favorites(lib);
         }
         state.save_persistent();
     }

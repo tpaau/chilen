@@ -320,17 +320,14 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let favorites_title = title(&state.theme, clover8(), *icons::STAR, "Favorites");
 
-    // TODO: Should be something like recent favorites
-    let favorite_cards = state
-        .library
-        .as_ref()
-        .map(|lib| {
-            lib.favorites
-                .iter()
-                .take(8)
-                .map(|favorite| library_item_card(state, favorite.clone()))
-        })
-        .map(|i| card_list(i, &state.theme));
+    let favorite_cards = card_list(
+        state
+            .persistent
+            .favorites()
+            .into_iter()
+            .map(|favorite| library_item_card(state, favorite)),
+        &state.theme,
+    );
 
     let favorites = column![favorites_title, favorite_cards].spacing(SPACING_REGULAR);
 
