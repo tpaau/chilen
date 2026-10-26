@@ -79,7 +79,16 @@ where
                 error: false,
                 action: vertical_menu::Action::Message(Some(value.add_to_queue)),
             },
-            {
+        ];
+
+        let first_group = vertical_menu::Group {
+            label: None,
+            entries,
+        };
+
+        let second_group = vertical_menu::Group {
+            label: None,
+            entries: vec![{
                 let (icon_font, label) = match value.is_favorite {
                     true => (icons::filled(), "Unfavorite".into()),
                     false => (icons::outlined(), "Favorite".into()),
@@ -94,14 +103,11 @@ where
                     error: false,
                     action: vertical_menu::Action::Message(Some(value.toggle_favorite)),
                 }
-            },
-        ];
+            }],
+        };
 
         let menu = iced_m3::widget::menu(
-            vec![vertical_menu::Group {
-                label: None,
-                entries,
-            }],
+            vec![first_group, second_group],
             vertical_menu::Style::new(value.theme, value.vibrant),
             font::regular(),
         );

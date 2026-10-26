@@ -70,9 +70,25 @@ where
         };
 
         let mut second_group_entries = vec![
+            {
+                let (icon_font, label) = match value.is_favorite {
+                    true => (icons::filled(), "Unfavorite".into()),
+                    false => (icons::outlined(), "Favorite".into()),
+                };
+                vertical_menu::Entry::Button {
+                    icon: Some(Icon::Text {
+                        text: icons::STAR.into_fragment(),
+                        font: Some(icon_font),
+                    }),
+                    label,
+                    supporting_text: None,
+                    error: false,
+                    action: vertical_menu::Action::Message(Some(value.messages.toggle_favorite)),
+                }
+            },
             vertical_menu::Entry::Button {
                 icon: Some(Icon::Text {
-                    text: icons::LIBRARY_MUSIC.into_fragment(),
+                    text: icons::PLAYLIST_ADD.into_fragment(),
                     font: Some(icons::filled()),
                 }),
                 label: "Add to playlist".into(),
@@ -130,21 +146,6 @@ where
                 action: vertical_menu::Action::Message(Some(message)),
             });
         }
-
-        let (icon_font, label) = match value.is_favorite {
-            true => (icons::filled(), "Unfavorite".into()),
-            false => (icons::outlined(), "Favorite".into()),
-        };
-        first_group_entries.push(vertical_menu::Entry::Button {
-            icon: Some(Icon::Text {
-                text: icons::STAR.into_fragment(),
-                font: Some(icon_font),
-            }),
-            label,
-            supporting_text: None,
-            error: false,
-            action: vertical_menu::Action::Message(Some(value.messages.toggle_favorite)),
-        });
 
         if let Some(message) = value.messages.add_to_queue {
             first_group_entries.push(vertical_menu::Entry::Button {

@@ -85,7 +85,16 @@ where
                 error: false,
                 action: vertical_menu::Action::Message(Some(value.add_to_queue)),
             },
-            vertical_menu::Entry::Button {
+        ];
+
+        let first_group = vertical_menu::Group {
+            label: None,
+            entries,
+        };
+
+        let second_group = vertical_menu::Group {
+            label: None,
+            entries: vec![vertical_menu::Entry::Button {
                 icon: Some(Icon::Text {
                     text: icons::STAR.into_fragment(),
                     font: Some(icon_font),
@@ -94,14 +103,11 @@ where
                 supporting_text: None,
                 error: false,
                 action: vertical_menu::Action::Message(Some(value.toggle_favorite)),
-            },
-        ];
+            }],
+        };
 
         let menu = iced_m3::widget::menu(
-            vec![vertical_menu::Group {
-                label: None,
-                entries,
-            }],
+            vec![first_group, second_group],
             vertical_menu::Style::new(&value.state.theme, value.vibrant),
             font::regular(),
         );
