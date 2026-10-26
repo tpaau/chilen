@@ -7,7 +7,7 @@ use crate::gui::{
         format_track_duration,
     },
     icons::{self, icon_filled},
-    main_view::{Message, NavTab, top_view},
+    main_view::{Message, NavTab, TOOLBAR_OFFSET, top_view},
     widget::{
         cover_image::CoverImage, icon_shape::IconShape, text_spacer::text_spacer, wrappers::marquee,
     },
@@ -320,6 +320,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let favorites_title = title(&state.theme, clover8(), *icons::STAR, "Favorites");
 
+    // TODO: Should be something like recent favorites
     let favorite_cards = state
         .library
         .as_ref()
@@ -333,11 +334,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let favorites = column![favorites_title, favorite_cards].spacing(SPACING_REGULAR);
 
-    scrollable(
+    scrollable(column![
         column![column![space().height(16), cards], recent, favorites]
             .spacing(42)
             .padding(padding::horizontal(SPACING_REGULAR)),
-    )
+        space().height(*TOOLBAR_OFFSET)
+    ])
     .width(Length::Fill)
     .height(Length::Fill)
     .style(|_, status| iced_m3::style::scrollable(status, &state.theme))

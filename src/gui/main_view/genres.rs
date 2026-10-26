@@ -3,12 +3,12 @@ use chilen_widget::virtual_list::VirtualList;
 use iced::{Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::shapes};
-use iced_widget::{center, column};
+use iced_widget::{center, column, space};
 
 use crate::gui::{
     Chilen, icons,
     main_view::{
-        Message,
+        Message, TOOLBAR_OFFSET,
         top_view::{self, TopView},
     },
     widget::{
@@ -60,7 +60,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             on_hide: Box::new(Message::ButtonPoppedOut),
         };
 
-        iced_widget::scrollable(content)
+        iced_widget::scrollable(column![content, space().height(*TOOLBAR_OFFSET)])
             .width(Length::Fill)
             .height(Length::Fill)
             .style(|_, status| iced_m3::style::scrollable(status, &state.theme))

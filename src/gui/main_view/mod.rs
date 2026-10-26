@@ -6,7 +6,11 @@ mod playlists;
 pub mod top_view;
 mod tracks;
 
-use std::{ops::Not, path::PathBuf, sync::Arc};
+use std::{
+    ops::Not,
+    path::PathBuf,
+    sync::{Arc, LazyLock},
+};
 
 use chilen_backend::{
     music_lib::{
@@ -49,6 +53,17 @@ use crate::{
 };
 
 pub(super) const VIEW_INNER_PADDING: f32 = crate::gui::SPACING_SMALL;
+const TOOLBAR_OUTER_PADDING: f32 = SPACING_SMALL;
+static TOOLBAR_BUTTON_SIZE: LazyLock<button::Size> = LazyLock::new(button::Size::small);
+const TOOLBAR_INNER_PADDING: f32 = SPACING_SMALLER;
+static TOOLBAR_OFFSET: LazyLock<f32> = LazyLock::new(|| {
+    let height = TOOLBAR_BUTTON_SIZE.height;
+    if let Length::Fixed(height) = height {
+        height + 2.0 * TOOLBAR_INNER_PADDING + 2.0 * TOOLBAR_OUTER_PADDING
+    } else {
+        unreachable!("The button height should always be fixed!")
+    }
+});
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum View {
@@ -62,6 +77,7 @@ impl Default for View {
     }
 }
 
+// TODO: Dedicated view for favorite items
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NavTab {
@@ -433,6 +449,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
                         font: Some(icons::filled())
                     })
                 )
+                .size(*TOOLBAR_BUTTON_SIZE)
                 .on_press(Message::Noop),
                 iced_m3::widget::button(
                     button::Style::outlined(&state.theme),
@@ -441,6 +458,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
                         font: Some(icons::filled())
                     })
                 )
+                .size(*TOOLBAR_BUTTON_SIZE)
                 .on_press(Message::OpenSettings),
             ]
             .align_y(Alignment::Center)
@@ -455,12 +473,12 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
                     iced_m3::style::Elevation::Level3,
                 ))
         })
-        .padding(SPACING_SMALLER),
+        .padding(TOOLBAR_INNER_PADDING),
     ))
     .width(Length::Fill)
     .align_bottom(Length::Fill)
     .align_x(Alignment::Center)
-    .padding(VIEW_INNER_PADDING);
+    .padding(VIEW_INNER_PADDING + TOOLBAR_OUTER_PADDING);
 
     let main = stack!(main_container, toolbar);
 

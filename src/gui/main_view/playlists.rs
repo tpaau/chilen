@@ -5,11 +5,11 @@ use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{OnPress, fab_menu, hybrid_icon::Icon, shapes},
 };
-use iced_widget::{bottom_right, center, stack};
+use iced_widget::{bottom_right, center, space, stack};
 
 use crate::gui::{
     Chilen, SPACING_SMALL, icons,
-    main_view::Message,
+    main_view::{Message, TOOLBAR_OFFSET},
     widget::{
         icon_shape::IconShape,
         list::{BUTTON_HEIGHT, BUTTON_SPACING, playlist_button::playlist_button},
@@ -75,7 +75,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         };
 
         stack![
-            iced_widget::scrollable(content)
+            iced_widget::scrollable(column![content, space().height(*TOOLBAR_OFFSET)])
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .style(|_, status| iced_m3::style::scrollable(status, &state.theme)),
