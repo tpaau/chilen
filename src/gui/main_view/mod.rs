@@ -1,5 +1,6 @@
 mod albums;
 mod artists;
+mod favorites;
 mod genres;
 mod home;
 mod playlists;
@@ -30,7 +31,7 @@ use iced_m3::{
         navrail,
         shapes::polymorpher::{
             RoundedPolygon,
-            shapes::{clover4, clover8, cookie6, cookie7, ghostish, sunny},
+            shapes::{clover4, clover8, cookie6, cookie7, ghostish, sunny, very_sunny},
         },
         spacer,
     },
@@ -52,6 +53,7 @@ use crate::{
     },
 };
 
+pub(super) const NO_FAVORITES_LABEL: &str = "No favorites yet!";
 pub(super) const VIEW_INNER_PADDING: f32 = crate::gui::SPACING_SMALL;
 const TOOLBAR_OUTER_PADDING: f32 = SPACING_SMALL;
 static TOOLBAR_BUTTON_SIZE: LazyLock<button::Size> = LazyLock::new(button::Size::small);
@@ -83,6 +85,7 @@ impl Default for View {
 pub enum NavTab {
     #[default]
     Home,
+    Favorites,
     Playlists,
     Tracks,
     Albums,
@@ -99,6 +102,7 @@ impl NavTab {
             NavTab::Albums => "Albums",
             NavTab::Artists => "Artists",
             NavTab::Genres => "Genres",
+            NavTab::Favorites => "Favorites",
         }
         .to_string()
     }
@@ -111,6 +115,7 @@ impl NavTab {
             NavTab::Albums => cookie7(),
             NavTab::Artists => clover8(),
             NavTab::Genres => sunny(),
+            NavTab::Favorites => very_sunny(),
         }
     }
 
@@ -122,6 +127,7 @@ impl NavTab {
             NavTab::Albums => *icons::ALBUM,
             NavTab::Artists => *icons::ARTIST,
             NavTab::Genres => *icons::GENRES,
+            NavTab::Favorites => *icons::STAR,
         }
         .into_fragment()
     }
@@ -217,6 +223,7 @@ impl State {
                 NavTab::Albums => lib.albums.len(),
                 NavTab::Artists => lib.artists.len(),
                 NavTab::Genres => lib.genres.len(),
+                NavTab::Favorites => lib.favorites.len(),
             };
             if len != visible.len() {
                 // FIX: May cause issues if a lot of stuff is needlessly loaded because of this
@@ -278,6 +285,19 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             label: "Home".into(),
             badge: None,
             on_press: Message::SwitchTab(NavTab::Home),
+        },
+        navrail::Item {
+            icon_active: Icon::Text {
+                text: icons::STAR.into_fragment(),
+                font: Some(icons::filled()),
+            },
+            icon_inactive: Icon::Text {
+                text: icons::STAR.into_fragment(),
+                font: Some(icons::outlined()),
+            },
+            label: "Favorites".into(),
+            badge: None,
+            on_press: Message::SwitchTab(NavTab::Favorites),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -399,6 +419,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
                     genres::view(state)
                 ]
                 .into(),
+                NavTab::Favorites => favorites::view(state),
             },
         };
         center(content)
@@ -496,6 +517,7 @@ fn init_visible(lib: &MusicLibrary, tab: &NavTab) -> Vec<bool> {
         NavTab::Albums => vec![false; lib.albums.len()],
         NavTab::Artists => vec![false; lib.artists.len()],
         NavTab::Genres => vec![false; lib.genres.len()],
+        NavTab::Favorites => vec![false; lib.favorites.len()],
     }
 }
 

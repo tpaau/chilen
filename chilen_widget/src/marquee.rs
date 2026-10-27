@@ -370,6 +370,7 @@ where
         let is_over = cursor.is_over(layout.bounds());
 
         match event {
+            // FIX: Doesn't work reliably for scroll views
             iced::Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                 if state.is_over != is_over && self.animation == Animation::WhenHovered {
                     state.reset_offsets(Instant::now());

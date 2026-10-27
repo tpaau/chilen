@@ -2,12 +2,12 @@ use chilen_backend::music_lib::{LibraryItem, is_favorite};
 use chilen_widget::virtual_list::VirtualList;
 use iced::{Element, Length};
 use iced_core::text::IntoFragment;
-use iced_m3::{theme::ColorScheme, widget::shapes};
+use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, space};
 
 use crate::gui::{
     Chilen, icons,
-    main_view::{self, TOOLBAR_OFFSET},
+    main_view::{self, NavTab, TOOLBAR_OFFSET},
     widget::{
         icon_shape::IconShape,
         list::{
@@ -84,7 +84,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
     } else {
         center(
             IconShape::new(
-                shapes::polymorpher::shapes::sunny(),
+                NavTab::Tracks.shape(),
                 state.theme.surface_container_high(),
                 icons::MUSIC_NOTE.into_fragment(),
                 state.theme.on_surface_variant(),

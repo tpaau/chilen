@@ -66,6 +66,7 @@ pub static EQUALIZER: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe01d).u
 pub static TRENDING_UP: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe8e5).unwrap());
 pub static STAR: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe838).unwrap());
 pub static RESTART_ALT: LazyLock<char> = LazyLock::new(|| char::from_u32(0xf053).unwrap());
+pub static ARROW_FORWARD: LazyLock<char> = LazyLock::new(|| char::from_u32(0xe5c8).unwrap());
 
 pub const SIZE_SMALLER: f32 = 16.0;
 pub const SIZE_SMALL: f32 = 20.0;

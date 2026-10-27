@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
     font::{self, bold_text, text},
@@ -7,7 +9,7 @@ use crate::gui::{
         format_track_duration,
     },
     icons::{self, icon_filled},
-    main_view::{Message, NavTab, TOOLBAR_OFFSET, top_view},
+    main_view::{Message, NO_FAVORITES_LABEL, NavTab, TOOLBAR_OFFSET, top_view},
     widget::{
         cover_image::CoverImage, icon_shape::IconShape, text_spacer::text_spacer, wrappers::marquee,
     },
@@ -16,12 +18,13 @@ use chilen_backend::music_lib::LibraryItem;
 use iced::{Alignment, Border, Element, Length, padding};
 use iced_core::text::{self, IntoFragment};
 use iced_m3::{
-    theme::ColorScheme,
+    theme::{Accent, ColorScheme},
     widget::{
-        OnPress, card,
+        OnPress, button, card,
+        hybrid_icon::Icon,
         shapes::polymorpher::{
             RoundedPolygon,
-            shapes::{clover8, cookie4, cookie12},
+            shapes::{cookie4, cookie12},
         },
         spacer,
     },
@@ -183,6 +186,8 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
         .into()
 }
 
+static TITLE_BUTTON_SIZE: LazyLock<button::Size> = LazyLock::new(button::Size::medium);
+const TITLE_ITEM_SPACING: f32 = SPACING_REGULAR;
 fn title<'a>(
     theme: &(impl ColorScheme + ?Sized),
     shape: RoundedPolygon,
@@ -196,7 +201,8 @@ fn title<'a>(
         bold_text(title).size(30),
         spacer(theme.outline_variant())
     ]
-    .spacing(SPACING_REGULAR)
+    .height(TITLE_BUTTON_SIZE.height)
+    .spacing(TITLE_ITEM_SPACING)
     .align_y(Alignment::Center)
     .into()
 }
@@ -336,7 +342,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let recent = column![recent_title, recent_cards].spacing(SPACING_REGULAR);
 
-    let favorites_shape = clover8();
+    let favorites_shape = NavTab::Favorites.shape();
     let favorites_icon = *icons::STAR;
     let favorites = state.persistent.favorites();
     let favorite_cards = if favorites.is_empty() {
@@ -347,7 +353,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 favorites_icon,
                 state.theme.on_surface_variant(),
             )
-            .label("No favorites yet!", state.theme.on_surface_variant()),
+            .label(NO_FAVORITES_LABEL, state.theme.on_surface_variant()),
         )
         .padding(shape_padding)
         .center_x(Length::Fill)
@@ -361,7 +367,25 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         )
     };
 
-    let favorites_title = title(&state.theme, favorites_shape, favorites_icon, "Favorites");
+    let favorites_button = button(
+        button::Style::tonal(&state.theme, Accent::Secondary),
+        button::Content::Full {
+            icon: Icon::Text {
+                text: icons::ARROW_FORWARD.into_fragment(),
+                font: Some(icons::filled()),
+            },
+            label: "See all".into(),
+        },
+    )
+    .size(*TITLE_BUTTON_SIZE)
+    .on_press(Message::SwitchTab(NavTab::Favorites));
+
+    let favorites_title = row![
+        title(&state.theme, favorites_shape, favorites_icon, "Favorites"),
+        favorites_button
+    ]
+    .align_y(Alignment::Center)
+    .spacing(TITLE_ITEM_SPACING);
 
     let favorites = column![favorites_title, favorite_cards].spacing(SPACING_REGULAR);
 

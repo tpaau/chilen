@@ -46,9 +46,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     if let Some(lib) = &state.library
         && !lib.playlists.is_empty()
     {
-        let highlighted_index = state.player_state.as_ref().and_then(|p| {
-            if p.queue_source == chilen_backend::playback::QueueSource::AllTracks {
-                p.real_track_index(p.position)
+        let highlighted_name = state.player_state.as_ref().and_then(|p| {
+            if let chilen_backend::playback::QueueSource::Playlist { name } = &p.queue_source {
+                Some(name)
             } else {
                 None
             }
@@ -61,8 +61,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     state,
                     playlist,
                     index,
-                    highlighted_index
-                        .map(|highlighted_index| highlighted_index == index)
+                    highlighted_name
+                        .map(|name| name.as_str() == playlist.name.as_ref())
                         .unwrap_or_default(),
                     state.settings.vibrant_widgets,
                 )
