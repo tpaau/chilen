@@ -12,6 +12,7 @@ Source0:        https://github.com/tpaau/chilen/archive/refs/heads/main.tar.gz
 BuildRequires:  cargo
 BuildRequires:  alsa-lib-devel
 BuildRequires:  gcc
+BuildRequires:  git
 
 %description
 %{summary}
