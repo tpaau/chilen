@@ -43,7 +43,7 @@ use crate::{
     APP_NAME,
     gui::{
         self, Chilen, GOTH_CORNER_ROUNDING, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-        common_actions,
+        common_actions::{self},
         dialog::{self, Dialog},
         font::bold_text,
         icons,
@@ -243,6 +243,9 @@ pub enum Message {
     OpenSettings,
     PlayTracks { initial_position: usize },
     PlayTracksNoShuffle { initial_position: usize },
+    PlayFavoriteTracks { initial_position: usize },
+    PlayFavoriteTracksNoShuffle { initial_position: usize },
+    ShuffleFavoriteTracks { initial_position: usize },
     ShuffleTracks { initial_position: Option<usize> },
     PlayAlbum(Arc<Album>),
     ShuffleAlbum(Arc<Album>),
@@ -558,7 +561,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             common_actions::play_all_tracks_no_shuffle(state, Some(initial_position));
         }
         Message::ShuffleTracks { initial_position } => {
-            common_actions::shuffle_tracks(state, initial_position);
+            common_actions::shuffle_all_tracks(state, initial_position);
         }
         Message::PlayAlbum(album) => {
             common_actions::play_album_no_shuffle(state, album, None);
@@ -673,6 +676,15 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 },
                 None,
             );
+        }
+        Message::PlayFavoriteTracks { initial_position } => {
+            common_actions::play_all_favorite_tracks(state, Some(initial_position))
+        }
+        Message::PlayFavoriteTracksNoShuffle { initial_position } => {
+            common_actions::play_all_favorite_tracks_no_shuffle(state, Some(initial_position));
+        }
+        Message::ShuffleFavoriteTracks { initial_position } => {
+            common_actions::shuffle_all_favorite_tracks(state, Some(initial_position));
         }
     }
     Task::none()

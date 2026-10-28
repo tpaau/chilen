@@ -9,6 +9,7 @@ use iced_widget::{center, column, space};
 
 use crate::gui::{
     Chilen, SPACING_LARGE, SPACING_REGULAR,
+    common_actions::ALL_FAVORITE_TRACKS_QUEUE_NAME,
     font::bold_text,
     icons,
     main_view::{
@@ -47,6 +48,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     if let Some(lib) = &state.library
         && !lib.favorites.is_empty()
     {
+        // TODO: Alphabetic sorting!
         let mut playlists = Vec::new();
         let mut tracks = Vec::new();
         let mut albums = Vec::new();
@@ -101,7 +103,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         let tracks = tracks.is_empty().not().then_some({
             // FIX: Won't work that
             let highlighted_index = state.player_state.as_ref().and_then(|p| {
-                if p.queue_source == chilen_backend::playback::QueueSource::AllTracks {
+                if let chilen_backend::playback::QueueSource::Custom { label } = &p.queue_source
+                    && label == ALL_FAVORITE_TRACKS_QUEUE_NAME
+                {
                     p.real_track_index(p.position)
                 } else {
                     None
@@ -118,15 +122,15 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         track: track.clone(),
                         is_favorite,
                         messages: track_button::Messages {
-                            play: Message::PlayTracksNoShuffle {
+                            play: Message::PlayFavoriteTracksNoShuffle {
                                 initial_position: index,
                             },
-                            press: Message::PlayTracks {
+                            press: Message::PlayFavoriteTracks {
                                 initial_position: index,
                             },
                             toggle_favorite: Message::ToggleFavorite(favorite_item),
-                            shuffle: Some(Message::ShuffleTracks {
-                                initial_position: Some(index),
+                            shuffle: Some(Message::ShuffleFavoriteTracks {
+                                initial_position: index,
                             }),
                             add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
                             add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),

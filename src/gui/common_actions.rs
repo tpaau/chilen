@@ -5,12 +5,15 @@
 use std::sync::Arc;
 
 use chilen_backend::{
-    music_lib::{Album, Artist, Genre, Playlist, Track},
+    music_lib::{Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist, Track},
     playback::{Queue, ShuffleState},
 };
 use log::error;
 
 use crate::gui::{Chilen, persistent_state};
+
+pub const ALL_FAVORITE_TRACKS_QUEUE_NAME: &str = "Favorite tracks";
+const UNLOADED_ERROR_MESSAGE: &str = "Cannot play the track, the library is not loaded";
 
 /// Plays all tracks in the music library with the current shuffle state.
 pub fn play_all_tracks(state: &Chilen, initial_position: usize) {
@@ -21,7 +24,7 @@ pub fn play_all_tracks(state: &Chilen, initial_position: usize) {
                 Some(initial_position),
             );
         }
-        None => error!("Cannot play the track, the library is not loaded"),
+        None => error!("{UNLOADED_ERROR_MESSAGE}"),
     }
 }
 
@@ -35,12 +38,12 @@ pub fn play_all_tracks_no_shuffle(state: &Chilen, initial_position: Option<usize
                 initial_position,
             );
         }
-        None => error!("Cannot play the track, the library is not loaded"),
+        None => error!("{UNLOADED_ERROR_MESSAGE}"),
     }
 }
 
 /// Enables shuffling and plays all tracks in the music library.
-pub fn shuffle_tracks(state: &Chilen, initial_position: Option<usize>) {
+pub fn shuffle_all_tracks(state: &Chilen, initial_position: Option<usize>) {
     match &state.library {
         Some(lib) => {
             let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::On);
@@ -49,7 +52,69 @@ pub fn shuffle_tracks(state: &Chilen, initial_position: Option<usize>) {
                 initial_position,
             );
         }
-        None => error!("Cannot play the track, the library is not loaded"),
+        None => error!("{UNLOADED_ERROR_MESSAGE}"),
+    }
+}
+
+fn get_favorite_tracks(lib: &MusicLibrary) -> Vec<Arc<Track>> {
+    lib.favorites
+        .iter()
+        .filter_map(|f| {
+            if let LibraryItem::Track(t) = f {
+                return Some(t.clone());
+            }
+            None
+        })
+        .collect()
+}
+
+/// Plays all favorite_tracks in the music library with the current shuffle state.
+pub fn play_all_favorite_tracks(state: &Chilen, initial_position: Option<usize>) {
+    match &state.library {
+        Some(lib) => {
+            let _ = chilen_backend::playback::play_new_queue(
+                Queue::Custom {
+                    label: ALL_FAVORITE_TRACKS_QUEUE_NAME.to_string(),
+                    tracks: get_favorite_tracks(lib),
+                },
+                initial_position,
+            );
+        }
+        None => error!("{UNLOADED_ERROR_MESSAGE}"),
+    }
+}
+
+/// Disables shuffling and plays all favorite_tracks in the music library.
+pub fn play_all_favorite_tracks_no_shuffle(state: &Chilen, initial_position: Option<usize>) {
+    match &state.library {
+        Some(lib) => {
+            let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::Off);
+            let _ = chilen_backend::playback::play_new_queue(
+                Queue::Custom {
+                    label: ALL_FAVORITE_TRACKS_QUEUE_NAME.to_string(),
+                    tracks: get_favorite_tracks(lib),
+                },
+                initial_position,
+            );
+        }
+        None => error!("{UNLOADED_ERROR_MESSAGE}"),
+    }
+}
+
+/// Enables shuffling and plays all favorite_tracks in the music library.
+pub fn shuffle_all_favorite_tracks(state: &Chilen, initial_position: Option<usize>) {
+    match &state.library {
+        Some(lib) => {
+            let _ = chilen_backend::playback::set_shuffle_state(ShuffleState::On);
+            let _ = chilen_backend::playback::play_new_queue(
+                Queue::Custom {
+                    label: ALL_FAVORITE_TRACKS_QUEUE_NAME.to_string(),
+                    tracks: get_favorite_tracks(lib),
+                },
+                initial_position,
+            );
+        }
+        None => error!("{UNLOADED_ERROR_MESSAGE}"),
     }
 }
 
