@@ -1,6 +1,9 @@
 use std::ops::Not;
 
-use chilen_backend::music_lib::{LibraryItem, is_favorite};
+use chilen_backend::music_lib::{
+    LibraryItem, is_favorite,
+    sorting::{sort_albums, sort_artists, sort_genres, sort_playlists, sort_tracks},
+};
 use chilen_widget::virtual_list::VirtualList;
 use iced::{Element, Length};
 use iced_core::text::IntoFragment;
@@ -48,7 +51,6 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     if let Some(lib) = &state.library
         && !lib.favorites.is_empty()
     {
-        // TODO: Alphabetic sorting!
         let mut playlists = Vec::new();
         let mut tracks = Vec::new();
         let mut albums = Vec::new();
@@ -64,6 +66,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 LibraryItem::Genre(g) => genres.push(g),
             }
         }
+
+        sort_playlists(&mut playlists);
+        sort_tracks(&mut tracks);
+        sort_albums(&mut albums);
+        sort_artists(&mut artists);
+        sort_genres(&mut genres);
 
         let track_offset = playlists.len();
         let album_offset = track_offset + tracks.len();

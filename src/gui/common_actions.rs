@@ -5,7 +5,9 @@
 use std::sync::Arc;
 
 use chilen_backend::{
-    music_lib::{Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist, Track},
+    music_lib::{
+        Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist, Track, sorting::sort_tracks,
+    },
     playback::{Queue, ShuffleState},
 };
 use log::error;
@@ -57,7 +59,8 @@ pub fn shuffle_all_tracks(state: &Chilen, initial_position: Option<usize>) {
 }
 
 fn get_favorite_tracks(lib: &MusicLibrary) -> Vec<Arc<Track>> {
-    lib.favorites
+    let mut tracks: Vec<_> = lib
+        .favorites
         .iter()
         .filter_map(|f| {
             if let LibraryItem::Track(t) = f {
@@ -65,7 +68,9 @@ fn get_favorite_tracks(lib: &MusicLibrary) -> Vec<Arc<Track>> {
             }
             None
         })
-        .collect()
+        .collect();
+    sort_tracks(&mut tracks);
+    tracks
 }
 
 /// Plays all favorite_tracks in the music library with the current shuffle state.
