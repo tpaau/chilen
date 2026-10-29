@@ -409,6 +409,8 @@ pub(crate) fn update_properties(properties: Vec<Property>) {
         };
         pollster::block_on(async {
             // FIX: Breaks with certain tracks is seems (eg. Partiality)
+            // NOTE: This also seems to happen with other players, the track has some corrupted
+            // metadata. Maybe we can handle issues like these more gracefully or fix it in MPRIS?
             if let Err(e) = server.properties_changed(properties).await {
                 error!("Cannot update MPRIS properties: {e}");
             }

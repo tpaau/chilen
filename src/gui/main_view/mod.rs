@@ -79,7 +79,6 @@ impl Default for View {
     }
 }
 
-// TODO: Dedicated view for favorite items
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NavTab {

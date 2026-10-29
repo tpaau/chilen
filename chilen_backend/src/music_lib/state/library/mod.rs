@@ -243,8 +243,6 @@ impl MusicLibrary {
             .into_iter()
             .map(|name| {
                 let mut tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
-                // TODO: Sort tracks chronologically if possible, then fall back to track index in
-                // albums, then to alphabetic sorting
                 sort_tracks_chronologically(&mut tracks);
 
                 let mut albums = if let Some(albums) = albums_by_artist.get(name) {
