@@ -23,8 +23,8 @@ use crate::{
             covers::{Cover, get_playlist_cover},
         },
         sorting::{
-            sort_albums, sort_albums_chronologically, sort_artists, sort_playlists, sort_tracks,
-            sort_tracks_chronologically, sort_tracks_in_album,
+            sort_albums, sort_albums_chronologically, sort_artists, sort_genres, sort_playlists,
+            sort_tracks, sort_tracks_chronologically, sort_tracks_in_album,
         },
         state::{Playlist, PlaylistStored, Progress, Track},
         tracks_from_m3u8,
@@ -124,7 +124,6 @@ pub struct MusicLibrary {
     genres_by_name: HashMap<Box<str>, Arc<Genre>>,
 }
 
-// TODO: Fallback alphabetic sorting w/out the collator
 impl MusicLibrary {
     pub(super) fn new(tracks: Vec<Track>) -> Self {
         crate::send_event(Event::LoadProgressChanged(Progress::RebuildingLibrary));
@@ -133,7 +132,7 @@ impl MusicLibrary {
 
         let guard = COLLATOR.read().unwrap();
         let collator = guard.as_ref();
-        sort_tracks(&mut tracks, collator);
+        sort_tracks(&mut tracks);
 
         let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
         let artist_names: HashSet<_> = tracks
@@ -184,7 +183,7 @@ impl MusicLibrary {
             .into_iter()
             .map(|title| {
                 let mut tracks: Vec<_> = tracks_by_album[title].clone().into_iter().collect();
-                sort_tracks_in_album(&mut tracks, collator);
+                sort_tracks_in_album(&mut tracks);
 
                 let mut artists: Vec<_> = tracks
                     .iter()
@@ -192,8 +191,13 @@ impl MusicLibrary {
                     .collect::<HashSet<Box<str>>>()
                     .into_iter()
                     .collect();
-                if let Some(collator) = collator {
-                    artists.sort_by(|a1, a2| collator.compare(a1, a2));
+                match collator {
+                    Some(collator) => {
+                        artists.sort_by(|a1, a2| collator.compare(a1, a2));
+                    }
+                    None => {
+                        artists.sort();
+                    }
                 }
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
@@ -216,7 +220,7 @@ impl MusicLibrary {
                 })
             })
             .collect();
-        sort_albums(&mut albums, collator);
+        sort_albums(&mut albums);
 
         let albums_by_title: HashMap<Box<str>, Arc<Album>> = albums
             .iter()
@@ -241,14 +245,14 @@ impl MusicLibrary {
                 let mut tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
                 // TODO: Sort tracks chronologically if possible, then fall back to track index in
                 // albums, then to alphabetic sorting
-                sort_tracks_chronologically(&mut tracks, collator);
+                sort_tracks_chronologically(&mut tracks);
 
                 let mut albums = if let Some(albums) = albums_by_artist.get(name) {
                     albums.iter().cloned().collect()
                 } else {
                     Vec::new()
                 };
-                sort_albums_chronologically(&mut albums, collator);
+                sort_albums_chronologically(&mut albums);
 
                 let cover = tracks
                     .first()
@@ -263,7 +267,7 @@ impl MusicLibrary {
                 })
             })
             .collect();
-        sort_artists(&mut artists, collator);
+        sort_artists(&mut artists);
 
         let mut artists_by_album: HashMap<&Box<str>, HashSet<Arc<Artist>>> =
             HashMap::with_capacity(albums.len());
@@ -313,7 +317,7 @@ impl MusicLibrary {
             .into_iter()
             .map(|name| {
                 let mut tracks: Vec<_> = tracks_by_genre[name].clone().into_iter().collect();
-                sort_tracks(&mut tracks, collator);
+                sort_tracks(&mut tracks);
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
                 for track in &tracks {
@@ -323,10 +327,10 @@ impl MusicLibrary {
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
                 let mut artists: Vec<_> = artists_by_genre[name].clone().into_iter().collect();
-                sort_artists(&mut artists, collator);
+                sort_artists(&mut artists);
 
                 let mut albums: Vec<_> = albums_by_genre[name].clone().into_iter().collect();
-                sort_albums(&mut albums, collator);
+                sort_albums(&mut albums);
 
                 Arc::new(Genre {
                     name: name.to_string().into(),
@@ -341,9 +345,7 @@ impl MusicLibrary {
         let genres_by_name: HashMap<Box<str>, Arc<Genre>> =
             genres.iter().map(|g| (g.name.clone(), g.clone())).collect();
 
-        if let Some(collator) = collator {
-            genres.sort_by(|g1, g2| collator.compare(&g1.name, &g2.name));
-        }
+        sort_genres(&mut genres);
 
         let mut track_path_map: HashMap<Box<str>, _> = HashMap::with_capacity(tracks.len());
         for t in tracks.iter() {
@@ -424,9 +426,7 @@ impl MusicLibrary {
         lib.favorites = favorites;
         lib.playlists = playlists;
 
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
-        sort_playlists(&mut lib.playlists, collator);
+        sort_playlists(&mut lib.playlists);
 
         lib
     }
@@ -586,9 +586,7 @@ impl MusicLibrary {
         });
         self.playlists.push(playlist.clone());
         self.playlists_by_name.insert(name.into(), playlist);
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
-        sort_playlists(&mut self.playlists, collator);
+        sort_playlists(&mut self.playlists);
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
     }
@@ -620,10 +618,7 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(target.into(), playlist.clone());
         self.playlists_by_id.insert(playlist_id, playlist);
-
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
-        sort_playlists(&mut self.playlists, collator);
+        sort_playlists(&mut self.playlists);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -657,10 +652,7 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist.clone());
         self.playlists_by_id.insert(playlist.id, playlist);
-
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
-        sort_playlists(&mut self.playlists, collator);
+        sort_playlists(&mut self.playlists);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -686,10 +678,7 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist.clone());
         self.playlists_by_id.insert(playlist.id, playlist);
-
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
-        sort_playlists(&mut self.playlists, collator);
+        sort_playlists(&mut self.playlists);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())

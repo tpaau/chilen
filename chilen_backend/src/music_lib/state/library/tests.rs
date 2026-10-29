@@ -3,7 +3,10 @@ use std::sync::Arc;
 use icu::collator::{Collator, options::CollatorOptions};
 
 use crate::{
-    music_lib::{sorting::sort_tracks_in_album, state::Track},
+    music_lib::{
+        sorting::{COLLATOR, sort_tracks_in_album},
+        state::Track,
+    },
     testing_init_config,
 };
 
@@ -23,8 +26,9 @@ fn album_track_sorting() {
     let collator = Arc::new(
         Collator::try_new(config.locale.clone().into(), CollatorOptions::default()).unwrap(),
     );
+    *COLLATOR.write().unwrap() = Some(collator);
 
-    sort_tracks_in_album(&mut tracks, Some(&collator));
+    sort_tracks_in_album(&mut tracks);
     assert_eq!(
         &tracks,
         &[

@@ -10,13 +10,13 @@ use std::{
 };
 
 use icu::{
-    collator::{Collator, CollatorBorrowed, options::CollatorOptions},
+    collator::{Collator, options::CollatorOptions},
     locale::Locale,
 };
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::music_lib::{MusicLibrary, set_dirs};
+use crate::music_lib::{MusicLibrary, set_dirs, sorting::COLLATOR};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
@@ -247,7 +247,6 @@ pub(crate) static EVENT_SENDER: LazyLock<Arc<RwLock<Option<mpsc::Sender<Event>>>
     LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 static CONFIG: RwLock<Option<Arc<Config>>> = RwLock::new(None);
-pub(crate) static COLLATOR: RwLock<Option<Arc<CollatorBorrowed<'_>>>> = RwLock::new(None);
 
 pub(crate) fn get_config() -> Arc<Config> {
     let guard = CONFIG.read().unwrap();
