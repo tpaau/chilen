@@ -1,4 +1,5 @@
 pub mod indexer;
+pub mod sorting;
 
 mod state;
 #[cfg(test)]

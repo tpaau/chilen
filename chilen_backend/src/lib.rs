@@ -1,3 +1,8 @@
+pub mod music_lib;
+pub mod playback;
+#[cfg(test)]
+mod tests;
+
 use std::{
     path::PathBuf,
     sync::{Arc, LazyLock, RwLock, mpsc},
@@ -12,11 +17,6 @@ use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::music_lib::{MusicLibrary, set_dirs};
-
-pub mod music_lib;
-pub mod playback;
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {

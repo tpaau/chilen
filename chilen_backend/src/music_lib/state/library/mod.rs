@@ -9,7 +9,6 @@ use std::{
     time::Duration,
 };
 
-use icu::collator::CollatorBorrowed;
 pub use lofty::tag::items::Timestamp;
 use log::{error, trace};
 use serde::{Deserialize, Serialize};
@@ -22,6 +21,10 @@ use crate::{
         indexer::{
             self,
             covers::{Cover, get_playlist_cover},
+        },
+        sorting::{
+            sort_albums, sort_albums_chronologically, sort_artists, sort_playlists, sort_tracks,
+            sort_tracks_chronologically, sort_tracks_in_album,
         },
         state::{Playlist, PlaylistStored, Progress, Track},
         tracks_from_m3u8,
@@ -123,103 +126,6 @@ pub struct MusicLibrary {
 
 // TODO: Fallback alphabetic sorting w/out the collator
 impl MusicLibrary {
-    fn sort_tracks_alphabetically(
-        tracks: &mut [Arc<Track>],
-        collator: Option<&Arc<CollatorBorrowed<'_>>>,
-    ) {
-        if let Some(collator) = collator {
-            tracks.sort_by(|t1, t2| {
-                collator.compare(
-                    t1.title.as_deref().unwrap_or(""),
-                    t2.title.as_deref().unwrap_or(""),
-                )
-            });
-        }
-    }
-
-    fn sort_tracks_chronologically(
-        tracks: &mut [Arc<Track>],
-        collator: Option<&Arc<CollatorBorrowed<'_>>>,
-    ) {
-        tracks.sort_by(|a, b| match (a.date, b.date) {
-            (Some(ad), Some(bd)) => bd.cmp(&ad),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => {
-                if let Some(collator) = collator {
-                    collator.compare(
-                        a.title.as_deref().unwrap_or(""),
-                        b.title.as_deref().unwrap_or(""),
-                    )
-                } else {
-                    std::cmp::Ordering::Equal
-                }
-            }
-        });
-    }
-
-    fn sort_tracks_in_album(
-        tracks: &mut [Arc<Track>],
-        collator: Option<&Arc<CollatorBorrowed<'_>>>,
-    ) {
-        tracks.sort_by(|a, b| match (a.track, b.track) {
-            (Some(at), Some(bt)) => at.cmp(&bt),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => {
-                if let Some(c) = collator {
-                    c.compare(
-                        a.title.as_deref().unwrap_or(""),
-                        b.title.as_deref().unwrap_or(""),
-                    )
-                } else {
-                    std::cmp::Ordering::Equal
-                }
-            }
-        });
-    }
-
-    fn sort_albums_alphabetically(
-        albums: &mut [Arc<Album>],
-        collator: Option<&Arc<CollatorBorrowed<'_>>>,
-    ) {
-        if let Some(collator) = collator {
-            albums.sort_by(|a1, a2| collator.compare(&a1.title, &a2.title));
-        }
-    }
-
-    fn sort_albums_chronologically(
-        albums: &mut [Arc<Album>],
-        collator: Option<&Arc<CollatorBorrowed<'_>>>,
-    ) {
-        albums.sort_by(|a, b| match (a.date, b.date) {
-            (Some(ad), Some(bd)) => bd.cmp(&ad),
-            (Some(_), None) => std::cmp::Ordering::Less,
-            (None, Some(_)) => std::cmp::Ordering::Greater,
-            (None, None) => {
-                if let Some(c) = collator {
-                    c.compare(&a.title, &b.title)
-                } else {
-                    std::cmp::Ordering::Equal
-                }
-            }
-        });
-    }
-
-    fn sort_artists(artists: &mut [Arc<Artist>], collator: Option<&Arc<CollatorBorrowed<'_>>>) {
-        if let Some(collator) = collator {
-            artists.sort_by(|a1, a2| collator.compare(&a1.name, &a2.name));
-        }
-    }
-
-    fn sort_playlists(&mut self) {
-        let guard = COLLATOR.read().unwrap();
-        if let Some(collator) = guard.as_ref() {
-            self.playlists
-                .sort_by(|p1, p2| collator.compare(&p1.name, &p2.name));
-        }
-    }
-
     pub(super) fn new(tracks: Vec<Track>) -> Self {
         crate::send_event(Event::LoadProgressChanged(Progress::RebuildingLibrary));
 
@@ -227,7 +133,7 @@ impl MusicLibrary {
 
         let guard = COLLATOR.read().unwrap();
         let collator = guard.as_ref();
-        Self::sort_tracks_alphabetically(&mut tracks, collator);
+        sort_tracks(&mut tracks, collator);
 
         let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
         let artist_names: HashSet<_> = tracks
@@ -278,7 +184,7 @@ impl MusicLibrary {
             .into_iter()
             .map(|title| {
                 let mut tracks: Vec<_> = tracks_by_album[title].clone().into_iter().collect();
-                Self::sort_tracks_in_album(&mut tracks, collator);
+                sort_tracks_in_album(&mut tracks, collator);
 
                 let mut artists: Vec<_> = tracks
                     .iter()
@@ -310,7 +216,7 @@ impl MusicLibrary {
                 })
             })
             .collect();
-        Self::sort_albums_alphabetically(&mut albums, collator);
+        sort_albums(&mut albums, collator);
 
         let albums_by_title: HashMap<Box<str>, Arc<Album>> = albums
             .iter()
@@ -335,14 +241,14 @@ impl MusicLibrary {
                 let mut tracks: Vec<_> = tracks_by_artist[name].clone().into_iter().collect();
                 // TODO: Sort tracks chronologically if possible, then fall back to track index in
                 // albums, then to alphabetic sorting
-                Self::sort_tracks_chronologically(&mut tracks, collator);
+                sort_tracks_chronologically(&mut tracks, collator);
 
                 let mut albums = if let Some(albums) = albums_by_artist.get(name) {
                     albums.iter().cloned().collect()
                 } else {
                     Vec::new()
                 };
-                Self::sort_albums_chronologically(&mut albums, collator);
+                sort_albums_chronologically(&mut albums, collator);
 
                 let cover = tracks
                     .first()
@@ -357,7 +263,7 @@ impl MusicLibrary {
                 })
             })
             .collect();
-        Self::sort_artists(&mut artists, collator);
+        sort_artists(&mut artists, collator);
 
         let mut artists_by_album: HashMap<&Box<str>, HashSet<Arc<Artist>>> =
             HashMap::with_capacity(albums.len());
@@ -407,7 +313,7 @@ impl MusicLibrary {
             .into_iter()
             .map(|name| {
                 let mut tracks: Vec<_> = tracks_by_genre[name].clone().into_iter().collect();
-                Self::sort_tracks_alphabetically(&mut tracks, collator);
+                sort_tracks(&mut tracks, collator);
 
                 let mut counts: HashMap<Cover, usize> = HashMap::with_capacity(tracks.len());
                 for track in &tracks {
@@ -417,10 +323,10 @@ impl MusicLibrary {
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
                 let mut artists: Vec<_> = artists_by_genre[name].clone().into_iter().collect();
-                Self::sort_artists(&mut artists, collator);
+                sort_artists(&mut artists, collator);
 
                 let mut albums: Vec<_> = albums_by_genre[name].clone().into_iter().collect();
-                Self::sort_albums_alphabetically(&mut albums, collator);
+                sort_albums(&mut albums, collator);
 
                 Arc::new(Genre {
                     name: name.to_string().into(),
@@ -517,7 +423,10 @@ impl MusicLibrary {
 
         lib.favorites = favorites;
         lib.playlists = playlists;
-        lib.sort_playlists();
+
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        sort_playlists(&mut lib.playlists, collator);
 
         lib
     }
@@ -677,7 +586,9 @@ impl MusicLibrary {
         });
         self.playlists.push(playlist.clone());
         self.playlists_by_name.insert(name.into(), playlist);
-        self.sort_playlists();
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        sort_playlists(&mut self.playlists, collator);
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
     }
@@ -709,7 +620,10 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(target.into(), playlist.clone());
         self.playlists_by_id.insert(playlist_id, playlist);
-        self.sort_playlists();
+
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        sort_playlists(&mut self.playlists, collator);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -743,7 +657,10 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist.clone());
         self.playlists_by_id.insert(playlist.id, playlist);
-        self.sort_playlists();
+
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        sort_playlists(&mut self.playlists, collator);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
@@ -769,7 +686,10 @@ impl MusicLibrary {
         self.playlists_by_name
             .insert(playlist.name.clone(), playlist.clone());
         self.playlists_by_id.insert(playlist.id, playlist);
-        self.sort_playlists();
+
+        let guard = COLLATOR.read().unwrap();
+        let collator = guard.as_ref();
+        sort_playlists(&mut self.playlists, collator);
 
         crate::send_event(Event::LibraryChanged(Box::new(self.clone())));
         Ok(())
