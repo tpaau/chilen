@@ -24,6 +24,101 @@ pub(crate) static DATA_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static MUSIC_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 pub(crate) static CACHE_DIR: RwLock<Option<PathBuf>> = RwLock::new(None);
 
+pub trait AsTrack {
+    fn as_track(&self) -> &Track;
+}
+impl AsTrack for Arc<Track> {
+    fn as_track(&self) -> &Track {
+        self
+    }
+}
+impl AsTrack for &Arc<Track> {
+    fn as_track(&self) -> &Track {
+        self
+    }
+}
+impl AsTrack for &Track {
+    fn as_track(&self) -> &Track {
+        self
+    }
+}
+
+pub trait AsAlbum {
+    fn as_album(&self) -> &Album;
+}
+impl AsAlbum for Arc<Album> {
+    fn as_album(&self) -> &Album {
+        self
+    }
+}
+impl AsAlbum for &Arc<Album> {
+    fn as_album(&self) -> &Album {
+        self
+    }
+}
+impl AsAlbum for &Album {
+    fn as_album(&self) -> &Album {
+        self
+    }
+}
+
+pub trait AsArtist {
+    fn as_artist(&self) -> &Artist;
+}
+impl AsArtist for Arc<Artist> {
+    fn as_artist(&self) -> &Artist {
+        self
+    }
+}
+impl AsArtist for &Arc<Artist> {
+    fn as_artist(&self) -> &Artist {
+        self
+    }
+}
+impl AsArtist for &Artist {
+    fn as_artist(&self) -> &Artist {
+        self
+    }
+}
+
+pub trait AsPlaylist {
+    fn as_playlist(&self) -> &Playlist;
+}
+impl AsPlaylist for Arc<Playlist> {
+    fn as_playlist(&self) -> &Playlist {
+        self
+    }
+}
+impl AsPlaylist for &Arc<Playlist> {
+    fn as_playlist(&self) -> &Playlist {
+        self
+    }
+}
+impl AsPlaylist for &Playlist {
+    fn as_playlist(&self) -> &Playlist {
+        self
+    }
+}
+
+pub trait AsGenre {
+    fn as_genre(&self) -> &Genre;
+}
+impl AsGenre for Arc<Genre> {
+    fn as_genre(&self) -> &Genre {
+        self
+    }
+}
+impl AsGenre for &Arc<Genre> {
+    fn as_genre(&self) -> &Genre {
+        self
+    }
+}
+impl AsGenre for &Genre {
+    fn as_genre(&self) -> &Genre {
+        self
+    }
+}
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ValueSeparators {
     pub artist: Vec<String>,
