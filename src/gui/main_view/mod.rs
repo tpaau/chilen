@@ -24,9 +24,9 @@ use iced::{Alignment, Border, Element, Length, Pixels, Task, padding};
 use iced_core::text::{self, IntoFragment};
 use iced_m3::{
     animation::motion::{self, fast_spatial},
-    theme::{Accent, ColorScheme},
+    theme::ColorScheme,
     widget::{
-        button::{self, Content},
+        button::{self, Content, CornerRadius},
         hybrid_icon::Icon,
         navrail,
         shapes::polymorpher::{
@@ -234,7 +234,6 @@ impl State {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Noop,
     SwitchTab(NavTab),
     ButtonPoppedIn(usize),
     ButtonPoppedOut(usize),
@@ -465,23 +464,29 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
     let toolbar = container(opaque(
         container(
             row![
-                iced_m3::widget::button(
-                    button::Style::filled(&state.theme, Accent::default()),
-                    Content::Icon(Icon::Text {
-                        text: icons::SEARCH.into_fragment(),
-                        font: Some(icons::filled())
-                    })
-                )
-                .size(*TOOLBAR_BUTTON_SIZE)
-                .on_press(Message::Noop),
+                // TODO: Track search
+                // iced_m3::widget::button(
+                //     button::Style::filled(&state.theme, Accent::default()),
+                //     Content::Icon(Icon::Text {
+                //         text: icons::SEARCH.into_fragment(),
+                //         font: Some(icons::filled())
+                //     })
+                // )
+                // .size(*TOOLBAR_BUTTON_SIZE)
+                // .on_press(Message::Noop),
                 iced_m3::widget::button(
                     button::Style::outlined(&state.theme),
-                    Content::Icon(Icon::Text {
-                        text: icons::SETTINGS.into_fragment(),
-                        font: Some(icons::filled())
-                    })
+                    Content::Full {
+                        icon: Icon::Text {
+                            text: icons::SETTINGS.into_fragment(),
+                            font: Some(icons::filled())
+                        },
+                        label: "Settings".into()
+                    }
                 )
-                .size(*TOOLBAR_BUTTON_SIZE)
+                .size(
+                    (*TOOLBAR_BUTTON_SIZE).corner_radius(CornerRadius::medium().shape_morph(false))
+                )
                 .on_press(Message::OpenSettings),
             ]
             .align_y(Alignment::Center)
@@ -551,7 +556,6 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             change_button(state.main_view.visible.as_mut().unwrap(), index, false);
         }
         Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
-        Message::Noop => {}
         Message::OpenSettings => state.settings_state.screen = Some(Screen::default()),
         Message::PlayTracks { initial_position } => {
             common_actions::play_all_tracks(state, initial_position)

@@ -279,35 +279,35 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             Message::SwitchTab(NavTab::Playlists),
         );
 
-        let eq_card = card_item(
-            &state.theme,
-            *icons::EQUALIZER,
-            "Equalizer",
-            "Adjust how your music sounds",
-            Message::Noop,
-        );
+        // TODO: Eq
+        // let eq_card = card_item(
+        //     &state.theme,
+        //     *icons::EQUALIZER,
+        //     "Equalizer",
+        //     "Adjust how your music sounds",
+        //     Message::Noop,
+        // );
 
-        let statistics_card = card_item(
-            &state.theme,
-            *icons::TRENDING_UP,
-            "Statistics",
-            "See your listening statistics",
-            Message::Noop,
-        );
+        // TODO: Listening statistics
+        // let statistics_card = card_item(
+        //     &state.theme,
+        //     *icons::TRENDING_UP,
+        //     "Statistics",
+        //     "See your listening statistics",
+        //     Message::Noop,
+        // );
 
         // Eyeballed it
         let compact = size.width < 780.0;
 
         match compact {
-            true => column![shuffle_card, playlist_card, statistics_card, eq_card]
-                .spacing(card::MAX_CARD_BETWEEN_PADDING),
-            false => column![
-                row![shuffle_card, playlist_card].spacing(card::MAX_CARD_BETWEEN_PADDING),
-                row![statistics_card, eq_card].spacing(card::MAX_CARD_BETWEEN_PADDING)
-            ]
-            .spacing(card::MAX_CARD_BETWEEN_PADDING),
+            true => column![shuffle_card, playlist_card]
+                .spacing(card::MAX_CARD_BETWEEN_PADDING)
+                .into(),
+            false => row![shuffle_card, playlist_card]
+                .spacing(card::MAX_CARD_BETWEEN_PADDING)
+                .into(),
         }
-        .into()
     })
     .height(Length::Shrink);
 
