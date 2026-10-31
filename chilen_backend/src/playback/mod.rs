@@ -864,12 +864,13 @@ pub(crate) fn init(
     let handle = match rodio::DeviceSinkBuilder::open_default_sink() {
         Ok(sink) => sink,
         Err(e) => {
-            error!("Could not open the default sink, audio playback will not work! Error: {e}");
+            error!("Could not open the default sink, audio playback will not work: {e}");
             return;
         }
     };
     let player = Player::connect_new(handle.mixer());
     player.set_volume(state.player_volume.get());
+    trace!("Player handle initialized, audio playback should work fine!");
 
     *PLAYER_STATE.write().unwrap() = Some(state);
     *PLAYER_HANDLE.write().unwrap() = Some(player);
