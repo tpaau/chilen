@@ -367,41 +367,42 @@ where
             return;
         }
 
-        let is_over = cursor.is_over(layout.bounds());
+        let bounds = layout.bounds();
+        let is_over = cursor.is_over(bounds);
 
-        match event {
-            // FIX: Doesn't work reliably for scroll views
-            iced::Event::Mouse(mouse::Event::CursorMoved { .. }) => {
-                if state.is_over != is_over && self.animation == Animation::WhenHovered {
-                    state.reset_offsets(Instant::now());
-                    state.is_over = is_over;
+        if self.animation == Animation::WhenHovered
+            && state.is_over != is_over
+            && (matches!(event, iced::Event::Mouse(_))
+                || matches!(
+                    event,
+                    iced::Event::Window(iced::window::Event::RedrawRequested(_))
+                ))
+        {
+            state.reset_offsets(Instant::now());
+            state.is_over = is_over;
+        } else if let iced::Event::Window(iced::window::Event::RedrawRequested(at)) = event {
+            let should_animate = state.content_overflow
+                && (self.animation == Animation::Always
+                    || (self.animation == Animation::WhenHovered && is_over));
+
+            let offsets = if should_animate {
+                self.behavior.interpolate(
+                    state.last_bounds.width,
+                    bounds.width,
+                    at.duration_since(state.start),
+                    self.scroll_speed,
+                    self.pause,
+                )
+            } else {
+                (0.0, None)
+            };
+
+            if state.offsets != offsets {
+                state.offsets = offsets;
+                if !should_animate {
+                    state.reset_offsets(*at);
                 }
             }
-            iced::Event::Window(iced::window::Event::RedrawRequested(at)) => {
-                let should_animate = state.content_overflow
-                    && (self.animation == Animation::Always
-                        || (self.animation == Animation::WhenHovered && is_over));
-
-                let offsets = if should_animate {
-                    self.behavior.interpolate(
-                        state.last_bounds.width,
-                        layout.bounds().width,
-                        at.duration_since(state.start),
-                        self.scroll_speed,
-                        self.pause,
-                    )
-                } else {
-                    (0.0, None)
-                };
-
-                if state.offsets != offsets {
-                    state.offsets = offsets;
-                    if !should_animate {
-                        state.reset_offsets(*at);
-                    }
-                }
-            }
-            _ => {}
         }
         shell.request_redraw();
     }
