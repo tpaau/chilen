@@ -14,18 +14,19 @@ use iced_m3::{
 };
 use iced_widget::{column, container, image, row, space, text};
 
-use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-    font::{self, bold_text},
-    formatter::format_long_duration,
-    icons::{self, icon_filled},
-    settings::{CLOSE_BUTTON_SIZE, Message},
-    widget::icon_shape::IconShape,
+use crate::{
+    COMMIT, VERSION,
+    gui::{
+        Chilen, ROUNDING_LARGE, SPACING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+        font::{self, bold_text},
+        formatter::format_long_duration,
+        icons::{self, icon_filled},
+        settings::{CLOSE_BUTTON_SIZE, Message},
+        widget::icon_shape::IconShape,
+    },
 };
 
 const BIO_TEXT: &str = "Hi, I'm tpaau - the dev behind Chilen!";
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-const COMMIT: &str = env!("APP_GIT_COMMIT");
 const REPOSITORY_URL: &str = "https://github.com/tpaau/chilen";
 const WEBSITE_URL: &str = "https://tpaau.github.io/chilen/";
 const CONTACT_URL: &str = "https://tpaau.dev/#contact";

@@ -37,7 +37,12 @@ impl From<IndexingIntensity> for chilen_backend::music_lib::indexer::IndexingInt
 
 #[derive(Parser)]
 #[command(
-    version,
+    version = concat!(
+        "v",
+        env!("CARGO_PKG_VERSION"),
+        ", built from ",
+        env!("APP_GIT_COMMIT")
+    ),
     author = "tpaau <tpaau-17DB@tutamail.com>",
     help_template = "{before-help}{name} {version}
 {author-with-newline}{about-with-newline}

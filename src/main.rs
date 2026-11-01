@@ -21,6 +21,9 @@ use sys_locale::get_locale;
 
 use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+const COMMIT: &str = env!("APP_GIT_COMMIT");
+
 const APP_NAME: &str = "Chilen";
 #[cfg(feature = "mpris")]
 const APP_ID: &str = "dev.tpaau.Chilen";
