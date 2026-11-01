@@ -14,7 +14,7 @@ use iced_m3::{
     style::{Elevation, shadow},
     theme::{Accent, ColorScheme},
     widget::{
-        OnPress, button, card,
+        Action, button, card,
         fab::{self},
         hybrid_icon::Icon,
         navrail::{self, CONTAINER_EXPANDED_MIN_WIDTH, Item},
@@ -248,7 +248,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                 },
                 label: "Reset settings".into(),
                 style: fab::Style::fab_tonal(&state.theme, Accent::Tertiary),
-                on_press: OnPress::Direct(Message::Reset),
+                on_press: Action::Direct(Message::Reset),
             })
             .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
             .active(active_index);

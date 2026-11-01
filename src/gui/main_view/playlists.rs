@@ -3,7 +3,7 @@ use iced::{Element, Length, padding, widget::column};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
-    widget::{OnPress, fab_menu, hybrid_icon::Icon, shapes},
+    widget::{Action, fab_menu, hybrid_icon::Icon, shapes},
 };
 use iced_widget::{bottom_right, center, space, stack};
 
@@ -22,7 +22,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             fab_menu::Style::new(&state.theme, Accent::default()),
             vec![
                 iced_m3::widget::fab_menu::Item {
-                    on_press: OnPress::Direct(Message::ImportPlaylist),
+                    on_press: Action::Direct(Message::ImportPlaylist),
                     label: "Import playlist".into(),
                     icon: Icon::Text {
                         text: icons::UPLOAD_FILE.into_fragment(),
@@ -30,7 +30,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     },
                 },
                 iced_m3::widget::fab_menu::Item {
-                    on_press: OnPress::Direct(Message::CreatePlaylist),
+                    on_press: Action::Direct(Message::CreatePlaylist),
                     label: "New playlist".into(),
                     icon: Icon::Text {
                         text: icons::PLAYLIST_ADD.into_fragment(),

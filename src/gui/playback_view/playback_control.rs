@@ -7,7 +7,7 @@ use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
         button::{self, Content},
-        button_group,
+        button_group::{self, standard::GroupItem},
         hybrid_icon::Icon,
         slider, standard_button_group,
     },
@@ -289,105 +289,139 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         let size = iced_m3::widget::button::Size::medium();
         size.width(size.height).padding(0.0.into())
     };
-    let buttons = container(
-        standard_button_group(vec![
-            iced_m3::widget::button(
-                button::Style::outlined(&state.theme),
-                Content::Icon(Icon::Text {
-                    text: icons::SHUFFLE.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
+
+    let buttons = vec![
+        {
+            let message_maybe = state.player_state.as_ref().map(|_| Message::ToggleShuffle);
+            let is_some = message_maybe.is_some();
+
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::outlined(&state.theme),
+                    Content::Icon(Icon::Text {
+                        text: icons::SHUFFLE.into_fragment(),
+                        font: Some(icons::filled()),
+                    }),
+                )
+                .size(toggle_size)
+                .selected(
+                    state
+                        .player_state
+                        .as_ref()
+                        .map(|p| p.shuffle_enabled())
+                        .unwrap_or_default(),
+                )
+                .on_press_maybe(message_maybe),
+                is_some,
             )
-            .size(toggle_size)
-            .selected(
-                state
-                    .player_state
-                    .as_ref()
-                    .map(|p| p.shuffle_enabled())
-                    .unwrap_or_default(),
+        },
+        {
+            let message_maybe = state
+                .player_state
+                .as_ref()
+                .and_then(|p| p.can_go_previous().then_some(Message::Previous));
+            let is_some = message_maybe.is_some();
+
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::tonal(&state.theme, Accent::Tertiary),
+                    Content::Icon(Icon::Text {
+                        text: icons::SKIP_PREVIOUS.into_fragment(),
+                        font: Some(icons::filled()),
+                    }),
+                )
+                .size(
+                    skip_button_size.corner_radius(
+                        skip_button_size
+                            .corner_radius
+                            .style(button::CornerStyle::Square),
+                    ),
+                )
+                .on_press_maybe(message_maybe),
+                is_some,
             )
-            .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleShuffle)),
-            iced_m3::widget::button(
-                button::Style::tonal(&state.theme, Accent::Tertiary),
-                Content::Icon(Icon::Text {
-                    text: icons::SKIP_PREVIOUS.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
+        },
+        {
+            let message_maybe = state
+                .player_state
+                .as_ref()
+                .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying));
+            let is_some = message_maybe.is_some();
+
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::tonal(&state.theme, Accent::Primary),
+                    Content::Icon(Icon::Text {
+                        text: play_button_icon.into_fragment(),
+                        font: Some(icons::filled()),
+                    }),
+                )
+                .size(iced_m3::widget::button::Size::medium())
+                .selected(
+                    state
+                        .player_state
+                        .as_ref()
+                        .map(|p| p.is_playing())
+                        .unwrap_or_default(),
+                )
+                .on_press_maybe(message_maybe),
+                is_some,
             )
-            .size(
-                skip_button_size.corner_radius(
-                    skip_button_size
-                        .corner_radius
-                        .style(button::CornerStyle::Square),
-                ),
+        },
+        {
+            let message_maybe = state
+                .player_state
+                .as_ref()
+                .and_then(|p| p.can_go_next().then_some(Message::Next));
+            let is_some = message_maybe.is_some();
+
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::tonal(&state.theme, Accent::Tertiary),
+                    Content::Icon(Icon::Text {
+                        text: icons::SKIP_NEXT.into_fragment(),
+                        font: Some(icons::filled()),
+                    }),
+                )
+                .size(
+                    skip_button_size.corner_radius(
+                        skip_button_size
+                            .corner_radius
+                            .style(button::CornerStyle::Square),
+                    ),
+                )
+                .on_press_maybe(message_maybe),
+                is_some,
             )
-            .on_press_maybe(
-                state
-                    .player_state
-                    .as_ref()
-                    .and_then(|p| p.can_go_previous().then_some(Message::Previous)),
-            ),
-            iced_m3::widget::button(
-                button::Style::tonal(&state.theme, Accent::Primary),
-                Content::Icon(Icon::Text {
-                    text: play_button_icon.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
+        },
+        {
+            let message_maybe = state.player_state.as_ref().map(|_| Message::ToggleLooping);
+            let is_some = message_maybe.is_some();
+
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::outlined(&state.theme),
+                    Content::Icon(Icon::Text {
+                        text: loop_button_icon.into_fragment(),
+                        font: Some(icons::filled()),
+                    }),
+                )
+                .size(toggle_size)
+                .selected(
+                    state
+                        .player_state
+                        .as_ref()
+                        .map(|p| p.loop_state != LoopState::Off)
+                        .unwrap_or_default(),
+                )
+                .on_press_maybe(message_maybe),
+                is_some,
             )
-            .size(iced_m3::widget::button::Size::medium())
-            .selected(
-                state
-                    .player_state
-                    .as_ref()
-                    .map(|p| p.is_playing())
-                    .unwrap_or_default(),
-            )
-            .on_press_maybe(
-                state
-                    .player_state
-                    .as_ref()
-                    .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying)),
-            ),
-            iced_m3::widget::button(
-                button::Style::tonal(&state.theme, Accent::Tertiary),
-                Content::Icon(Icon::Text {
-                    text: icons::SKIP_NEXT.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-            )
-            .size(
-                skip_button_size.corner_radius(
-                    skip_button_size
-                        .corner_radius
-                        .style(button::CornerStyle::Square),
-                ),
-            )
-            .on_press_maybe(
-                state
-                    .player_state
-                    .as_ref()
-                    .and_then(|p| p.can_go_next().then_some(Message::Next)),
-            ),
-            iced_m3::widget::button(
-                button::Style::outlined(&state.theme),
-                Content::Icon(Icon::Text {
-                    text: loop_button_icon.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-            )
-            .size(toggle_size)
-            .selected(
-                state
-                    .player_state
-                    .as_ref()
-                    .map(|p| p.loop_state != LoopState::Off)
-                    .unwrap_or_default(),
-            )
-            .on_press_maybe(state.player_state.as_ref().map(|_| Message::ToggleLooping)),
-        ])
-        .spacing(button_group::standard::SPACING_MEDIUM),
-    )
-    .center_x(Length::Fill);
+        },
+    ];
+    let buttons =
+        container(standard_button_group(buttons).spacing(button_group::standard::SPACING_MEDIUM))
+            .center_x(Length::Fill);
 
     column![
         cover,

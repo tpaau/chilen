@@ -3,7 +3,7 @@ use iced_core::text::LineHeight;
 use iced_m3::{
     style::DISABLED_STATE_LAYER_OPACITY,
     theme::ColorScheme,
-    widget::{OnPress, card::Interaction, icon, progress_bar},
+    widget::{Action, card::Interaction, icon, progress_bar},
 };
 use iced_widget::{column, container, row, space};
 
@@ -20,7 +20,7 @@ where
     pub theme: &'a dyn ColorScheme,
     pub label: &'a str,
     pub selected: bool,
-    pub on_press: Option<OnPress<'a, Message>>,
+    pub on_press: Option<Action<'a, Message>>,
 }
 
 impl<'a, Message> From<ThemeModePreview<'a, Message>> for Element<'a, Message>

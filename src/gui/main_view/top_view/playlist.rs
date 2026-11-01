@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use chilen_backend::music_lib::{LibraryItem, Playlist, is_favorite};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Element, Length, color};
 use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{column, container, responsive, row, text};
+use iced_widget::{column, container, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font,
@@ -80,7 +80,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
     .width(Length::Shrink);
 
     let buttons = horizontal_buttons(
-        &state.theme,
+        state,
         (!playlist.tracks.is_empty()).then_some(Message::PlayPlaylistNoShuffle {
             playlist: playlist.clone(),
             initial_position: None,
@@ -89,7 +89,11 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
             playlist: playlist.clone(),
             initial_position: None,
         }),
-        Message::Noop,
+        &|| {
+            container(space().width(100).height(100))
+                .style(|_| container::Style::default().background(color!(0xff0000)))
+                .into()
+        },
     );
 
     let highlighted_index = state.player_state.as_ref().and_then(|p| {

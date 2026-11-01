@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use chilen_backend::music_lib::{Genre, LibraryItem, is_favorite};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Element, Length, color};
 use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{column, responsive, row, text};
+use iced_widget::{column, container, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
@@ -99,7 +99,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     .width(Length::Shrink);
 
     let buttons = horizontal_buttons(
-        &state.theme,
+        state,
         Some(Message::PlayGenreNoShuffle {
             genre: genre.clone(),
             initial_position: None,
@@ -108,7 +108,11 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             genre: genre.clone(),
             initial_position: None,
         }),
-        Message::Noop,
+        &|| {
+            container(space().width(100).height(100))
+                .style(|_| container::Style::default().background(color!(0xff0000)))
+                .into()
+        },
     );
 
     let highlighted_album_title = state.player_state.as_ref().and_then(|p| {

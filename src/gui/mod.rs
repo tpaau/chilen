@@ -97,10 +97,7 @@ impl Default for Chilen {
             loading_state: LoadingState::default(),
             theme: Theme::default(Mode::Light),
             settings: Settings::default(),
-            main_view: main_view::State {
-                nav_stack: main_view::NavStack::default(),
-                visible: None,
-            },
+            main_view: main_view::State::default(),
             playback_view: playback_view::State::default(),
             settings_state: settings::State::default(),
             host_theme_preference: Mode::default(),

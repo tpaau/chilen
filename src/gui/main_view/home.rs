@@ -20,7 +20,7 @@ use iced_core::text::{self, IntoFragment};
 use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
-        OnPress, button, card,
+        Action, button, card,
         hybrid_icon::Icon,
         shapes::polymorpher::{
             RoundedPolygon,
@@ -180,8 +180,8 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
         ..card::Style::elevated(&state.theme)
     };
     card(style, column![cover, bottom])
-        .interaction(card::Interaction::Press(OnPress::Direct(on_press)))
-        .padding(0.0.into())
+        .interaction(card::Interaction::Press(Action::Direct(on_press)))
+        .padding(0.0)
         .width(cover_size)
         .into()
 }
@@ -242,7 +242,7 @@ fn card_item<'a>(
         ..card::Style::elevated(theme)
     };
     card(style, content)
-        .interaction(card::Interaction::Press(OnPress::Direct(on_press)))
+        .interaction(card::Interaction::Press(Action::Direct(on_press)))
         .width(Length::Fill)
         .into()
 }

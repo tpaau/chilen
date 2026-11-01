@@ -54,17 +54,17 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             theme: &state.theme.dark,
             label: "Dark",
             selected: state.settings.theme_mode == Mode::Dark,
-            on_press: (!state.settings.theme_auto_mode).then_some(
-                iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Dark))
-            )
+            on_press: (!state.settings.theme_auto_mode).then_some(iced_m3::widget::Action::Direct(
+                Message::SetDarkMode(Mode::Dark)
+            ))
         },
         ThemeModePreview {
             theme: &state.theme.light,
             label: "Light",
             selected: state.settings.theme_mode == Mode::Light,
-            on_press: (!state.settings.theme_auto_mode).then_some(
-                iced_m3::widget::OnPress::Direct(Message::SetDarkMode(Mode::Light))
-            )
+            on_press: (!state.settings.theme_auto_mode).then_some(iced_m3::widget::Action::Direct(
+                Message::SetDarkMode(Mode::Light)
+            ))
         },
     ]
     .spacing(gui::settings::CARD_SPACING);

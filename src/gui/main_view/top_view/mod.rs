@@ -3,18 +3,22 @@ mod artist;
 mod genre;
 mod playlist;
 
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 
 use chilen_backend::music_lib::{
     Album, Artist, Genre, LibraryItem, Playlist, Track, toggle_favorite,
 };
-use iced::{Element, Length, Task};
+use iced::{
+    Element, Length, Pixels, Task,
+    keyboard::{self, key},
+};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
+        advanced::menu_overlay,
         button::{self, Content},
-        button_group,
+        button_group::{self, standard::GroupItem},
         hybrid_icon::Icon,
         standard_button_group,
     },
@@ -22,7 +26,7 @@ use iced_m3::{
 use iced_widget::{container, responsive, scrollable};
 use log::error;
 
-use crate::gui::{Chilen, common_actions, dialog, font::bold_text, icons};
+use crate::gui::{Chilen, SPACING_SMALLER, common_actions, dialog, font::bold_text, icons};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -58,7 +62,6 @@ impl From<Arc<Genre>> for TopView {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Message {
-    Noop,
     Navigate(TopView),
     Unwind,
     RemoveTrackFromPlaylist {
@@ -118,6 +121,8 @@ pub enum Message {
     AddArtistToQueue(Arc<Artist>),
     AddTracksToPlaylist(Vec<u64>),
     ToggleFavorite(LibraryItem),
+    OpenMainMenu,
+    CloseMainMenu,
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -128,10 +133,10 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
 }
 
 fn horizontal_buttons<'a>(
-    theme: &'a impl ColorScheme,
+    state: &'a Chilen,
     message_play: Option<Message>,
     message_shuffle: Option<Message>,
-    message_options: Message,
+    menu_surface: &'a (impl Fn() -> Element<'a, Message> + 'a),
 ) -> Element<'a, Message> {
     responsive(move |size| {
         let (size, spacing) = if size.width < 466.0 {
@@ -147,48 +152,85 @@ fn horizontal_buttons<'a>(
         };
 
         let buttons = vec![
-            iced_m3::widget::button(
-                button::Style::tonal(theme, Accent::Tertiary),
-                Content::Icon(Icon::Text {
-                    text: icons::ARROW_BACK.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-            )
-            .size(size)
-            .on_press(Message::Unwind),
-            iced_m3::widget::button(
-                button::Style::tonal(theme, Accent::Secondary),
-                Content::Full {
-                    icon: Icon::Text {
-                        text: icons::PLAY_ARROW.into_fragment(),
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::tonal(&state.theme, Accent::Tertiary),
+                    Content::Icon(Icon::Text {
+                        text: icons::ARROW_BACK.into_fragment(),
                         font: Some(icons::filled()),
+                    }),
+                )
+                .size(size)
+                .on_press(Message::Unwind),
+                true,
+            ),
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::tonal(&state.theme, Accent::Secondary),
+                    Content::Full {
+                        icon: Icon::Text {
+                            text: icons::PLAY_ARROW.into_fragment(),
+                            font: Some(icons::filled()),
+                        },
+                        label: "Play".into(),
                     },
-                    label: "Play".into(),
-                },
-            )
-            .size(size.width(Length::Fill))
-            .on_press_maybe(message_play.clone()),
-            iced_m3::widget::button(
-                button::Style::filled(theme, Accent::Primary),
-                Content::Full {
-                    icon: Icon::Text {
-                        text: icons::SHUFFLE.into_fragment(),
-                        font: Some(icons::filled()),
+                )
+                .size(size.width(Length::Fill))
+                .on_press_maybe(message_play.clone()),
+                message_play.is_some(),
+            ),
+            GroupItem::new(
+                iced_m3::widget::button(
+                    button::Style::filled(&state.theme, Accent::Primary),
+                    Content::Full {
+                        icon: Icon::Text {
+                            text: icons::SHUFFLE.into_fragment(),
+                            font: Some(icons::filled()),
+                        },
+                        label: "Shuffle".into(),
                     },
-                    label: "Shuffle".into(),
-                },
-            )
-            .size(size.width(Length::Fill))
-            .on_press_maybe(message_shuffle.clone()),
-            iced_m3::widget::button(
-                button::Style::outlined(theme),
-                Content::Icon(Icon::Text {
-                    text: icons::MORE_HORIZ.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-            )
-            .size(size)
-            .on_press(message_options.clone()),
+                )
+                .size(size.width(Length::Fill))
+                .on_press_maybe(message_shuffle.clone()),
+                message_shuffle.is_some(),
+            ),
+            {
+                GroupItem::new(
+                    menu_overlay(
+                        iced_m3::widget::button(
+                            button::Style::outlined(&state.theme),
+                            Content::Icon(Icon::Text {
+                                text: icons::MORE_HORIZ.into_fragment(),
+                                font: Some(icons::filled()),
+                            }),
+                        )
+                        .size(size)
+                        .selected(state.main_view.top_view_menu_opened)
+                        .on_press(Message::OpenMainMenu),
+                        menu_surface,
+                        state.main_view.top_view_menu_opened,
+                    )
+                    .placement(menu_overlay::Placement::BottomRight {
+                        padding: Pixels(SPACING_SMALLER),
+                    })
+                    .on_press(|properties| {
+                        if let Some(position) = properties.position {
+                            properties
+                                .bounds
+                                .contains(position)
+                                .not()
+                                .then_some(Message::CloseMainMenu)
+                        } else {
+                            None
+                        }
+                    })
+                    .on_key(|properties| {
+                        matches!(properties.key, keyboard::Key::Named(key::Named::Escape))
+                            .then_some(Message::CloseMainMenu)
+                    }),
+                    false,
+                )
+            },
         ];
 
         standard_button_group(buttons)
@@ -226,9 +268,6 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::Navigate(top_view) => state.main_view.nav_stack.navigate(top_view),
         Message::Unwind => {
             state.main_view.nav_stack.unwind();
-        }
-        Message::Noop => {
-            // TODO: This is a placeholder
         }
         Message::RemoveTrackFromPlaylist { playlist, index } => {
             if let Err(e) =
@@ -322,6 +361,8 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::ToggleFavorite(favorite_item) => {
             let _ = toggle_favorite(favorite_item);
         }
+        Message::OpenMainMenu => state.main_view.top_view_menu_opened = true,
+        Message::CloseMainMenu => state.main_view.top_view_menu_opened = false,
     }
     Task::none()
 }

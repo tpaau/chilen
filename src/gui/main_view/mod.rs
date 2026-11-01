@@ -204,12 +204,14 @@ pub(crate) fn reload(state: &mut Chilen) {
     }
 }
 
+#[derive(Default)]
 pub struct State {
     pub nav_stack: NavStack,
     /// Holds which elements are visible and which are not.
     /// Sadly I couldn't use a range for this, it would've used much less memory but it lagged too
     /// much when I was scrolling erratically.
     pub visible: Option<Vec<bool>>,
+    pub top_view_menu_opened: bool,
 }
 
 impl State {

@@ -4,7 +4,13 @@ use iced::{Alignment, Border, Element, Length, Pixels, padding};
 use iced_core::text::{IntoFragment, LineHeight};
 use iced_m3::{
     theme::ColorScheme,
-    widget::{badge, button, button_group, card, hybrid_icon::Icon, spacer, standard_button_group},
+    widget::{
+        badge, button,
+        button_group::{self, standard::GroupItem},
+        card,
+        hybrid_icon::Icon,
+        spacer, standard_button_group,
+    },
 };
 use iced_widget::{column, container, image, row, space, text};
 
@@ -75,20 +81,25 @@ fn table<'a>(
     entries: Vec<Entry<'a>>,
     theme: &(impl ColorScheme + ?Sized),
 ) -> Element<'a, Message> {
-    let entries = entries
-        .into_iter()
-        .map(|e| entry(e, theme))
-        .intersperse_with(|| {
-            container(spacer(theme.outline_variant()))
-                .padding(padding::horizontal(SPACING_SMALL / 2.0))
-                .into()
-        });
+    let mut collected_entries: Vec<Element<'a, Message>> =
+        Vec::with_capacity(entries.len() * 2 - 1);
+    let len = entries.len();
+    for (i, e) in entries.into_iter().enumerate() {
+        collected_entries.push(entry(e, theme));
+        if i < len - 1 {
+            collected_entries.push(
+                container(spacer(theme.outline_variant()))
+                    .padding(padding::horizontal(SPACING_SMALL / 2.0))
+                    .into(),
+            );
+        }
+    }
 
     column![
         bold_text(title)
             .color(theme.on_surface())
             .size(font::SIZE_LARGER),
-        column(entries),
+        column(collected_entries),
     ]
     .align_x(Alignment::Center)
     .spacing(SPACING_SMALL)
@@ -129,30 +140,36 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     .spacing(SPACING_REGULAR);
 
     let buttons = standard_button_group(vec![
-        button(
-            button::Style::filled(&state.theme, accent),
-            button::Content::Full {
-                icon: Icon::Text {
-                    text: icons::CODE.into_fragment(),
-                    font: Some(icons::filled()),
+        GroupItem::new(
+            button(
+                button::Style::filled(&state.theme, accent),
+                button::Content::Full {
+                    icon: Icon::Text {
+                        text: icons::CODE.into_fragment(),
+                        font: Some(icons::filled()),
+                    },
+                    label: "Source Code".into(),
                 },
-                label: "Source Code".into(),
-            },
-        )
-        .size(button::Size::medium())
-        .on_press(Message::OpenURL(REPOSITORY_URL.to_owned())),
-        button(
-            button::Style::filled(&state.theme, accent),
-            button::Content::Full {
-                icon: Icon::Text {
-                    text: icons::LANGUAGE.into_fragment(),
-                    font: Some(icons::filled()),
+            )
+            .size(button::Size::medium())
+            .on_press(Message::OpenURL(REPOSITORY_URL.to_owned())),
+            true,
+        ),
+        GroupItem::new(
+            button(
+                button::Style::filled(&state.theme, accent),
+                button::Content::Full {
+                    icon: Icon::Text {
+                        text: icons::LANGUAGE.into_fragment(),
+                        font: Some(icons::filled()),
+                    },
+                    label: "Website".into(),
                 },
-                label: "Website".into(),
-            },
-        )
-        .size(button::Size::medium())
-        .on_press(Message::OpenURL(WEBSITE_URL.to_owned())),
+            )
+            .size(button::Size::medium())
+            .on_press(Message::OpenURL(WEBSITE_URL.to_owned())),
+            true,
+        ),
     ])
     .spacing(button_group::standard::SPACING_MEDIUM);
 
