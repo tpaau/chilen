@@ -360,8 +360,11 @@ impl Chilen {
                 state.main_view.top_view.main_menu_opened = false;
                 state.main_view.top_view.button_menu = None;
                 state.main_view.button_menu = None;
-                state.dialog = Dialog::None;
-                state.settings_state.screen = None;
+                if !matches!(state.dialog, Dialog::None) {
+                    state.dialog = Dialog::None;
+                } else {
+                    state.settings_state.screen = None;
+                }
             }
         }
         Task::none()
