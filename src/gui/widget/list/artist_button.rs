@@ -5,20 +5,24 @@ use iced::{Alignment, Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::ColorScheme,
-    widget::{hybrid_icon::Icon, vertical_menu},
+    widget::{
+        Action,
+        hybrid_icon::Icon,
+        menu::{self, button::MenuAction},
+    },
 };
-use iced_widget::{button, column, container, hover, row, space, text};
+use iced_widget::{button, column, container, row, text};
 
 use crate::{
     THUMBNAIL_SIZE,
     gui::{
         SPACING_SMALL, SPACING_SMALLER, font,
         formatter::{format_album_count, format_track_count},
-        icons::{self, icon_filled},
+        icons::{self},
         widget::{
-            self,
             cover_image::CoverImage,
             list::{BUTTON_PADDING, button_style},
+            menu_button::MenuButton,
             text_spacer::text_spacer,
             wrappers::marquee,
         },
@@ -36,9 +40,11 @@ where
     pub shuffle: Message,
     pub add_to_queue: Message,
     pub toggle_favorite: Message,
+    pub toggle_menu: Message,
     pub is_favorite: bool,
     pub highlighted: bool,
     pub vibrant: bool,
+    pub menu_opened: bool,
 }
 
 impl<'a, Message> From<ArtistButton<'a, Message>> for Element<'a, Message>
@@ -46,70 +52,6 @@ where
     Message: 'a + Clone,
 {
     fn from(value: ArtistButton<'a, Message>) -> Self {
-        let entries = vec![
-            vertical_menu::Entry::Button {
-                icon: Some(Icon::Text {
-                    text: icons::PLAY_ARROW.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-                label: "Play".into(),
-                supporting_text: None,
-                error: false,
-                action: vertical_menu::Action::Message(Some(value.play)),
-            },
-            vertical_menu::Entry::Button {
-                icon: Some(Icon::Text {
-                    text: icons::SHUFFLE.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-                label: "Shuffle".into(),
-                supporting_text: None,
-                error: false,
-                action: vertical_menu::Action::Message(Some(value.shuffle)),
-            },
-            vertical_menu::Entry::Button {
-                icon: Some(Icon::Text {
-                    text: icons::ADD_TO_QUEUE.into_fragment(),
-                    font: Some(icons::filled()),
-                }),
-                label: "Add to queue".into(),
-                supporting_text: None,
-                error: false,
-                action: vertical_menu::Action::Message(Some(value.add_to_queue)),
-            },
-        ];
-
-        let first_group = vertical_menu::Group {
-            label: None,
-            entries,
-        };
-
-        let second_group = vertical_menu::Group {
-            label: None,
-            entries: vec![{
-                let (icon_font, label) = match value.is_favorite {
-                    true => (icons::filled(), "Unfavorite".into()),
-                    false => (icons::outlined(), "Favorite".into()),
-                };
-                vertical_menu::Entry::Button {
-                    icon: Some(Icon::Text {
-                        text: icons::STAR.into_fragment(),
-                        font: Some(icon_font),
-                    }),
-                    label,
-                    supporting_text: None,
-                    error: false,
-                    action: vertical_menu::Action::Message(Some(value.toggle_favorite)),
-                }
-            }],
-        };
-
-        let menu = iced_m3::widget::menu(
-            vec![first_group, second_group],
-            vertical_menu::Style::new(value.theme, value.vibrant),
-            font::regular(),
-        );
-
         let font = if value.highlighted {
             font::bold()
         } else {
@@ -150,6 +92,82 @@ where
             height: THUMBNAIL_SIZE.into(),
         };
 
+        let menu_button = MenuButton::new(
+            move || {
+                let items = vec![
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::PLAY_ARROW.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Play".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: Some(Action::Direct(value.play.clone())),
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::SHUFFLE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Shuffle".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: Some(Action::Direct(value.shuffle.clone())),
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::ADD_TO_QUEUE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Add to queue".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: Some(Action::Direct(value.add_to_queue.clone())),
+                        },
+                    }),
+                ];
+
+                let first_group = menu::Group::new(items);
+
+                let second_group = menu::Group {
+                    label: None,
+                    items: vec![{
+                        let (icon_font, label) = match value.is_favorite {
+                            true => (icons::filled(), "Unfavorite".into()),
+                            false => (icons::outlined(), "Favorite".into()),
+                        };
+                        menu::Item::Button(menu::button::Button {
+                            icon: Some(Icon::Text {
+                                text: icons::STAR.into_fragment(),
+                                font: Some(icon_font),
+                            }),
+                            label,
+                            supporting_text: None,
+                            action: MenuAction::Message {
+                                is_selected: false,
+                                on_press: Some(Action::Direct(value.toggle_favorite.clone())),
+                            },
+                        })
+                    }],
+                };
+
+                iced_m3::widget::menu(
+                    menu::Style::new(value.theme, value.vibrant),
+                    vec![first_group, second_group],
+                )
+                .into()
+            },
+            value.theme,
+            value.toggle_menu,
+        )
+        .opened(value.menu_opened);
+
         let content = row![
             cover,
             container(column![
@@ -173,29 +191,15 @@ where
             .width(Length::Fill)
             .clip(true)
             .center_y(Length::Fill),
-            space().width(widget::list::ICON_SIZE),
+            menu_button,
         ]
+        .align_y(Alignment::Center)
         .spacing(SPACING_SMALL);
 
-        let button = button(content)
+        button(content)
             .padding(BUTTON_PADDING)
             .style(|_, status| button_style(status, value.theme.on_surface_variant()))
-            .on_press(value.press);
-
-        // TODO: Should be more like a button
-        let menu = container(iced_m3::widget::advanced::drop_down_menu(
-            |_| {
-                icon_filled(*icons::MORE_HORIZ, widget::list::ICON_SIZE)
-                    .color(value.theme.on_surface())
-                    .into()
-            },
-            Some(menu),
-            iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
-        ))
-        .center_y(Length::Fill)
-        .align_right(Length::Fill)
-        .padding(BUTTON_PADDING);
-
-        hover(button, menu)
+            .on_press(value.press)
+            .into()
     }
 }

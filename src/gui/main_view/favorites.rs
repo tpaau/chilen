@@ -26,7 +26,7 @@ use crate::gui::{
             album_button::{self, AlbumButton},
             artist_button::ArtistButton,
             genre_button::GenreButton,
-            playlist_button::playlist_button,
+            playlist_button::{self, PlaylistButton},
             track_button::{self, TrackButton},
         },
     },
@@ -90,15 +90,49 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             VirtualList {
                 model: playlists.into_iter().enumerate(),
                 delegate: Box::new(move |(index, playlist)| {
-                    playlist_button(
+                    let favorite_item: LibraryItem = playlist.clone().into();
+                    let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+
+                    PlaylistButton {
                         state,
                         playlist,
-                        index,
-                        highlighted_name
+                        press: Message::TopView(top_view::Message::Navigate(TopView::Playlist(
+                            playlist.clone(),
+                        ))),
+                        toggle_menu: Message::ToggleMenu(index),
+                        messages: playlist_button::Messages {
+                            play: playlist
+                                .tracks
+                                .is_empty()
+                                .not()
+                                .then_some(Message::PlayPlaylist(playlist.clone())),
+                            shuffle: playlist
+                                .tracks
+                                .is_empty()
+                                .not()
+                                .then_some(Message::ShufflePlaylist(playlist.clone())),
+                            add_to_queue: playlist
+                                .tracks
+                                .is_empty()
+                                .not()
+                                .then_some(Message::AddPlaylistToQueue(playlist.clone())),
+                            export: playlist.tracks.is_empty().not().then_some(
+                                Message::ExportPlaylist(playlist.name.clone().into_string()),
+                            ),
+                            toggle_favorite: Message::ToggleFavorite(favorite_item),
+                            rename: Message::OpenPlaylistRenameDialog {
+                                playlist: playlist.name.clone().into_string(),
+                                name: playlist.name.clone().into_string(),
+                            },
+                            delete: Message::ConfirmPlaylistDeletion(playlist.clone()),
+                        },
+                        highlighted: highlighted_name
                             .map(|name| name.as_str() == playlist.name.as_ref())
                             .unwrap_or_default(),
-                        state.settings.vibrant_widgets,
-                    )
+                        is_favorite,
+                        menu_opened: state.main_view.button_menu == Some(index),
+                    }
+                    .into()
                 }),
                 delegate_height: BUTTON_HEIGHT,
                 visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
@@ -144,6 +178,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                             add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
                             details: None,
                             remove: None,
+                            toggle_menu: Message::ToggleMenu(index + track_offset),
                         },
                         info: track_button::Info::Artist,
                         status: if highlighted_index
@@ -155,6 +190,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                             track_button::Status::Idle
                         },
                         vibrant: state.settings.vibrant_widgets,
+                        menu_opened: state.main_view.button_menu == Some(index + track_offset),
                     }
                     .into()
                 }),
@@ -182,8 +218,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             });
 
             VirtualList {
-                model: albums,
-                delegate: Box::new(move |album| {
+                model: albums.into_iter().enumerate(),
+                delegate: Box::new(move |(index, album)| {
                     let highlighted = highlighted_album_title
                         .map(|t| t == album.title.as_ref())
                         .unwrap_or_default();
@@ -203,9 +239,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         shuffle: Message::ShuffleAlbum(album.clone()),
                         add_to_queue: Message::AddAlbumToQueue(album.clone()),
                         toggle_favorite: Message::ToggleFavorite(favorite_item),
+                        toggle_menu: Message::ToggleMenu(index + album_offset),
+                        menu_opened: state.main_view.button_menu == Some(index + album_offset),
                         is_favorite,
                         highlighted,
-                        vibrant: state.settings.vibrant_widgets,
                     }
                     .into()
                 }),
@@ -233,8 +270,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             });
 
             VirtualList {
-                model: artists,
-                delegate: Box::new(move |artist| {
+                model: artists.into_iter().enumerate(),
+                delegate: Box::new(move |(index, artist)| {
                     let highlighted = highlighted_artist_name
                         .map(|name| name == artist.name.as_ref())
                         .unwrap_or_default();
@@ -250,9 +287,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         shuffle: Message::ShuffleArtist(artist.clone()),
                         add_to_queue: Message::AddArtistToQueue(artist.clone()),
                         toggle_favorite: Message::ToggleFavorite(favorite_item),
+                        toggle_menu: Message::ToggleMenu(index + artist_offset),
                         is_favorite,
                         highlighted,
                         vibrant: state.settings.vibrant_widgets,
+                        menu_opened: state.main_view.button_menu == Some(index + artist_offset),
                     }
                     .into()
                 }),
@@ -280,15 +319,15 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             });
 
             VirtualList {
-                model: genres,
-                delegate: Box::new(move |genre| {
+                model: genres.into_iter().enumerate(),
+                delegate: Box::new(move |(index, genre)| {
                     let highlighted = highlighted_genre_name
                         .map(|name| name == genre.name.as_ref())
                         .unwrap_or_default();
                     let favorite_item: LibraryItem = genre.clone().into();
                     let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
                     GenreButton {
-                        theme: &state.theme,
+                        state,
                         genre: genre.clone(),
                         play: Message::PlayGenre(genre.clone()),
                         press: Message::TopView(top_view::Message::Navigate(TopView::Genre(
@@ -297,9 +336,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         shuffle: Message::ShuffleGenre(genre.clone()),
                         add_to_queue: Message::AddGenreToQueue(genre.clone()),
                         toggle_favorite: Message::ToggleFavorite(favorite_item),
+                        toggle_menu: Message::ToggleMenu(index + genre_offset),
                         is_favorite,
                         highlighted,
-                        vibrant: state.settings.vibrant_widgets,
+                        menu_opened: state.main_view.button_menu == Some(index + genre_offset),
                     }
                     .into()
                 }),

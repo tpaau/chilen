@@ -89,7 +89,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
             playlist: playlist.clone(),
             initial_position: None,
         }),
-        &|| {
+        || {
             container(space().width(100).height(100))
                 .style(|_| container::Style::default().background(color!(0xff0000)))
                 .into()
@@ -138,6 +138,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                         playlist: playlist_cloned.clone(),
                         index,
                     }),
+                    toggle_menu: Message::ToggleMenu(index),
                 },
                 info: track_button::Info::Artist,
                 status: if highlighted_index
@@ -149,6 +150,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                     track_button::Status::Idle
                 },
                 vibrant: state.settings.vibrant_widgets,
+                menu_opened: state.main_view.top_view.button_menu == Some(index),
             }
             .into()
         })

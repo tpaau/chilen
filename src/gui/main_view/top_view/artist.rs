@@ -87,7 +87,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
             artist: artist.clone(),
             initial_position: None,
         }),
-        &|| {
+        || {
             container(space().width(100).height(100))
                 .style(|_| container::Style::default().background(color!(0xff0000)))
                 .into()
@@ -104,7 +104,8 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
     let album_buttons: Vec<_> = artist
         .albums
         .iter()
-        .map(|album| {
+        .enumerate()
+        .map(|(index, album)| {
             let favorite_item: LibraryItem = album.clone().into();
             let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
             AlbumButton {
@@ -122,11 +123,12 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 },
                 add_to_queue: Message::AddAlbumToQueue(album.clone()),
                 toggle_favorite: Message::ToggleFavorite(favorite_item),
+                toggle_menu: Message::ToggleMenu(index),
+                menu_opened: state.main_view.button_menu == Some(index),
                 is_favorite,
                 highlighted: highlighted_album_title
                     .map(|t| t == album.title.as_ref())
                     .unwrap_or_default(),
-                vibrant: state.settings.vibrant_widgets,
             }
             .into()
         })
@@ -166,6 +168,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
                 details: None,
                 remove: None,
+                toggle_menu: Message::ToggleMenu(index),
             },
             info: track_button::Info::Album,
             status: if highlighted_index
@@ -177,6 +180,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
+            menu_opened: state.main_view.top_view.button_menu == Some(index),
         }
         .into()
     });

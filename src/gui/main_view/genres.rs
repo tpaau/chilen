@@ -30,15 +30,15 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         });
 
         let content = VirtualList {
-            model: lib.genres.iter(),
-            delegate: Box::new(move |genre| {
+            model: lib.genres.iter().enumerate(),
+            delegate: Box::new(move |(index, genre)| {
                 let highlighted = highlighted_genre_name
                     .map(|name| name == genre.name.as_ref())
                     .unwrap_or_default();
                 let favorite_item: LibraryItem = genre.clone().into();
                 let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
                 GenreButton {
-                    theme: &state.theme,
+                    state,
                     genre: genre.clone(),
                     play: Message::PlayGenre(genre.clone()),
                     press: Message::TopView(top_view::Message::Navigate(TopView::Genre(
@@ -47,9 +47,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     shuffle: Message::ShuffleGenre(genre.clone()),
                     add_to_queue: Message::AddGenreToQueue(genre.clone()),
                     toggle_favorite: Message::ToggleFavorite(favorite_item),
+                    toggle_menu: Message::ToggleMenu(index),
                     is_favorite,
                     highlighted,
-                    vibrant: state.settings.vibrant_widgets,
+                    menu_opened: state.main_view.button_menu == Some(index),
                 }
                 .into()
             }),

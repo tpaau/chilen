@@ -32,8 +32,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             }
         });
         let content = VirtualList {
-            model: lib.albums.iter(),
-            delegate: Box::new(move |album| {
+            model: lib.albums.iter().enumerate(),
+            delegate: Box::new(move |(index, album)| {
                 let highlighted = highlighted_album_title
                     .map(|t| t == album.title.as_ref())
                     .unwrap_or_default();
@@ -53,9 +53,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     shuffle: Message::ShuffleAlbum(album.clone()),
                     add_to_queue: Message::AddAlbumToQueue(album.clone()),
                     toggle_favorite: Message::ToggleFavorite(favorite_item),
+                    toggle_menu: Message::ToggleMenu(index),
+                    menu_opened: state.main_view.button_menu == Some(index),
                     is_favorite,
                     highlighted,
-                    vibrant: state.settings.vibrant_widgets,
                 }
                 .into()
             }),

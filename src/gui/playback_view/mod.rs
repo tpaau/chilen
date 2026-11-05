@@ -35,6 +35,7 @@ pub enum Message {
     RemoveFromQueue(usize),
     AddTracksToPlaylist(Vec<u64>),
     ToggleFavorite(LibraryItem),
+    ToggleMenu(usize),
 }
 
 // TODO: Save the last opened tab
@@ -49,6 +50,7 @@ pub enum Tab {
 pub struct State {
     seek_slider_value: Option<f32>,
     pub visible_tracks: Vec<bool>,
+    pub button_menu: Option<usize>,
 }
 
 pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
@@ -185,6 +187,13 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
         Message::ToggleFavorite(favorite_item) => {
             let _ = toggle_favorite(favorite_item);
+        }
+        Message::ToggleMenu(index) => {
+            if state.playback_view.button_menu == Some(index) {
+                state.playback_view.button_menu = None;
+            } else {
+                state.playback_view.button_menu = Some(index);
+            }
         }
     }
     Task::none()

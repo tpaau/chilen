@@ -3,15 +3,12 @@ mod artist;
 mod genre;
 mod playlist;
 
-use std::{ops::Not, sync::Arc};
+use std::sync::Arc;
 
 use chilen_backend::music_lib::{
     Album, Artist, Genre, LibraryItem, Playlist, Track, toggle_favorite,
 };
-use iced::{
-    Element, Length, Pixels, Task,
-    keyboard::{self, key},
-};
+use iced::{Element, Length, Pixels, Task};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
@@ -26,7 +23,9 @@ use iced_m3::{
 use iced_widget::{container, responsive, scrollable};
 use log::error;
 
-use crate::gui::{Chilen, SPACING_SMALLER, common_actions, dialog, font::bold_text, icons};
+use crate::gui::{
+    Chilen, SPACING_SMALLER, common_actions, dialog, font::bold_text, icons, menu_close,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TopView {
@@ -123,6 +122,7 @@ pub enum Message {
     ToggleFavorite(LibraryItem),
     OpenMainMenu,
     CloseMainMenu,
+    ToggleMenu(usize),
 }
 
 fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
@@ -132,12 +132,19 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
         .into()
 }
 
+#[derive(Default)]
+pub struct State {
+    pub main_menu_opened: bool,
+    pub button_menu: Option<usize>,
+}
+
 fn horizontal_buttons<'a>(
     state: &'a Chilen,
     message_play: Option<Message>,
     message_shuffle: Option<Message>,
-    menu_surface: &'a (impl Fn() -> Element<'a, Message> + 'a),
+    menu_surface: impl Fn() -> Element<'a, Message> + 'a,
 ) -> Element<'a, Message> {
+    let menu_surface = Arc::new(menu_surface);
     responsive(move |size| {
         let (size, spacing) = if size.width < 466.0 {
             (
@@ -205,29 +212,18 @@ fn horizontal_buttons<'a>(
                             }),
                         )
                         .size(size)
-                        .selected(state.main_view.top_view_menu_opened)
+                        .selected(state.main_view.top_view.main_menu_opened)
                         .on_press(Message::OpenMainMenu),
-                        menu_surface,
-                        state.main_view.top_view_menu_opened,
+                        {
+                            let surface = Arc::clone(&menu_surface);
+                            move || surface()
+                        },
+                        state.main_view.top_view.main_menu_opened,
                     )
                     .placement(menu_overlay::Placement::BottomRight {
                         padding: Pixels(SPACING_SMALLER),
                     })
-                    .on_press(|properties| {
-                        if let Some(position) = properties.position {
-                            properties
-                                .bounds
-                                .contains(position)
-                                .not()
-                                .then_some(Message::CloseMainMenu)
-                        } else {
-                            None
-                        }
-                    })
-                    .on_key(|properties| {
-                        matches!(properties.key, keyboard::Key::Named(key::Named::Escape))
-                            .then_some(Message::CloseMainMenu)
-                    }),
+                    .on_press(|p| menu_close(p, Message::CloseMainMenu)),
                     false,
                 )
             },
@@ -264,6 +260,7 @@ pub fn view<'a>(state: &'a Chilen, view: TopView) -> Element<'a, Message> {
 }
 
 pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+    state.main_view.top_view.main_menu_opened = false;
     match message {
         Message::Navigate(top_view) => state.main_view.nav_stack.navigate(top_view),
         Message::Unwind => {
@@ -361,8 +358,15 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::ToggleFavorite(favorite_item) => {
             let _ = toggle_favorite(favorite_item);
         }
-        Message::OpenMainMenu => state.main_view.top_view_menu_opened = true,
-        Message::CloseMainMenu => state.main_view.top_view_menu_opened = false,
+        Message::OpenMainMenu => state.main_view.top_view.main_menu_opened = true,
+        Message::CloseMainMenu => state.main_view.top_view.main_menu_opened = false,
+        Message::ToggleMenu(index) => {
+            if state.main_view.top_view.button_menu == Some(index) {
+                state.main_view.top_view.button_menu = None;
+            } else {
+                state.main_view.top_view.button_menu = Some(index);
+            }
+        }
     }
     Task::none()
 }

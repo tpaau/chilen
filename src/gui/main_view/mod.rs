@@ -211,7 +211,8 @@ pub struct State {
     /// Sadly I couldn't use a range for this, it would've used much less memory but it lagged too
     /// much when I was scrolling erratically.
     pub visible: Option<Vec<bool>>,
-    pub top_view_menu_opened: bool,
+    pub button_menu: Option<usize>, // The index of the button which has a menu opened
+    pub top_view: top_view::State,
 }
 
 impl State {
@@ -271,6 +272,7 @@ pub enum Message {
     ToggleSideBar,
     ToggleFavorite(LibraryItem),
     PlayTrack(Arc<Track>),
+    ToggleMenu(usize),
 }
 
 pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Message> {
@@ -572,6 +574,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             common_actions::play_album_no_shuffle(state, album, None);
         }
         Message::ShuffleAlbum(album) => {
+            state.main_view.top_view.main_menu_opened = false;
             common_actions::shuffle_album(state, album, None);
         }
         Message::PlayArtist(artist) => {
@@ -588,6 +591,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
         Message::AddAlbumToQueue(album) => {
+            state.main_view.top_view.main_menu_opened = false;
             common_actions::append_tracks_to_queue(album.tracks.to_vec())
         }
         Message::AddArtistToQueue(artist) => {
@@ -667,6 +671,7 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.save_persistent();
         }
         Message::ToggleFavorite(favorite_item) => {
+            state.main_view.top_view.main_menu_opened = false;
             let _ = toggle_favorite(favorite_item);
         }
         Message::PlayTrack(track) => {
@@ -690,6 +695,13 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::ShuffleFavoriteTracks { initial_position } => {
             common_actions::shuffle_all_favorite_tracks(state, Some(initial_position));
+        }
+        Message::ToggleMenu(index) => {
+            if state.main_view.button_menu == Some(index) {
+                state.main_view.button_menu = None;
+            } else {
+                state.main_view.button_menu = Some(index);
+            }
         }
     }
     Task::none()

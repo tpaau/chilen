@@ -3,6 +3,7 @@ pub mod cover_image;
 pub mod icon_shape;
 pub mod list;
 pub mod lyrics;
+pub mod menu_button;
 pub mod text_spacer;
 pub mod theme_mode_preview;
 pub mod wrappers;

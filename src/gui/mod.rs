@@ -21,13 +21,14 @@ use chilen_backend::{
 use iced::{
     self, Element, Font, Subscription, Task,
     futures::{SinkExt, Stream, StreamExt, channel::mpsc},
+    keyboard::{self, key},
     stream,
     widget::{container, row},
     window::{self},
 };
 use iced_m3::{
     theme::{ColorScheme, Mode, Theme},
-    widget::navrail,
+    widget::{advanced::menu_overlay::PressProperties, navrail},
 };
 use iced_widget::{responsive, stack};
 use log::{debug, error, trace};
@@ -64,6 +65,7 @@ pub enum Message {
     AddTracksToPlaylist { tracks: Vec<u64>, playlist: String },
     ResetSettings,
     SystemThemeChanged(iced::theme::Mode),
+    CloseAllMenus,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -154,6 +156,14 @@ pub fn send_event(event: Event) {
 
 fn window_subscription() -> Subscription<Message> {
     window::events().map(move |(id, event)| Message::Event(Event::Window { event, id }))
+}
+
+pub fn menu_close<Message>(properties: PressProperties, message: Message) -> Option<Message> {
+    properties
+        .position
+        .map(|pos| !properties.bounds.contains(pos))
+        .unwrap_or_default()
+        .then_some(message)
 }
 
 impl Chilen {
@@ -345,6 +355,14 @@ impl Chilen {
                     state.theme.mode = mode.into();
                 }
             }
+            Message::CloseAllMenus => {
+                state.playback_view.button_menu = None;
+                state.main_view.top_view.main_menu_opened = false;
+                state.main_view.top_view.button_menu = None;
+                state.main_view.button_menu = None;
+                state.dialog = Dialog::None;
+                state.settings_state.screen = None;
+            }
         }
         Task::none()
     }
@@ -368,8 +386,29 @@ impl Chilen {
         Subscription::run(Self::worker)
     }
 
-    fn theme_changes() -> iced::Subscription<Message> {
+    fn theme_changes() -> Subscription<Message> {
         iced::system::theme_changes().map(Message::SystemThemeChanged)
+    }
+
+    fn keyboard_shortcuts() -> Subscription<Message> {
+        iced::event::listen_with(|event, _, _| {
+            if matches!(
+                event,
+                iced::Event::Keyboard(keyboard::Event::KeyPressed {
+                    key: keyboard::Key::Named(key::Named::Escape),
+                    modified_key: _,
+                    physical_key: _,
+                    location: _,
+                    modifiers: _,
+                    text: _,
+                    repeat: _
+                })
+            ) {
+                Some(Message::CloseAllMenus)
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -398,6 +437,7 @@ pub fn start() -> iced::Result {
                 Chilen::subscription().map(Message::Event),
                 window_subscription(),
                 Chilen::theme_changes(),
+                Chilen::keyboard_shortcuts(),
             ])
         })
         .run()

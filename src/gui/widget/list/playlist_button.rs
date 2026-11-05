@@ -1,201 +1,223 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{LibraryItem, Playlist, is_favorite};
+use chilen_backend::music_lib::Playlist;
 use iced::{
-    Element, Length, Padding,
-    widget::{button, column, container, row, space, text},
+    Alignment, Element, Length, Padding,
+    widget::{button, column, container, row, text},
 };
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::ColorScheme,
-    widget::{hybrid_icon::Icon, vertical_menu},
+    widget::{
+        Action,
+        hybrid_icon::Icon,
+        menu::{self, Menu, button::MenuAction},
+    },
 };
-use iced_widget::{hover, sensor};
 
 use crate::gui::{
     Chilen, THUMBNAIL_SIZE,
     font::{self, SIZE_REGULAR, SIZE_SMALL},
     formatter::format_playlist_track_count,
-    icons::{self, icon_filled},
-    main_view::{self, top_view},
+    icons::{self},
     widget::{
-        self,
         cover_image::CoverImage,
-        list::{BUTTON_HEIGHT, BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
+        list::{BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
+        menu_button::MenuButton,
         wrappers::marquee,
     },
 };
 
-pub fn playlist_button<'a>(
-    state: &'a Chilen,
-    playlist: &'a Arc<Playlist>,
-    index: usize,
-    highlighted: bool,
-    vibrant: bool,
-) -> Element<'a, main_view::Message> {
-    let content: Element<'_, main_view::Message> = if let Some(visible) = &state.main_view.visible
-        && let Some(val) = visible.get(index)
-        && *val
-    {
-        let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
-        let menu = iced_m3::widget::menu(
-            vec![
-                vertical_menu::Group {
-                    label: None,
-                    entries: vec![
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::PLAY_ARROW.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Play".into(),
-                            supporting_text: None,
-                            error: false,
-                            action: vertical_menu::Action::Message(
-                                (!playlist.tracks.is_empty())
-                                    .then_some(main_view::Message::PlayPlaylist(playlist.clone())),
-                            ),
-                        },
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::SHUFFLE.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Shuffle".into(),
-                            supporting_text: None,
-                            error: false,
-                            action: vertical_menu::Action::Message(
-                                (!playlist.tracks.is_empty()).then_some(
-                                    main_view::Message::ShufflePlaylist(playlist.clone()),
-                                ),
-                            ),
-                        },
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::ADD_TO_QUEUE.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Add to queue".into(),
-                            supporting_text: None,
-                            error: false,
-                            action: vertical_menu::Action::Message(
-                                (!playlist.tracks.is_empty()).then_some(
-                                    main_view::Message::AddPlaylistToQueue(playlist.clone()),
-                                ),
-                            ),
-                        },
-                    ],
-                },
-                vertical_menu::Group {
-                    label: None,
-                    entries: vec![
-                        {
-                            let favorite_item: LibraryItem = playlist.clone().into();
-                            let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
-                            let (icon_font, label) = match is_favorite {
-                                true => (icons::filled(), "Unfavorite".into()),
-                                false => (icons::outlined(), "Favorite".into()),
-                            };
-                            vertical_menu::Entry::Button {
-                                icon: Some(Icon::Text {
-                                    text: icons::STAR.into_fragment(),
-                                    font: Some(icon_font),
-                                }),
-                                label,
-                                supporting_text: None,
-                                error: false,
-                                action: vertical_menu::Action::Message(Some(
-                                    main_view::Message::ToggleFavorite(favorite_item),
-                                )),
-                            }
-                        },
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::UPLOAD.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Export".into(),
-                            supporting_text: None,
-                            error: false,
-                            action: vertical_menu::Action::Message(
-                                (!playlist.tracks.is_empty()).then_some(
-                                    main_view::Message::ExportPlaylist(
-                                        playlist.name.clone().into_string(),
-                                    ),
-                                ),
-                            ),
-                        },
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::IMAGE.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Change image".into(),
-                            supporting_text: None,
-                            error: false,
-                            action: vertical_menu::Action::Message(None),
-                        },
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::EDIT.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Rename".into(),
-                            supporting_text: None,
-                            error: false,
-                            action: vertical_menu::Action::Message(Some(
-                                main_view::Message::OpenPlaylistRenameDialog {
-                                    playlist: playlist.name.clone().into_string(),
-                                    name: playlist.name.clone().into_string(),
-                                },
-                            )),
-                        },
-                        vertical_menu::Entry::Separator,
-                        vertical_menu::Entry::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::DELETE.into_fragment(),
-                                font: Some(icons::filled()),
-                            }),
-                            label: "Delete".into(),
-                            supporting_text: None,
-                            error: true,
-                            action: vertical_menu::Action::Message(Some(
-                                main_view::Message::ConfirmPlaylistDeletion(playlist.clone()),
-                            )),
-                        },
-                    ],
-                },
-            ],
-            vertical_menu::Style::new(&state.theme, vibrant),
-            font::regular(),
-        );
+#[derive(Clone)]
+pub struct Messages<Message>
+where
+    Message: Clone,
+{
+    pub play: Option<Message>,
+    pub shuffle: Option<Message>,
+    pub add_to_queue: Option<Message>,
+    pub export: Option<Message>,
+    pub toggle_favorite: Message,
+    pub rename: Message,
+    pub delete: Message,
+}
 
-        let font = if highlighted {
+pub fn menu<'a, Message, Theme, Renderer>(
+    state: &'a Chilen,
+    is_favorite: bool,
+    messages: Messages<Message>,
+) -> Menu<'a, Message, Theme, Renderer>
+where
+    Message: Clone,
+    Renderer: iced::advanced::text::Renderer<Font = iced::Font> + iced::advanced::svg::Renderer,
+{
+    iced_m3::widget::menu(
+        menu::Style::new(&state.theme, state.settings.vibrant_widgets),
+        vec![
+            menu::Group {
+                label: None,
+                items: vec![
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::PLAY_ARROW.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Play".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: messages.play.clone().map(Action::Direct),
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::SHUFFLE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Shuffle".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: messages.shuffle.clone().map(Action::Direct),
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::ADD_TO_QUEUE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Add to queue".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: messages.add_to_queue.clone().map(Action::Direct),
+                        },
+                    }),
+                ],
+            },
+            menu::Group {
+                label: None,
+                items: vec![
+                    {
+                        let (icon_font, label) = match is_favorite {
+                            true => (icons::filled(), "Unfavorite".into()),
+                            false => (icons::outlined(), "Favorite".into()),
+                        };
+                        menu::Item::Button(menu::button::Button {
+                            icon: Some(Icon::Text {
+                                text: icons::STAR.into_fragment(),
+                                font: Some(icon_font),
+                            }),
+                            label,
+                            supporting_text: None,
+                            action: MenuAction::Message {
+                                is_selected: false,
+                                on_press: Some(Action::Direct(messages.toggle_favorite.clone())),
+                            },
+                        })
+                    },
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::UPLOAD.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Export".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: messages.export.clone().map(Action::Direct),
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::IMAGE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Change image".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: None,
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::EDIT.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Rename".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: Some(Action::Direct(messages.rename.clone())),
+                        },
+                    }),
+                    menu::Item::Separator,
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::DELETE.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Delete".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: Some(Action::Direct(messages.delete.clone())),
+                        },
+                    }),
+                ],
+            },
+        ],
+    )
+}
+
+pub struct PlaylistButton<'a, Message>
+where
+    Message: Clone,
+{
+    pub state: &'a Chilen,
+    pub playlist: &'a Arc<Playlist>,
+    pub press: Message,
+    pub toggle_menu: Message,
+    pub messages: Messages<Message>,
+    pub highlighted: bool,
+    pub is_favorite: bool,
+    pub menu_opened: bool,
+}
+
+impl<'a, Message> From<PlaylistButton<'a, Message>> for Element<'a, Message>
+where
+    Message: 'a + Clone,
+{
+    fn from(value: PlaylistButton<'a, Message>) -> Self {
+        let thumbnail_border_radius = BUTTON_ROUNDING - BUTTON_PADDING;
+
+        let font = if value.highlighted {
             font::bold()
         } else {
             font::regular()
         };
         let title = marquee(
-            text(playlist.name.as_ref())
+            text(value.playlist.name.as_ref())
                 .size(SIZE_REGULAR)
-                .color(state.theme.on_surface())
+                .color(value.state.theme.on_surface())
                 .font(font)
                 .wrapping(text::Wrapping::None),
         );
 
         // TODO: Maybe an animated indicator would look better?
-        let (icon_color, container_color) = match highlighted {
+        let (icon_color, container_color) = match value.highlighted {
             true => (
-                state.theme.on_secondary_container(),
-                state.theme.secondary_container(),
+                value.state.theme.on_secondary_container(),
+                value.state.theme.secondary_container(),
             ),
             false => (
-                state.theme.on_surface_variant(),
-                state.theme.surface_container_high(),
+                value.state.theme.on_surface_variant(),
+                value.state.theme.surface_container_high(),
             ),
         };
-        let image_path = (!highlighted)
-            .then_some(playlist.cover.thumbnail().ok())
+        let image_path = (!value.highlighted)
+            .then_some(value.playlist.cover.thumbnail().ok())
             .flatten();
 
         let cover = CoverImage {
@@ -210,52 +232,36 @@ pub fn playlist_button<'a>(
             height: THUMBNAIL_SIZE.into(),
         };
 
+        let menu_button = MenuButton::new(
+            move || menu(value.state, value.is_favorite, value.messages.clone()).into(),
+            &value.state.theme,
+            value.toggle_menu,
+        )
+        .opened(value.menu_opened);
+
         let content = row![
             cover,
             container(column![
                 title,
                 marquee(
-                    text(format_playlist_track_count(playlist.tracks.len()))
+                    text(format_playlist_track_count(value.playlist.tracks.len()))
                         .size(SIZE_SMALL)
                         .wrapping(text::Wrapping::None)
-                        .color(state.theme.on_surface_variant())
+                        .color(value.state.theme.on_surface_variant())
                 ),
             ])
             .width(Length::Fill)
             .clip(true)
             .center_y(Length::Fill),
-            space().width(widget::list::ICON_SIZE),
+            menu_button,
         ]
+        .align_y(Alignment::Center)
         .spacing(BUTTON_SPACING);
 
-        let button = button(content)
+        button(content)
             .padding(Padding::new(BUTTON_PADDING))
-            .style(|_, status| button_style(status, state.theme.on_surface()))
-            .on_press_with(|| {
-                main_view::Message::TopView(top_view::Message::Navigate(playlist.clone().into()))
-            });
-
-        // TODO: Should be more like a button
-        let menu = container(iced_m3::widget::advanced::drop_down_menu(
-            |_| {
-                icon_filled(*icons::MORE_HORIZ, widget::list::ICON_SIZE)
-                    .color(state.theme.on_surface())
-                    .into()
-            },
-            Some(menu),
-            iced_m3::widget::advanced::drop_down_menu::Placement::BottomRight,
-        ))
-        .center_y(Length::Fill)
-        .align_right(Length::Fill)
-        .padding(BUTTON_PADDING);
-
-        hover(button, menu)
-    } else {
-        space().width(Length::Fill).height(BUTTON_HEIGHT).into()
-    };
-
-    sensor(content)
-        .on_show(move |_| main_view::Message::ButtonPoppedIn(index))
-        .on_hide(main_view::Message::ButtonPoppedOut(index))
-        .into()
+            .style(|_, status| button_style(status, value.state.theme.on_surface()))
+            .on_press(value.press)
+            .into()
+    }
 }

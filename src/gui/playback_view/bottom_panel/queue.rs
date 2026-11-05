@@ -54,6 +54,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                         add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
                         details: None,
                         remove: Some(Message::RemoveFromQueue(virtual_index)),
+                        toggle_menu: Message::ToggleMenu(virtual_index),
                     },
                     info: track_button::Info::Artist,
                     status: if virtual_index < player_state.position {
@@ -64,6 +65,7 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                         track_button::Status::Idle
                     },
                     vibrant: state.settings.vibrant_widgets,
+                    menu_opened: state.playback_view.button_menu == Some(virtual_index),
                 }
                 .into()
             }),

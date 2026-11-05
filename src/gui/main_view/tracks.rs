@@ -55,6 +55,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                         ]),
                         details: None,
                         remove: None,
+                        toggle_menu: main_view::Message::ToggleMenu(index),
                     },
                     info: track_button::Info::Artist,
                     status: if highlighted_index
@@ -66,6 +67,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                         track_button::Status::Idle
                     },
                     vibrant: state.settings.vibrant_widgets,
+                    menu_opened: state.main_view.button_menu == Some(index),
                 }
                 .into()
             }),

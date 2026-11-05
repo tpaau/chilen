@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use chilen_backend::music_lib::{Album, LibraryItem, is_favorite};
-use iced::{Alignment, Element, Length, color};
+use iced::{Alignment, Element, Length};
 use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{column, container, responsive, row, space, text};
+use iced_widget::{column, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
@@ -16,7 +16,7 @@ use crate::gui::{
         artist_chip::artist_chip,
         cover_image::CoverImage,
         list::{
-            BUTTON_SPACING,
+            BUTTON_SPACING, album_button,
             track_button::{self, TrackButton},
         },
         text_spacer::text_spacer,
@@ -117,6 +117,21 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     .height(Length::Shrink)
     .width(Length::Shrink);
 
+    let album = album.clone();
+
+    let favorite_item: LibraryItem = album.clone().into();
+    let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+    let play = Message::PlayAlbumNoShuffle {
+        album: album.clone(),
+        initial_position: None,
+    };
+    let shuffle = Message::ShuffleAlbum {
+        album: album.clone(),
+        initial_position: None,
+    };
+    let add_to_queue = Message::AddAlbumToQueue(album.clone());
+    let toggle_favorite = Message::ToggleFavorite(favorite_item);
+
     let buttons = horizontal_buttons(
         state,
         Some(Message::PlayAlbumNoShuffle {
@@ -127,10 +142,16 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             album: album.clone(),
             initial_position: None,
         }),
-        &|| {
-            container(space().width(100).height(100))
-                .style(|_| container::Style::default().background(color!(0xff0000)))
-                .into()
+        move || {
+            album_button::menu(
+                state,
+                is_favorite,
+                play.clone(),
+                shuffle.clone(),
+                add_to_queue.clone(),
+                toggle_favorite.clone(),
+            )
+            .into()
         },
     );
 
@@ -146,7 +167,8 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
 
     let track_buttons = album.tracks.iter().enumerate().map(|(index, track)| {
         let favorite_item: LibraryItem = track.clone().into();
-        let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+        let is_favorite =
+            chilen_backend::music_lib::is_favorite(&favorite_item).unwrap_or_default();
         TrackButton {
             state,
             track: track.clone(),
@@ -169,6 +191,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                 add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
                 details: None,
                 remove: None,
+                toggle_menu: Message::ToggleMenu(index),
             },
             info: track_button::Info::Length,
             status: if highlighted_index
@@ -180,6 +203,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
+            menu_opened: state.main_view.top_view.button_menu == Some(index),
         }
         .into()
     });
