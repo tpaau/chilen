@@ -203,7 +203,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
-            menu_opened: state.main_view.top_view.button_menu == Some(index),
+            menu_opened: state.main_view.button_menu == Some(index),
         }
         .into()
     });

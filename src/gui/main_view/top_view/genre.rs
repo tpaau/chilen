@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use chilen_backend::music_lib::{Genre, LibraryItem, is_favorite};
-use iced::{Alignment, Element, Length, color};
+use iced::{Alignment, Element, Length};
 use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{column, container, responsive, row, space, text};
+use iced_widget::{column, responsive, row, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
@@ -16,6 +16,7 @@ use crate::gui::{
             BUTTON_SPACING,
             album_button::{self, AlbumButton},
             artist_button::ArtistButton,
+            genre_button,
             track_button::{self, TrackButton},
         },
         text_spacer::text_spacer,
@@ -98,22 +99,40 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(
-        state,
-        Some(Message::PlayGenreNoShuffle {
-            genre: genre.clone(),
-            initial_position: None,
-        }),
-        Some(Message::ShuffleGenre {
-            genre: genre.clone(),
-            initial_position: None,
-        }),
-        || {
-            container(space().width(100).height(100))
-                .style(|_| container::Style::default().background(color!(0xff0000)))
+    let buttons = {
+        let genre = genre.clone();
+        horizontal_buttons(
+            state,
+            Some(Message::PlayGenreNoShuffle {
+                genre: genre.clone(),
+                initial_position: None,
+            }),
+            Some(Message::ShuffleGenre {
+                genre: genre.clone(),
+                initial_position: None,
+            }),
+            move || {
+                let favorite_item = genre.clone().into();
+                let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+
+                genre_button::menu(
+                    state,
+                    is_favorite,
+                    Message::PlayGenreNoShuffle {
+                        genre: genre.clone(),
+                        initial_position: None,
+                    },
+                    Message::ShuffleGenre {
+                        genre: genre.clone(),
+                        initial_position: None,
+                    },
+                    Message::AddGenreToQueue(genre.clone()),
+                    Message::ToggleFavorite(favorite_item),
+                )
                 .into()
-        },
-    );
+            },
+        )
+    };
 
     let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
@@ -185,7 +204,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             let favorite_item: LibraryItem = artist.clone().into();
             let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
             ArtistButton {
-                theme: &state.theme,
+                state,
                 artist: artist.clone(),
                 play: Message::PlayArtistNoShuffle {
                     artist: artist.clone(),
@@ -204,7 +223,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     .map(|name| name == artist.name.as_ref())
                     .unwrap_or_default(),
                 vibrant: state.settings.vibrant_widgets,
-                menu_opened: state.main_view.top_view.button_menu == Some(index),
+                menu_opened: state.main_view.button_menu == Some(index),
             }
             .into()
         })
@@ -268,7 +287,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
-            menu_opened: state.main_view.top_view.button_menu == Some(index),
+            menu_opened: state.main_view.button_menu == Some(index),
         }
         .into()
     });

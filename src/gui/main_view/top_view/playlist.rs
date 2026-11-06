@@ -150,7 +150,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                     track_button::Status::Idle
                 },
                 vibrant: state.settings.vibrant_widgets,
-                menu_opened: state.main_view.top_view.button_menu == Some(index),
+                menu_opened: state.main_view.button_menu == Some(index),
             }
             .into()
         })

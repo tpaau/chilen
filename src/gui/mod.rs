@@ -137,11 +137,11 @@ const TOTAL_MIN_WIDTH: f32 =
 // TODO: Should be calculated dynamically based on the window width
 const MIN_HEIGHT: f32 = 920.0;
 
-pub fn event_sender_initialized() -> bool {
+pub(super) fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()
 }
 
-pub fn send_event(event: Event) {
+pub(super) fn send_event(event: Event) {
     match EVENT_SENDER.write().unwrap().as_mut() {
         Some(sender) => {
             if let Err(e) = sender.try_send(event) {
@@ -357,8 +357,8 @@ impl Chilen {
             }
             Message::CloseAllMenus => {
                 state.playback_view.button_menu = None;
+                state.main_view.button_menu = None;
                 state.main_view.top_view.main_menu_opened = false;
-                state.main_view.top_view.button_menu = None;
                 state.main_view.button_menu = None;
                 if !matches!(state.dialog, Dialog::None) {
                     state.dialog = Dialog::None;

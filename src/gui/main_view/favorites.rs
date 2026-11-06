@@ -278,7 +278,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     let favorite_item: LibraryItem = artist.clone().into();
                     let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
                     ArtistButton {
-                        theme: &state.theme,
+                        state,
                         artist: artist.clone(),
                         play: Message::PlayArtist(artist.clone()),
                         press: Message::TopView(top_view::Message::Navigate(TopView::Artist(

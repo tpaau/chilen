@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use chilen_backend::music_lib::{Artist, LibraryItem, is_favorite};
-use iced::{Alignment, Element, Length, color};
+use iced::{Alignment, Element, Length};
 use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{column, container, responsive, row, space, text};
+use iced_widget::{column, responsive, row, text};
 
 use crate::gui::{
     Chilen, SPACING_REGULAR, SPACING_SMALLER,
@@ -15,6 +15,7 @@ use crate::gui::{
         list::{
             BUTTON_SPACING,
             album_button::{self, AlbumButton},
+            artist_button,
             track_button::{self, TrackButton},
         },
         text_spacer::text_spacer,
@@ -77,22 +78,40 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(
-        state,
-        Some(Message::PlayArtistNoShuffle {
-            artist: artist.clone(),
-            initial_position: None,
-        }),
-        Some(Message::ShuffleArtist {
-            artist: artist.clone(),
-            initial_position: None,
-        }),
-        || {
-            container(space().width(100).height(100))
-                .style(|_| container::Style::default().background(color!(0xff0000)))
+    let buttons = {
+        let artist = artist.clone();
+        horizontal_buttons(
+            state,
+            Some(Message::PlayArtistNoShuffle {
+                artist: artist.clone(),
+                initial_position: None,
+            }),
+            Some(Message::ShuffleArtist {
+                artist: artist.clone(),
+                initial_position: None,
+            }),
+            move || {
+                let favorite_item = artist.clone().into();
+                let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+
+                artist_button::menu(
+                    state,
+                    Message::PlayArtistNoShuffle {
+                        artist: artist.clone(),
+                        initial_position: None,
+                    },
+                    Message::ShuffleArtist {
+                        artist: artist.clone(),
+                        initial_position: None,
+                    },
+                    Message::AddArtistToQueue(artist.clone()),
+                    Message::ToggleFavorite(favorite_item),
+                    is_favorite,
+                )
                 .into()
-        },
-    );
+            },
+        )
+    };
 
     let highlighted_album_title = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Album { title } = &p.queue_source {
@@ -180,7 +199,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
-            menu_opened: state.main_view.top_view.button_menu == Some(index),
+            menu_opened: state.main_view.button_menu == Some(index),
         }
         .into()
     });

@@ -118,6 +118,7 @@ pub enum Message {
     AddTrackToQueue(Arc<Track>),
     AddAlbumToQueue(Arc<Album>),
     AddArtistToQueue(Arc<Artist>),
+    AddGenreToQueue(Arc<Genre>),
     AddTracksToPlaylist(Vec<u64>),
     ToggleFavorite(LibraryItem),
     OpenMainMenu,
@@ -135,7 +136,6 @@ fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Messag
 #[derive(Default)]
 pub struct State {
     pub main_menu_opened: bool,
-    pub button_menu: Option<usize>,
 }
 
 fn horizontal_buttons<'a>(
@@ -354,6 +354,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::AddArtistToQueue(artist) => {
             common_actions::append_tracks_to_queue(artist.tracks.to_vec())
         }
+        Message::AddGenreToQueue(genre) => {
+            common_actions::append_tracks_to_queue(genre.tracks.to_vec())
+        }
         Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
         Message::ToggleFavorite(favorite_item) => {
             let _ = toggle_favorite(favorite_item);
@@ -361,10 +364,10 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::OpenMainMenu => state.main_view.top_view.main_menu_opened = true,
         Message::CloseMainMenu => state.main_view.top_view.main_menu_opened = false,
         Message::ToggleMenu(index) => {
-            if state.main_view.top_view.button_menu == Some(index) {
-                state.main_view.top_view.button_menu = None;
+            if state.main_view.button_menu == Some(index) {
+                state.main_view.button_menu = None;
             } else {
-                state.main_view.top_view.button_menu = Some(index);
+                state.main_view.button_menu = Some(index);
             }
         }
     }
