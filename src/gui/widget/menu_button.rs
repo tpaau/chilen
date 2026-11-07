@@ -1,8 +1,13 @@
-use iced::{Element, Pixels};
+use iced::{Color, Element, Pixels, border::Radius};
 use iced_core::text::IntoFragment;
 use iced_m3::{
-    theme::{Accent, ColorScheme},
-    widget::{advanced::menu_overlay::Placement, button, hybrid_icon::Icon},
+    style::StateLayer,
+    theme::ColorScheme,
+    widget::{
+        advanced::menu_overlay::Placement,
+        button::{self, ElevationStates, Outline},
+        hybrid_icon::Icon,
+    },
 };
 
 use crate::gui::{SPACING_SMALLER, icons, menu_close};
@@ -27,9 +32,34 @@ where
         theme: &(impl ColorScheme + ?Sized),
         toggle_menu: Message,
     ) -> Self {
+        let style_regular = button::StateStyle {
+            container: Color::TRANSPARENT,
+            label: theme.on_surface(),
+            icon: theme.on_surface(),
+            outline: Outline::default(),
+        };
+        let style_selected = button::StateStyle {
+            container: theme.surface_container_high(),
+            ..style_regular
+        };
+        let state_layer = StateLayer::new(theme.on_surface());
+
+        let style = button::Style {
+            regular: style_regular,
+            unselected: style_regular,
+            selected: style_selected,
+            disabled: style_regular,
+            disabled_unselected: style_regular,
+            disabled_selected: style_selected,
+            elevation: ElevationStates::new(theme.shadow()),
+            state_layer,
+            state_layer_unselected: state_layer,
+            state_layer_selected: state_layer,
+        };
+
         Self {
             surface: Box::new(surface),
-            style: button::Style::filled(theme, Accent::Primary),
+            style,
             menu_opened: false,
             toggle_menu,
         }
@@ -51,8 +81,10 @@ where
         'a + iced::advanced::text::Renderer<Font = iced::Font> + iced::advanced::svg::Renderer,
 {
     fn from(value: MenuButton<'a, Message, Theme, Renderer>) -> Self {
-        let size = button::Size::extra_small();
-        size.width(size.height);
+        let mut size = button::Size::extra_small();
+        size.width = size.height;
+        size.corner_radius.shape_morph = false;
+        size.corner_radius.square = Radius::from(f32::MAX);
 
         let button = iced_m3::widget::button(
             value.style,
