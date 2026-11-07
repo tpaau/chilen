@@ -28,8 +28,6 @@ pub enum Event {
     SystemThemeChanged(iced::theme::Mode),
 }
 
-// TODO: A bunch or `Arc<WhateverLibraryItem>` types are in here. I should rather pass IDs of those
-// items in the library, that way we only have 8 bytes allocated on the stack per item.
 #[derive(Clone)]
 pub enum Message {
     Settings(settings::Message),
@@ -42,6 +40,7 @@ pub enum Message {
     /// Opens a URL in the browser
     OpenURL(String),
     EscapePressed,
+    CloseMenus,
 }
 
 fn backend_events_worker() -> impl Stream<Item = Event> {
@@ -107,13 +106,29 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             return settings::update(state, message);
         }
         Message::Playback(message) => {
-            return playback::update(state, message);
+            return Task::batch([
+                Task::done(Message::CloseMenus),
+                playback::update(state, message),
+            ]);
         }
-        Message::Library(message) => return library::update(state, message),
+        Message::Library(message) => {
+            return Task::batch([
+                Task::done(Message::CloseMenus),
+                library::update(state, message),
+            ]);
+        }
         Message::PlaybackView(message) => {
-            return playback_view::update(state, message);
+            return Task::batch([
+                Task::done(Message::CloseMenus),
+                playback_view::update(state, message),
+            ]);
         }
-        Message::Dialog(message) => return dialog::update(state, message),
+        Message::Dialog(message) => {
+            return Task::batch([
+                Task::done(Message::CloseMenus),
+                dialog::update(state, message),
+            ]);
+        }
         Message::MainView(message) => {
             return main_view::update(state, message);
         }
@@ -199,6 +214,11 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             } else {
                 state.settings_state.screen = None;
             }
+        }
+        Message::CloseMenus => {
+            state.main_view.button_menu = None;
+            state.playback_view.button_menu = None;
+            state.main_view.top_view.main_menu_opened = false;
         }
     }
     Task::none()

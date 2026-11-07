@@ -279,6 +279,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         } else {
             "No playlists yet!".to_string()
         };
+
         // TODO: Make this one be a playlist creation button if no playlists are present in the library
         let playlist_card = card_item(
             &state.theme,
