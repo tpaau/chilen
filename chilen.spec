@@ -22,7 +22,7 @@ actually use this outside of testing.
 
 
 %prep
-%autosetup -n chilen-main
+%autosetup -S git -n chilen-main
 
 
 %build
