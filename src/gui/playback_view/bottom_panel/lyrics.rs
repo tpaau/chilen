@@ -3,7 +3,9 @@ use iced_core::text::IntoFragment;
 use iced_m3::{theme::ColorScheme, widget::shapes};
 use iced_widget::center;
 
-use crate::gui::{Chilen, icons, playback_view::Message, widget::icon_shape::IconShape};
+use crate::gui::{
+    Chilen, event_loop::Message, icons, playback_view, widget::icon_shape::IconShape,
+};
 
 pub(super) fn view<'a>(state: &'a Chilen, lyrics_padding: f32) -> Element<'a, Message> {
     if let Some(player_state) = &state.player_state
@@ -13,7 +15,7 @@ pub(super) fn view<'a>(state: &'a Chilen, lyrics_padding: f32) -> Element<'a, Me
             &state.theme,
             &track.lyrics,
             player_state.player_position,
-            &|position| Message::SetPlayerPosition(position),
+            &|position| Message::PlaybackView(playback_view::Message::SetPlayerPosition(position)),
             lyrics_padding,
             state.settings.show_lyrics_errors,
         )

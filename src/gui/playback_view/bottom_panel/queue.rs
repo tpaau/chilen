@@ -6,8 +6,9 @@ use iced_m3::{theme::ColorScheme, widget::shapes};
 use iced_widget::{center, column, container, stack};
 
 use crate::gui::{
-    Chilen, SPACING_SMALL, icons,
-    playback_view::Message,
+    Chilen, SPACING_SMALL, dialog,
+    event_loop::{Message, library},
+    icons, playback_view,
     widget::{
         icon_shape::IconShape,
         list::{
@@ -46,15 +47,27 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
                     track: track.clone(),
                     is_favorite,
                     messages: track_button::Messages {
-                        play: Message::PlayTrack(virtual_index),
-                        press: Message::PlayTrack(virtual_index),
-                        toggle_favorite: Message::ToggleFavorite(favorite_item),
+                        play: Message::PlaybackView(playback_view::Message::PlayTrack(
+                            virtual_index,
+                        )),
+                        press: Message::PlaybackView(playback_view::Message::PlayTrack(
+                            virtual_index,
+                        )),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item,
+                        )),
                         shuffle: None,
                         add_to_queue: None,
-                        add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
+                        add_to_playlist: Message::Dialog(dialog::Message::AddTracksToPlaylist(
+                            vec![track.clone()],
+                        )),
                         details: None,
-                        remove: Some(Message::RemoveFromQueue(virtual_index)),
-                        toggle_menu: Message::ToggleMenu(virtual_index),
+                        remove: Some(Message::PlaybackView(
+                            playback_view::Message::RemoveFromQueue(virtual_index),
+                        )),
+                        toggle_menu: Message::PlaybackView(playback_view::Message::ToggleMenu(
+                            virtual_index,
+                        )),
                     },
                     info: track_button::Info::Artist,
                     status: if virtual_index < player_state.position {
@@ -72,8 +85,12 @@ pub(super) fn view<'a>(state: &'a Chilen, additional_padding: f32) -> Element<'a
             delegate_height: BUTTON_HEIGHT,
             visibilities: &state.playback_view.visible_tracks,
             list: Box::new(|buttons| column(buttons).spacing(SPACING_SMALL).into()),
-            on_show: Box::new(Message::TrackButtonPoppedIn),
-            on_hide: Box::new(Message::TrackButtonPoppedOut),
+            on_show: Box::new(|i| {
+                Message::PlaybackView(playback_view::Message::TrackButtonPoppedIn(i))
+            }),
+            on_hide: Box::new(|i| {
+                Message::PlaybackView(playback_view::Message::TrackButtonPoppedOut(i))
+            }),
         }
         .into();
 

@@ -7,19 +7,9 @@ mod playlists;
 pub mod top_view;
 mod tracks;
 
-use std::{
-    ops::Not,
-    path::PathBuf,
-    sync::{Arc, LazyLock},
-};
+use std::{ops::Not, sync::LazyLock};
 
-use chilen_backend::{
-    music_lib::{
-        Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist, Track, toggle_favorite,
-    },
-    playback::Queue,
-};
-use dirs::home_dir;
+use chilen_backend::music_lib::MusicLibrary;
 use iced::{Alignment, Border, Element, Length, Pixels, Task, padding};
 use iced_core::text::{self, IntoFragment};
 use iced_m3::{
@@ -37,18 +27,13 @@ use iced_m3::{
     },
 };
 use iced_widget::{center, column, container, opaque, row, space, stack};
-use log::{debug, error, info, trace};
+use log::trace;
 
 use crate::{
     APP_NAME,
     gui::{
         self, Chilen, GOTH_CORNER_ROUNDING, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
-        common_actions::{self},
-        dialog::{self, Dialog},
-        font::bold_text,
-        icons,
-        main_view::{self, top_view::TopView},
-        settings::Screen,
+        event_loop, font::bold_text, icons, main_view::top_view::TopView, settings,
         widget::icon_shape::IconShape,
     },
 };
@@ -68,7 +53,7 @@ static TOOLBAR_OFFSET: LazyLock<f32> = LazyLock::new(|| {
 });
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum View {
+pub(super) enum View {
     Tab(NavTab),
     Top(TopView),
 }
@@ -143,7 +128,7 @@ impl NavStack {
         &self.tab
     }
 
-    fn top(&self) -> View {
+    pub(super) fn top(&self) -> View {
         if !self.stack.is_empty() {
             View::Top(self.stack[self.stack.len() - 1].clone())
         } else {
@@ -158,12 +143,6 @@ impl NavStack {
     pub fn navigate(&mut self, top_view: TopView) {
         if self.top() != View::Top(top_view.clone()) {
             self.stack.push(top_view);
-        }
-    }
-
-    pub fn set_top(&mut self, top_view: TopView) {
-        if self.top() != View::Top(top_view.clone()) {
-            self.stack = vec![top_view];
         }
     }
 
@@ -189,7 +168,7 @@ impl NavStack {
             .collect();
     }
 
-    fn switch_tab(&mut self, tab: NavTab) {
+    pub(super) fn switch_tab(&mut self, tab: NavTab) {
         self.stack = Vec::new();
         self.tab = tab;
     }
@@ -241,41 +220,11 @@ pub enum Message {
     ButtonPoppedIn(usize),
     ButtonPoppedOut(usize),
     TopView(top_view::Message),
-    OpenSettings,
-    PlayTracks { initial_position: usize },
-    PlayTracksNoShuffle { initial_position: usize },
-    PlayFavoriteTracks { initial_position: usize },
-    PlayFavoriteTracksNoShuffle { initial_position: usize },
-    ShuffleFavoriteTracks { initial_position: usize },
-    ShuffleTracks { initial_position: Option<usize> },
-    PlayAlbum(Arc<Album>),
-    ShuffleAlbum(Arc<Album>),
-    PlayArtist(Arc<Artist>),
-    ShuffleArtist(Arc<Artist>),
-    PlayGenre(Arc<Genre>),
-    ShuffleGenre(Arc<Genre>),
-    AddTrackToQueue(Arc<Track>),
-    AddAlbumToQueue(Arc<Album>),
-    AddArtistToQueue(Arc<Artist>),
-    AddGenreToQueue(Arc<Genre>),
-    AddTracksToPlaylist(Vec<u64>),
-    CreatePlaylist,
-    ExportPlaylist(String),
-    SaveExportedPlaylist(String, Option<rfd::FileHandle>),
-    ImportPlaylist,
-    OpenPlaylistImportDialog(Option<rfd::FileHandle>),
-    OpenPlaylistRenameDialog { playlist: String, name: String },
-    ConfirmPlaylistDeletion(Arc<Playlist>),
-    PlayPlaylist(Arc<Playlist>),
-    ShufflePlaylist(Arc<Playlist>),
-    AddPlaylistToQueue(Arc<Playlist>),
     ToggleSideBar,
-    ToggleFavorite(LibraryItem),
-    PlayTrack(Arc<Track>),
     ToggleMenu(usize),
 }
 
-pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Message> {
+pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, event_loop::Message> {
     let index = state.main_view.nav_stack.tab as usize;
     let items = vec![
         navrail::Item {
@@ -289,7 +238,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Home".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Home),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Home)),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -302,7 +251,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Favorites".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Favorites),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Favorites)),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -315,7 +264,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Playlists".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Playlists),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Playlists)),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -328,7 +277,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Tracks".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Tracks),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Tracks)),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -341,7 +290,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Albums".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Albums),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Albums)),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -354,7 +303,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Artists".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Artists),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Artists)),
         },
         navrail::Item {
             icon_active: Icon::Text {
@@ -367,7 +316,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             },
             label: "Genres".into(),
             badge: None,
-            on_press: Message::SwitchTab(NavTab::Genres),
+            on_press: event_loop::Message::MainView(Message::SwitchTab(NavTab::Genres)),
         },
     ];
 
@@ -383,13 +332,17 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
             .active(index)
             .mode(mode)
             .container_vertical_padding(navrail::ITEM_OFFSET)
-            .on_menu_pressed_maybe(compact.not().then_some(|_| Message::ToggleSideBar)),
+            .on_menu_pressed_maybe(
+                compact
+                    .not()
+                    .then_some(|_| event_loop::Message::MainView(Message::ToggleSideBar)),
+            ),
     )
     .style(|_| container::Style::default().background(state.theme.surface_container()));
 
     let main_content = {
         let content = match state.main_view.nav_stack.top() {
-            View::Top(top) => top_view::view(state, top).map(Message::TopView),
+            View::Top(top) => top_view::view(state, top),
             // FIX: This is a WORKAROUND.
             // The `Scrollable` widget doesn't correctly manage its state which makes multiple
             //  in the same state tree share a state.
@@ -491,7 +444,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
                 .size(
                     (*TOOLBAR_BUTTON_SIZE).corner_radius(CornerRadius::medium().shape_morph(false))
                 )
-                .on_press(Message::OpenSettings),
+                .on_press(event_loop::Message::Settings(settings::Message::Open)),
             ]
             .align_y(Alignment::Center)
             .spacing(SPACING_REGULAR),
@@ -520,7 +473,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, main_view::Mess
         .into()
 }
 
-fn init_visible(lib: &MusicLibrary, tab: &NavTab) -> Vec<bool> {
+pub(super) fn init_visible(lib: &MusicLibrary, tab: &NavTab) -> Vec<bool> {
     match tab {
         NavTab::Home => Vec::new(),
         NavTab::Playlists => vec![false; lib.playlists.len()],
@@ -538,7 +491,7 @@ fn change_button(vec: &mut [bool], index: usize, visible: bool) {
     }
 }
 
-pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+pub fn update(state: &mut Chilen, message: Message) -> Task<event_loop::Message> {
     if state.main_view.visible.is_none()
         && let Some(lib) = &state.library
         && !matches!(message, Message::SwitchTab(_))
@@ -559,142 +512,10 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         Message::ButtonPoppedOut(index) => {
             change_button(state.main_view.visible.as_mut().unwrap(), index, false);
         }
-        Message::TopView(message) => return top_view::update(state, message).map(Message::TopView),
-        Message::OpenSettings => state.settings_state.screen = Some(Screen::default()),
-        Message::PlayTracks { initial_position } => {
-            common_actions::play_all_tracks(state, initial_position)
-        }
-        Message::PlayTracksNoShuffle { initial_position } => {
-            common_actions::play_all_tracks_no_shuffle(state, Some(initial_position));
-        }
-        Message::ShuffleTracks { initial_position } => {
-            common_actions::shuffle_all_tracks(state, initial_position);
-        }
-        Message::PlayAlbum(album) => {
-            common_actions::play_album_no_shuffle(state, album, None);
-        }
-        Message::ShuffleAlbum(album) => {
-            state.main_view.top_view.main_menu_opened = false;
-            common_actions::shuffle_album(state, album, None);
-        }
-        Message::PlayArtist(artist) => {
-            common_actions::play_artist_no_shuffle(state, artist, None);
-        }
-        Message::ShuffleArtist(artist) => {
-            common_actions::shuffle_artist(state, artist, None);
-        }
-        Message::PlayGenre(genre) => {
-            common_actions::play_genre_no_shuffle(state, genre, None);
-        }
-        Message::ShuffleGenre(genre) => {
-            common_actions::shuffle_genre(state, genre, None);
-        }
-        Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
-        Message::AddAlbumToQueue(album) => {
-            state.main_view.top_view.main_menu_opened = false;
-            common_actions::append_tracks_to_queue(album.tracks.to_vec())
-        }
-        Message::AddArtistToQueue(artist) => {
-            common_actions::append_tracks_to_queue(artist.tracks.to_vec())
-        }
-        Message::AddGenreToQueue(genre) => {
-            common_actions::append_tracks_to_queue(genre.tracks.to_vec())
-        }
-        Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
-        Message::CreatePlaylist => {
-            state.dialog = Dialog::CreatePlaylist(String::new());
-        }
-        Message::ExportPlaylist(name) => {
-            return Task::perform(
-                rfd::AsyncFileDialog::new()
-                    .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
-                    .set_file_name(format!("{name}.m3u8"))
-                    .save_file(),
-                |maybe_handle| Message::SaveExportedPlaylist(name, maybe_handle),
-            );
-        }
-        Message::SaveExportedPlaylist(name, file_handle) => match file_handle {
-            Some(handle) => {
-                if let Err(e) =
-                    chilen_backend::music_lib::export_playlist_to_m3u8(&name, handle.path())
-                {
-                    let msg = format!(
-                        "Couldn't export playlist {name} to {:?}: {e}",
-                        handle.path()
-                    );
-                    error!("{msg}");
-                    state.dialog = Dialog::Error(msg);
-                }
-            }
-            None => debug!("User cancelled the export operation"),
-        },
-        Message::ImportPlaylist => {
-            return Task::perform(
-                rfd::AsyncFileDialog::new()
-                    .add_filter("M3U8 Playlist File", &["m3u", "m3u8"])
-                    .set_directory(home_dir().unwrap_or(PathBuf::from(".")))
-                    .pick_file(),
-                Message::OpenPlaylistImportDialog,
-            );
-        }
-        Message::OpenPlaylistImportDialog(handle) => match handle {
-            Some(handle) => {
-                trace!("Showing import dialog for playlist {handle:?}");
-                state.dialog = Dialog::ImportPlaylist(String::new(), handle);
-            }
-            None => info!("Didn't get the file handle, guessing the user cancelled the import"),
-        },
-        Message::OpenPlaylistRenameDialog { playlist, name } => {
-            state.dialog = Dialog::RenamePlaylist { playlist, name }
-        }
-        Message::ConfirmPlaylistDeletion(playlist) => {
-            if playlist.tracks.is_empty() {
-                if let Err(e) = chilen_backend::music_lib::delete_playlists(vec![&playlist.name]) {
-                    error!("Couldn't delete playlist: {e}");
-                    state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
-                }
-            } else {
-                state.dialog = Dialog::DeletePlaylist(playlist)
-            }
-        }
-        Message::PlayPlaylist(playlist) => {
-            common_actions::play_playlist(state, playlist, None);
-        }
-        Message::ShufflePlaylist(playlist) => {
-            common_actions::play_playlist(state, playlist, None);
-        }
-        Message::AddPlaylistToQueue(playlist) => {
-            common_actions::append_tracks_to_queue(playlist.tracks.to_vec())
-        }
+        Message::TopView(message) => return top_view::update(state, message),
         Message::ToggleSideBar => {
             state.persistent.sidebar_opened = !state.persistent.sidebar_opened;
             state.save_persistent();
-        }
-        Message::ToggleFavorite(favorite_item) => {
-            state.main_view.top_view.main_menu_opened = false;
-            let _ = toggle_favorite(favorite_item);
-        }
-        Message::PlayTrack(track) => {
-            let _ = chilen_backend::playback::play_new_queue(
-                Queue::Custom {
-                    label: track
-                        .title
-                        .clone()
-                        .map(|t| t.into_string())
-                        .unwrap_or("Track".to_string()),
-                    tracks: vec![track],
-                },
-                None,
-            );
-        }
-        Message::PlayFavoriteTracks { initial_position } => {
-            common_actions::play_all_favorite_tracks(state, Some(initial_position))
-        }
-        Message::PlayFavoriteTracksNoShuffle { initial_position } => {
-            common_actions::play_all_favorite_tracks_no_shuffle(state, Some(initial_position));
-        }
-        Message::ShuffleFavoriteTracks { initial_position } => {
-            common_actions::shuffle_all_favorite_tracks(state, Some(initial_position));
         }
         Message::ToggleMenu(index) => {
             if state.main_view.button_menu == Some(index) {

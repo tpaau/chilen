@@ -6,7 +6,9 @@ use iced_m3::theme::ColorScheme;
 use iced_widget::{center, column, space};
 
 use crate::gui::{
-    Chilen, icons,
+    Chilen, dialog,
+    event_loop::{Message, library, playback},
+    icons,
     main_view::{self, NavTab, TOOLBAR_OFFSET},
     widget::{
         icon_shape::IconShape,
@@ -17,7 +19,7 @@ use crate::gui::{
     },
 };
 
-pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
+pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     if let Some(lib) = &state.library
         && !lib.tracks.is_empty()
     {
@@ -39,23 +41,27 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
                     track: track.clone(),
                     is_favorite,
                     messages: track_button::Messages {
-                        play: main_view::Message::PlayTracksNoShuffle {
+                        play: Message::Playback(playback::Message::PlayAllTracksNoShuffle {
                             initial_position: index,
-                        },
-                        press: main_view::Message::PlayTracks {
-                            initial_position: index,
-                        },
-                        toggle_favorite: main_view::Message::ToggleFavorite(favorite_item),
-                        shuffle: Some(main_view::Message::ShuffleTracks {
-                            initial_position: Some(index),
                         }),
-                        add_to_queue: Some(main_view::Message::AddTrackToQueue(track.clone())),
-                        add_to_playlist: main_view::Message::AddTracksToPlaylist(vec![
-                            track.hash_self(),
-                        ]),
+                        press: Message::Playback(playback::Message::PlayAllTracks {
+                            initial_position: index,
+                        }),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item,
+                        )),
+                        shuffle: Some(Message::Playback(playback::Message::ShuffleAllTracks {
+                            initial_position: Some(index),
+                        })),
+                        add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
+                            track.clone(),
+                        ))),
+                        add_to_playlist: Message::Dialog(dialog::Message::AddTracksToPlaylist(
+                            vec![track.clone()],
+                        )),
                         details: None,
                         remove: None,
-                        toggle_menu: main_view::Message::ToggleMenu(index),
+                        toggle_menu: Message::MainView(main_view::Message::ToggleMenu(index)),
                     },
                     info: track_button::Info::Artist,
                     status: if highlighted_index
@@ -74,8 +80,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, main_view::Message> {
             delegate_height: BUTTON_HEIGHT,
             visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
             list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-            on_show: Box::new(main_view::Message::ButtonPoppedIn),
-            on_hide: Box::new(main_view::Message::ButtonPoppedOut),
+            on_show: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedIn(i))),
+            on_hide: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedOut(i))),
         };
 
         iced_widget::scrollable(column![content, space().height(*TOOLBAR_OFFSET)])

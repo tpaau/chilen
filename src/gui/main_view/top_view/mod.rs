@@ -5,9 +5,7 @@ mod playlist;
 
 use std::sync::Arc;
 
-use chilen_backend::music_lib::{
-    Album, Artist, Genre, LibraryItem, Playlist, Track, toggle_favorite,
-};
+use chilen_backend::music_lib::{Album, Artist, Genre, Playlist};
 use iced::{Element, Length, Pixels, Task};
 use iced_core::text::IntoFragment;
 use iced_m3::{
@@ -21,10 +19,13 @@ use iced_m3::{
     },
 };
 use iced_widget::{container, responsive, scrollable};
-use log::error;
 
 use crate::gui::{
-    Chilen, SPACING_SMALLER, common_actions, dialog, font::bold_text, icons, menu_close,
+    Chilen, SPACING_SMALLER, event_loop,
+    font::bold_text,
+    icons,
+    main_view::{self, top_view},
+    menu_close,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,70 +64,12 @@ impl From<Arc<Genre>> for TopView {
 pub enum Message {
     Navigate(TopView),
     Unwind,
-    RemoveTrackFromPlaylist {
-        playlist: Arc<Playlist>,
-        index: usize,
-    },
-    PlayPlaylist {
-        playlist: Arc<Playlist>,
-        initial_position: Option<usize>,
-    },
-    PlayPlaylistNoShuffle {
-        playlist: Arc<Playlist>,
-        initial_position: Option<usize>,
-    },
-    ShufflePlaylist {
-        playlist: Arc<Playlist>,
-        initial_position: Option<usize>,
-    },
-    PlayAlbum {
-        album: Arc<Album>,
-        initial_position: Option<usize>,
-    },
-    PlayAlbumNoShuffle {
-        album: Arc<Album>,
-        initial_position: Option<usize>,
-    },
-    ShuffleAlbum {
-        album: Arc<Album>,
-        initial_position: Option<usize>,
-    },
-    PlayArtist {
-        artist: Arc<Artist>,
-        initial_position: Option<usize>,
-    },
-    PlayArtistNoShuffle {
-        artist: Arc<Artist>,
-        initial_position: Option<usize>,
-    },
-    ShuffleArtist {
-        artist: Arc<Artist>,
-        initial_position: Option<usize>,
-    },
-    PlayGenre {
-        genre: Arc<Genre>,
-        initial_position: Option<usize>,
-    },
-    PlayGenreNoShuffle {
-        genre: Arc<Genre>,
-        initial_position: Option<usize>,
-    },
-    ShuffleGenre {
-        genre: Arc<Genre>,
-        initial_position: Option<usize>,
-    },
-    AddTrackToQueue(Arc<Track>),
-    AddAlbumToQueue(Arc<Album>),
-    AddArtistToQueue(Arc<Artist>),
-    AddGenreToQueue(Arc<Genre>),
-    AddTracksToPlaylist(Vec<u64>),
-    ToggleFavorite(LibraryItem),
     OpenMainMenu,
     CloseMainMenu,
     ToggleMenu(usize),
 }
 
-fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, Message> {
+fn title<'a>(theme: &'a impl ColorScheme, content: String) -> Element<'a, event_loop::Message> {
     bold_text(content)
         .size(32.0)
         .color(theme.on_surface())
@@ -140,10 +83,10 @@ pub struct State {
 
 fn horizontal_buttons<'a>(
     state: &'a Chilen,
-    message_play: Option<Message>,
-    message_shuffle: Option<Message>,
-    menu_surface: impl Fn() -> Element<'a, Message> + 'a,
-) -> Element<'a, Message> {
+    message_play: Option<event_loop::Message>,
+    message_shuffle: Option<event_loop::Message>,
+    menu_surface: impl Fn() -> Element<'a, event_loop::Message> + 'a,
+) -> Element<'a, event_loop::Message> {
     let menu_surface = Arc::new(menu_surface);
     responsive(move |size| {
         let (size, spacing) = if size.width < 466.0 {
@@ -168,7 +111,9 @@ fn horizontal_buttons<'a>(
                     }),
                 )
                 .size(size)
-                .on_press(Message::Unwind),
+                .on_press(event_loop::Message::MainView(
+                    main_view::Message::TopView(top_view::Message::Unwind),
+                )),
                 true,
             ),
             GroupItem::new(
@@ -213,7 +158,9 @@ fn horizontal_buttons<'a>(
                         )
                         .size(size)
                         .selected(state.main_view.top_view.main_menu_opened)
-                        .on_press(Message::OpenMainMenu),
+                        .on_press(event_loop::Message::MainView(main_view::Message::TopView(
+                            top_view::Message::OpenMainMenu,
+                        ))),
                         {
                             let surface = Arc::clone(&menu_surface);
                             move || surface()
@@ -223,7 +170,14 @@ fn horizontal_buttons<'a>(
                     .placement(menu_overlay::Placement::BottomRight {
                         padding: Pixels(SPACING_SMALLER),
                     })
-                    .on_press(|p| menu_close(p, Message::CloseMainMenu)),
+                    .on_press(|p| {
+                        menu_close(
+                            p,
+                            event_loop::Message::MainView(main_view::Message::TopView(
+                                top_view::Message::CloseMainMenu,
+                            )),
+                        )
+                    }),
                     false,
                 )
             },
@@ -240,7 +194,7 @@ fn horizontal_buttons<'a>(
 const MAX_COVER_SIZE: f32 = 512.0;
 const MIN_COVER_SIZE: f32 = 192.0;
 
-pub fn view<'a>(state: &'a Chilen, view: TopView) -> Element<'a, Message> {
+pub fn view<'a>(state: &'a Chilen, view: TopView) -> Element<'a, event_loop::Message> {
     // FIX: Lists should be virtualized.
     // This is currently not viable as I would have to do the same workaround as in the `main_view`,
     // where I put the actual content in a `stack!` so that the layout is different and all
@@ -259,107 +213,12 @@ pub fn view<'a>(state: &'a Chilen, view: TopView) -> Element<'a, Message> {
     .into()
 }
 
-pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+pub fn update(state: &mut Chilen, message: Message) -> Task<event_loop::Message> {
     state.main_view.top_view.main_menu_opened = false;
     match message {
         Message::Navigate(top_view) => state.main_view.nav_stack.navigate(top_view),
         Message::Unwind => {
             state.main_view.nav_stack.unwind();
-        }
-        Message::RemoveTrackFromPlaylist { playlist, index } => {
-            if let Err(e) =
-                chilen_backend::music_lib::remove_tracks_by_indices(&playlist.name, vec![index])
-            {
-                let msg = format!("Couldn't remove track from playlist: {e}");
-                error!("{msg}");
-                state.dialog = crate::gui::dialog::Dialog::Error(msg);
-            }
-        }
-        Message::PlayPlaylist {
-            playlist,
-            initial_position,
-        } => {
-            common_actions::play_playlist(state, playlist, initial_position);
-        }
-        Message::PlayPlaylistNoShuffle {
-            playlist,
-            initial_position,
-        } => {
-            common_actions::play_playlist_no_shuffle(state, playlist, initial_position);
-        }
-        Message::ShufflePlaylist {
-            playlist,
-            initial_position,
-        } => {
-            common_actions::shuffle_playlist(state, playlist, initial_position);
-        }
-        Message::PlayAlbum {
-            album,
-            initial_position,
-        } => {
-            common_actions::play_album(state, album, initial_position);
-        }
-        Message::PlayAlbumNoShuffle {
-            album,
-            initial_position,
-        } => {
-            common_actions::play_album_no_shuffle(state, album, initial_position);
-        }
-        Message::ShuffleAlbum {
-            album,
-            initial_position,
-        } => {
-            common_actions::shuffle_album(state, album, initial_position);
-        }
-        Message::PlayArtist {
-            artist,
-            initial_position,
-        } => {
-            common_actions::play_artist(state, artist, initial_position);
-        }
-        Message::PlayArtistNoShuffle {
-            artist,
-            initial_position,
-        } => {
-            common_actions::play_artist_no_shuffle(state, artist, initial_position);
-        }
-        Message::ShuffleArtist {
-            artist,
-            initial_position,
-        } => {
-            common_actions::shuffle_artist(state, artist, initial_position);
-        }
-        Message::PlayGenre {
-            genre,
-            initial_position,
-        } => {
-            common_actions::play_genre(state, genre, initial_position);
-        }
-        Message::PlayGenreNoShuffle {
-            genre,
-            initial_position,
-        } => {
-            common_actions::play_genre_no_shuffle(state, genre, initial_position);
-        }
-        Message::ShuffleGenre {
-            genre,
-            initial_position,
-        } => {
-            common_actions::shuffle_genre(state, genre, initial_position);
-        }
-        Message::AddTrackToQueue(track) => common_actions::append_tracks_to_queue(vec![track]),
-        Message::AddAlbumToQueue(album) => {
-            common_actions::append_tracks_to_queue(album.tracks.to_vec())
-        }
-        Message::AddArtistToQueue(artist) => {
-            common_actions::append_tracks_to_queue(artist.tracks.to_vec())
-        }
-        Message::AddGenreToQueue(genre) => {
-            common_actions::append_tracks_to_queue(genre.tracks.to_vec())
-        }
-        Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
-        Message::ToggleFavorite(favorite_item) => {
-            let _ = toggle_favorite(favorite_item);
         }
         Message::OpenMainMenu => state.main_view.top_view.main_menu_opened = true,
         Message::CloseMainMenu => state.main_view.top_view.main_menu_opened = false,

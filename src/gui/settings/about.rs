@@ -18,10 +18,11 @@ use crate::{
     COMMIT, VERSION,
     gui::{
         Chilen, ROUNDING_LARGE, SPACING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+        event_loop::Message,
         font::{self, bold_text},
         formatter::format_long_duration,
         icons::{self, icon_filled},
-        settings::{CLOSE_BUTTON_SIZE, Message},
+        settings::CLOSE_BUTTON_SIZE,
         widget::icon_shape::IconShape,
     },
 };

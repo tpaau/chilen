@@ -16,10 +16,15 @@ use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
+    event_loop::Message,
     font::{self, bold_text},
     formatter::{UNKNOWN_TRACK_DURATION, format_track_duration},
     icons,
-    playback_view::Message,
+    main_view::{
+        self,
+        top_view::{self, TopView},
+    },
+    playback_view,
     widget::{cover_image::CoverImage, wrappers::marquee},
 };
 
@@ -73,17 +78,21 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         && let Some(track) = player_state.current()
         && let Some(artists) = &track.artists
         && !artists.is_empty()
+        && let Some(lib) = state.library.as_ref()
     {
-        let artists: Vec<Element<'_, Message>> = artists
-            .iter()
+        let artists: Vec<_> = artists
+            .into_iter()
+            .filter_map(|a| lib.find_artist(a))
             .map(|a| {
                 mouse_area(
-                    text(a.clone().into_string())
+                    text(a.name.clone().into_string())
                         .wrapping(text::Wrapping::None)
                         .size(font::SIZE_REGULAR)
                         .color(state.theme.on_surface_variant()),
                 )
-                .on_press(Message::OpenArtist(a.to_string()))
+                .on_press(Message::MainView(main_view::Message::TopView(
+                    top_view::Message::Navigate(TopView::Artist(a.clone())),
+                )))
                 .interaction(iced::mouse::Interaction::Pointer)
                 .into()
             })
@@ -152,21 +161,29 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     let album: Element<'_, Message> = if let Some(player_state) = &state.player_state
         && let Some(track) = player_state.current()
         && let Some(album) = &track.album
+        && let Some(lib) = state.library.as_ref()
     {
-        mouse_area(
+        let album = lib.find_album(album);
+
+        let area = mouse_area(
             text(
-                track
-                    .album
+                album
                     .as_ref()
-                    .map(|a| a.clone().into_string())
+                    .map(|a| a.title.clone().into_string())
                     .unwrap_or("Unknown album".to_string()),
             )
             .wrapping(text::Wrapping::None)
             .size(font::SIZE_REGULAR)
             .color(state.theme.on_surface_variant()),
         )
-        .interaction(iced::mouse::Interaction::Pointer)
-        .on_press(Message::OpenAlbum(album.to_string()))
+        .interaction(iced::mouse::Interaction::Pointer);
+
+        match album {
+            Some(album) => area.on_press(Message::MainView(main_view::Message::TopView(
+                top_view::Message::Navigate(TopView::Album(album.clone())),
+            ))),
+            None => area,
+        }
         .into()
     } else {
         let text_content = if state
@@ -222,15 +239,17 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         0..=max_value,
         value,
         move |position| {
-            Message::SeekSliderMoved(if max_value != 0 {
+            Message::PlaybackView(playback_view::Message::SeekSliderMoved(if max_value != 0 {
                 position as f32 / max_value as f32
             } else {
                 0.0
-            })
+            }))
         },
         slider::Style::new(&state.theme),
     )
-    .on_release(Message::SeekSliderReleased);
+    .on_release(Message::PlaybackView(
+        playback_view::Message::SeekSliderReleased,
+    ));
 
     let player_position = track_duration
         .map(|d| {
@@ -292,7 +311,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
     let buttons = vec![
         {
-            let message_maybe = state.player_state.as_ref().map(|_| Message::ToggleShuffle);
+            let message_maybe = state
+                .player_state
+                .as_ref()
+                .map(|_| Message::PlaybackView(playback_view::Message::ToggleShuffle));
             let is_some = message_maybe.is_some();
 
             GroupItem::new(
@@ -316,10 +338,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             )
         },
         {
-            let message_maybe = state
-                .player_state
-                .as_ref()
-                .and_then(|p| p.can_go_previous().then_some(Message::Previous));
+            let message_maybe = state.player_state.as_ref().and_then(|p| {
+                p.can_go_previous()
+                    .then_some(Message::PlaybackView(playback_view::Message::Previous))
+            });
             let is_some = message_maybe.is_some();
 
             GroupItem::new(
@@ -342,10 +364,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             )
         },
         {
-            let message_maybe = state
-                .player_state
-                .as_ref()
-                .and_then(|p| p.can_toggle_playing().then_some(Message::TogglePlaying));
+            let message_maybe = state.player_state.as_ref().and_then(|p| {
+                p.can_toggle_playing()
+                    .then_some(Message::PlaybackView(playback_view::Message::TogglePlaying))
+            });
             let is_some = message_maybe.is_some();
 
             GroupItem::new(
@@ -369,10 +391,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             )
         },
         {
-            let message_maybe = state
-                .player_state
-                .as_ref()
-                .and_then(|p| p.can_go_next().then_some(Message::Next));
+            let message_maybe = state.player_state.as_ref().and_then(|p| {
+                p.can_go_next()
+                    .then_some(Message::PlaybackView(playback_view::Message::Next))
+            });
             let is_some = message_maybe.is_some();
 
             GroupItem::new(
@@ -395,7 +417,10 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             )
         },
         {
-            let message_maybe = state.player_state.as_ref().map(|_| Message::ToggleLooping);
+            let message_maybe = state
+                .player_state
+                .as_ref()
+                .map(|_| Message::PlaybackView(playback_view::Message::ToggleLooping));
             let is_some = message_maybe.is_some();
 
             GroupItem::new(

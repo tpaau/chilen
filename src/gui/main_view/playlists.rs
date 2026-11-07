@@ -11,9 +11,11 @@ use iced_m3::{
 use iced_widget::{bottom_right, center, space, stack};
 
 use crate::gui::{
-    Chilen, SPACING_SMALL, icons,
+    Chilen, SPACING_SMALL, dialog,
+    event_loop::{Message, library, playback},
+    icons,
     main_view::{
-        Message, TOOLBAR_OFFSET,
+        self, TOOLBAR_OFFSET,
         top_view::{self, TopView},
     },
     widget::{
@@ -31,7 +33,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             fab_menu::Style::new(&state.theme, Accent::default()),
             vec![
                 iced_m3::widget::fab_menu::Item {
-                    on_press: Action::Direct(Message::ImportPlaylist),
+                    on_press: Action::Direct(Message::Dialog(dialog::Message::ImportPlaylist)),
                     label: "Import playlist".into(),
                     icon: Icon::Text {
                         text: icons::UPLOAD_FILE.into_fragment(),
@@ -39,7 +41,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     },
                 },
                 iced_m3::widget::fab_menu::Item {
-                    on_press: Action::Direct(Message::CreatePlaylist),
+                    on_press: Action::Direct(Message::Dialog(dialog::Message::CreatePlaylist)),
                     label: "New playlist".into(),
                     icon: Icon::Text {
                         text: icons::PLAYLIST_ADD.into_fragment(),
@@ -72,35 +74,43 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 PlaylistButton {
                     state,
                     playlist,
-                    press: Message::TopView(top_view::Message::Navigate(TopView::Playlist(
-                        playlist.clone(),
-                    ))),
-                    toggle_menu: Message::ToggleMenu(index),
+                    press: Message::MainView(main_view::Message::TopView(
+                        top_view::Message::Navigate(TopView::Playlist(playlist.clone())),
+                    )),
+                    toggle_menu: Message::MainView(main_view::Message::ToggleMenu(index)),
                     messages: playlist_button::Messages {
                         play: playlist
                             .tracks
                             .is_empty()
                             .not()
-                            .then_some(Message::PlayPlaylist(playlist.clone())),
+                            .then_some(Message::Playback(playback::Message::PlayPlaylist {
+                                playlist: playlist.clone(),
+                                initial_position: 0,
+                            })),
                         shuffle: playlist
                             .tracks
                             .is_empty()
                             .not()
-                            .then_some(Message::ShufflePlaylist(playlist.clone())),
-                        add_to_queue: playlist
-                            .tracks
-                            .is_empty()
-                            .not()
-                            .then_some(Message::AddPlaylistToQueue(playlist.clone())),
-                        export: playlist.tracks.is_empty().not().then_some(
-                            Message::ExportPlaylist(playlist.name.clone().into_string()),
+                            .then_some(Message::Playback(playback::Message::ShufflePlaylist {
+                                playlist: playlist.clone(),
+                                initial_position: None,
+                            })),
+                        add_to_queue: playlist.tracks.is_empty().not().then_some(
+                            Message::Playback(playback::Message::AddPlaylistToQueue(
+                                playlist.clone(),
+                            )),
                         ),
-                        toggle_favorite: Message::ToggleFavorite(favorite_item),
-                        rename: Message::OpenPlaylistRenameDialog {
-                            playlist: playlist.name.clone().into_string(),
+                        export: playlist.tracks.is_empty().not().then_some(Message::Library(
+                            library::Message::ExportPlaylist(playlist.clone()),
+                        )),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item,
+                        )),
+                        rename: Message::Dialog(dialog::Message::RenamePlaylist {
+                            playlist: playlist.clone(),
                             name: playlist.name.clone().into_string(),
-                        },
-                        delete: Message::ConfirmPlaylistDeletion(playlist.clone()),
+                        }),
+                        delete: Message::Dialog(dialog::Message::DeletePlaylist(playlist.clone())),
                     },
                     highlighted: highlighted_name
                         .map(|name| name.as_str() == playlist.name.as_ref())
@@ -113,8 +123,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             delegate_height: BUTTON_HEIGHT,
             visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
             list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-            on_show: Box::new(Message::ButtonPoppedIn),
-            on_hide: Box::new(Message::ButtonPoppedOut),
+            on_show: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedIn(i))),
+            on_hide: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedOut(i))),
         };
 
         stack![

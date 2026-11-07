@@ -1,5 +1,5 @@
-mod common_actions;
 pub mod dialog;
+pub mod event_loop;
 mod font;
 mod formatter;
 mod icons;
@@ -14,15 +14,10 @@ mod widget;
 
 use std::sync::{Arc, LazyLock, RwLock};
 
-use chilen_backend::{
-    music_lib::{MusicLibrary, Playlist},
-    playback::PlayerState,
-};
+use chilen_backend::{music_lib::MusicLibrary, playback::PlayerState};
 use iced::{
-    self, Element, Font, Subscription, Task,
-    futures::{SinkExt, Stream, StreamExt, channel::mpsc},
-    keyboard::{self, key},
-    stream,
+    self, Element, Font,
+    futures::channel::mpsc,
     widget::{container, row},
     window::{self},
 };
@@ -35,38 +30,15 @@ use log::{debug, error, trace};
 
 use crate::{
     APP_NAME,
-    gui::{dialog::Dialog, themes::THEMES},
+    gui::{
+        dialog::Dialog,
+        event_loop::{Event, Message},
+        themes::THEMES,
+    },
     settings::Settings,
 };
 
 pub(super) use crate::gui::widget::list::THUMBNAIL_SIZE;
-
-#[derive(Debug, Clone)]
-pub(super) enum Event {
-    Backend(chilen_backend::Event),
-    Window {
-        event: window::Event,
-        id: window::Id,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum Message {
-    Event(Event),
-    CloseDialog,
-    PlaylistNameEdited(String),
-    CreatePlaylist(String),
-    ImportPlaylist(Option<String>, rfd::FileHandle),
-    RenamePlaylist { playlist: String, name: String },
-    DeletePlaylist(Arc<Playlist>),
-    MainView(main_view::Message),
-    Settings(settings::Message),
-    Playback(playback_view::Message),
-    AddTracksToPlaylist { tracks: Vec<u64>, playlist: String },
-    ResetSettings,
-    SystemThemeChanged(iced::theme::Mode),
-    CloseAllMenus,
-}
 
 #[derive(Default, Debug, Clone)]
 pub enum LoadingState {
@@ -154,10 +126,6 @@ pub(super) fn send_event(event: Event) {
     }
 }
 
-fn window_subscription() -> Subscription<Message> {
-    window::events().map(move |(id, event)| Message::Event(Event::Window { event, id }))
-}
-
 pub fn menu_close<Message>(properties: PressProperties, message: Message) -> Option<Message> {
     properties
         .position
@@ -196,8 +164,8 @@ impl Chilen {
                 .min(PLAYBACK_DESIRED_WIDTH);
 
             row![
-                main_view::view(state, compact).map(Message::MainView),
-                playback_view::view(state, playback_width).map(Message::Playback),
+                main_view::view(state, compact),
+                playback_view::view(state, playback_width),
             ]
             .into()
         });
@@ -211,213 +179,16 @@ impl Chilen {
                 .settings_state
                 .screen
                 .is_some()
-                .then_some(settings::view(state).map(|e| e.map(Message::Settings))),
+                .then_some(settings::view(state)),
             dialog::view(state),
         ]
         .into()
-    }
-
-    fn update(state: &mut Chilen, message: Message) -> Task<Message> {
-        match message {
-            Message::CloseDialog => state.dialog = Dialog::None,
-            Message::Event(event) => match event {
-                Event::Backend(event) => match event {
-                    chilen_backend::Event::LibraryChanged(lib) => {
-                        state.loading_state = LoadingState::Loaded;
-                        state.library = Some(lib);
-                        persistent_state::library_loaded(state);
-                        main_view::reload(state);
-                    }
-                    chilen_backend::Event::LibraryLoadFailed(_) => {
-                        state.loading_state = LoadingState::Failed
-                    }
-                    chilen_backend::Event::Quit => return window::latest().and_then(window::close),
-                    chilen_backend::Event::Raise => {
-                        trace!("Raising!");
-                        return window::latest().and_then(window::gain_focus);
-                    }
-                    chilen_backend::Event::SetFullscreen(fullscreen) => {
-                        return window::latest().and_then(move |id| {
-                            window::set_mode(
-                                id,
-                                match fullscreen {
-                                    true => window::Mode::Fullscreen,
-                                    false => window::Mode::Windowed,
-                                },
-                            )
-                        });
-                    }
-                    chilen_backend::Event::LoadProgressChanged(progress) => match progress {
-                        chilen_backend::music_lib::Progress::Done => {
-                            if let Dialog::Loading(_) = state.dialog {
-                                state.dialog = Dialog::None;
-                            }
-                        }
-                        chilen_backend::music_lib::Progress::Failed(error) => {
-                            state.dialog =
-                                Dialog::Error(format!("Couldn't load the music library: {error}"))
-                        }
-                        _ => state.dialog = Dialog::Loading(Some(progress)),
-                    },
-                    chilen_backend::Event::Playback(event) => {
-                        playback_view::handle_event(state, event)
-                    }
-                },
-                Event::Window { event, id } => {
-                    return match event {
-                        window::Event::Opened {
-                            position: _,
-                            size: _,
-                        } => window::mode(id).then(|mode| {
-                            *WINDOW_MODE.write().unwrap() = Some(mode);
-                            Task::none()
-                        }),
-                        window::Event::Resized(_) => window::mode(id).then(|mode| {
-                            *WINDOW_MODE.write().unwrap() = Some(mode);
-                            Task::none()
-                        }),
-                        _ => Task::none(),
-                    };
-                }
-            },
-            Message::PlaylistNameEdited(name) => {
-                state.dialog = match &state.dialog {
-                    Dialog::CreatePlaylist(_) => Dialog::CreatePlaylist(name),
-                    Dialog::ImportPlaylist(_, handle) => {
-                        Dialog::ImportPlaylist(name, handle.clone())
-                    }
-                    Dialog::RenamePlaylist { playlist, name: _ } => Dialog::RenamePlaylist {
-                        playlist: playlist.clone(),
-                        name,
-                    },
-                    _ => unreachable!(),
-                }
-            }
-            Message::CreatePlaylist(name) => {
-                if let Err(e) = chilen_backend::music_lib::create_playlist(&name, &None) {
-                    error!("Couldn't create the playlist: {e}");
-                    state.dialog = Dialog::Error(format!("Couldn't create the playlist: {e}"));
-                } else {
-                    state.dialog = Dialog::None;
-                }
-            }
-            Message::ImportPlaylist(name, handle) => {
-                if let Err(e) =
-                    chilen_backend::music_lib::import_playlist_from_m3u8(name, &handle.into())
-                {
-                    error!("Could not import the playlist: {e}");
-                    state.dialog = Dialog::Error(format!("Couldn't import the playlist: {e}"));
-                } else {
-                    state.dialog = Dialog::None;
-                }
-            }
-            Message::RenamePlaylist { playlist, name } => {
-                if let Err(e) = chilen_backend::music_lib::rename_playlist(&playlist, &name) {
-                    error!("Could not rename the playlist: {e}");
-                    state.dialog = Dialog::Error(format!("Couldn't rename the playlist: {e}"));
-                } else {
-                    state.dialog = Dialog::None;
-                }
-            }
-            Message::DeletePlaylist(playlist) => {
-                if let Err(e) = chilen_backend::music_lib::delete_playlists(vec![&playlist.name]) {
-                    error!("Couldn't delete playlist: {e}");
-                    state.dialog = Dialog::Error(format!("Couldn't delete playlist: {e}"))
-                } else {
-                    state.dialog = Dialog::None;
-                }
-            }
-            Message::MainView(msg) => {
-                return main_view::update(state, msg).map(Message::MainView);
-            }
-            Message::Settings(msg) => return settings::update(state, msg).map(Message::Settings),
-            Message::Playback(message) => {
-                return playback_view::update(state, message).map(Message::Playback);
-            }
-            Message::AddTracksToPlaylist { tracks, playlist } => {
-                if let Err(e) = chilen_backend::music_lib::add_tracks(&playlist, &tracks) {
-                    state.dialog = Dialog::Error(format!(
-                        "Couldn't add the track to playlist {playlist}: {e}"
-                    ));
-                } else {
-                    state.dialog = Dialog::None;
-                }
-            }
-            Message::ResetSettings => {
-                state.dialog = Dialog::None;
-                state.settings = Settings::default();
-                state.apply_settings(state.settings.clone());
-                crate::settings::save(state);
-            }
-            Message::SystemThemeChanged(mode) => {
-                state.host_theme_preference = mode.into();
-                if state.settings.theme_auto_mode {
-                    state.theme.mode = mode.into();
-                }
-            }
-            Message::CloseAllMenus => {
-                state.playback_view.button_menu = None;
-                state.main_view.button_menu = None;
-                state.main_view.top_view.main_menu_opened = false;
-                state.main_view.button_menu = None;
-                if !matches!(state.dialog, Dialog::None) {
-                    state.dialog = Dialog::None;
-                } else {
-                    state.settings_state.screen = None;
-                }
-            }
-        }
-        Task::none()
-    }
-
-    fn worker() -> impl Stream<Item = Event> {
-        stream::channel(128, async |mut out| {
-            let (sender, mut receiver) = mpsc::channel(128);
-            *EVENT_SENDER.write().unwrap() = Some(sender);
-
-            loop {
-                let input = receiver.select_next_some().await;
-                if let Err(e) = out.send(input).await {
-                    error!("Could not send the event, aborting: {e}");
-                    break;
-                }
-            }
-        })
-    }
-
-    fn subscription() -> Subscription<Event> {
-        Subscription::run(Self::worker)
-    }
-
-    fn theme_changes() -> Subscription<Message> {
-        iced::system::theme_changes().map(Message::SystemThemeChanged)
-    }
-
-    fn keyboard_shortcuts() -> Subscription<Message> {
-        iced::event::listen_with(|event, _, _| {
-            if matches!(
-                event,
-                iced::Event::Keyboard(keyboard::Event::KeyPressed {
-                    key: keyboard::Key::Named(key::Named::Escape),
-                    modified_key: _,
-                    physical_key: _,
-                    location: _,
-                    modifiers: _,
-                    text: _,
-                    repeat: _
-                })
-            ) {
-                Some(Message::CloseAllMenus)
-            } else {
-                None
-            }
-        })
     }
 }
 
 pub fn start() -> iced::Result {
     trace!("Launching GUI");
-    let app = iced::application(Chilen::default, Chilen::update, Chilen::view)
+    let app = iced::application(Chilen::default, event_loop::update, Chilen::view)
         .font(icons::FILLED_ICONS_FONT_BYTES)
         .font(icons::OUTLINED_ICONS_FONT_BYTES)
         .font(font::BYTES_REGULAR)
@@ -435,13 +206,6 @@ pub fn start() -> iced::Result {
             }),
             ..Default::default()
         })
-        .subscription(|_| {
-            Subscription::batch(vec![
-                Chilen::subscription().map(Message::Event),
-                window_subscription(),
-                Chilen::theme_changes(),
-                Chilen::keyboard_shortcuts(),
-            ])
-        })
+        .subscription(|_| event_loop::subscription())
         .run()
 }

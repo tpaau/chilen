@@ -19,7 +19,10 @@ use icu::locale::locale;
 use log::{debug, error, info, warn};
 use sys_locale::get_locale;
 
-use crate::{argparse::parse_args, gui::THUMBNAIL_SIZE};
+use crate::{
+    argparse::parse_args,
+    gui::{THUMBNAIL_SIZE, event_loop::Event},
+};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const COMMIT: &str = env!("APP_GIT_COMMIT");
@@ -45,7 +48,7 @@ fn handle_events(receiver: Receiver<chilen_backend::Event>) {
                 return;
             }
         };
-        gui::send_event(gui::Event::Backend(event));
+        gui::send_event(Event::Backend(event));
     }
 }
 

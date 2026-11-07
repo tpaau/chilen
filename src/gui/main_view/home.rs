@@ -2,6 +2,7 @@ use std::sync::LazyLock;
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER,
+    event_loop::{Message, playback},
     font::{self, bold_text, text},
     formatter::{
         format_album_count, format_album_track_count, format_artist_count, format_date_maybe,
@@ -9,7 +10,7 @@ use crate::gui::{
         format_track_duration,
     },
     icons::{self, icon_filled},
-    main_view::{Message, NO_FAVORITES_LABEL, NavTab, TOOLBAR_OFFSET, top_view},
+    main_view::{self, NO_FAVORITES_LABEL, NavTab, TOOLBAR_OFFSET, top_view},
     widget::{
         cover_image::CoverImage, icon_shape::IconShape, text_spacer::text_spacer, wrappers::marquee,
     },
@@ -64,7 +65,7 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
                 info
             },
             "Track".to_string(),
-            Message::PlayTrack(track.clone()),
+            Message::Playback(playback::Message::PlayTrack(track.clone())),
         ),
         LibraryItem::Playlist(playlist) => (
             playlist.name.clone().into_string(),
@@ -75,7 +76,9 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
                 format_long_duration(playlist.duration),
             ],
             "Playlist".to_string(),
-            Message::TopView(top_view::Message::Navigate(playlist.clone().into())),
+            Message::MainView(main_view::Message::TopView(top_view::Message::Navigate(
+                playlist.clone().into(),
+            ))),
         ),
         LibraryItem::Album(album) => (
             album.title.clone().into_string(),
@@ -86,7 +89,9 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
                 format_date_maybe(album.date),
             ],
             "Album".to_string(),
-            Message::TopView(top_view::Message::Navigate(album.clone().into())),
+            Message::MainView(main_view::Message::TopView(top_view::Message::Navigate(
+                album.clone().into(),
+            ))),
         ),
         LibraryItem::Artist(artist) => (
             artist.name.clone().into_string(),
@@ -97,7 +102,9 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
                 format_track_count(artist.tracks.len()),
             ],
             "Artist".to_string(),
-            Message::TopView(top_view::Message::Navigate(artist.clone().into())),
+            Message::MainView(main_view::Message::TopView(top_view::Message::Navigate(
+                artist.clone().into(),
+            ))),
         ),
         LibraryItem::Genre(genre) => (
             genre.name.clone().into_string(),
@@ -108,7 +115,9 @@ fn library_item_card<'a>(state: &'a Chilen, item: LibraryItem) -> Element<'a, Me
                 format_track_count(genre.tracks.len()),
             ],
             "Genre".to_string(),
-            Message::TopView(top_view::Message::Navigate(genre.clone().into())),
+            Message::MainView(main_view::Message::TopView(top_view::Message::Navigate(
+                genre.clone().into(),
+            ))),
         ),
     };
 
@@ -254,9 +263,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             *icons::SHUFFLE,
             "Shuffle",
             "Shuffle your tracks",
-            Message::ShuffleTracks {
+            Message::Playback(playback::Message::ShuffleAllTracks {
                 initial_position: None,
-            },
+            }),
         );
 
         let playlist_text = if let Some(lib) = &state.library
@@ -276,7 +285,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             *icons::LIBRARY_MUSIC,
             "Your playlists",
             playlist_text,
-            Message::SwitchTab(NavTab::Playlists),
+            Message::MainView(main_view::Message::SwitchTab(NavTab::Playlists)),
         );
 
         // TODO: Eq
@@ -378,7 +387,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         },
     )
     .size(*TITLE_BUTTON_SIZE)
-    .on_press(Message::SwitchTab(NavTab::Favorites));
+    .on_press(Message::MainView(main_view::Message::SwitchTab(
+        NavTab::Favorites,
+    )));
 
     let favorites_title = row![
         title(&state.theme, favorites_shape, favorites_icon, "Favorites"),

@@ -3,7 +3,7 @@ mod library;
 mod look_and_feel;
 mod playback;
 
-use std::{sync::LazyLock, thread};
+use std::sync::LazyLock;
 
 use iced::{Alignment, Border, Element, Length, Pixels, Task, color};
 use iced_core::{
@@ -28,11 +28,11 @@ use iced_m3::{
     },
 };
 use iced_widget::{center, column, container, opaque, row, stack, text};
-use log::error;
 
 use crate::gui::{
     Chilen, GOTH_CORNER_ROUNDING, ROUNDING_LARGE, ROUNDING_REGULAR, SPACING_REGULAR,
     dialog::Dialog,
+    event_loop,
     font::{self, bold_text},
     icons::{self, INFO, LIBRARY_MUSIC, PALETTE, PLAY_ARROW},
 };
@@ -43,6 +43,20 @@ pub(super) const TITLE_CONTENT_SPACE: f32 = SPACING_REGULAR;
 pub(super) const CARD_SPACING: f32 = iced_m3::widget::card::MAX_CARD_BETWEEN_PADDING;
 pub(super) const ITEM_SPACING: f32 = 2.0 * CARD_SPACING;
 pub(super) static CLOSE_BUTTON_SIZE: LazyLock<button::Size> = LazyLock::new(button::Size::medium);
+
+pub static AVAILABLE_SHAPES: LazyLock<[RoundedPolygon; 9]> = LazyLock::new(|| {
+    [
+        cookie12(),
+        cookie4(),
+        cookie6(),
+        cookie7(),
+        cookie9(),
+        sunny(),
+        very_sunny(),
+        clover4(),
+        clover8(),
+    ]
+});
 
 #[repr(usize)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -78,9 +92,9 @@ impl Screen {
         self as usize
     }
 
-    fn view<'a>(&self, state: &'a Chilen) -> Element<'a, Message> {
+    fn view<'a>(&self, state: &'a Chilen) -> Element<'a, event_loop::Message> {
         match self {
-            Screen::LookAndFeel => look_and_feel::view(state).map(Message::LookAndFeel),
+            Screen::LookAndFeel => look_and_feel::view(state),
             Screen::Library => library::view(state),
             Screen::Playback => playback::view(state),
             Screen::About => about::view(state),
@@ -90,10 +104,10 @@ impl Screen {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    Open,
     Close,
     SwitchScreen(Screen),
     LookAndFeel(look_and_feel::Message),
-    OpenURL(String),
     Reset,
 }
 
@@ -104,19 +118,6 @@ pub struct State {
     pfp_image_handle: Handle,
 }
 
-pub static AVAILABLE_SHAPES: LazyLock<[RoundedPolygon; 9]> = LazyLock::new(|| {
-    [
-        cookie12(),
-        cookie4(),
-        cookie6(),
-        cookie7(),
-        cookie9(),
-        sunny(),
-        very_sunny(),
-        clover4(),
-        clover8(),
-    ]
-});
 impl Default for State {
     fn default() -> Self {
         let accents = [Accent::Primary, Accent::Secondary, Accent::Tertiary];
@@ -175,26 +176,20 @@ pub(super) fn card_style(theme: &(impl ColorScheme + ?Sized)) -> card::Style {
     }
 }
 
-pub(super) fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+pub(super) fn update(state: &mut Chilen, message: Message) -> Task<event_loop::Message> {
     match message {
+        Message::Open => state.settings_state.screen = Some(Screen::default()),
         Message::Close => state.settings_state.screen = None,
         Message::SwitchScreen(screen) => state.settings_state.screen = Some(screen),
         Message::LookAndFeel(message) => {
-            return look_and_feel::update(state, message).map(Message::LookAndFeel);
+            return look_and_feel::update(state, message);
         }
         Message::Reset => state.dialog = Dialog::ResetSettings,
-        Message::OpenURL(url) => {
-            thread::spawn(move || {
-                if let Err(e) = open::that(&url) {
-                    error!("Failed to open URL \"{url}\": {e}");
-                }
-            });
-        }
     }
     Task::none()
 }
 
-pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
+pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, event_loop::Message>> {
     state.settings_state.screen.map(|screen| {
         let rounding = ROUNDING_REGULAR;
 
@@ -212,7 +207,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             button::Content::Label("Close".into()),
         )
         .size(*CLOSE_BUTTON_SIZE)
-        .on_press(Message::Close);
+        .on_press(event_loop::Message::Settings(Message::Close));
 
         let items = [
             Screen::LookAndFeel,
@@ -232,7 +227,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
             },
             badge: None,
             label: screen.label(),
-            on_press: Message::SwitchScreen(screen),
+            on_press: event_loop::Message::Settings(Message::SwitchScreen(screen)),
         })
         .collect();
 
@@ -248,7 +243,7 @@ pub(super) fn view<'a>(state: &'a Chilen) -> Option<Element<'a, Message>> {
                 },
                 label: "Reset settings".into(),
                 style: fab::Style::fab_tonal(&state.theme, Accent::Tertiary),
-                on_press: Action::Direct(Message::Reset),
+                on_press: Action::Direct(event_loop::Message::Settings(Message::Reset)),
             })
             .container_vertical_padding(iced_m3::widget::navrail::ITEM_OFFSET)
             .active(active_index);

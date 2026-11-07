@@ -3,38 +3,31 @@ mod playback_control;
 
 use std::time::Duration;
 
-use chilen_backend::{
-    music_lib::{LibraryItem, toggle_favorite},
-    playback,
-};
+use chilen_backend::playback;
 use iced::{Element, Padding, Task};
 use iced_m3::theme::ColorScheme;
 use iced_widget::{column, container};
 use log::{error, trace, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::gui::{Chilen, SPACING_REGULAR, dialog, main_view::VIEW_INNER_PADDING};
+use crate::gui::{Chilen, SPACING_REGULAR, event_loop, main_view::VIEW_INNER_PADDING};
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    ToggleShuffle,
+    Next,
     Previous,
     TogglePlaying,
-    Next,
+    ToggleShuffle,
     ToggleLooping,
     SeekSliderMoved(f32),
     SeekSliderReleased,
     SetPlayerPosition(Duration),
     OpenLyrics,
     OpenQueue,
-    OpenAlbum(String),
-    OpenArtist(String),
     PlayTrack(usize),
     TrackButtonPoppedIn(usize),
     TrackButtonPoppedOut(usize),
     RemoveFromQueue(usize),
-    AddTracksToPlaylist(Vec<u64>),
-    ToggleFavorite(LibraryItem),
     ToggleMenu(usize),
 }
 
@@ -53,7 +46,7 @@ pub struct State {
     pub button_menu: Option<usize>,
 }
 
-pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
+pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, event_loop::Message> {
     container(
         column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
     )
@@ -63,7 +56,7 @@ pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, Message> {
     .into()
 }
 
-pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+pub fn update(state: &mut Chilen, message: Message) -> Task<event_loop::Message> {
     match message {
         Message::ToggleShuffle => {
             let _ = chilen_backend::playback::toggle_shuffle_state();
@@ -132,32 +125,6 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
                 player_state.player_position = position;
             }
         }
-        Message::OpenAlbum(album) => {
-            if let Some(lib) = &state.library {
-                match lib.find_album(&album) {
-                    Some(album) => state
-                        .main_view
-                        .nav_stack
-                        .set_top(super::main_view::top_view::TopView::Album(album.clone())),
-                    None => {
-                        error!("Couldn't find the album \"{album}\", this should never happen!");
-                    }
-                }
-            }
-        }
-        Message::OpenArtist(artist) => {
-            if let Some(lib) = &state.library {
-                match lib.find_artist(&artist) {
-                    Some(artist) => state
-                        .main_view
-                        .nav_stack
-                        .set_top(super::main_view::top_view::TopView::Artist(artist.clone())),
-                    None => {
-                        error!("Couldn't find the artist \"{artist}\", this should never happen!");
-                    }
-                }
-            }
-        }
         Message::PlayTrack(index) => {
             let _ = chilen_backend::playback::play(Some(index));
         }
@@ -183,10 +150,6 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
         }
         Message::RemoveFromQueue(index) => {
             let _ = chilen_backend::playback::remove_from_queue(vec![index]);
-        }
-        Message::AddTracksToPlaylist(tracks) => dialog::add_tracks_to_playlist(state, tracks),
-        Message::ToggleFavorite(favorite_item) => {
-            let _ = toggle_favorite(favorite_item);
         }
         Message::ToggleMenu(index) => {
             if state.playback_view.button_menu == Some(index) {

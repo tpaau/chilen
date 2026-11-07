@@ -6,7 +6,9 @@ use iced_m3::{
 };
 use iced_widget::{column, container};
 
-use crate::gui::{Chilen, ROUNDING_LARGER, SPACING_REGULAR, icons, playback_view::Message};
+use crate::gui::{
+    Chilen, ROUNDING_LARGER, SPACING_REGULAR, event_loop::Message, icons, playback_view,
+};
 
 mod lyrics;
 mod queue;
@@ -32,7 +34,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 },
                 label: "Queue".into(),
                 badge: None,
-                on_press: Message::OpenQueue,
+                on_press: Message::PlaybackView(playback_view::Message::OpenQueue),
             },
             iced_m3::widget::navbar::Item {
                 icon_active: Icon::Text {
@@ -45,7 +47,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 },
                 label: "Lyrics".into(),
                 badge: None,
-                on_press: Message::OpenLyrics,
+                on_press: Message::PlaybackView(playback_view::Message::OpenLyrics),
             },
         ],
     )

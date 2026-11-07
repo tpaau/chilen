@@ -1,17 +1,15 @@
 use std::sync::Arc;
 
-use chilen_backend::music_lib::Playlist;
+use chilen_backend::music_lib::{Playlist, Track};
 use iced::{Alignment, Element, Length};
-use iced_m3::{
-    theme::ColorScheme,
-    widget::{dialog, spacer},
-};
+use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{button, column, container, row, scrollable, text};
 
 use crate::{
     THUMBNAIL_SIZE,
     gui::{
-        Chilen, Message, ROUNDING_LARGE, SPACING_SMALL,
+        Chilen, ROUNDING_LARGE, SPACING_SMALL, dialog,
+        event_loop::{Message, library},
         font::{self, bold_text},
         icons,
         widget::{
@@ -23,7 +21,7 @@ use crate::{
 
 fn playlist_choice<'a>(
     theme: &'a impl ColorScheme,
-    tracks: Vec<u64>,
+    tracks: Vec<Arc<Track>>,
     playlist: &'a Arc<Playlist>,
 ) -> Element<'a, Message> {
     button(
@@ -49,15 +47,15 @@ fn playlist_choice<'a>(
     )
     .padding(BUTTON_PADDING)
     .width(Length::Fill)
-    .on_press(Message::AddTracksToPlaylist {
-        tracks: tracks.to_vec(),
-        playlist: playlist.name.clone().into_string(),
-    })
+    .on_press(Message::Library(library::Message::AddTracksToPlaylist {
+        tracks,
+        playlist: playlist.clone(),
+    }))
     .style(|_, status| crate::gui::widget::list::button_style(status, theme.on_surface()))
     .into()
 }
 
-pub(super) fn view<'a>(state: &'a Chilen, tracks: Vec<u64>) -> Element<'a, Message> {
+pub(super) fn view<'a>(state: &'a Chilen, tracks: Vec<Arc<Track>>) -> Element<'a, Message> {
     let choices: Element<'_, Message> = match &state.library {
         Some(lib) => column(
             lib.playlists
@@ -77,14 +75,18 @@ pub(super) fn view<'a>(state: &'a Chilen, tracks: Vec<u64>) -> Element<'a, Messa
     .spacing(SPACING_SMALL);
 
     let buttons = vec![iced_m3::widget::dialog::Button {
-        on_press: Some(Message::CloseDialog),
+        on_press: Some(Message::Dialog(dialog::Message::Close)),
         label: "Cancel".to_string(),
         style: iced_m3::widget::button::Style::outlined(&state.theme),
     }];
-    dialog(dialog::Style::new(&state.theme), content, buttons)
-        .title_font(font::bold())
-        .title("Add to playlist")
-        .icon_font(icons::filled())
-        .icon(*icons::PLAYLIST_ADD)
-        .into()
+    iced_m3::widget::dialog(
+        iced_m3::widget::dialog::Style::new(&state.theme),
+        content,
+        buttons,
+    )
+    .title_font(font::bold())
+    .title("Add to playlist")
+    .icon_font(icons::filled())
+    .icon(*icons::PLAYLIST_ADD)
+    .into()
 }

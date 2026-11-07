@@ -6,9 +6,11 @@ use iced_m3::{theme::ColorScheme, widget::shapes};
 use iced_widget::{center, column, space};
 
 use crate::gui::{
-    Chilen, icons,
+    Chilen,
+    event_loop::{Message, library, playback},
+    icons,
     main_view::{
-        Message, TOOLBAR_OFFSET,
+        self, TOOLBAR_OFFSET,
         top_view::{self, TopView},
     },
     widget::{
@@ -40,14 +42,24 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 ArtistButton {
                     state,
                     artist: artist.clone(),
-                    play: Message::PlayArtist(artist.clone()),
-                    press: Message::TopView(top_view::Message::Navigate(TopView::Artist(
+                    play: Message::Playback(playback::Message::PlayArtist {
+                        artist: artist.clone(),
+                        initial_position: index,
+                    }),
+                    press: Message::MainView(main_view::Message::TopView(
+                        top_view::Message::Navigate(TopView::Artist(artist.clone())),
+                    )),
+                    shuffle: Message::Playback(playback::Message::ShuffleArtist {
+                        artist: artist.clone(),
+                        initial_position: Some(index),
+                    }),
+                    add_to_queue: Message::Playback(playback::Message::AddArtistToQueue(
                         artist.clone(),
-                    ))),
-                    shuffle: Message::ShuffleArtist(artist.clone()),
-                    add_to_queue: Message::AddArtistToQueue(artist.clone()),
-                    toggle_favorite: Message::ToggleFavorite(favorite_item),
-                    toggle_menu: Message::ToggleMenu(index),
+                    )),
+                    toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                        favorite_item,
+                    )),
+                    toggle_menu: Message::MainView(main_view::Message::ToggleMenu(index)),
                     is_favorite,
                     highlighted,
                     vibrant: state.settings.vibrant_widgets,
@@ -58,8 +70,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             delegate_height: BUTTON_HEIGHT,
             visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
             list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-            on_show: Box::new(Message::ButtonPoppedIn),
-            on_hide: Box::new(Message::ButtonPoppedOut),
+            on_show: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedIn(i))),
+            on_hide: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedOut(i))),
         };
 
         iced_widget::scrollable(column![content, space().height(*TOOLBAR_OFFSET)])

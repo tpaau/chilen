@@ -6,10 +6,15 @@ use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, container, responsive, row, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, font,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, dialog,
+    event_loop::{Message, library, playback},
+    font,
     formatter::format_long_duration,
     icons,
-    main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, title},
+    main_view::{
+        self,
+        top_view::{self, MAX_COVER_SIZE, MIN_COVER_SIZE, horizontal_buttons, title},
+    },
     widget::{
         cover_image::CoverImage,
         list::{
@@ -81,14 +86,18 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
 
     let buttons = horizontal_buttons(
         state,
-        (!playlist.tracks.is_empty()).then_some(Message::PlayPlaylistNoShuffle {
-            playlist: playlist.clone(),
-            initial_position: None,
-        }),
-        (!playlist.tracks.is_empty()).then_some(Message::ShufflePlaylist {
-            playlist: playlist.clone(),
-            initial_position: None,
-        }),
+        (!playlist.tracks.is_empty()).then_some(Message::Playback(
+            playback::Message::PlayPlaylistNoShuffle {
+                playlist: playlist.clone(),
+                initial_position: 0,
+            },
+        )),
+        (!playlist.tracks.is_empty()).then_some(Message::Playback(
+            playback::Message::ShufflePlaylist {
+                playlist: playlist.clone(),
+                initial_position: None,
+            },
+        )),
         || {
             container(space().width(100).height(100))
                 .style(|_| container::Style::default().background(color!(0xff0000)))
@@ -118,27 +127,37 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                 track: track.clone(),
                 is_favorite,
                 messages: track_button::Messages {
-                    play: Message::PlayPlaylistNoShuffle {
+                    play: Message::Playback(playback::Message::PlayPlaylistNoShuffle {
                         playlist: playlist_cloned.clone(),
-                        initial_position: Some(index),
-                    },
-                    press: Message::PlayPlaylist {
-                        playlist: playlist_cloned.clone(),
-                        initial_position: Some(index),
-                    },
-                    toggle_favorite: Message::ToggleFavorite(favorite_item),
-                    shuffle: Some(Message::ShufflePlaylist {
-                        playlist: playlist_cloned.clone(),
-                        initial_position: Some(index),
+                        initial_position: index,
                     }),
-                    add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
-                    add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
+                    press: Message::Playback(playback::Message::PlayPlaylist {
+                        playlist: playlist_cloned.clone(),
+                        initial_position: index,
+                    }),
+                    toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                        favorite_item,
+                    )),
+                    shuffle: Some(Message::Playback(playback::Message::ShufflePlaylist {
+                        playlist: playlist_cloned.clone(),
+                        initial_position: None,
+                    })),
+                    add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
+                        track.clone(),
+                    ))),
+                    add_to_playlist: Message::Dialog(dialog::Message::AddTracksToPlaylist(vec![
+                        track.clone(),
+                    ])),
                     details: None,
-                    remove: Some(Message::RemoveTrackFromPlaylist {
-                        playlist: playlist_cloned.clone(),
-                        index,
-                    }),
-                    toggle_menu: Message::ToggleMenu(index),
+                    remove: Some(Message::Library(
+                        library::Message::RemoveTrackFromPlaylist {
+                            playlist: playlist_cloned.clone(),
+                            index,
+                        },
+                    )),
+                    toggle_menu: Message::MainView(main_view::Message::TopView(
+                        top_view::Message::ToggleMenu(index),
+                    )),
                 },
                 info: track_button::Info::Artist,
                 status: if highlighted_index

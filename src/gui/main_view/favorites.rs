@@ -11,12 +11,12 @@ use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{center, column, space};
 
 use crate::gui::{
-    Chilen, SPACING_LARGE, SPACING_REGULAR,
-    common_actions::ALL_FAVORITE_TRACKS_QUEUE_NAME,
+    Chilen, SPACING_LARGE, SPACING_REGULAR, dialog,
+    event_loop::{Message, library, playback},
     font::bold_text,
     icons,
     main_view::{
-        Message, NO_FAVORITES_LABEL, NavTab, TOOLBAR_OFFSET,
+        self, NO_FAVORITES_LABEL, NavTab, TOOLBAR_OFFSET,
         top_view::{self, TopView},
     },
     widget::{
@@ -31,6 +31,8 @@ use crate::gui::{
         },
     },
 };
+
+pub const ALL_FAVORITE_TRACKS_QUEUE_NAME: &str = "Favorite tracks";
 
 fn section<'a>(
     title: impl IntoFragment<'a>,
@@ -96,35 +98,45 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     PlaylistButton {
                         state,
                         playlist,
-                        press: Message::TopView(top_view::Message::Navigate(TopView::Playlist(
-                            playlist.clone(),
-                        ))),
-                        toggle_menu: Message::ToggleMenu(index),
+                        press: Message::MainView(main_view::Message::TopView(
+                            top_view::Message::Navigate(TopView::Playlist(playlist.clone())),
+                        )),
+                        toggle_menu: Message::MainView(main_view::Message::ToggleMenu(index)),
                         messages: playlist_button::Messages {
                             play: playlist
                                 .tracks
                                 .is_empty()
                                 .not()
-                                .then_some(Message::PlayPlaylist(playlist.clone())),
+                                .then_some(Message::Playback(playback::Message::PlayPlaylist {
+                                    playlist: playlist.clone(),
+                                    initial_position: index,
+                                })),
                             shuffle: playlist
                                 .tracks
                                 .is_empty()
                                 .not()
-                                .then_some(Message::ShufflePlaylist(playlist.clone())),
-                            add_to_queue: playlist
-                                .tracks
-                                .is_empty()
-                                .not()
-                                .then_some(Message::AddPlaylistToQueue(playlist.clone())),
-                            export: playlist.tracks.is_empty().not().then_some(
-                                Message::ExportPlaylist(playlist.name.clone().into_string()),
+                                .then_some(Message::Playback(playback::Message::ShufflePlaylist {
+                                    playlist: playlist.clone(),
+                                    initial_position: None,
+                                })),
+                            add_to_queue: playlist.tracks.is_empty().not().then_some(
+                                Message::Playback(playback::Message::AddPlaylistToQueue(
+                                    playlist.clone(),
+                                )),
                             ),
-                            toggle_favorite: Message::ToggleFavorite(favorite_item),
-                            rename: Message::OpenPlaylistRenameDialog {
-                                playlist: playlist.name.clone().into_string(),
+                            export: playlist.tracks.is_empty().not().then_some(Message::Library(
+                                library::Message::ExportPlaylist(playlist.clone()),
+                            )),
+                            toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                                favorite_item,
+                            )),
+                            rename: Message::Dialog(dialog::Message::RenamePlaylist {
+                                playlist: playlist.clone(),
                                 name: playlist.name.clone().into_string(),
-                            },
-                            delete: Message::ConfirmPlaylistDeletion(playlist.clone()),
+                            }),
+                            delete: Message::Dialog(dialog::Message::DeletePlaylist(
+                                playlist.clone(),
+                            )),
                         },
                         highlighted: highlighted_name
                             .map(|name| name.as_str() == playlist.name.as_ref())
@@ -137,8 +149,8 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                 delegate_height: BUTTON_HEIGHT,
                 visibilities: state.main_view.visible.as_deref().unwrap_or(&[]),
                 list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-                on_show: Box::new(Message::ButtonPoppedIn),
-                on_hide: Box::new(Message::ButtonPoppedOut),
+                on_show: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedIn(i))),
+                on_hide: Box::new(|i| Message::MainView(main_view::Message::ButtonPoppedOut(i))),
             }
         });
 
@@ -164,21 +176,33 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         track: track.clone(),
                         is_favorite,
                         messages: track_button::Messages {
-                            play: Message::PlayFavoriteTracksNoShuffle {
-                                initial_position: index,
-                            },
-                            press: Message::PlayFavoriteTracks {
-                                initial_position: index,
-                            },
-                            toggle_favorite: Message::ToggleFavorite(favorite_item),
-                            shuffle: Some(Message::ShuffleFavoriteTracks {
+                            play: Message::Playback(
+                                playback::Message::PlayFavoriteTracksNoShuffle {
+                                    initial_position: index,
+                                },
+                            ),
+                            press: Message::Playback(playback::Message::PlayFavoriteTracks {
                                 initial_position: index,
                             }),
-                            add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
-                            add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
+                            toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                                favorite_item,
+                            )),
+                            shuffle: Some(Message::Playback(
+                                playback::Message::ShuffleFavoriteTracks {
+                                    initial_position: Some(index),
+                                },
+                            )),
+                            add_to_queue: Some(Message::Playback(
+                                playback::Message::AddTrackToQueue(track.clone()),
+                            )),
+                            add_to_playlist: Message::Dialog(dialog::Message::AddTracksToPlaylist(
+                                vec![track.clone()],
+                            )),
                             details: None,
                             remove: None,
-                            toggle_menu: Message::ToggleMenu(index + track_offset),
+                            toggle_menu: Message::MainView(main_view::Message::ToggleMenu(
+                                index + track_offset,
+                            )),
                         },
                         info: track_button::Info::Artist,
                         status: if highlighted_index
@@ -203,8 +227,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .get(track_offset..)
                     .unwrap_or(&[]),
                 list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-                on_show: Box::new(move |index| Message::ButtonPoppedIn(track_offset + index)),
-                on_hide: Box::new(move |index| Message::ButtonPoppedOut(track_offset + index)),
+                on_show: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedIn(track_offset + index))
+                }),
+                on_hide: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedOut(track_offset + index))
+                }),
             }
         });
 
@@ -232,14 +260,26 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                             album_button::Info::TrackCount,
                             album_button::Info::ArtistCount,
                         ],
-                        play: Message::PlayAlbum(album.clone()),
-                        press: Message::TopView(top_view::Message::Navigate(TopView::Album(
+                        play: Message::Playback(playback::Message::PlayAlbum {
+                            album: album.clone(),
+                            initial_position: 0,
+                        }),
+                        press: Message::MainView(main_view::Message::TopView(
+                            top_view::Message::Navigate(TopView::Album(album.clone())),
+                        )),
+                        shuffle: Message::Playback(playback::Message::ShuffleAlbum {
+                            album: album.clone(),
+                            initial_position: None,
+                        }),
+                        add_to_queue: Message::Playback(playback::Message::AddAlbumToQueue(
                             album.clone(),
-                        ))),
-                        shuffle: Message::ShuffleAlbum(album.clone()),
-                        add_to_queue: Message::AddAlbumToQueue(album.clone()),
-                        toggle_favorite: Message::ToggleFavorite(favorite_item),
-                        toggle_menu: Message::ToggleMenu(index + album_offset),
+                        )),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item,
+                        )),
+                        toggle_menu: Message::MainView(main_view::Message::ToggleMenu(
+                            index + album_offset,
+                        )),
                         menu_opened: state.main_view.button_menu == Some(index + album_offset),
                         is_favorite,
                         highlighted,
@@ -255,8 +295,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .get(album_offset..)
                     .unwrap_or(&[]),
                 list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-                on_show: Box::new(move |index| Message::ButtonPoppedIn(album_offset + index)),
-                on_hide: Box::new(move |index| Message::ButtonPoppedOut(album_offset + index)),
+                on_show: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedIn(album_offset + index))
+                }),
+                on_hide: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedOut(album_offset + index))
+                }),
             }
         });
 
@@ -280,14 +324,26 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     ArtistButton {
                         state,
                         artist: artist.clone(),
-                        play: Message::PlayArtist(artist.clone()),
-                        press: Message::TopView(top_view::Message::Navigate(TopView::Artist(
+                        play: Message::Playback(playback::Message::PlayArtist {
+                            artist: artist.clone(),
+                            initial_position: 0,
+                        }),
+                        press: Message::MainView(main_view::Message::TopView(
+                            top_view::Message::Navigate(TopView::Artist(artist.clone())),
+                        )),
+                        shuffle: Message::Playback(playback::Message::ShuffleArtist {
+                            artist: artist.clone(),
+                            initial_position: None,
+                        }),
+                        add_to_queue: Message::Playback(playback::Message::AddArtistToQueue(
                             artist.clone(),
-                        ))),
-                        shuffle: Message::ShuffleArtist(artist.clone()),
-                        add_to_queue: Message::AddArtistToQueue(artist.clone()),
-                        toggle_favorite: Message::ToggleFavorite(favorite_item),
-                        toggle_menu: Message::ToggleMenu(index + artist_offset),
+                        )),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item,
+                        )),
+                        toggle_menu: Message::MainView(main_view::Message::ToggleMenu(
+                            index + artist_offset,
+                        )),
                         is_favorite,
                         highlighted,
                         vibrant: state.settings.vibrant_widgets,
@@ -304,8 +360,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .get(artist_offset..)
                     .unwrap_or(&[]),
                 list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-                on_show: Box::new(move |index| Message::ButtonPoppedIn(artist_offset + index)),
-                on_hide: Box::new(move |index| Message::ButtonPoppedOut(artist_offset + index)),
+                on_show: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedIn(artist_offset + index))
+                }),
+                on_hide: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedOut(artist_offset + index))
+                }),
             }
         });
 
@@ -329,14 +389,26 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     GenreButton {
                         state,
                         genre: genre.clone(),
-                        play: Message::PlayGenre(genre.clone()),
-                        press: Message::TopView(top_view::Message::Navigate(TopView::Genre(
+                        play: Message::Playback(playback::Message::PlayGenre {
+                            genre: genre.clone(),
+                            initial_position: 0,
+                        }),
+                        press: Message::MainView(main_view::Message::TopView(
+                            top_view::Message::Navigate(TopView::Genre(genre.clone())),
+                        )),
+                        shuffle: Message::Playback(playback::Message::ShuffleGenre {
+                            genre: genre.clone(),
+                            initial_position: None,
+                        }),
+                        add_to_queue: Message::Playback(playback::Message::AddGenreToQueue(
                             genre.clone(),
-                        ))),
-                        shuffle: Message::ShuffleGenre(genre.clone()),
-                        add_to_queue: Message::AddGenreToQueue(genre.clone()),
-                        toggle_favorite: Message::ToggleFavorite(favorite_item),
-                        toggle_menu: Message::ToggleMenu(index + genre_offset),
+                        )),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item,
+                        )),
+                        toggle_menu: Message::MainView(main_view::Message::ToggleMenu(
+                            index + genre_offset,
+                        )),
                         is_favorite,
                         highlighted,
                         menu_opened: state.main_view.button_menu == Some(index + genre_offset),
@@ -352,8 +424,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                     .get(genre_offset..)
                     .unwrap_or(&[]),
                 list: Box::new(|content| column(content).spacing(BUTTON_SPACING).into()),
-                on_show: Box::new(move |index| Message::ButtonPoppedIn(genre_offset + index)),
-                on_hide: Box::new(move |index| Message::ButtonPoppedOut(genre_offset + index)),
+                on_show: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedIn(genre_offset + index))
+                }),
+                on_hide: Box::new(move |index| {
+                    Message::MainView(main_view::Message::ButtonPoppedOut(genre_offset + index))
+                }),
             }
         });
 

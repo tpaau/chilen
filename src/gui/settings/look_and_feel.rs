@@ -12,7 +12,7 @@ use iced_widget::{
 
 use crate::{
     gui::{
-        self, Chilen, SPACING_REGULAR,
+        self, Chilen, SPACING_REGULAR, event_loop,
         font::{self, bold_text},
         settings::{CLOSE_BUTTON_SIZE, Screen, TITLE_CONTENT_SPACE, labeled_switch, title},
         themes::THEMES,
@@ -29,7 +29,7 @@ pub enum Message {
     ToggleVibrantWidgets,
 }
 
-pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
+pub fn view<'a>(state: &'a Chilen) -> Element<'a, event_loop::Message> {
     let themes = THEMES.iter().enumerate().map(|(i, t)| {
         let selected = state.settings.theme_name == t.name;
         let preview = match state.theme.mode {
@@ -44,7 +44,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         };
 
         mouse_area(preview)
-            .on_release(Message::SetTheme(i))
+            .on_release(event_loop::Message::Settings(
+                gui::settings::Message::LookAndFeel(Message::SetTheme(i)),
+            ))
             .interaction(iced::mouse::Interaction::Pointer)
             .into()
     });
@@ -55,7 +57,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             label: "Dark",
             selected: state.settings.theme_mode == Mode::Dark,
             on_press: (!state.settings.theme_auto_mode).then_some(iced_m3::widget::Action::Direct(
-                Message::SetDarkMode(Mode::Dark)
+                event_loop::Message::Settings(gui::settings::Message::LookAndFeel(
+                    Message::SetDarkMode(Mode::Dark)
+                ))
             ))
         },
         ThemeModePreview {
@@ -63,7 +67,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             label: "Light",
             selected: state.settings.theme_mode == Mode::Light,
             on_press: (!state.settings.theme_auto_mode).then_some(iced_m3::widget::Action::Direct(
-                Message::SetDarkMode(Mode::Light)
+                event_loop::Message::Settings(gui::settings::Message::LookAndFeel(
+                    Message::SetDarkMode(Mode::Light)
+                ))
             ))
         },
     ]
@@ -74,7 +80,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         "Follow your system's light or dark mode preference.".into(),
         &state.theme,
         state.settings.theme_auto_mode,
-        Message::ToggleAutoTheme,
+        event_loop::Message::Settings(gui::settings::Message::LookAndFeel(
+            Message::ToggleAutoTheme,
+        )),
     );
 
     let vibrant_widgets_switch = labeled_switch(
@@ -82,7 +90,9 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         "Give the widgets a new fresh look!".into(),
         &state.theme,
         state.settings.vibrant_widgets,
-        Message::ToggleVibrantWidgets,
+        event_loop::Message::Settings(gui::settings::Message::LookAndFeel(
+            Message::ToggleVibrantWidgets,
+        )),
     );
 
     let themes = iced_m3::widget::card(
@@ -125,7 +135,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         .into()
 }
 
-pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
+pub fn update(state: &mut Chilen, message: Message) -> Task<event_loop::Message> {
     match message {
         Message::SetTheme(i) => {
             let theme = &THEMES[i];

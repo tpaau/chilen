@@ -6,11 +6,14 @@ use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, responsive, row, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, font,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, dialog,
+    event_loop::{Message, library, playback},
+    font,
     formatter::format_long_duration,
     icons,
-    main_view::top_view::{
-        MAX_COVER_SIZE, MIN_COVER_SIZE, Message, TopView, horizontal_buttons, title,
+    main_view::{
+        self,
+        top_view::{self, MAX_COVER_SIZE, MIN_COVER_SIZE, TopView, horizontal_buttons, title},
     },
     widget::{
         artist_chip::artist_chip,
@@ -40,7 +43,9 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                 if let Some(artist) = lib.find_artist(artist) {
                     artist_chips.push(
                         artist_chip(&state.theme, artist.clone())
-                            .on_press(Message::Navigate(TopView::Artist(artist.clone())))
+                            .on_press(Message::MainView(main_view::Message::TopView(
+                                top_view::Message::Navigate(TopView::Artist(artist.clone())),
+                            )))
                             .into(),
                     );
                     if let Some(len) = album_cloned.artists.len().checked_sub(1)
@@ -117,31 +122,23 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let album = album.clone();
-
     let favorite_item: LibraryItem = album.clone().into();
     let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
-    let play = Message::PlayAlbumNoShuffle {
+    let play = Message::Playback(playback::Message::PlayAlbumNoShuffle {
+        album: album.clone(),
+        initial_position: 0,
+    });
+    let shuffle = Message::Playback(playback::Message::ShuffleAlbum {
         album: album.clone(),
         initial_position: None,
-    };
-    let shuffle = Message::ShuffleAlbum {
-        album: album.clone(),
-        initial_position: None,
-    };
-    let add_to_queue = Message::AddAlbumToQueue(album.clone());
-    let toggle_favorite = Message::ToggleFavorite(favorite_item);
+    });
+    let add_to_queue = Message::Playback(playback::Message::AddAlbumToQueue(album.clone()));
+    let toggle_favorite = Message::Library(library::Message::ToggleFavorite(favorite_item));
 
     let buttons = horizontal_buttons(
         state,
-        Some(Message::PlayAlbumNoShuffle {
-            album: album.clone(),
-            initial_position: None,
-        }),
-        Some(Message::ShuffleAlbum {
-            album: album.clone(),
-            initial_position: None,
-        }),
+        Some(play.clone()),
+        Some(shuffle.clone()),
         move || {
             album_button::menu(
                 state,
@@ -174,24 +171,30 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
             track: track.clone(),
             is_favorite,
             messages: track_button::Messages {
-                play: Message::PlayAlbumNoShuffle {
+                play: Message::Playback(playback::Message::PlayAlbumNoShuffle {
                     album: album.clone(),
-                    initial_position: Some(index),
-                },
-                press: Message::PlayAlbum {
-                    album: album.clone(),
-                    initial_position: Some(index),
-                },
-                toggle_favorite: Message::ToggleFavorite(favorite_item),
-                shuffle: Some(Message::ShuffleAlbum {
-                    album: album.clone(),
-                    initial_position: Some(index),
+                    initial_position: index,
                 }),
-                add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
-                add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
+                press: Message::Playback(playback::Message::PlayAlbum {
+                    album: album.clone(),
+                    initial_position: index,
+                }),
+                toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
+                shuffle: Some(Message::Playback(playback::Message::ShuffleAlbum {
+                    album: album.clone(),
+                    initial_position: None,
+                })),
+                add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
+                    track.clone(),
+                ))),
+                add_to_playlist: Message::Dialog(dialog::Message::AddTracksToPlaylist(vec![
+                    track.clone(),
+                ])),
                 details: None,
                 remove: None,
-                toggle_menu: Message::ToggleMenu(index),
+                toggle_menu: Message::MainView(main_view::Message::TopView(
+                    top_view::Message::ToggleMenu(index),
+                )),
             },
             info: track_button::Info::Length,
             status: if highlighted_index

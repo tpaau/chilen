@@ -6,10 +6,14 @@ use iced_m3::{theme::ColorScheme, widget::spacer};
 use iced_widget::{column, responsive, row, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, dialog,
+    event_loop::{Message, library, playback},
     font::{self, bold_text},
     icons,
-    main_view::top_view::{MAX_COVER_SIZE, MIN_COVER_SIZE, Message, horizontal_buttons, title},
+    main_view::{
+        self,
+        top_view::{self, MAX_COVER_SIZE, MIN_COVER_SIZE, horizontal_buttons, title},
+    },
     widget::{
         cover_image::CoverImage,
         list::{
@@ -101,16 +105,19 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
 
     let buttons = {
         let genre = genre.clone();
+        let play_no_shuffle = Message::Playback(playback::Message::PlayGenreNoShuffle {
+            genre: genre.clone(),
+            initial_position: 0,
+        });
+        let shuffle = Message::Playback(playback::Message::ShuffleGenre {
+            genre: genre.clone(),
+            initial_position: None,
+        });
+
         horizontal_buttons(
             state,
-            Some(Message::PlayGenreNoShuffle {
-                genre: genre.clone(),
-                initial_position: None,
-            }),
-            Some(Message::ShuffleGenre {
-                genre: genre.clone(),
-                initial_position: None,
-            }),
+            Some(play_no_shuffle.clone()),
+            Some(shuffle.clone()),
             move || {
                 let favorite_item = genre.clone().into();
                 let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
@@ -118,16 +125,10 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 genre_button::menu(
                     state,
                     is_favorite,
-                    Message::PlayGenreNoShuffle {
-                        genre: genre.clone(),
-                        initial_position: None,
-                    },
-                    Message::ShuffleGenre {
-                        genre: genre.clone(),
-                        initial_position: None,
-                    },
-                    Message::AddGenreToQueue(genre.clone()),
-                    Message::ToggleFavorite(favorite_item),
+                    play_no_shuffle.clone(),
+                    shuffle.clone(),
+                    Message::Playback(playback::Message::AddGenreToQueue(genre.clone())),
+                    Message::Library(library::Message::ToggleFavorite(favorite_item)),
                 )
                 .into()
             },
@@ -155,18 +156,22 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                     album_button::Info::TrackCount,
                     album_button::Info::ArtistCount,
                 ],
-                play: Message::PlayAlbumNoShuffle {
+                play: Message::Playback(playback::Message::PlayAlbumNoShuffle {
+                    album: album.clone(),
+                    initial_position: 0,
+                }),
+                press: Message::MainView(main_view::Message::TopView(top_view::Message::Navigate(
+                    super::TopView::Album(album.clone()),
+                ))),
+                shuffle: Message::Playback(playback::Message::ShuffleAlbum {
                     album: album.clone(),
                     initial_position: None,
-                },
-                press: Message::Navigate(super::TopView::Album(album.clone())),
-                shuffle: Message::ShuffleAlbum {
-                    album: album.clone(),
-                    initial_position: None,
-                },
-                add_to_queue: Message::AddAlbumToQueue(album.clone()),
-                toggle_favorite: Message::ToggleFavorite(favorite_item),
-                toggle_menu: Message::ToggleMenu(index),
+                }),
+                add_to_queue: Message::Playback(playback::Message::AddAlbumToQueue(album.clone())),
+                toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
+                toggle_menu: Message::MainView(main_view::Message::TopView(
+                    top_view::Message::ToggleMenu(index),
+                )),
                 menu_opened: state.main_view.button_menu == Some(index),
                 is_favorite,
                 highlighted: highlighted_album_title
@@ -206,18 +211,24 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             ArtistButton {
                 state,
                 artist: artist.clone(),
-                play: Message::PlayArtistNoShuffle {
+                play: Message::Playback(playback::Message::PlayArtistNoShuffle {
+                    artist: artist.clone(),
+                    initial_position: 0,
+                }),
+                press: Message::MainView(main_view::Message::TopView(top_view::Message::Navigate(
+                    super::TopView::Artist(artist.clone()),
+                ))),
+                shuffle: Message::Playback(playback::Message::ShuffleArtist {
                     artist: artist.clone(),
                     initial_position: None,
-                },
-                press: Message::Navigate(super::TopView::Artist(artist.clone())),
-                shuffle: Message::ShuffleArtist {
-                    artist: artist.clone(),
-                    initial_position: None,
-                },
-                add_to_queue: Message::AddArtistToQueue(artist.clone()),
-                toggle_favorite: Message::ToggleFavorite(favorite_item),
-                toggle_menu: Message::ToggleMenu(index),
+                }),
+                add_to_queue: Message::Playback(playback::Message::AddArtistToQueue(
+                    artist.clone(),
+                )),
+                toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
+                toggle_menu: Message::MainView(main_view::Message::TopView(
+                    top_view::Message::ToggleMenu(index),
+                )),
                 is_favorite,
                 highlighted: highlighted_artist_name
                     .map(|name| name == artist.name.as_ref())
@@ -258,24 +269,30 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
             track: track.clone(),
             is_favorite,
             messages: track_button::Messages {
-                play: Message::PlayGenreNoShuffle {
+                play: Message::Playback(playback::Message::PlayGenreNoShuffle {
                     genre: genre.clone(),
-                    initial_position: Some(index),
-                },
-                press: Message::PlayGenre {
-                    genre: genre.clone(),
-                    initial_position: Some(index),
-                },
-                toggle_favorite: Message::ToggleFavorite(favorite_item),
-                shuffle: Some(Message::ShuffleGenre {
-                    genre: genre.clone(),
-                    initial_position: Some(index),
+                    initial_position: index,
                 }),
-                add_to_queue: Some(Message::AddTrackToQueue(track.clone())),
-                add_to_playlist: Message::AddTracksToPlaylist(vec![track.hash_self()]),
+                press: Message::Playback(playback::Message::PlayGenre {
+                    genre: genre.clone(),
+                    initial_position: index,
+                }),
+                toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
+                shuffle: Some(Message::Playback(playback::Message::ShuffleGenre {
+                    genre: genre.clone(),
+                    initial_position: None,
+                })),
+                add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
+                    track.clone(),
+                ))),
+                add_to_playlist: Message::Dialog(dialog::Message::AddTracksToPlaylist(vec![
+                    track.clone(),
+                ])),
                 details: None,
                 remove: None,
-                toggle_menu: Message::ToggleMenu(index),
+                toggle_menu: Message::MainView(main_view::Message::TopView(
+                    top_view::Message::ToggleMenu(index),
+                )),
             },
             info: track_button::Info::Artist,
             status: if highlighted_index

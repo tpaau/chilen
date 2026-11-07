@@ -3,7 +3,8 @@ use iced_widget::column;
 
 use crate::gui::{
     Chilen,
-    settings::{Message, Screen, TITLE_CONTENT_SPACE, title},
+    event_loop::Message,
+    settings::{Screen, TITLE_CONTENT_SPACE, title},
 };
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
