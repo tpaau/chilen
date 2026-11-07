@@ -47,15 +47,19 @@ rpm-stree install chilen-git
 ```
 
 ## Arch Linux
-> [!NOTE]
-> This is to be published on the AUR, but as of now account registration there is closed due to
-> [supply-chain attacks](https://archlinux.org/news/active-aur-malicious-packages-incident/).
-
 ```bash
 git clone https://github.com/tpaau/chilen-git-src-pkgbuild
 cd chilen-git-src-pkgbuild
 makepkg -si
 ```
+
+## Community builds
+Builds that are maintained by the community, i.e. not by me. Please report any issues with those
+builds to their respective maintainers.
+
+### Arch Linux
+- [chilen-git](https://aur.archlinux.org/packages/chilen-git)
+
 
 ## Building from source
 Please refer to the
