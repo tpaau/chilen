@@ -211,8 +211,10 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             state.main_view.button_menu = None;
             if !matches!(state.dialog, Dialog::None) {
                 state.dialog = Dialog::None;
-            } else {
+            } else if state.settings_state.screen.is_some() {
                 state.settings_state.screen = None;
+            } else {
+                state.main_view.nav_stack.unwind();
             }
         }
         Message::CloseMenus => {
