@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{ops::Not, sync::Arc};
 
 use chilen_backend::music_lib::{LibraryItem, Playlist, is_favorite};
-use iced::{Alignment, Element, Length, color};
+use iced::{Alignment, Element, Length};
 use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{column, container, responsive, row, space, text};
+use iced_widget::{column, container, responsive, row, text};
 
 use crate::gui::{
     Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER, dialog,
@@ -18,7 +18,7 @@ use crate::gui::{
     widget::{
         cover_image::CoverImage,
         list::{
-            BUTTON_SPACING,
+            BUTTON_SPACING, playlist_button,
             track_button::{self, TrackButton},
         },
         text_spacer::text_spacer,
@@ -84,26 +84,59 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
     .height(Length::Shrink)
     .width(Length::Shrink);
 
-    let buttons = horizontal_buttons(
-        state,
-        (!playlist.tracks.is_empty()).then_some(Message::Playback(
-            playback::Message::PlayPlaylistNoShuffle {
-                playlist: playlist.clone(),
-                initial_position: 0,
-            },
-        )),
-        (!playlist.tracks.is_empty()).then_some(Message::Playback(
-            playback::Message::ShufflePlaylist {
-                playlist: playlist.clone(),
-                initial_position: None,
-            },
-        )),
-        || {
-            container(space().width(100).height(100))
-                .style(|_| container::Style::default().background(color!(0xff0000)))
+    let buttons =
+        {
+            let playlist = playlist.clone();
+            let favorite_item = playlist.clone().into();
+            let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+
+            let play_no_shuffle = playlist
+                .tracks
+                .is_empty()
+                .not()
+                .then_some(Message::Playback(
+                    playback::Message::PlayPlaylistNoShuffle {
+                        playlist: playlist.clone(),
+                        initial_position: 0,
+                    },
+                ));
+            let shuffle = playlist
+                .tracks
+                .is_empty()
+                .not()
+                .then_some(Message::Playback(playback::Message::ShufflePlaylist {
+                    playlist: playlist.clone(),
+                    initial_position: None,
+                }));
+
+            horizontal_buttons(state, play_no_shuffle.clone(), shuffle.clone(), move || {
+                playlist_button::menu(
+                    state,
+                    is_favorite,
+                    playlist_button::Messages {
+                        play: play_no_shuffle.clone(),
+                        shuffle: shuffle.clone(),
+                        add_to_queue: playlist.tracks.is_empty().not().then_some(
+                            Message::Playback(playback::Message::AddPlaylistToQueue(
+                                playlist.clone(),
+                            )),
+                        ),
+                        export: playlist.tracks.is_empty().not().then_some(Message::Library(
+                            library::Message::ExportPlaylist(playlist.clone()),
+                        )),
+                        toggle_favorite: Message::Library(library::Message::ToggleFavorite(
+                            favorite_item.clone(),
+                        )),
+                        rename: Message::Dialog(dialog::Message::RenamePlaylist {
+                            playlist: playlist.clone(),
+                            name: playlist.name.clone().into_string(),
+                        }),
+                        delete: Message::Dialog(dialog::Message::DeletePlaylist(playlist.clone())),
+                    },
+                )
                 .into()
-        },
-    );
+            })
+        };
 
     let highlighted_index = state.player_state.as_ref().and_then(|p| {
         if let chilen_backend::playback::QueueSource::Playlist { name: pl_name } = &p.queue_source
