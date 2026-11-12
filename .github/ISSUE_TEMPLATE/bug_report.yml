@@ -50,7 +50,6 @@ body:
     validations:
       required: true
 
-
   - type: input
     id: upstream
     attributes:      
@@ -59,6 +58,15 @@ body:
       placeholder: Confirmation that you cannot reproduce the issue on the latest version of Chilen from the main branch
     validations:
       required: true
+
+  - type: checkboxes
+    id: duplicate
+    attributes:
+      label: Is there an existing issue for this?
+      description: Search the existing issues before submitting.
+      options:
+        - label: I have searched the existing issues.
+          required: true
 
   - type: checkboxes
     id: declaration
