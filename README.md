@@ -4,6 +4,7 @@
   
   ![](https://img.shields.io/github/last-commit/tpaau/chilen?&style=for-the-badge&color=FFFFFF&logo=git&logoColor=C9C9C9&labelColor=252525)
   ![](https://img.shields.io/github/repo-size/tpaau/chilen?&style=for-the-badge&color=FFFFFF&logo=git&logoColor=C9C9C9&labelColor=252525)
+  [![](https://img.shields.io/badge/Chilen-Discord-blue?&style=for-the-badge&color=FFFFFF&logo=discord&logoColor=C9C9C9&labelColor=252525)](https://discord.gg/uu5pjuM6d)
 </div>
 
 Fully offline, blazingly fast music player for your library. Built from the
