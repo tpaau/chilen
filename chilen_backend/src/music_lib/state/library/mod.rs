@@ -130,8 +130,7 @@ impl MusicLibrary {
 
         let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
+        let collator = COLLATOR.read().unwrap().clone();
         sort_tracks(&mut tracks);
 
         let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();
@@ -191,7 +190,7 @@ impl MusicLibrary {
                     .collect::<HashSet<Box<str>>>()
                     .into_iter()
                     .collect();
-                match collator {
+                match &collator {
                     Some(collator) => {
                         artists.sort_by(|a1, a2| collator.compare(a1, a2));
                     }
@@ -324,10 +323,20 @@ impl MusicLibrary {
                 let commonest = counts.into_iter().max_by_key(|(_, c)| *c).map(|(k, _)| k);
                 let cover = commonest.unwrap_or(tracks[0].cover.clone());
 
-                let mut artists: Vec<_> = artists_by_genre[name].clone().into_iter().collect();
+                let mut artists: Vec<_> = artists_by_genre
+                    .get(name)
+                    .cloned()
+                    .into_iter()
+                    .flatten()
+                    .collect();
                 sort_artists(&mut artists);
 
-                let mut albums: Vec<_> = albums_by_genre[name].clone().into_iter().collect();
+                let mut albums: Vec<_> = albums_by_genre
+                    .get(name)
+                    .cloned()
+                    .into_iter()
+                    .flatten()
+                    .collect();
                 sort_albums(&mut albums);
 
                 Arc::new(Genre {
