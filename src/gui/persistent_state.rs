@@ -1,14 +1,14 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::{File, read_to_string},
-    io::Write,
+    io::{ErrorKind, Write},
     path::PathBuf,
     sync::{Arc, LazyLock},
 };
 
 use chilen_backend::music_lib::{Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist};
 use chrono::{DateTime, Utc};
-use log::{debug, error, trace};
+use log::{debug, error, trace, warn};
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 
@@ -388,16 +388,22 @@ impl State {
         let data = match read_to_string(STATE_FILE.clone()) {
             Ok(data) => data,
             Err(e) => {
-                let msg = format!("Failed to load app state: {e}");
-                error!("{}", msg.clone());
-                return Err(msg);
+                if e.kind() == ErrorKind::NotFound {
+                    let msg = "Failed to load app state because the state file was not found. This is normal if the app state hasn't been modified yet.".to_string();
+                    warn!("{}", msg.clone());
+                    return Err(msg);
+                } else {
+                    let msg = format!("Failed to load app state: {e}");
+                    error!("{}", msg.clone());
+                    return Err(msg);
+                }
             }
         };
 
         let stored_state: StoredState = match serde_json::from_str(&data) {
             Ok(state) => state,
             Err(e) => {
-                let msg = format!("Failed to load app state: {e}");
+                let msg = format!("Failed to deserialize app state: {e}");
                 error!("{}", msg.clone());
                 return Err(msg);
             }
@@ -426,7 +432,13 @@ pub fn library_loaded(state: &mut Chilen) {
             let data = match read_to_string(STATE_FILE.clone()) {
                 Ok(data) => data,
                 Err(e) => {
-                    error!("Failed to load app state: {e}");
+                    if e.kind() == ErrorKind::NotFound {
+                        warn!(
+                            "Failed to load app state because the state file was not found. This is normal if the app state hasn't been modified yet."
+                        );
+                    } else {
+                        error!("Failed to load app state: {e}");
+                    }
                     return;
                 }
             };
@@ -434,7 +446,7 @@ pub fn library_loaded(state: &mut Chilen) {
             let stored_state: StoredState = match serde_json::from_str(&data) {
                 Ok(state) => state,
                 Err(e) => {
-                    error!("Failed to load app state: {e}");
+                    error!("Failed to deserialize app state: {e}");
                     return;
                 }
             };

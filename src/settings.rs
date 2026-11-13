@@ -1,12 +1,12 @@
 use std::{
     fs::{File, read_to_string},
-    io::Write,
+    io::{ErrorKind, Write},
     path::PathBuf,
     sync::LazyLock,
 };
 
 use iced_m3::theme::Mode;
-use log::{debug, error};
+use log::{debug, error, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::gui::{Chilen, dialog::Dialog, themes::THEMES};
@@ -115,16 +115,22 @@ impl Settings {
         let data = match read_to_string(SETTINGS_FILE.clone()) {
             Ok(data) => data,
             Err(e) => {
-                let msg = format!("Failed to load settings: {e}");
-                error!("{}", msg.clone());
-                return Err(msg);
+                if e.kind() == ErrorKind::NotFound {
+                    let msg = "Failed to load settings because the settings file was not found. This is normal if settings haven't been modified yet.".to_string();
+                    warn!("{}", msg.clone());
+                    return Err(msg);
+                } else {
+                    let msg = format!("Failed to load settings: {e}");
+                    error!("{}", msg.clone());
+                    return Err(msg);
+                }
             }
         };
 
         let stored_settings: StoredSettings = match serde_json::from_str(&data) {
             Ok(settings) => settings,
             Err(e) => {
-                let msg = format!("Failed to load settings: {e}");
+                let msg = format!("Failed to deserialize settings: {e}");
                 error!("{}", msg.clone());
                 return Err(msg);
             }

@@ -41,7 +41,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             icon: *icons::MUSIC_NOTE,
             icon_size: cover_size / 4.0,
             icon_color: state.theme.on_surface_variant(),
-            container_color: state.theme.surface_container(),
+            container_color: state.theme.surface_container_high(),
             radius: ROUNDING_LARGE.into(),
             opacity: 1.0,
             width: cover_size.into(),
