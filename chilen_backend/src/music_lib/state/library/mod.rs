@@ -130,8 +130,8 @@ impl MusicLibrary {
 
         let mut tracks: Vec<_> = tracks.into_iter().map(Arc::new).collect();
 
-        let guard = COLLATOR.read().unwrap();
-        let collator = guard.as_ref();
+        let collator = COLLATOR.read().unwrap().clone();
+        let collator = collator.as_ref();
         sort_tracks(&mut tracks);
 
         let album_titles: HashSet<_> = tracks.iter().flat_map(|t| &t.album).collect();

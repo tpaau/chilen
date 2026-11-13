@@ -393,6 +393,7 @@ pub fn add_favorite(item: impl Into<LibraryItem>) -> Result<(), Error> {
     let mut guard = MUSIC_LIBRARY.write().unwrap();
     let lib = unwrap_lib_mut(guard.as_mut())?;
     lib.add_favorite(item.into())?;
+    drop(guard);
     save_library()
 }
 
