@@ -235,53 +235,6 @@ impl Track {
         TrackId::try_from(format!("/org/mpris/MediaPlayer2/TrackList/queue/{hash}")).unwrap()
     }
 
-    #[cfg(feature = "mpris")]
-    pub fn get_meta(&self, position: usize) -> mpris_server::Metadata {
-        use mpris_server::{Time, builder::MetadataBuilder};
-
-        let builder = MetadataBuilder::default()
-            .length(Time::from_nanos(
-                self.duration.as_nanos().try_into().unwrap_or(i64::MAX),
-            ))
-            .url(self.path.to_string_lossy())
-            .artist(
-                self.artists
-                    .as_ref()
-                    .map(|a| a.into_iter().map(|a| a.to_string()).collect::<Vec<_>>())
-                    .unwrap_or(vec!["Unknown artist".to_string()]),
-            )
-            .title(self.title.clone().unwrap_or_default())
-            .album(self.album.clone().unwrap_or_default())
-            .genre(
-                self.genres
-                    .as_ref()
-                    .map(|g| g.into_iter().map(|g| g.to_string()).collect::<Vec<_>>())
-                    .unwrap_or(vec!["Unknown genre".to_string()]),
-            )
-            .comment(self.comment.clone())
-            .track_number(self.track.unwrap_or(0).try_into().unwrap_or(0))
-            .disc_number(self.disc.unwrap_or(0).try_into().unwrap_or(0))
-            .lyrics(match &self.lyrics {
-                Some(lyrics) => {
-                    use lrc_rs::LyricsAccess;
-
-                    match lyrics {
-                        Lyrics::Synced(synced) => synced.clone().to_unsynced(),
-                        Lyrics::Unsynced { lyrics, reason: _ } => lyrics.to_string(),
-                    }
-                }
-                None => String::new(),
-            })
-            .trackid(self.track_id(position));
-
-        let builder = match &self.cover.cover() {
-            Ok(cover) => builder.art_url(cover.to_string_lossy().to_string()),
-            Err(_) => builder,
-        };
-
-        builder.build()
-    }
-
     pub fn open_file(&self) -> std::io::Result<File> {
         match File::open(&self.path) {
             Ok(file) => Ok(file),

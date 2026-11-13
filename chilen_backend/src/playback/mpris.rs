@@ -9,6 +9,7 @@ use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::{
     Event,
+    music_lib::{Lyrics, Track},
     playback::{
         self, Error, LoopState, PlaybackState, PlayerVolume, SUPPORTED_MIME_TYPES, ShuffleState,
         SignedDuration, open_uri,
@@ -82,6 +83,67 @@ fn get_response(result: Result<(), Error>) -> MprisResult<()> {
     }
 }
 
+/// Sanitizes a tag-derived string for D-Bus/MPRIS transport.
+fn sanitize_mpris_string(s: &str) -> String {
+    s.chars().filter(|&c| c != '\0').collect()
+}
+
+fn sanitize_mpris_strings(s: &[Box<str>]) -> Vec<String> {
+    s.iter().map(|s| sanitize_mpris_string(s)).collect()
+}
+
+pub(crate) fn get_meta(track: &Track, position: usize) -> mpris_server::Metadata {
+    use mpris_server::{Time, builder::MetadataBuilder};
+
+    let builder = MetadataBuilder::default()
+        .length(Time::from_nanos(
+            track.duration.as_nanos().try_into().unwrap_or(i64::MAX),
+        ))
+        .url(track.path.to_string_lossy())
+        .artist(
+            track
+                .artists
+                .as_ref()
+                .map(|a| sanitize_mpris_strings(a))
+                .unwrap_or(vec!["Unknown artist".to_string()]),
+        )
+        .title(sanitize_mpris_string(
+            &track.title.clone().unwrap_or_default(),
+        ))
+        .album(sanitize_mpris_string(
+            &track.album.clone().unwrap_or_default(),
+        ))
+        .genre(
+            track
+                .genres
+                .as_ref()
+                .map(|g| sanitize_mpris_strings(g))
+                .unwrap_or(vec!["Unknown genre".to_string()]),
+        )
+        .comment(track.comment.as_ref().map(|c| sanitize_mpris_string(c)))
+        .track_number(track.track.unwrap_or(0).try_into().unwrap_or(0))
+        .disc_number(track.disc.unwrap_or(0).try_into().unwrap_or(0))
+        .lyrics(sanitize_mpris_string(&match &track.lyrics {
+            Some(lyrics) => {
+                use lrc_rs::LyricsAccess;
+
+                match lyrics {
+                    Lyrics::Synced(synced) => synced.clone().to_unsynced(),
+                    Lyrics::Unsynced { lyrics, reason: _ } => lyrics.to_string(),
+                }
+            }
+            None => String::new(),
+        }))
+        .trackid(track.track_id(position));
+
+    let builder = match &track.cover.cover() {
+        Ok(cover) => builder.art_url(cover.to_string_lossy().to_string()),
+        Err(_) => builder,
+    };
+
+    builder.build()
+}
+
 impl RootInterface for MprisInterface {
     async fn raise(&self) -> MprisResult<()> {
         crate::send_event(Event::Raise);
@@ -98,15 +160,10 @@ impl RootInterface for MprisInterface {
     }
 
     async fn fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {
+        // TODO: Fullscreen checking
         Err(mpris_server::zbus::fdo::Error::NotSupported(
             "TBD".to_string(),
         ))
-        // Ok(*gui::WINDOW_MODE
-        //     .read()
-        //     .unwrap()
-        //     .as_ref()
-        //     .unwrap_or(&iced::window::Mode::Windowed)
-        //     == iced::window::Mode::Fullscreen)
     }
 
     async fn can_set_fullscreen(&self) -> mpris_server::zbus::fdo::Result<bool> {

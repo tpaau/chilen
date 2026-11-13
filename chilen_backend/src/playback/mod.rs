@@ -331,7 +331,7 @@ pub(crate) fn get_current_meta() -> Result<Option<mpris_server::Metadata>, Error
     let state_guard = PLAYER_STATE.read().unwrap();
     let state = unwrap_state_ref(state_guard.as_ref())?;
     match state.current() {
-        Some(track) => Ok(Some(track.get_meta(state.position))),
+        Some(track) => Ok(Some(mpris::get_meta(track, state.position))),
         None => Ok(None),
     }
 }

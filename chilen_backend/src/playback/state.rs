@@ -408,7 +408,7 @@ impl PlayerState {
 
             mpris::update_properties(vec![
                 match self.current() {
-                    Some(track) => Property::Metadata(track.get_meta(self.position)),
+                    Some(track) => Property::Metadata(mpris::get_meta(track, self.position)),
                     None => Property::Metadata(Metadata::new()),
                 },
                 Property::CanGoPrevious(self.can_go_previous()),
@@ -565,7 +565,7 @@ impl PlayerState {
             use mpris_server::{Metadata, Property};
 
             let meta = match self.current() {
-                Some(track) => track.get_meta(self.position),
+                Some(track) => mpris::get_meta(track, self.position),
                 None => Metadata::new(),
             };
             mpris::update_properties(vec![Property::Metadata(meta)]);
@@ -581,7 +581,7 @@ impl PlayerState {
             use mpris_server::{Metadata, Property};
 
             let meta = match self.current() {
-                Some(track) => track.get_meta(self.position),
+                Some(track) => mpris::get_meta(track, self.position),
                 None => Metadata::new(),
             };
             mpris::update_properties(vec![Property::Metadata(meta)]);
@@ -708,7 +708,7 @@ impl PlayerState {
 
             let properties = vec![
                 match self.current() {
-                    Some(track) => Property::Metadata(track.get_meta(self.position)),
+                    Some(track) => Property::Metadata(mpris::get_meta(track, self.position)),
                     None => Property::Metadata(Metadata::new()),
                 },
                 Property::CanGoPrevious(self.can_go_previous()),
@@ -734,7 +734,7 @@ impl PlayerState {
             Property::CanPause(self.can_pause()),
             Property::CanSeek(self.can_seek()),
             match self.current() {
-                Some(track) => Property::Metadata(track.get_meta(self.position)),
+                Some(track) => Property::Metadata(mpris::get_meta(track, self.position)),
                 None => Property::Metadata(Metadata::new()),
             },
         ]
