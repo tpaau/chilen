@@ -1,10 +1,10 @@
 use std::{
-    sync::{Arc, LazyLock, RwLock},
+    sync::{Arc, LazyLock, Mutex, RwLock},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
-use log::{error, trace};
+use log::{error, info, trace};
 use mpris_server::{PlayerInterface, Property, RootInterface, Server, Time};
 
 use crate::{
@@ -25,6 +25,22 @@ pub struct MprisInterface {
 
 static SERVER: LazyLock<Arc<RwLock<Option<Server<MprisInterface>>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(None)));
+
+/// Configuration needed to (re)create the MPRIS server.
+#[derive(Clone)]
+struct ServerConfig {
+    identity: String,
+    identifier: String,
+}
+
+static SERVER_CONFIG: LazyLock<Arc<Mutex<Option<ServerConfig>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
+
+/// `update_properties` fires every 100 ms during playback and keeps hitting a dead
+/// server, so without a cooldown the restart would re-grab the bus name 10x/second.
+const RESTART_COOLDOWN: Duration = Duration::from_secs(5);
+
+static LAST_RESTART: LazyLock<Mutex<Option<Instant>>> = LazyLock::new(|| Mutex::new(None));
 
 pub(crate) fn playback_state_2_mpris(
     playback_state: &PlaybackState,
@@ -355,88 +371,151 @@ impl PlayerInterface for MprisInterface {
     }
 }
 
+/// Whether the error means the D-Bus connection is dead and the server must be restarted.
+fn needs_restart(error: &mpris_server::zbus::Error) -> bool {
+    use std::io::ErrorKind;
+    match error {
+        mpris_server::zbus::Error::InputOutput(io_err) => matches!(
+            io_err.kind(),
+            ErrorKind::BrokenPipe
+                | ErrorKind::ConnectionReset
+                | ErrorKind::ConnectionAborted
+                | ErrorKind::NotConnected
+                | ErrorKind::TimedOut
+        ),
+        mpris_server::zbus::Error::NameTaken => true,
+        _ => false,
+    }
+}
+
+/// Builds a fresh server, pushes the current playback state as the initial properties,
+/// and swaps it into `SERVER`.
+async fn start_server(identity: String, identifier: &str) -> Result<(), mpris_server::zbus::Error> {
+    trace!("Starting the MPRIS server");
+    let server = match Server::new(identifier, MprisInterface { identity }).await {
+        Ok(server) => server,
+        Err(e) => {
+            error!("Failed to start the MPRIS server: {e}");
+            return Err(e);
+        }
+    };
+
+    let state = {
+        let state_guard = playback::state::PLAYER_STATE.read().unwrap();
+        match playback::state::unwrap_state_ref(state_guard.as_ref()) {
+            Ok(state) => state.clone(),
+            Err(e) => {
+                error!("Could not get the initial server properties: {e}");
+                playback::state::PlayerState::default()
+            }
+        }
+    };
+
+    if let Err(e) = server
+        .properties_changed(state.get_mpris_properties())
+        .await
+    {
+        error!("Could not set the initial server properties: {e}");
+    } else {
+        trace!("Successfully set the initial server properties");
+    }
+
+    let mut server_guard = SERVER.write().unwrap();
+    *server_guard = Some(server);
+    Ok(())
+}
+
+/// Restarts the MPRIS server after a fatal connection error.
+fn restart_server() {
+    let now = Instant::now();
+    {
+        let mut last_guard = LAST_RESTART.lock().unwrap();
+        if let Some(last) = *last_guard
+            && now.duration_since(last) < RESTART_COOLDOWN
+        {
+            trace!("MPRIS server restart suppressed by cooldown");
+            return;
+        }
+        *last_guard = Some(now);
+    }
+
+    let config = match SERVER_CONFIG.lock().unwrap().clone() {
+        Some(config) => config,
+        None => {
+            error!("Cannot restart the MPRIS server as it was never launched");
+            return;
+        }
+    };
+
+    info!("Attempting a restart of the MPRIS server");
+    thread::spawn(move || {
+        pollster::block_on(async {
+            if let Err(e) = start_server(config.identity, &config.identifier).await {
+                error!("Cannot restart the MPRIS server: {e}");
+            }
+        });
+    });
+}
+
 pub(crate) fn launch_server(identity: String, identifier: String) {
+    *SERVER_CONFIG.lock().unwrap() = Some(ServerConfig {
+        identity: identity.clone(),
+        identifier: identifier.clone(),
+    });
     thread::spawn(move || {
         trace!("Starting the MPRIS server");
-        let interface = MprisInterface { identity };
-
         pollster::block_on(async {
-            let server = match Server::new(&identifier, interface).await {
-                Ok(server) => server,
-                Err(e) => {
-                    error!("Cannot start the MPRIS server: {e}");
-                    return;
-                }
-            };
-
-            let state;
-            {
-                let state_guard = playback::state::PLAYER_STATE.read().unwrap();
-                state = match playback::state::unwrap_state_ref(state_guard.as_ref()) {
-                    Ok(state) => state.clone(),
-                    Err(e) => {
-                        error!("Could not get the initial server properties: {e}");
-                        playback::state::PlayerState::default()
-                    }
-                };
-                drop(state_guard);
+            if let Err(e) = start_server(identity, &identifier).await {
+                error!("Cannot start the MPRIS server: {e}");
             }
-
-            if let Err(e) = server
-                .properties_changed(state.get_mpris_properties())
-                .await
-            {
-                error!("Could not set the initial server properties: {e}");
-            } else {
-                trace!("Successfully set the initial server properties");
-            }
-
-            let mut server_guard = SERVER.write().unwrap();
-            *server_guard = Some(server);
         });
     });
 }
 
 pub(crate) fn update_properties(properties: Vec<Property>) {
     thread::spawn(move || {
-        let mut server_guard = SERVER.write().unwrap();
-        let server = match server_guard.as_mut() {
-            Some(server) => server,
-            None => {
-                error!("Cannot update MPRIS properties, the server is not initialized");
-                return;
+        let result = {
+            let mut server_guard = SERVER.write().unwrap();
+            match server_guard.as_mut() {
+                Some(server) => pollster::block_on(server.properties_changed(properties)),
+                None => {
+                    error!("Cannot update MPRIS properties, the server is not initialized");
+                    return;
+                }
             }
         };
-        pollster::block_on(async {
-            // FIX: Breaks with certain tracks is seems (eg. Partiality)
-            // NOTE: This also seems to happen with other players, the track has some corrupted
-            // metadata. Maybe we can handle issues like these more gracefully or fix it in MPRIS?
-            if let Err(e) = server.properties_changed(properties).await {
-                error!("Cannot update MPRIS properties: {e}");
+        if let Err(e) = result {
+            error!("Cannot update MPRIS properties: {e}");
+            if needs_restart(&e) {
+                restart_server();
+            } else {
+                info!("Not a connection error - not attempting a server restart");
             }
-        })
+        }
     });
 }
 
 pub(crate) fn set_position(position: Duration) {
     thread::spawn(move || {
-        let server_guard = SERVER.write().unwrap();
-        let server = match server_guard.as_ref() {
-            Some(server) => server,
-            None => {
-                error!("Cannot update player position, the server is not initialized");
-                return;
+        let result = {
+            let server_guard = SERVER.read().unwrap();
+            match server_guard.as_ref() {
+                Some(server) => pollster::block_on(server.emit(mpris_server::Signal::Seeked {
+                    position: Time::from_nanos(position.as_nanos().try_into().unwrap_or(i64::MAX)),
+                })),
+                None => {
+                    error!("Cannot update player position, the server is not initialized");
+                    return;
+                }
             }
         };
-        pollster::block_on(async {
-            if let Err(e) = server
-                .emit(mpris_server::Signal::Seeked {
-                    position: Time::from_nanos(position.as_nanos().try_into().unwrap_or(i64::MAX)),
-                })
-                .await
-            {
-                error!("Could not update player position: {e}");
+        if let Err(e) = result {
+            error!("Could not update player position: {e}");
+            if needs_restart(&e) {
+                restart_server();
+            } else {
+                info!("Not a connection error - not attempting a server restart");
             }
-        })
+        }
     });
 }
