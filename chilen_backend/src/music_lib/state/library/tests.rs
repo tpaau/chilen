@@ -4,6 +4,7 @@ use icu::collator::{Collator, options::CollatorOptions};
 
 use crate::{
     music_lib::{
+        MusicLibrary,
         sorting::{COLLATOR, sort_tracks_in_album},
         state::Track,
     },
@@ -39,4 +40,23 @@ fn album_track_sorting() {
             tracks_unsorted[4].clone()
         ]
     )
+}
+
+#[test]
+fn genre_without_album_or_artist_does_not_panic() {
+    testing_init_config();
+
+    let mut track = Track::unique_tracks(1).remove(0);
+    track.genres = Some(["Rock".to_string().into()].into());
+    track.artists = Some(["Someone".to_string().into()].into());
+    let lib = MusicLibrary::new_testing(vec![track]);
+    assert_eq!(lib.genres.len(), 1);
+    assert!(lib.genres[0].albums.is_empty());
+
+    let mut track = Track::unique_tracks(1).remove(0);
+    track.genres = Some(["Rock".to_string().into()].into());
+    track.album = Some("Album".into());
+    let lib = MusicLibrary::new_testing(vec![track]);
+    assert_eq!(lib.genres.len(), 1);
+    assert!(lib.genres[0].artists.is_empty());
 }
