@@ -173,7 +173,7 @@ pub(super) fn view<'a>(state: &'a Chilen, playlist: Arc<Playlist>) -> Element<'a
                     )),
                     shuffle: Some(Message::Playback(playback::Message::ShufflePlaylist {
                         playlist: playlist_cloned.clone(),
-                        initial_position: None,
+                        initial_position: Some(index),
                     })),
                     add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
                         track.clone(),

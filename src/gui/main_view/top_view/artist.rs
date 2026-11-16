@@ -186,7 +186,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
                 shuffle: Some(Message::Playback(playback::Message::ShuffleArtist {
                     artist: artist.clone(),
-                    initial_position: None,
+                    initial_position: Some(index),
                 })),
                 add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
                     track.clone(),
@@ -197,7 +197,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 details: None,
                 remove: None,
                 toggle_menu: Message::MainView(main_view::Message::TopView(
-                    top_view::Message::ToggleMenu(index),
+                    top_view::Message::ToggleMenu(index + artist.albums.len()),
                 )),
             },
             info: track_button::Info::Album,
@@ -210,7 +210,7 @@ pub(super) fn view<'a>(state: &'a Chilen, artist: Arc<Artist>) -> Element<'a, Me
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
-            menu_opened: state.main_view.button_menu == Some(index),
+            menu_opened: state.main_view.button_menu == Some(index + artist.albums.len()),
         }
         .into()
     });

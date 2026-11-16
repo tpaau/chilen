@@ -227,14 +227,14 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 )),
                 toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
                 toggle_menu: Message::MainView(main_view::Message::TopView(
-                    top_view::Message::ToggleMenu(index),
+                    top_view::Message::ToggleMenu(index + genre.albums.len()),
                 )),
                 is_favorite,
                 highlighted: highlighted_artist_name
                     .map(|name| name == artist.name.as_ref())
                     .unwrap_or_default(),
                 vibrant: state.settings.vibrant_widgets,
-                menu_opened: state.main_view.button_menu == Some(index),
+                menu_opened: state.main_view.button_menu == Some(index + genre.albums.len()),
             }
             .into()
         })
@@ -280,7 +280,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
                 shuffle: Some(Message::Playback(playback::Message::ShuffleGenre {
                     genre: genre.clone(),
-                    initial_position: None,
+                    initial_position: Some(index),
                 })),
                 add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
                     track.clone(),
@@ -291,7 +291,7 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 details: None,
                 remove: None,
                 toggle_menu: Message::MainView(main_view::Message::TopView(
-                    top_view::Message::ToggleMenu(index),
+                    top_view::Message::ToggleMenu(index + genre.albums.len() + genre.artists.len()),
                 )),
             },
             info: track_button::Info::Artist,
@@ -304,7 +304,8 @@ pub(super) fn view<'a>(state: &'a Chilen, genre: Arc<Genre>) -> Element<'a, Mess
                 track_button::Status::Idle
             },
             vibrant: state.settings.vibrant_widgets,
-            menu_opened: state.main_view.button_menu == Some(index),
+            menu_opened: state.main_view.button_menu
+                == Some(index + genre.albums.len() + genre.artists.len()),
         }
         .into()
     });

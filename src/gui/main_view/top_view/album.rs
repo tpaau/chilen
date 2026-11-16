@@ -182,7 +182,7 @@ pub(super) fn view<'a>(state: &'a Chilen, album: Arc<Album>) -> Element<'a, Mess
                 toggle_favorite: Message::Library(library::Message::ToggleFavorite(favorite_item)),
                 shuffle: Some(Message::Playback(playback::Message::ShuffleAlbum {
                     album: album.clone(),
-                    initial_position: None,
+                    initial_position: Some(index),
                 })),
                 add_to_queue: Some(Message::Playback(playback::Message::AddTrackToQueue(
                     track.clone(),
