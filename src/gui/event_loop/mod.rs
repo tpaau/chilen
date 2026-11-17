@@ -118,10 +118,15 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             ]);
         }
         Message::PlaybackView(message) => {
-            return Task::batch([
-                Task::done(Message::CloseMenus),
-                playback_view::update(state, message),
-            ]);
+            let matches = matches!(message, playback_view::Message::ToggleMenu(_));
+            let task = playback_view::update(state, message);
+            // `update` mutates state immediately, while batched tasks run afterwards. Batching
+            // `CloseMenus` would clear the toggle `ToggleMenu` just performed, so it must be
+            // excluded.
+            if matches {
+                return task;
+            }
+            return Task::batch([Task::done(Message::CloseMenus), task]);
         }
         Message::Dialog(message) => {
             return Task::batch([

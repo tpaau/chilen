@@ -384,7 +384,7 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, event_loop::Mes
     };
 
     let title = if let View::Tab(tab) = state.main_view.nav_stack.top() {
-        let icon_size = if tab == NavTab::Home { 42.0 } else { 34.0 };
+        let icon_size = if tab == NavTab::Home { 46.0 } else { 34.0 };
         Some(
             row![
                 IconShape::new(
@@ -424,15 +424,6 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, event_loop::Mes
         container(
             row![
                 // TODO: Track search
-                // iced_m3::widget::button(
-                //     button::Style::filled(&state.theme, Accent::default()),
-                //     Content::Icon(Icon::Text {
-                //         text: icons::SEARCH.into_fragment(),
-                //         font: Some(icons::filled())
-                //     })
-                // )
-                // .size(*TOOLBAR_BUTTON_SIZE)
-                // .on_press(Message::Noop),
                 iced_m3::widget::button(
                     button::Style::outlined(&state.theme),
                     Content::Full {
