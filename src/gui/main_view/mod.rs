@@ -396,7 +396,9 @@ pub fn view<'a>(state: &'a Chilen, compact: bool) -> Element<'a, event_loop::Mes
                 .size(60.0)
                 .icon_size(icon_size)
                 .transition_spring(fast_spatial(motion::Scheme::default())),
-                bold_text(tab.title()).size(38.0),
+                bold_text(tab.title())
+                    .size(38.0)
+                    .color(state.theme.on_surface()),
                 spacer(state.theme.outline_variant())
             ]
             .padding(padding::horizontal(SPACING_REGULAR).top(SPACING_REGULAR))

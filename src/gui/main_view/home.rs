@@ -207,7 +207,7 @@ fn title<'a>(
         IconShape::new(shape, theme.secondary(), icon, theme.on_secondary())
             .size(46.0)
             .icon_size(28.0),
-        bold_text(title).size(30),
+        bold_text(title).color(theme.on_surface()).size(30),
         spacer(theme.outline_variant())
     ]
     .height(TITLE_BUTTON_SIZE.height)
