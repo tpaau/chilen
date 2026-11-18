@@ -1,4 +1,4 @@
-use iced::{Color, Element, Pixels, border::Radius};
+use iced::{Element, Pixels, border::Radius};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     style::StateLayer,
@@ -33,7 +33,7 @@ where
         toggle_menu: Option<Message>,
     ) -> Self {
         let style_regular = button::StateStyle {
-            container: Color::TRANSPARENT,
+            container: theme.surface_container_high().scale_alpha(0.0),
             label: theme.on_surface(),
             icon: theme.on_surface(),
             outline: Outline::default(),
