@@ -19,7 +19,7 @@ where
     surface: Box<dyn Fn() -> Element<'a, Message, Theme, Renderer> + 'a>,
     style: button::Style,
     menu_opened: bool,
-    toggle_menu: Message,
+    toggle_menu: Option<Message>,
 }
 
 impl<'a, Message, Theme, Renderer> MenuButton<'a, Message, Theme, Renderer>
@@ -30,7 +30,7 @@ where
     pub fn new(
         surface: impl Fn() -> Element<'a, Message, Theme, Renderer> + 'a,
         theme: &(impl ColorScheme + ?Sized),
-        toggle_menu: Message,
+        toggle_menu: Option<Message>,
     ) -> Self {
         let style_regular = button::StateStyle {
             container: Color::TRANSPARENT,
@@ -97,13 +97,18 @@ where
         )
         .size(size)
         .selected(value.menu_opened)
-        .on_press(value.toggle_menu.clone());
+        .on_press_maybe(value.toggle_menu.clone());
 
         iced_m3::widget::advanced::menu_overlay(button, value.surface, value.menu_opened)
             .placement(Placement::BottomRight {
                 padding: Pixels(SPACING_SMALLER),
             })
-            .on_press(move |properties| menu_close(properties, value.toggle_menu.clone()))
+            .on_press(move |properties| {
+                value
+                    .toggle_menu
+                    .clone()
+                    .and_then(|m| menu_close(properties, m))
+            })
             .into()
     }
 }

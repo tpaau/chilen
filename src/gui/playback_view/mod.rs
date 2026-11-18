@@ -29,6 +29,7 @@ pub enum Message {
     TrackButtonPoppedOut(usize),
     RemoveFromQueue(usize),
     ToggleMenu(usize),
+    ToggleMainMenu,
 }
 
 // TODO: Save the last opened tab
@@ -42,6 +43,7 @@ pub enum Tab {
 #[derive(Default)]
 pub struct State {
     seek_slider_value: Option<f32>,
+    pub main_menu_opened: bool,
     pub visible_tracks: Vec<bool>,
     pub button_menu: Option<usize>,
 }
@@ -157,6 +159,9 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<event_loop::Message>
             } else {
                 state.playback_view.button_menu = Some(index);
             }
+        }
+        Message::ToggleMainMenu => {
+            state.playback_view.main_menu_opened = !state.playback_view.main_menu_opened
         }
     }
     Task::none()

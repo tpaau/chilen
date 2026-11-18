@@ -44,7 +44,7 @@ dnf install chilen-git
 
 Or on Fedora Atomic:
 ```bash
-rpm-stree install chilen-git
+rpm-ostree install chilen-git
 ```
 
 ## Arch Linux

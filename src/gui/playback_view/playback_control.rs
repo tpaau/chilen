@@ -1,22 +1,27 @@
 use std::time::Duration;
 
-use chilen_backend::playback::LoopState;
-use iced::{Element, Length};
+use chilen_backend::{
+    music_lib::{LibraryItem, is_favorite},
+    playback::LoopState,
+};
+use iced::{Alignment, Element, Length};
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::{Accent, ColorScheme},
     widget::{
+        Action,
         button::{self, Content},
         button_group::{self, standard::GroupItem},
         hybrid_icon::Icon,
+        menu::{self, button::MenuAction},
         slider, standard_button_group,
     },
 };
 use iced_widget::{column, container, mouse_area, responsive, row, space, text};
 
 use crate::gui::{
-    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALLER,
-    event_loop::Message,
+    Chilen, ROUNDING_LARGE, SPACING_REGULAR, SPACING_SMALL, SPACING_SMALLER, dialog,
+    event_loop::{Message, library},
     font::{self, bold_text},
     formatter::{UNKNOWN_TRACK_DURATION, format_track_duration},
     icons,
@@ -25,7 +30,7 @@ use crate::gui::{
         top_view::{self, TopView},
     },
     playback_view,
-    widget::{cover_image::CoverImage, wrappers::marquee},
+    widget::{cover_image::CoverImage, menu_button::MenuButton, wrappers::marquee},
 };
 
 pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
@@ -51,17 +56,13 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     }))
     .height(Length::Shrink);
 
-    // TODO: An options menu somewhere right to the title
-    let title = if let Some(state) = &state.player_state {
-        if let Some(track) = state.current() {
-            track
-                .title
-                .as_ref()
-                .map(|t| t.clone().into_string())
-                .unwrap_or("Untitled".to_string())
-        } else {
-            "Nothing playing".to_string()
-        }
+    let current_track = state.player_state.as_ref().and_then(|p| p.current());
+    let title = if let Some(track) = current_track.as_ref() {
+        track
+            .title
+            .as_ref()
+            .map(|t| t.clone().into_string())
+            .unwrap_or("Untitled".to_string())
     } else {
         "Nothing playing".to_string()
     };
@@ -74,8 +75,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     )
     .animation(chilen_widget::marquee::Animation::Always);
 
-    let artists: Element<'_, Message> = if let Some(player_state) = &state.player_state
-        && let Some(track) = player_state.current()
+    let artists: Element<'_, Message> = if let Some(track) = current_track.as_ref()
         && let Some(artists) = &track.artists
         && !artists.is_empty()
         && let Some(lib) = state.library.as_ref()
@@ -115,17 +115,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
 
         row(artists_w_separators).into()
     } else {
-        let text_content = if state
-            .player_state
-            .as_ref()
-            .map(|p| p.current().is_some())
-            .unwrap_or_default()
-        {
-            "Unknown artist"
-        } else {
-            "Artist"
-        };
-        text(text_content)
+        text("Unknown artist")
             .wrapping(text::Wrapping::None)
             .size(font::SIZE_REGULAR)
             .color(state.theme.on_surface_variant())
@@ -158,8 +148,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     // .on_press_maybe(album.map(|a| Message::OpenAlbum(a.into_string())))
     // .size(button::Size::extra_small());
 
-    let album: Element<'_, Message> = if let Some(player_state) = &state.player_state
-        && let Some(track) = player_state.current()
+    let album: Element<'_, Message> = if let Some(track) = current_track.as_ref()
         && let Some(album) = &track.album
         && let Some(lib) = state.library.as_ref()
     {
@@ -186,17 +175,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
         }
         .into()
     } else {
-        let text_content = if state
-            .player_state
-            .as_ref()
-            .map(|p| p.current().is_some())
-            .unwrap_or_default()
-        {
-            "Unknown album"
-        } else {
-            "Album"
-        };
-        text(text_content)
+        text("Unknown album")
             .wrapping(text::Wrapping::None)
             .size(font::SIZE_REGULAR)
             .color(state.theme.on_surface_variant())
@@ -204,7 +183,82 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     };
     let album = marquee(album);
 
-    let content = column![title, artists, album];
+    let menu_button = MenuButton::new(
+        move || {
+            let items = if let Some(track) = current_track {
+                vec![
+                    {
+                        let favorite_item: LibraryItem = track.clone().into();
+                        let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
+                        let (icon_font, label) = match is_favorite {
+                            true => (icons::filled(), "Unfavorite".into()),
+                            false => (icons::outlined(), "Favorite".into()),
+                        };
+                        menu::Item::Button(menu::button::Button {
+                            icon: Some(Icon::Text {
+                                text: icons::STAR.into_fragment(),
+                                font: Some(icon_font),
+                            }),
+                            label,
+                            supporting_text: None,
+                            action: MenuAction::Message {
+                                is_selected: false,
+                                on_press: Some(Action::Direct(Message::Library(
+                                    library::Message::ToggleFavorite(favorite_item),
+                                ))),
+                            },
+                        })
+                    },
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::PLAYLIST_ADD.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Add to playlist".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: Some(Action::Direct(Message::Dialog(
+                                dialog::Message::AddTracksToPlaylist(vec![track.clone()]),
+                            ))),
+                        },
+                    }),
+                    menu::Item::Button(menu::button::Button {
+                        icon: Some(Icon::Text {
+                            text: icons::INFO.into_fragment(),
+                            font: Some(icons::filled()),
+                        }),
+                        label: "Details".into(),
+                        supporting_text: None,
+                        action: MenuAction::Message {
+                            is_selected: false,
+                            on_press: None,
+                        },
+                    }),
+                ]
+            } else {
+                Vec::new()
+            };
+
+            iced_m3::widget::menu(
+                menu::Style::new(&state.theme, state.settings.vibrant_widgets),
+                vec![menu::Group::new(items)],
+            )
+            .into()
+        },
+        &state.theme,
+        current_track.is_some().then_some(Message::PlaybackView(
+            playback_view::Message::ToggleMainMenu,
+        )),
+    )
+    .opened(current_track.is_some() && state.playback_view.main_menu_opened);
+
+    let content = row![
+        column![title, artists, album].width(Length::Fill),
+        menu_button
+    ]
+    .spacing(SPACING_SMALL)
+    .align_y(Alignment::Center);
 
     let max_value = 1000;
 

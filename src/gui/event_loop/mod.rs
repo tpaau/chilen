@@ -118,7 +118,8 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             ]);
         }
         Message::PlaybackView(message) => {
-            let matches = matches!(message, playback_view::Message::ToggleMenu(_));
+            let matches = matches!(message, playback_view::Message::ToggleMenu(_))
+                || matches!(message, playback_view::Message::ToggleMainMenu);
             let task = playback_view::update(state, message);
             // `update` mutates state immediately, while batched tasks run afterwards. Batching
             // `CloseMenus` would clear the toggle `ToggleMenu` just performed, so it must be
@@ -210,10 +211,6 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             });
         }
         Message::EscapePressed => {
-            state.playback_view.button_menu = None;
-            state.main_view.button_menu = None;
-            state.main_view.top_view.main_menu_opened = false;
-            state.main_view.button_menu = None;
             if !matches!(state.dialog, Dialog::None) {
                 state.dialog = Dialog::None;
             } else if state.settings_state.screen.is_some() {
@@ -221,10 +218,12 @@ pub fn update(state: &mut Chilen, message: Message) -> Task<Message> {
             } else {
                 state.main_view.nav_stack.unwind();
             }
+            return Task::done(Message::CloseMenus);
         }
         Message::CloseMenus => {
             state.main_view.button_menu = None;
             state.playback_view.button_menu = None;
+            state.playback_view.main_menu_opened = false;
             state.main_view.top_view.main_menu_opened = false;
         }
     }

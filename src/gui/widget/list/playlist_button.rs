@@ -235,7 +235,7 @@ where
         let menu_button = MenuButton::new(
             move || menu(value.state, value.is_favorite, value.messages.clone()).into(),
             &value.state.theme,
-            value.toggle_menu,
+            Some(value.toggle_menu),
         )
         .opened(value.menu_opened);
 

@@ -186,7 +186,7 @@ where
                 .into()
             },
             &value.state.theme,
-            value.toggle_menu,
+            Some(value.toggle_menu),
         )
         .opened(value.menu_opened);
 
