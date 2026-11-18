@@ -7,7 +7,7 @@ use std::{
 };
 
 use chilen_backend::music_lib::{Album, Artist, Genre, LibraryItem, MusicLibrary, Playlist};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use log::{debug, error, trace, warn};
 use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
@@ -176,13 +176,13 @@ impl From<LibraryItem> for LibraryItemStored {
 #[derive(Clone)]
 struct RecentFavorite {
     item: LibraryItem,
-    shown_at: Option<DateTime<Utc>>,
+    shown_at: Option<Timestamp>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
 struct RecentFavoriteStored {
     item: LibraryItemStored,
-    shown_at: Option<DateTime<Utc>>,
+    shown_at: Option<Timestamp>,
 }
 
 impl From<RecentFavorite> for RecentFavoriteStored {
@@ -264,7 +264,7 @@ impl State {
     fn restore_tracked_favorites(&mut self, lib: &MusicLibrary, items: Vec<RecentFavoriteStored>) {
         trace!("Restoring tracked favorite items");
 
-        let stored_map: HashMap<LibraryItemStored, Option<DateTime<Utc>>> =
+        let stored_map: HashMap<LibraryItemStored, Option<Timestamp>> =
             items.into_iter().map(|f| (f.item, f.shown_at)).collect();
 
         self.tracked_favorites = lib
@@ -286,7 +286,7 @@ impl State {
     }
 
     fn sync_tracked_favorites(&mut self, lib: &MusicLibrary) {
-        let existing_map: HashMap<LibraryItem, Option<DateTime<Utc>>> = self
+        let existing_map: HashMap<LibraryItem, Option<Timestamp>> = self
             .tracked_favorites
             .iter()
             .map(|f| (f.item.clone(), f.shown_at))
@@ -312,7 +312,7 @@ impl State {
 
         selected_indices.shuffle(&mut rand::rng());
 
-        let now = Utc::now();
+        let now = Timestamp::now();
         self.shown_favorites = selected_indices
             .into_iter()
             .map(|idx| {
@@ -341,7 +341,7 @@ impl State {
 
             candidates.sort_by_key(|f| f.shown_at);
 
-            let now = Utc::now();
+            let now = Timestamp::now();
             for candidate in candidates.into_iter().take(gap) {
                 if let Some(master_fav) = self
                     .tracked_favorites
