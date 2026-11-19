@@ -1,3 +1,9 @@
+//! Module responsible for management of the MPRIS server on Linux.
+
+// NOTE: The server might disappear from the player list on the desktop because of the filtering
+// applied. Just because it's not visible doesn't mean it's not running. Run `playerctl --list-all`
+// for a full list of MPRIS servers.
+
 use std::{
     sync::{Arc, LazyLock, Mutex, RwLock},
     thread,

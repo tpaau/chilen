@@ -258,7 +258,8 @@ impl PlayerState {
     }
 
     pub fn can_play(&self) -> bool {
-        self.position < self.tracks.len() && !self.is_playing()
+        // MPRIS `CanPlay` is a capability ("there is a current track"), not "nothing is playing"
+        self.position < self.tracks.len()
     }
 
     pub fn can_pause(&self) -> bool {
