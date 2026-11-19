@@ -107,7 +107,7 @@ const PLAYBACK_MIN_WIDTH: f32 = 320.0;
 const TOTAL_MIN_WIDTH: f32 =
     MAIN_MIN_WIDTH + PLAYBACK_MIN_WIDTH + navrail::CONTAINER_COLLAPSED_WIDTH;
 // TODO: Should be calculated dynamically based on the window width
-const MIN_HEIGHT: f32 = 920.0;
+const MIN_HEIGHT: f32 = 1000.0;
 
 pub(super) fn event_sender_initialized() -> bool {
     EVENT_SENDER.read().unwrap().is_some()

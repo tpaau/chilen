@@ -12,6 +12,7 @@ use iced_m3::{
         Action,
         button::{self, Content},
         button_group::{self, standard::GroupItem},
+        connected_button_group,
         hybrid_icon::Icon,
         menu::{self, button::MenuAction},
         slider, standard_button_group,
@@ -183,32 +184,11 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
     };
     let album = marquee(album);
 
+    // TODO: Maybe could be moved to the connected button row?
     let menu_button = MenuButton::new(
         move || {
             let items = if let Some(track) = current_track {
                 vec![
-                    {
-                        let favorite_item: LibraryItem = track.clone().into();
-                        let is_favorite = is_favorite(&favorite_item).unwrap_or_default();
-                        let (icon_font, label) = match is_favorite {
-                            true => (icons::filled(), "Unfavorite".into()),
-                            false => (icons::outlined(), "Favorite".into()),
-                        };
-                        menu::Item::Button(menu::button::Button {
-                            icon: Some(Icon::Text {
-                                text: icons::STAR.into_fragment(),
-                                font: Some(icon_font),
-                            }),
-                            label,
-                            supporting_text: None,
-                            action: MenuAction::Message {
-                                is_selected: false,
-                                on_press: Some(Action::Direct(Message::Library(
-                                    library::Message::ToggleFavorite(favorite_item),
-                                ))),
-                            },
-                        })
-                    },
                     menu::Item::Button(menu::button::Button {
                         icon: Some(Icon::Text {
                             text: icons::PLAYLIST_ADD.into_fragment(),
@@ -346,51 +326,12 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
             chilen_backend::playback::PlaybackState::Stopped => *icons::STOP,
         })
         .unwrap_or(*icons::STOP);
-    let loop_button_icon = state
-        .player_state
-        .as_ref()
-        .map(|p| match p.loop_state {
-            LoopState::Off | LoopState::Playlist => *icons::REPEAT,
-            LoopState::Track => *icons::REPEAT_ONE,
-        })
-        .unwrap_or(*icons::REPEAT);
-    let toggle_size = {
-        let size = iced_m3::widget::button::Size::small();
-        size.width(size.height).padding(0.0.into())
-    };
+
     let skip_button_size = {
         let size = iced_m3::widget::button::Size::medium();
-        size.width(size.height).padding(0.0.into())
+        size.padding((size.padding.left * 1.3).into())
     };
-
-    let buttons = vec![
-        {
-            let message_maybe = state
-                .player_state
-                .as_ref()
-                .map(|_| Message::PlaybackView(playback_view::Message::ToggleShuffle));
-            let is_some = message_maybe.is_some();
-
-            GroupItem::new(
-                iced_m3::widget::button(
-                    button::Style::outlined(&state.theme),
-                    Content::Icon(Icon::Text {
-                        text: icons::SHUFFLE.into_fragment(),
-                        font: Some(icons::filled()),
-                    }),
-                )
-                .size(toggle_size)
-                .selected(
-                    state
-                        .player_state
-                        .as_ref()
-                        .map(|p| p.shuffle_enabled())
-                        .unwrap_or_default(),
-                )
-                .on_press_maybe(message_maybe),
-                is_some,
-            )
-        },
+    let top_button_row = vec![
         {
             let message_maybe = state.player_state.as_ref().and_then(|p| {
                 p.can_go_previous()
@@ -406,13 +347,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         font: Some(icons::filled()),
                     }),
                 )
-                .size(
-                    skip_button_size.corner_radius(
-                        skip_button_size
-                            .corner_radius
-                            .style(button::CornerStyle::Square),
-                    ),
-                )
+                .size(skip_button_size)
                 .on_press_maybe(message_maybe),
                 is_some,
             )
@@ -432,7 +367,7 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         font: Some(icons::filled()),
                     }),
                 )
-                .size(iced_m3::widget::button::Size::medium())
+                .size(button::Size::medium().width(Length::Fill))
                 .selected(
                     state
                         .player_state
@@ -459,53 +394,95 @@ pub fn view<'a>(state: &'a Chilen) -> Element<'a, Message> {
                         font: Some(icons::filled()),
                     }),
                 )
-                .size(
-                    skip_button_size.corner_radius(
-                        skip_button_size
-                            .corner_radius
-                            .style(button::CornerStyle::Square),
-                    ),
-                )
+                .size(skip_button_size)
                 .on_press_maybe(message_maybe),
                 is_some,
             )
+        },
+    ];
+
+    let connected_buttons = vec![
+        {
+            let (message_maybe, selected) = match state.player_state.as_ref() {
+                Some(state) => (
+                    Some(Message::PlaybackView(playback_view::Message::ToggleShuffle)),
+                    state.shuffle_enabled(),
+                ),
+                None => (None, false),
+            };
+
+            button_group::connected::Button {
+                content: Content::Icon(Icon::Text {
+                    text: icons::SHUFFLE.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                on_press: message_maybe,
+                selected,
+            }
         },
         {
             let message_maybe = state
                 .player_state
                 .as_ref()
                 .map(|_| Message::PlaybackView(playback_view::Message::ToggleLooping));
-            let is_some = message_maybe.is_some();
+            let (loop_button_icon, selected) = state
+                .player_state
+                .as_ref()
+                .map(|p| match p.loop_state {
+                    LoopState::Off => (*icons::REPEAT, false),
+                    LoopState::Playlist => (*icons::REPEAT, true),
+                    LoopState::Track => (*icons::REPEAT_ONE, true),
+                })
+                .unwrap_or((*icons::REPEAT, false));
 
-            GroupItem::new(
-                iced_m3::widget::button(
-                    button::Style::outlined(&state.theme),
-                    Content::Icon(Icon::Text {
-                        text: loop_button_icon.into_fragment(),
-                        font: Some(icons::filled()),
-                    }),
-                )
-                .size(toggle_size)
-                .selected(
-                    state
-                        .player_state
-                        .as_ref()
-                        .map(|p| p.loop_state != LoopState::Off)
-                        .unwrap_or_default(),
-                )
-                .on_press_maybe(message_maybe),
-                is_some,
-            )
+            button_group::connected::Button {
+                content: button::Content::Icon(Icon::Text {
+                    text: loop_button_icon.into_fragment(),
+                    font: Some(icons::filled()),
+                }),
+                on_press: message_maybe,
+                selected,
+            }
+        },
+        {
+            let favorite_item: Option<LibraryItem> = current_track.map(|t| t.clone().into());
+            let is_favorite = favorite_item
+                .as_ref()
+                .map(|f| is_favorite(f).unwrap_or_default())
+                .unwrap_or_default();
+            let icon_font = match is_favorite {
+                true => icons::filled(),
+                false => icons::outlined(),
+            };
+
+            button_group::connected::Button {
+                content: button::Content::Icon(Icon::Text {
+                    text: icons::STAR.into_fragment(),
+                    font: Some(icon_font),
+                }),
+                on_press: favorite_item
+                    .map(|f| Message::Library(library::Message::ToggleFavorite(f))),
+                selected: is_favorite,
+            }
         },
     ];
-    let buttons =
-        container(standard_button_group(buttons).spacing(button_group::standard::SPACING_MEDIUM))
-            .center_x(Length::Fill);
+
+    let connected_buttons = connected_button_group(
+        button::Style::tonal(&state.theme, Accent::Secondary),
+        connected_buttons,
+    );
+
+    let buttons = column![
+        standard_button_group(top_button_row).spacing(button_group::standard::SPACING_MEDIUM),
+        connected_buttons
+    ]
+    .spacing(SPACING_SMALL)
+    .align_x(Alignment::Center);
 
     column![
         cover,
         content,
-        column![slider_stuff, buttons].spacing(SPACING_SMALLER)
+        column![slider_stuff, buttons].spacing(SPACING_REGULAR)
     ]
     .spacing(SPACING_REGULAR)
     .into()

@@ -49,6 +49,7 @@ pub struct State {
 }
 
 pub fn view<'a>(state: &'a Chilen, width: f32) -> Element<'a, event_loop::Message> {
+    // TODO: The queue should be put in a navigation bar with the track artwork for compact displays.
     container(
         column![playback_control::view(state), bottom_panel::view(state)].spacing(SPACING_REGULAR),
     )

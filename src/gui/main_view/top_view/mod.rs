@@ -185,7 +185,9 @@ fn horizontal_buttons<'a>(
 
         standard_button_group(buttons)
             .spacing(spacing)
-            .expanded_ratio(0.03) // So that the smaller buttons don't get crushed
+            // So that smaller buttons don't get crushed
+            // TODO: Should be dependant on the available space!
+            .expanded_ratio(0.03)
             .into()
     })
     .into()
