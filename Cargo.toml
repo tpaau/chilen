@@ -40,6 +40,8 @@ linux = [ "mpris", "cjk-fonts" ]
 windows = [ "cjk-fonts" ]
 macos = [ "cjk-fonts" ]
 
+codecs-full = [ "chilen_backend/codecs-full" ]
+
 [workspace]
 members = [
   "chilen_backend", "chilen_widget",

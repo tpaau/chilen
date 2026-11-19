@@ -8,7 +8,15 @@ license = "MIT"
 [dependencies]
 lofty = "0.24.0"
 log = "0.4.33"
-rodio = { version = "0.22.2", features = ["64bit"] }
+
+rodio = {
+  # Using the master branch for OPUS support
+  git = "https://github.com/RustAudio/rodio",
+  # There's a regression after this commit causing audio popping for some files
+  rev = "d9a6366ea9ff118acb89a3a1cc25d4bae7d5181e",
+  default-features = false,
+  features = ["64bit", "playback", "recording", "dither"]
+}
 serde = { version = "1.0.228", features = ["derive"] }
 walkdir = "2.5.0"
 m3u8_rs = { git = "https://github.com/tpaau/m3u8_rs" }
@@ -22,6 +30,42 @@ icu = { version = "2.2.0", default-features = false, features = [ "serde", "comp
 
 [features]
 mpris = [ "dep:mpris-server" ]
+
+codec-mp3 = [ "rodio/mp3" ]
+codec-vorbis = [ "rodio/vorbis" ]
+codec-wav = [ "rodio/wav" ]
+codec-aac = [ "rodio/mp4" ]
+codec-alac = [ "rodio/symphonia-alac" ]
+codec-aiff = [ "rodio/symphonia-aiff", "rodio/symphonia-pcm" ]
+codec-caf = [ "rodio/symphonia-caf", "rodio/symphonia-pcm" ]
+codec-adpcm = [ "rodio/symphonia-adpcm" ]
+codec-mkv = [ "rodio/symphonia-mkv" ]
+codec-mpa = [ "rodio/symphonia-mpa" ]
+codec-opus = [ "rodio/symphonia-libopus", "rodio/symphonia-ogg" ]
+codec-flac = [ "rodio/symphonia-flac" ]
+
+# The codecs a realistic music library is made of
+codecs-standard = [
+  "codec-mp3",
+  "codec-flac",
+  "codec-vorbis",
+  "codec-aac",
+  "codec-wav",
+  "codec-opus",
+]
+
+# Everything symphonia can decode
+codecs-full = [
+  "codecs-standard",
+  "codec-alac",
+  "codec-aiff",
+  "codec-caf",
+  "codec-adpcm",
+  "codec-mkv",
+  "codec-mpa",
+]
+
+default = [ "codecs-standard" ]
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
