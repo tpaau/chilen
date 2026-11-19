@@ -56,7 +56,7 @@ pub(crate) fn testing_init_config() {
         data_dir: PathBuf::new(),
         locale: "en-US".parse().unwrap(),
         playback: playback::Config {
-            skip_previous_threshold: None,
+            rewind_threshold: None,
         },
         library: crate::music_lib::Config {
             value_separators: ValueSeparators::default(),

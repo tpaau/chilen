@@ -182,11 +182,11 @@ impl PlayerVolume {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Config {
-    /// Minimum allowed player position where skipping to the previous track doesn't reset player
-    /// position instead.
+    /// Minimum allowed player position where skipping to the previous track doesn't rewind the
+    /// player position to the start of the track.
     ///
     /// Setting this to [`None`] disables the behavior completely.
-    pub skip_previous_threshold: Option<Duration>,
+    pub rewind_threshold: Option<Duration>,
 }
 
 pub(crate) static PLAYER_HANDLE: LazyLock<Arc<RwLock<Option<rodio::Player>>>> =
@@ -611,7 +611,7 @@ pub fn skip_previous() -> Result<(), Error> {
 
     let guard = crate::CONFIG.read().unwrap();
     let config = guard.as_ref().unwrap();
-    if let Some(threshold) = config.playback.skip_previous_threshold
+    if let Some(threshold) = config.playback.rewind_threshold
         && state.player_position > threshold
     {
         trace!("Player position above skip threshold, resetting player position instead");
