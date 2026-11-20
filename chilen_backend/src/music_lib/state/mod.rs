@@ -11,8 +11,8 @@ use std::{
 };
 
 use log::{error, trace};
-use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
+use serde_json::{Deserializer, Serializer};
 
 use crate::{
     Error, Event,
@@ -190,7 +190,7 @@ pub(crate) fn load(config: music_lib::Config) -> Result<(), Error> {
             }
         };
 
-        let lib = match MusicLibraryStored::deserialize(&mut Deserializer::from_read_ref(&data)) {
+        let lib = match MusicLibraryStored::deserialize(&mut Deserializer::from_slice(&data)) {
             Ok(lib) => {
                 MusicLibrary::load(lib, tracks.clone().into_iter().collect(), config.indexer)
             }

@@ -8,10 +8,10 @@ use std::{
 };
 
 use log::{error, trace, warn};
-use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
 use rand::seq::SliceRandom;
+use serde_json::{Deserializer, Serializer};
 
 use crate::{
     Error,
@@ -855,7 +855,7 @@ pub(crate) fn restore_state_from_cache() -> Result<PlayerState, String> {
             }
         };
 
-        let state_raw = match PlayerStateRaw::deserialize(&mut Deserializer::from_read_ref(&data)) {
+        let state_raw = match PlayerStateRaw::deserialize(&mut Deserializer::from_slice(&data)) {
             Ok(data) => data,
             Err(e) => {
                 error!("Could not decode the contents of the player state file: {e}");
