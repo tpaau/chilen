@@ -6,12 +6,12 @@ use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::ColorScheme,
     widget::{
-        Action,
+        Action, card,
         hybrid_icon::Icon,
         menu::{self, button::MenuAction},
     },
 };
-use iced_widget::{button, column, container, row, text};
+use iced_widget::{column, container, row, text};
 
 use crate::gui::{
     Chilen, SPACING_SMALL, font,
@@ -19,7 +19,7 @@ use crate::gui::{
     icons::{self},
     widget::{
         cover_image::CoverImage,
-        list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, button_style},
+        list::{BUTTON_PADDING, BUTTON_ROUNDING, THUMBNAIL_SIZE, card_style},
         menu_button::MenuButton,
         wrappers::marquee,
     },
@@ -279,10 +279,11 @@ where
         .align_y(Alignment::Center)
         .spacing(SPACING_SMALL);
 
-        button(content)
-            .on_press(value.messages.press)
+        card(card_style(&value.state.theme), content)
+            .interaction(card::Interaction::Press(Action::Direct(
+                value.messages.press,
+            )))
             .padding(BUTTON_PADDING)
-            .style(|_, status| button_style(status, value.state.theme.on_surface_variant()))
             .into()
     }
 }

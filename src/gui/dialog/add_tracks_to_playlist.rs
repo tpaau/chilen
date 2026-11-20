@@ -2,8 +2,11 @@ use std::sync::Arc;
 
 use chilen_backend::music_lib::{Playlist, Track};
 use iced::{Alignment, Element, Length};
-use iced_m3::{theme::ColorScheme, widget::spacer};
-use iced_widget::{button, column, container, row, scrollable, text};
+use iced_m3::{
+    theme::ColorScheme,
+    widget::{card, spacer},
+};
+use iced_widget::{column, container, row, scrollable, text};
 
 use crate::{
     THUMBNAIL_SIZE,
@@ -14,7 +17,7 @@ use crate::{
         icons,
         widget::{
             cover_image::CoverImage,
-            list::{BUTTON_PADDING, BUTTON_SPACING},
+            list::{BUTTON_PADDING, BUTTON_SPACING, card_style},
         },
     },
 };
@@ -24,7 +27,8 @@ fn playlist_choice<'a>(
     tracks: Vec<Arc<Track>>,
     playlist: &'a Arc<Playlist>,
 ) -> Element<'a, Message> {
-    button(
+    card(
+        card_style(theme),
         row![
             CoverImage {
                 image_path: playlist.cover.thumbnail().ok(),
@@ -47,11 +51,12 @@ fn playlist_choice<'a>(
     )
     .padding(BUTTON_PADDING)
     .width(Length::Fill)
-    .on_press(Message::Library(library::Message::AddTracksToPlaylist {
-        tracks,
-        playlist: playlist.clone(),
-    }))
-    .style(|_, status| crate::gui::widget::list::button_style(status, theme.on_surface()))
+    .interaction(card::Interaction::Press(iced_m3::widget::Action::Direct(
+        Message::Library(library::Message::AddTracksToPlaylist {
+            tracks,
+            playlist: playlist.clone(),
+        }),
+    )))
     .into()
 }
 

@@ -3,13 +3,13 @@ use std::sync::Arc;
 use chilen_backend::music_lib::Playlist;
 use iced::{
     Alignment, Element, Length, Padding,
-    widget::{button, column, container, row, text},
+    widget::{column, container, row, text},
 };
 use iced_core::text::IntoFragment;
 use iced_m3::{
     theme::ColorScheme,
     widget::{
-        Action,
+        Action, card,
         hybrid_icon::Icon,
         menu::{self, Menu, button::MenuAction},
     },
@@ -22,7 +22,7 @@ use crate::gui::{
     icons::{self},
     widget::{
         cover_image::CoverImage,
-        list::{BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, button_style},
+        list::{BUTTON_PADDING, BUTTON_ROUNDING, BUTTON_SPACING, card_style},
         menu_button::MenuButton,
         wrappers::marquee,
     },
@@ -258,10 +258,9 @@ where
         .align_y(Alignment::Center)
         .spacing(BUTTON_SPACING);
 
-        button(content)
+        card(card_style(&value.state.theme), content)
             .padding(Padding::new(BUTTON_PADDING))
-            .style(|_, status| button_style(status, value.state.theme.on_surface()))
-            .on_press(value.press)
+            .interaction(card::Interaction::Press(Action::Direct(value.press)))
             .into()
     }
 }

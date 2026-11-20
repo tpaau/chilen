@@ -5,8 +5,10 @@ pub mod playlist_button;
 pub mod track_button;
 
 use iced::{Border, Color};
-use iced_m3::style::{
-    DISABLED_STATE_LAYER_OPACITY, HOVER_STATE_LAYER_OPACITY, PRESSED_STATE_LAYER_OPACITY,
+use iced_m3::{
+    style::{DISABLED_STATE_LAYER_OPACITY, Elevation, StateLayer},
+    theme::ColorScheme,
+    widget::card,
 };
 
 use crate::gui::{ROUNDING_LARGE, SPACING_SMALLER};
@@ -17,21 +19,13 @@ pub const BUTTON_PADDING: f32 = SPACING_SMALLER;
 pub const BUTTON_HEIGHT: f32 = THUMBNAIL_SIZE + 2.0 * BUTTON_PADDING;
 pub const BUTTON_SPACING: f32 = SPACING_SMALLER;
 
-pub fn button_style(
-    status: iced_widget::button::Status,
-    color: Color,
-) -> iced_widget::button::Style {
-    iced_widget::button::Style {
-        background: Some(iced::Background::Color(match status {
-            iced_widget::button::Status::Active => Color::TRANSPARENT,
-            iced_widget::button::Status::Hovered => color.scale_alpha(HOVER_STATE_LAYER_OPACITY),
-            iced_widget::button::Status::Pressed => color.scale_alpha(PRESSED_STATE_LAYER_OPACITY),
-            iced_widget::button::Status::Disabled => {
-                color.scale_alpha(DISABLED_STATE_LAYER_OPACITY)
-            }
-        })),
-        text_color: color,
+pub fn card_style(theme: &(impl ColorScheme + ?Sized)) -> card::Style {
+    card::Style {
+        container_color: Color::TRANSPARENT,
         border: Border::default().rounded(BUTTON_ROUNDING),
-        ..Default::default()
+        state_layer: StateLayer::new(theme.on_surface()),
+        shadow_color: theme.shadow(),
+        elevation: Elevation::default(),
+        container_color_disabled: theme.on_surface().scale_alpha(DISABLED_STATE_LAYER_OPACITY),
     }
 }
